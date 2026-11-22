@@ -1,41 +1,38 @@
 [1m[92m   Compiling[0m archx v0.1.0 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 7.52s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 6.07s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/f0ebc61308ccc5f1/out/archx-f0ebc61308ccc5f1)
 
 running 20 tests
-test codegen::tests::both_branches_return_ir ... FAILED
-test codegen::tests::function_call_ir ... ok
 test codegen::tests::hello_world_ir ... ok
+test codegen::tests::function_call_ir ... ok
+test codegen::tests::both_branches_return_ir ... ok
 test codegen::tests::if_else_ir ... ok
 test codegen::tests::rejects_non_bool_if_condition ... ok
 test codegen::tests::rejects_undefined_variable ... ok
-test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test codegen::tests::short_circuit_ir ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test lexer::tests::equality_operators ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
-test parser::tests::parses_functions_with_params ... ok
-test lexer::tests::equality_operators ... ok
 test parser::tests::parses_if_else ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
+test parser::tests::parses_functions_with_params ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
 test tests::default_output_strips_archx_extensions ... ok
 test parser::tests::parses_main_and_print ... ok
 test parser::tests::rejects_missing_colon ... ok
 
-failures:
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
----- codegen::tests::both_branches_return_ir stdout ----
+[1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/6623a22cc58e687a/out/cli-6623a22cc58e687a)
 
-thread 'codegen::tests::both_branches_return_ir' (2645) panicked at src/codegen.rs:862:9:
-assertion failed: out.contains("ret i64 -1")
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+running 4 tests
+test emit_ir_works ... ok
+test if_else_runs ... ok
+test functions_run ... ok
+test hello_world_runs ... ok
 
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
 
-failures:
-    codegen::tests::both_branches_return_ir
-
-test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-[1m[91merror[0m: test failed, to rerun pass `--bin archx`

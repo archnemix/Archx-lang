@@ -16,3 +16,20 @@ compiled `examples/functions.archx.lang` -> `/tmp/archx-functions`
 == run: functions ==
 exit=0
 42
+== emit-ir: if ==
+exit=0
+== compile: if ==
+exit=0
+compiled `examples/if.archx.lang` -> `/tmp/archx-if`
+== run: if ==
+exit=0
+big
+1
+-1
+true
+true
+true
+== optimized IR (clang -O2) ==
+hello.opt.ll exit=0
+functions.opt.ll exit=0
+if.opt.ll exit=0

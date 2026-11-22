@@ -1,0 +1,26 @@
+; ModuleID = 'ci/out/functions.ll'
+source_filename = "ci/out/functions.ll"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00"
+
+; Function Attrs: nofree nounwind
+declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unnamed_addr #0
+
+; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+define i64 @archx_add(i64 %param.a, i64 %param.b) local_unnamed_addr #1 {
+entry:
+  %t2 = add i64 %param.b, %param.a
+  ret i64 %t2
+}
+
+; Function Attrs: nofree nounwind
+define noundef i32 @main() local_unnamed_addr #0 {
+entry:
+  %t3 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 42)
+  ret i32 0
+}
+
+attributes #0 = { nofree nounwind }
+attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
