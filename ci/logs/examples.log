@@ -29,7 +29,24 @@ big
 true
 true
 true
+== emit-ir: loops ==
+exit=0
+== compile: loops ==
+exit=0
+compiled `examples/loops.archx.lang` -> `/tmp/archx-loops`
+== run: loops ==
+exit=0
+55
+120
+0
+1
+2
+4
+5
+6
+10
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
 if.opt.ll exit=0
+loops.opt.ll exit=0
