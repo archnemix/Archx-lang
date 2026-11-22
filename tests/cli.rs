@@ -167,7 +167,7 @@ func main():
     );
     assert_eq!(
         out,
-        "55\n120\n0\n2\n4\n6\n5\n4\n1\n2\n4\n5\n6\n"
+        "55\n120\n0\n1\n2\n4\n5\n6\n5\n4\n1\n2\n4\n5\n6\n"
     );
 }
 
