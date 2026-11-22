@@ -61,13 +61,13 @@ jobs:
             fail=0
 
             echo "== emit-ir: hello =="
-            ./target/release/archx examples/hello.archx --emit-ir > ci/out/hello.ll
+            ./target/release/archx examples/hello.archx.lang --emit-ir > ci/out/hello.ll
             code=$?
             echo "exit=$code"
             [ "$code" -ne 0 ] && fail=1
 
             echo "== compile: hello =="
-            ./target/release/archx examples/hello.archx -o /tmp/archx-hello > ci/logs/compile-hello.log 2>&1
+            ./target/release/archx examples/hello.archx.lang -o /tmp/archx-hello > ci/logs/compile-hello.log 2>&1
             code=$?
             echo "exit=$code"
             cat ci/logs/compile-hello.log
@@ -86,13 +86,13 @@ jobs:
             fi
 
             echo "== emit-ir: functions =="
-            ./target/release/archx examples/functions.archx --emit-ir > ci/out/functions.ll
+            ./target/release/archx examples/functions.archx.lang --emit-ir > ci/out/functions.ll
             code=$?
             echo "exit=$code"
             [ "$code" -ne 0 ] && fail=1
 
             echo "== compile: functions =="
-            ./target/release/archx examples/functions.archx -o /tmp/archx-functions > ci/logs/compile-functions.log 2>&1
+            ./target/release/archx examples/functions.archx.lang -o /tmp/archx-functions > ci/logs/compile-functions.log 2>&1
             code=$?
             echo "exit=$code"
             cat ci/logs/compile-functions.log

@@ -7,10 +7,10 @@ test:
 	cargo test
 
 run: build
-	./target/release/archx examples/hello.archx --run
+	./target/release/archx examples/hello.archx.lang --run
 
 ir: build
-	./target/release/archx examples/hello.archx --emit-ir
+	./target/release/archx examples/hello.archx.lang --emit-ir
 
 clean:
 	cargo clean

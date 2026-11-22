@@ -19,7 +19,7 @@ fn emit_ir_works() {
     let dir = std::env::temp_dir().join(format!("archx-ir-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
 
-    let src = dir.join("hello.archx");
+    let src = dir.join("hello.archx.lang");
     fs::write(&src, "func main():\n    print(\"Hello, Archx!\")\n").unwrap();
 
     let output = Command::new(archx())
@@ -49,7 +49,7 @@ fn hello_world_runs() {
     let dir = std::env::temp_dir().join(format!("archx-run-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
 
-    let src = dir.join("hello.archx");
+    let src = dir.join("hello.archx.lang");
     fs::write(
         &src,
         "func main():\n    print(\"Hello, Archx!\")\n    print('single quotes too')\n    let x = 6 * 7\n    print(x)\n",
@@ -88,7 +88,7 @@ fn functions_run() {
     let dir = std::env::temp_dir().join(format!("archx-func-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
 
-    let src = dir.join("functions.archx");
+    let src = dir.join("functions.archx.lang");
     fs::write(
         &src,
         "func add(a: int, b: int) -> int:\n    return a + b\n\nfunc main():\n    print(add(40, 2))\n",

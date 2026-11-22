@@ -151,7 +151,9 @@ fn default_output(input: &Path) -> PathBuf {
         stem.to_string()
     } else if let Some(stem) = file_name.strip_suffix(".archx.lg") {
         stem.to_string()
-    } else if let Some(stem) = file_name.strip_suffix(".archx") {
+    } else if let Some(stem) = file_name.strip_suffix(".ax.lang") {
+        stem.to_string()
+    } else if let Some(stem) = file_name.strip_suffix(".ax.lg") {
         stem.to_string()
     } else {
         Path::new(&file_name)
@@ -219,7 +221,10 @@ fn print_help() {
     println!("archx {VERSION} — a small readable language that compiles to LLVM IR");
     println!();
     println!("USAGE:");
-    println!("    archx <file.archx> [options]");
+    println!("    archx <file.archx.lang> [options]");
+    println!();
+    println!("FILE EXTENSIONS:");
+    println!("    .archx.lang, .archx.lg, .ax.lang, .ax.lg");
     println!();
     println!("OPTIONS:");
     println!("    -o, --output <file>   output executable (default: input name without extension)");
@@ -243,7 +248,6 @@ mod tests {
             path
         };
 
-        assert_eq!(default_output(Path::new("hello.archx")), expected("hello"));
         assert_eq!(
             default_output(Path::new("hello.archx.lang")),
             expected("hello")
@@ -252,6 +256,11 @@ mod tests {
             default_output(Path::new("hello.archx.lg")),
             expected("hello")
         );
+        assert_eq!(
+            default_output(Path::new("hello.ax.lang")),
+            expected("hello")
+        );
+        assert_eq!(default_output(Path::new("hello.ax.lg")), expected("hello"));
         assert_eq!(default_output(Path::new("hello.txt")), expected("hello"));
     }
 }

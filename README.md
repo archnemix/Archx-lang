@@ -30,10 +30,10 @@ The compiler binary is `target/release/archx`.
 ## Usage
 
 ```sh
-archx examples/hello.archx              # compile to ./examples/hello
-archx examples/hello.archx --run        # compile and run
-archx examples/hello.archx --emit-ir    # print the generated LLVM IR
-archx examples/hello.archx -o hello     # choose the output name
+archx examples/hello.archx.lang              # compile to ./examples/hello
+archx examples/hello.archx.lang --run        # compile and run
+archx examples/hello.archx.lang --emit-ir    # print the generated LLVM IR
+archx examples/hello.archx.lang -o hello     # choose the output name
 ```
 
 ## Syntax
@@ -59,7 +59,7 @@ Rules so far:
 - `int` is a 64-bit signed integer; `string` is an immutable UTF-8 string.
 - `print(...)` is a builtin.
 - `func main():` is the executable entry point. It is required, like `main` in C.
-- Files use the `.archx` extension (`.archx.lang` and `.archx.lg` also work).
+- Files use a double extension: `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`.
 
 ## Why `main`?
 
@@ -68,7 +68,7 @@ It is not about speed. Python is interpreted, so the interpreter can start execu
 ## Architecture
 
 ```
-.archx source
+.archx.lang source
     │
     ▼
 lexer (indentation-aware)
@@ -89,7 +89,7 @@ The frontend is written in Rust with **zero external crates**. LLVM IR is emitte
 
 ```sh
 cargo test
-cargo run -- examples/hello.archx --emit-ir
+cargo run -- examples/hello.archx.lang --emit-ir
 ```
 
 ### CI
