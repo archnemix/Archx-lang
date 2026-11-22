@@ -113,3 +113,42 @@ fn functions_run() {
     assert!(run.status.success());
     assert_eq!(String::from_utf8_lossy(&run.stdout), "42\n");
 }
+
+#[test]
+fn if_else_runs() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-if-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let src = dir.join("if.archx.lang");
+    fs::write(
+        &src,
+        "func sign(n: int) -> int:\n    if n > 0:\n        return 1\n    else:\n        return -1\n\nfunc main():\n    let x = 7\n    if x > 5:\n        print(\"big\")\n    else:\n        print(\"small\")\n    print(sign(5))\n    print(sign(-5))\n    print(true)\n    print(not false)\n    print(1 < 2 and 2 < 3)\n",
+    )
+    .unwrap();
+
+    let exe = dir.join("if");
+    let build = Command::new(archx())
+        .arg(&src)
+        .arg("-o")
+        .arg(&exe)
+        .output()
+        .unwrap();
+
+    assert!(
+        build.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+
+    let run = Command::new(&exe).output().unwrap();
+    assert!(run.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&run.stdout),
+        "big\n1\n-1\ntrue\ntrue\ntrue\n"
+    );
+}

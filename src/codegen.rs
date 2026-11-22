@@ -1,4 +1,4 @@
-use crate::ast::{BinOp, Expr, ExprKind, Func, Program, Stmt, StmtKind, Type};
+use crate::ast::{BinOp, Expr, ExprKind, Func, Program, Stmt, StmtKind, Type, UnOp};
 use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -8,6 +8,11 @@ use std::fmt::Write as _;
 /// The IR is then compiled by clang (LLVM's compiler driver), which runs the
 /// optimizer and emits a native object file. Using text IR keeps the build
 /// dependency-free and makes the output inspectable with `--emit-ir`.
+///
+/// Memory model (milestone 2): every local variable is a stack slot created
+/// with `alloca` in the function's entry block. Loads and stores are emitted
+/// explicitly; LLVM's `mem2reg`/SROA passes promote them to SSA registers at
+/// `-O2`, so the final machine code usually has no stack traffic for locals.
 pub fn lower(program: &Program) -> Result<String> {
     let mut sigs = HashMap::new();
 
@@ -77,11 +82,13 @@ pub fn lower(program: &Program) -> Result<String> {
     let mut codegen = Codegen {
         strings: StringTable::new(),
         sigs,
-        vars: HashMap::new(),
+        scopes: Vec::new(),
         tmp: 0,
+        label_counter: 0,
         terminated: false,
         current_ret: None,
         is_main: false,
+        allocas: String::new(),
     };
 
     let mut bodies = String::new();
@@ -94,6 +101,8 @@ pub fn lower(program: &Program) -> Result<String> {
     out.push_str("declare i32 @printf(ptr, ...)\n\n");
     out.push_str("@.fmt.str = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"\n");
     out.push_str("@.fmt.int = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n");
+    out.push_str("@.str.true = private unnamed_addr constant [5 x i8] c\"true\\00\"\n");
+    out.push_str("@.str.false = private unnamed_addr constant [6 x i8] c\"false\\00\"\n");
 
     for (i, value) in codegen.strings.values.iter().enumerate() {
         let escaped = llvm_bytes(value);
@@ -142,18 +151,25 @@ impl StringTable {
 struct Codegen {
     strings: StringTable,
     sigs: HashMap<String, FuncSig>,
-    vars: HashMap<String, (Type, String)>,
+    /// Lexical scopes; the last element is the innermost block.
+    scopes: Vec<HashMap<String, (Type, String)>>,
     tmp: usize,
+    label_counter: usize,
     terminated: bool,
     current_ret: Option<Type>,
     is_main: bool,
+    /// All `alloca` instructions, hoisted into the entry block.
+    allocas: String,
 }
 
 impl Codegen {
     fn gen_func(&mut self, func: &Func, out: &mut String) -> Result<()> {
-        self.vars.clear();
+        self.scopes = vec![HashMap::new()];
+        self.tmp = 0;
+        self.label_counter = 0;
         self.terminated = false;
         self.is_main = func.name == "main";
+        self.allocas.clear();
 
         let ir_ret = if self.is_main {
             "i32"
@@ -170,36 +186,40 @@ impl Codegen {
             }
         };
 
-        let _ = write!(out, "define {} {}(", ir_ret, mangle(&func.name));
+        let mut header = String::new();
+        let _ = write!(header, "define {} {}(", ir_ret, mangle(&func.name));
         for (i, param) in func.params.iter().enumerate() {
             if i > 0 {
-                out.push_str(", ");
+                header.push_str(", ");
             }
-            let _ = write!(out, "{} %param.{}", ir_type(&param.ty), param.name);
+            let _ = write!(header, "{} %param.{}", ir_type(&param.ty), param.name);
         }
-        out.push_str(") {\n");
-        out.push_str("entry:\n");
+        header.push(')');
 
-        // Spill parameters to stack slots so every variable is handled the
-        // same way. LLVM's optimizer promotes these back to registers.
+        // Parameter spill slots live in the entry block.
         for param in &func.params {
             let ty = ir_type(&param.ty);
             let ptr = format!("%param.{}.addr", param.name);
-            let _ = writeln!(out, "  {ptr} = alloca {ty}");
-            let _ = writeln!(out, "  store {ty} %param.{}, ptr {ptr}", param.name);
-            self.vars
-                .insert(param.name.clone(), (param.ty.clone(), ptr));
+            let _ = writeln!(self.allocas, "  {ptr} = alloca {ty}");
+            self.scopes[0].insert(param.name.clone(), (param.ty.clone(), ptr));
+        }
+
+        let mut body = String::new();
+        for param in &func.params {
+            let ty = ir_type(&param.ty);
+            let ptr = format!("%param.{}.addr", param.name);
+            let _ = writeln!(body, "  store {ty} %param.{}, ptr {ptr}", param.name);
         }
 
         for stmt in &func.body {
-            self.gen_stmt(stmt, out)?;
+            self.gen_stmt(stmt, &mut body)?;
         }
 
         if !self.terminated {
             if self.is_main {
-                out.push_str("  ret i32 0\n");
+                body.push_str("  ret i32 0\n");
             } else if self.current_ret.is_none() {
-                out.push_str("  ret void\n");
+                body.push_str("  ret void\n");
             } else {
                 return Err(Diagnostic::new(
                     format!(
@@ -211,16 +231,28 @@ impl Codegen {
             }
         }
 
+        out.push_str(&header);
+        out.push_str(" {\nentry:\n");
+        out.push_str(&self.allocas);
+        out.push_str(&body);
         out.push_str("}\n\n");
         Ok(())
     }
 
     fn gen_stmt(&mut self, stmt: &Stmt, out: &mut String) -> Result<()> {
+        // If the previous statement terminated this block, any code after it
+        // is unreachable. Put it in a fresh (unreachable) block so the IR stays
+        // valid instead of silently dropping it.
+        if self.terminated {
+            let dead = self.fresh_label("dead");
+            self.start_block(&dead, out);
+        }
+
         match &stmt.kind {
             StmtKind::Let { name, value } => {
-                if self.vars.contains_key(name) {
+                if self.lookup_var(name).is_some() {
                     return Err(Diagnostic::new(
-                        format!("variable `{name}` is already defined in this function"),
+                        format!("variable `{name}` is already defined in this scope"),
                         stmt.span,
                     ));
                 }
@@ -233,12 +265,14 @@ impl Codegen {
                     ));
                 }
 
-                let ptr = format!("%var.{}.{}", name, self.tmp);
-                self.tmp += 1;
+                let ptr = self.next_slot(&format!("var.{name}"));
                 let ty_ir = ir_type(&ty);
-                let _ = writeln!(out, "  {ptr} = alloca {ty_ir}");
+                let _ = writeln!(self.allocas, "  {ptr} = alloca {ty_ir}");
                 let _ = writeln!(out, "  store {ty_ir} {val}, ptr {ptr}");
-                self.vars.insert(name.clone(), (ty, ptr));
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .insert(name.clone(), (ty, ptr));
                 Ok(())
             }
 
@@ -303,6 +337,57 @@ impl Codegen {
                 self.eval_expr(expr, out)?;
                 Ok(())
             }
+
+            StmtKind::If {
+                cond,
+                then_body,
+                else_body,
+            } => {
+                let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+                if cond_ty != Type::Bool {
+                    return Err(Diagnostic::new(
+                        "`if` condition must be a `bool`",
+                        cond.span,
+                    ));
+                }
+
+                let then_label = self.fresh_label("if.then");
+                let else_label = self.fresh_label("if.else");
+                let merge_label = self.fresh_label("if.merge");
+
+                self.emit_cond_br(&cond_val, &then_label, &else_label, out);
+
+                self.start_block(&then_label, out);
+                self.push_scope();
+                for stmt in then_body {
+                    self.gen_stmt(stmt, out)?;
+                }
+                self.pop_scope();
+                let then_terminated = self.terminated;
+                if !then_terminated {
+                    self.emit_br(&merge_label, out);
+                }
+
+                self.start_block(&else_label, out);
+                if let Some(body) = else_body {
+                    self.push_scope();
+                    for stmt in body {
+                        self.gen_stmt(stmt, out)?;
+                    }
+                    self.pop_scope();
+                }
+                let else_terminated = self.terminated;
+                if !else_terminated {
+                    self.emit_br(&merge_label, out);
+                }
+
+                self.start_block(&merge_label, out);
+                if then_terminated && else_terminated {
+                    let _ = writeln!(out, "  unreachable");
+                    self.terminated = true;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -310,37 +395,75 @@ impl Codegen {
         match &expr.kind {
             ExprKind::Int(value) => Ok((Type::Int, value.to_string())),
 
+            ExprKind::Bool(value) => Ok((Type::Bool, value.to_string())),
+
             ExprKind::Str(value) => {
                 let label = self.strings.intern(value);
                 Ok((Type::Str, label))
             }
 
             ExprKind::Var(name) => {
-                let (ty, ptr) = self.vars.get(name).cloned().ok_or_else(|| {
-                    Diagnostic::new(format!("undefined variable `{name}`"), expr.span)
-                })?;
+                let (ty, ptr) = self
+                    .lookup_var(name)
+                    .cloned()
+                    .ok_or_else(|| Diagnostic::new(format!("undefined variable `{name}`"), expr.span))?;
                 let reg = self.next_tmp();
                 let _ = writeln!(out, "  {reg} = load {}, ptr {ptr}", ir_type(&ty));
                 Ok((ty, reg))
             }
 
-            ExprKind::Unary { op: _, expr: inner } => {
+            ExprKind::Unary { op, expr: inner } => {
                 let (ty, val) = self.eval_expr(inner, out)?;
-                if ty != Type::Int {
-                    return Err(Diagnostic::new(
-                        "unary `-` requires an `int` operand",
-                        expr.span,
-                    ));
+                match op {
+                    UnOp::Neg => {
+                        if ty != Type::Int {
+                            return Err(Diagnostic::new(
+                                "unary `-` requires an `int` operand",
+                                expr.span,
+                            ));
+                        }
+                        let reg = self.next_tmp();
+                        let _ = writeln!(out, "  {reg} = sub i64 0, {val}");
+                        Ok((Type::Int, reg))
+                    }
+                    UnOp::Not => {
+                        if ty != Type::Bool {
+                            return Err(Diagnostic::new(
+                                "`not` requires a `bool` operand",
+                                expr.span,
+                            ));
+                        }
+                        let reg = self.next_tmp();
+                        let _ = writeln!(out, "  {reg} = xor i1 {val}, true");
+                        Ok((Type::Bool, reg))
+                    }
                 }
-                let reg = self.next_tmp();
-                let _ = writeln!(out, "  {reg} = sub i64 0, {val}");
-                Ok((Type::Int, reg))
             }
 
-            ExprKind::Binary { op, lhs, rhs } => {
-                let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
-                let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
+            ExprKind::Binary { op, lhs, rhs } => self.gen_binary(*op, lhs, rhs, expr.span, out),
 
+            ExprKind::Call { name, args } => self.gen_call(name, args, expr.span, out),
+        }
+    }
+
+    fn gen_binary(
+        &mut self,
+        op: BinOp,
+        lhs: &Expr,
+        rhs: &Expr,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        match op {
+            BinOp::And | BinOp::Or => return self.gen_short_circuit(op, lhs, rhs, span, out),
+            _ => {}
+        }
+
+        let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
+        let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
+
+        match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
                     return Err(Diagnostic::new(
                         format!(
@@ -349,7 +472,7 @@ impl Codegen {
                             lhs_ty.name(),
                             rhs_ty.name()
                         ),
-                        expr.span,
+                        span,
                     ));
                 }
 
@@ -359,13 +482,113 @@ impl Codegen {
                     BinOp::Sub => "sub",
                     BinOp::Mul => "mul",
                     BinOp::Div => "sdiv",
+                    _ => unreachable!(),
                 };
                 let _ = writeln!(out, "  {reg} = {instr} i64 {lhs_val}, {rhs_val}");
                 Ok((Type::Int, reg))
             }
 
-            ExprKind::Call { name, args } => self.gen_call(name, args, expr.span, out),
+            BinOp::Eq | BinOp::Ne => {
+                if lhs_ty != rhs_ty || (lhs_ty != Type::Int && lhs_ty != Type::Bool) {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "operator `{}` requires two `int` or two `bool` operands, found `{}` and `{}`",
+                            op.symbol(),
+                            lhs_ty.name(),
+                            rhs_ty.name()
+                        ),
+                        span,
+                    ));
+                }
+
+                let reg = self.next_tmp();
+                let pred = match op {
+                    BinOp::Eq => "eq",
+                    BinOp::Ne => "ne",
+                    _ => unreachable!(),
+                };
+                let ty_ir = if lhs_ty == Type::Bool { "i1" } else { "i64" };
+                let _ = writeln!(out, "  {reg} = icmp {pred} {ty_ir} {lhs_val}, {rhs_val}");
+                Ok((Type::Bool, reg))
+            }
+
+            BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+                if lhs_ty != Type::Int || rhs_ty != Type::Int {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "operator `{}` requires `int` operands, found `{}` and `{}`",
+                            op.symbol(),
+                            lhs_ty.name(),
+                            rhs_ty.name()
+                        ),
+                        span,
+                    ));
+                }
+
+                let reg = self.next_tmp();
+                let pred = match op {
+                    BinOp::Lt => "slt",
+                    BinOp::Gt => "sgt",
+                    BinOp::Le => "sle",
+                    BinOp::Ge => "sge",
+                    _ => unreachable!(),
+                };
+                let _ = writeln!(out, "  {reg} = icmp {pred} i64 {lhs_val}, {rhs_val}");
+                Ok((Type::Bool, reg))
+            }
+
+            BinOp::And | BinOp::Or => unreachable!("handled above"),
         }
+    }
+
+    /// Short-circuit `and`/`or`, implemented with basic blocks and a stack
+    /// slot so no phi nodes are needed. LLVM promotes the slot to a register.
+    fn gen_short_circuit(
+        &mut self,
+        op: BinOp,
+        lhs: &Expr,
+        rhs: &Expr,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
+        if lhs_ty != Type::Bool {
+            return Err(Diagnostic::new(
+                format!("operator `{}` requires `bool` operands, found `{}`", op.symbol(), lhs_ty.name()),
+                span,
+            ));
+        }
+
+        let slot = self.next_slot("bool.result");
+        let _ = writeln!(self.allocas, "  {slot} = alloca i1");
+
+        let initial = if op == BinOp::And { "false" } else { "true" };
+        let _ = writeln!(out, "  store i1 {initial}, ptr {slot}");
+
+        let rhs_label = self.fresh_label("bool.rhs");
+        let merge_label = self.fresh_label("bool.merge");
+
+        if op == BinOp::And {
+            self.emit_cond_br(&lhs_val, &rhs_label, &merge_label, out);
+        } else {
+            self.emit_cond_br(&lhs_val, &merge_label, &rhs_label, out);
+        }
+
+        self.start_block(&rhs_label, out);
+        let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
+        if rhs_ty != Type::Bool {
+            return Err(Diagnostic::new(
+                format!("operator `{}` requires `bool` operands, found `{}`", op.symbol(), rhs_ty.name()),
+                rhs.span,
+            ));
+        }
+        let _ = writeln!(out, "  store i1 {rhs_val}, ptr {slot}");
+        self.emit_br(&merge_label, out);
+
+        self.start_block(&merge_label, out);
+        let result = self.next_tmp();
+        let _ = writeln!(out, "  {result} = load i1, ptr {slot}");
+        Ok((Type::Bool, result))
     }
 
     fn gen_call(
@@ -397,6 +620,17 @@ impl Codegen {
                     let _ = writeln!(
                         out,
                         "  {reg} = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 {val})"
+                    );
+                }
+                Type::Bool => {
+                    let selected = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {selected} = select i1 {val}, ptr @.str.true, ptr @.str.false"
+                    );
+                    let _ = writeln!(
+                        out,
+                        "  {reg} = call i32 (ptr, ...) @printf(ptr @.fmt.str, ptr {selected})"
                     );
                 }
                 Type::Void => {
@@ -476,10 +710,54 @@ impl Codegen {
         }
     }
 
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        if self.scopes.len() > 1 {
+            self.scopes.pop();
+        }
+    }
+
+    fn lookup_var(&self, name: &str) -> Option<&(Type, String)> {
+        self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
+
     fn next_tmp(&mut self) -> String {
         let reg = format!("%t{}", self.tmp);
         self.tmp += 1;
         reg
+    }
+
+    fn next_slot(&mut self, prefix: &str) -> String {
+        let name = format!("%{prefix}.{}", self.tmp);
+        self.tmp += 1;
+        name
+    }
+
+    fn fresh_label(&mut self, prefix: &str) -> String {
+        let label = format!("{prefix}.{}", self.label_counter);
+        self.label_counter += 1;
+        label
+    }
+
+    fn start_block(&mut self, label: &str, out: &mut String) {
+        let _ = writeln!(out, "\n{label}:");
+        self.terminated = false;
+    }
+
+    fn emit_br(&mut self, label: &str, out: &mut String) {
+        let _ = writeln!(out, "  br label %{label}");
+        self.terminated = true;
+    }
+
+    fn emit_cond_br(&mut self, cond: &str, then_label: &str, else_label: &str, out: &mut String) {
+        let _ = writeln!(
+            out,
+            "  br i1 {cond}, label %{then_label}, label %{else_label}"
+        );
+        self.terminated = true;
     }
 }
 
@@ -494,6 +772,7 @@ fn mangle(name: &str) -> String {
 fn ir_type(ty: &Type) -> &'static str {
     match ty {
         Type::Int => "i64",
+        Type::Bool => "i1",
         Type::Str => "ptr",
         Type::Void => "void",
     }
@@ -502,6 +781,7 @@ fn ir_type(ty: &Type) -> &'static str {
 fn ir_ret_type(ty: Option<&Type>) -> &'static str {
     match ty {
         Some(Type::Int) => "i64",
+        Some(Type::Bool) => "i1",
         Some(Type::Str) => "ptr",
         Some(Type::Void) | None => "void",
     }
@@ -550,6 +830,46 @@ mod tests {
         );
         assert!(out.contains("define i64 @archx_add(i64 %param.a, i64 %param.b)"));
         assert!(out.contains("call i64 @archx_add"));
+    }
+
+    #[test]
+    fn if_else_ir() {
+        let out = ir(
+            "func main():\n    if 1 < 2:\n        print(\"yes\")\n    else:\n        print(\"no\")\n",
+        );
+        assert!(out.contains("icmp slt i64 1, 2"));
+        assert!(out.contains("br i1"));
+        assert!(out.contains("if.then"));
+        assert!(out.contains("if.else"));
+        assert!(out.contains("if.merge"));
+    }
+
+    #[test]
+    fn short_circuit_ir() {
+        let out = ir("func main():\n    let b = true and false\n    print(b)\n");
+        assert!(out.contains("alloca i1"));
+        assert!(out.contains("store i1 false"));
+        assert!(out.contains("br i1"));
+        assert!(out.contains("load i1"));
+    }
+
+    #[test]
+    fn both_branches_return_ir() {
+        let out = ir(
+            "func sign(n: int) -> int:\n    if n > 0:\n        return 1\n    else:\n        return -1\n\nfunc main():\n    print(sign(5))\n",
+        );
+        assert!(out.contains("ret i64 1"));
+        assert!(out.contains("ret i64 -1"));
+        assert!(out.contains("unreachable"));
+    }
+
+    #[test]
+    fn rejects_non_bool_if_condition() {
+        let tokens = Lexer::new("func main():\n    if 1:\n        print(\"x\")\n")
+            .tokenize()
+            .unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        assert!(lower(&program).is_err());
     }
 
     #[test]

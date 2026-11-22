@@ -1,0 +1,18 @@
+func sign(n: int) -> int:
+    if n > 0:
+        return 1
+    else:
+        return -1
+
+func main():
+    let x = 7
+    if x > 5:
+        print("big")
+    else:
+        print("small")
+
+    print(sign(5))
+    print(sign(-5))
+    print(true)
+    print(not false)
+    print(1 < 2 and 2 < 3)

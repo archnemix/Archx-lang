@@ -4,22 +4,28 @@ use crate::token::{Token, TokenKind};
 
 /// Recursive-descent parser.
 ///
-/// Grammar (milestone 1):
+/// Grammar (milestone 2):
 ///
 /// ```text
 /// program     := func_def*
 /// func_def    := "func" IDENT "(" params? ")" ("->" type)? ":" NEWLINE INDENT stmt+ DEDENT
 /// params      := param ("," param)*
 /// param       := IDENT ":" type
-/// type        := "int" | "string" | "void"
+/// type        := "int" | "bool" | "string" | "void"
 /// stmt        := "let" IDENT "=" expr NEWLINE
 ///              | "return" expr? NEWLINE
+///              | "if" expr ":" NEWLINE INDENT stmt+ DEDENT
+///                ("else" ":" NEWLINE INDENT stmt+ DEDENT)?
 ///              | expr NEWLINE
-/// expr        := additive
+/// expr        := or_expr
+/// or_expr     := and_expr ("or" and_expr)*
+/// and_expr    := not_expr ("and" not_expr)*
+/// not_expr    := "not" not_expr | comparison
+/// comparison  := additive (("==" | "!=" | "<" | ">" | "<=" | ">=") additive)*
 /// additive    := multiplicative (("+" | "-") multiplicative)*
 /// multiplicative := unary (("*" | "/") unary)*
 /// unary       := "-" unary | primary
-/// primary     := INT | STRING | IDENT | IDENT "(" args? ")" | "(" expr ")"
+/// primary     := INT | STRING | BOOL | IDENT | IDENT "(" args? ")" | "(" expr ")"
 /// args        := expr ("," expr)*
 /// ```
 pub struct Parser {
@@ -117,6 +123,10 @@ impl Parser {
                 self.bump();
                 Ok(Type::Int)
             }
+            TokenKind::Ident(name) if name == "bool" => {
+                self.bump();
+                Ok(Type::Bool)
+            }
             TokenKind::Ident(name) if name == "string" => {
                 self.bump();
                 Ok(Type::Str)
@@ -126,7 +136,7 @@ impl Parser {
                 Ok(Type::Void)
             }
             _ => Err(Diagnostic::new(
-                "expected a type (`int`, `string`, or `void`)",
+                "expected a type (`int`, `bool`, `string`, or `void`)",
                 token.span,
             )),
         }
@@ -161,6 +171,63 @@ impl Parser {
             });
         }
 
+        if self.check(&TokenKind::If) {
+            self.bump();
+            let cond = self.parse_expr()?;
+            self.expect(TokenKind::Colon, "`:`")?;
+            self.expect(
+                TokenKind::Newline,
+                "a newline after the `if` condition",
+            )?;
+            self.expect(TokenKind::Indent, "an indented `if` body")?;
+
+            let mut then_body = Vec::new();
+            loop {
+                self.skip_newlines();
+                if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                    break;
+                }
+                then_body.push(self.parse_stmt()?);
+            }
+            self.expect(TokenKind::Dedent, "the end of the `if` body")?;
+
+            if then_body.is_empty() {
+                return Err(Diagnostic::new("`if` body cannot be empty", span));
+            }
+
+            let mut else_body = None;
+            if self.check(&TokenKind::Else) {
+                self.bump();
+                self.expect(TokenKind::Colon, "`:`")?;
+                self.expect(TokenKind::Newline, "a newline after `else:`")?;
+                self.expect(TokenKind::Indent, "an indented `else` body")?;
+
+                let mut body = Vec::new();
+                loop {
+                    self.skip_newlines();
+                    if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                        break;
+                    }
+                    body.push(self.parse_stmt()?);
+                }
+                self.expect(TokenKind::Dedent, "the end of the `else` body")?;
+
+                if body.is_empty() {
+                    return Err(Diagnostic::new("`else` body cannot be empty", span));
+                }
+                else_body = Some(body);
+            }
+
+            return Ok(Stmt {
+                kind: StmtKind::If {
+                    cond,
+                    then_body,
+                    else_body,
+                },
+                span,
+            });
+        }
+
         let value = self.parse_expr()?;
         self.expect(TokenKind::Newline, "a newline after the statement")?;
         Ok(Stmt {
@@ -170,7 +237,101 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
-        self.parse_additive()
+        self.parse_or()
+    }
+
+    fn parse_or(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_and()?;
+
+        loop {
+            if self.check(&TokenKind::Or) {
+                let span = self.peek().span;
+                self.bump();
+                let rhs = self.parse_and()?;
+                lhs = Expr {
+                    kind: ExprKind::Binary {
+                        op: BinOp::Or,
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    },
+                    span,
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_and(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_not()?;
+
+        loop {
+            if self.check(&TokenKind::And) {
+                let span = self.peek().span;
+                self.bump();
+                let rhs = self.parse_not()?;
+                lhs = Expr {
+                    kind: ExprKind::Binary {
+                        op: BinOp::And,
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    },
+                    span,
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_not(&mut self) -> Result<Expr> {
+        if self.check(&TokenKind::Not) {
+            let span = self.peek().span;
+            self.bump();
+            let expr = self.parse_not()?;
+            return Ok(Expr {
+                kind: ExprKind::Unary {
+                    op: UnOp::Not,
+                    expr: Box::new(expr),
+                },
+                span,
+            });
+        }
+
+        self.parse_comparison()
+    }
+
+    fn parse_comparison(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_additive()?;
+
+        loop {
+            let op = match &self.peek().kind {
+                TokenKind::EqEq => BinOp::Eq,
+                TokenKind::NotEq => BinOp::Ne,
+                TokenKind::Lt => BinOp::Lt,
+                TokenKind::Gt => BinOp::Gt,
+                TokenKind::Le => BinOp::Le,
+                TokenKind::Ge => BinOp::Ge,
+                _ => break,
+            };
+            let span = self.peek().span;
+            self.bump();
+            let rhs = self.parse_additive()?;
+            lhs = Expr {
+                kind: ExprKind::Binary {
+                    op,
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                },
+                span,
+            };
+        }
+
+        Ok(lhs)
     }
 
     fn parse_additive(&mut self) -> Result<Expr> {
@@ -249,6 +410,13 @@ impl Parser {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::Int(n),
+                    span,
+                })
+            }
+            TokenKind::Bool(value) => {
+                self.bump();
+                Ok(Expr {
+                    kind: ExprKind::Bool(value),
                     span,
                 })
             }
@@ -380,6 +548,20 @@ mod tests {
         let program = parse("func add(a: int, b: int) -> int:\n    return a + b\n");
         assert_eq!(program.funcs[0].params.len(), 2);
         assert!(program.funcs[0].ret.is_some());
+    }
+
+    #[test]
+    fn parses_if_else() {
+        let program = parse(
+            "func main():\n    let x = 1\n    if x > 0:\n        print(\"yes\")\n    else:\n        print(\"no\")\n",
+        );
+        assert_eq!(program.funcs[0].body.len(), 2);
+    }
+
+    #[test]
+    fn parses_booleans_and_comparisons() {
+        let program = parse("func main():\n    let b = 1 < 2 and not false\n    print(b)\n");
+        assert_eq!(program.funcs[0].body.len(), 2);
     }
 
     #[test]

@@ -100,7 +100,42 @@ impl<'a> Lexer<'a> {
                 }
                 b'=' => {
                     self.bump();
-                    tokens.push(Token::new(TokenKind::Eq, span));
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::EqEq, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Eq, span));
+                    }
+                }
+                b'!' => {
+                    self.bump();
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::NotEq, span));
+                    } else {
+                        return Err(Diagnostic::new(
+                            "unexpected character `!` (use `not` for logical negation)",
+                            span,
+                        ));
+                    }
+                }
+                b'<' => {
+                    self.bump();
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::Le, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Lt, span));
+                    }
+                }
+                b'>' => {
+                    self.bump();
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::Ge, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Gt, span));
+                    }
                 }
                 b':' => {
                     self.bump();
@@ -248,6 +283,13 @@ impl<'a> Lexer<'a> {
             "func" => TokenKind::Func,
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
+            "if" => TokenKind::If,
+            "else" => TokenKind::Else,
+            "and" => TokenKind::And,
+            "or" => TokenKind::Or,
+            "not" => TokenKind::Not,
+            "true" => TokenKind::Bool(true),
+            "false" => TokenKind::Bool(false),
             _ => TokenKind::Ident(text.to_string()),
         }
     }
@@ -418,5 +460,29 @@ mod tests {
     fn rejects_bad_unindent() {
         let result = Lexer::new("func main():\n        print(\"a\")\n    print(\"b\")\n").tokenize();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn comparison_and_boolean_tokens() {
+        let k = kinds("if a <= b and not c:\n    print(true)\n");
+        assert_eq!(k[0], TokenKind::If);
+        assert_eq!(k[1], TokenKind::Ident("a".into()));
+        assert_eq!(k[2], TokenKind::Le);
+        assert_eq!(k[3], TokenKind::Ident("b".into()));
+        assert_eq!(k[4], TokenKind::And);
+        assert_eq!(k[5], TokenKind::Not);
+        assert_eq!(k[6], TokenKind::Ident("c".into()));
+        assert!(k.iter().any(|t| *t == TokenKind::Bool(true)));
+    }
+
+    #[test]
+    fn equality_operators() {
+        let k = kinds("a == b\n");
+        assert_eq!(k[0], TokenKind::Ident("a".into()));
+        assert_eq!(k[1], TokenKind::EqEq);
+        assert_eq!(k[2], TokenKind::Ident("b".into()));
+
+        let k = kinds("a != b\n");
+        assert_eq!(k[1], TokenKind::NotEq);
     }
 }

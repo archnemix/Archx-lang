@@ -4,9 +4,9 @@
 
 Archx compiles to **LLVM IR**, so it uses the same optimizer and backends as C, Rust, Swift, Zig, and Julia. One frontend, every architecture LLVM supports: x86-64, ARM64, RISC-V, WASM, and more.
 
-> Status: milestone 1 — the pipeline works end to end
-> (`source → lexer → parser → LLVM IR → native binary`), with indentation-based
-> syntax, `func`, `let`, `return`, arithmetic, user functions, and `print`.
+> Status: milestone 2 — control flow (`if`/`else`), booleans, comparisons,
+> short-circuit `and`/`or`/`not`, user functions, `let`/`return`, arithmetic,
+> and `print`.
 
 ## Why LLVM?
 
@@ -39,15 +39,23 @@ archx examples/hello.archx.lang -o hello     # choose the output name
 ## Syntax
 
 ```archx
-# indentation defines blocks, like Python
-func add(a: int, b: int) -> int:
-    return a + b
+func sign(n: int) -> int:
+    if n > 0:
+        return 1
+    else:
+        return -1
 
 func main():
-    print("Hello, Archx!")
-    print('single quotes work too')
-    let answer = add(40, 2)
-    print(answer)
+    let x = 7
+    if x > 5 and x < 10:
+        print("big")
+    else:
+        print("small")
+
+    print(sign(5))
+    print(sign(-5))
+    print(true)
+    print(not false)
 ```
 
 Rules so far:
@@ -56,14 +64,37 @@ Rules so far:
 - No semicolons.
 - `#` starts a comment.
 - Strings use `'single'` or `"double"` quotes.
-- `int` is a 64-bit signed integer; `string` is an immutable UTF-8 string.
-- `print(...)` is a builtin.
-- `func main():` is the executable entry point. It is required, like `main` in C.
+- `int` is a 64-bit signed integer; `bool` is `true`/`false`; `string` is an immutable UTF-8 string.
+- Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
+- Logical operators: `and`, `or`, `not` — `and`/`or` short-circuit.
+- `print(...)` is a builtin; it prints `int`, `bool`, or `string`.
+- `func main():` is the executable entry point.
 - Files use a double extension: `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`.
 
 ## Why `main`?
 
 It is not about speed. Python is interpreted, so the interpreter can start executing top-level statements anywhere. A compiled binary is raw machine code: the operating system loader needs **one exact entry address** to jump to. That address is `main`. It is a linking convention, not a performance feature.
+
+## How memory works today
+
+- Every local variable is a **stack slot** (`alloca`) created in the function's entry block.
+- `let` stores into the slot; reads load from it. Parameters are spilled to stack slots too.
+- Strings are interned global constants.
+- There is **no heap** yet.
+- At `-O2`, LLVM's `mem2reg`/SROA passes promote allocas to SSA registers, so locals usually disappear from the final machine code.
+
+See `docs/OPTIMIZATION.md` for the before/after IR, the optimization strategy, and the research behind it.
+
+## Optimization
+
+Archx optimizes at four layers:
+
+1. **Language design** — value semantics, no hidden allocations, monomorphized generics (later), defined overflow, no UB-driven surprises.
+2. **Frontend** — clean IR, entry-block allocas, string interning, constant folding (next), no unnecessary loads.
+3. **LLVM middle-end** — `-O2` by default (SROA, GVN, inlining, loop unrolling, vectorization).
+4. **Backend/runtime** — instruction selection, register allocation, and later custom allocators/arenas.
+
+`-O3`, LTO, PGO, and custom passes are available later once there is a benchmark suite to measure them. See `docs/OPTIMIZATION.md`.
 
 ## Architecture
 
@@ -94,20 +125,22 @@ cargo run -- examples/hello.archx.lang --emit-ir
 
 ### CI
 
-GitHub Actions builds and tests on every push, and saves its logs and generated IR in `ci/logs/` and `ci/out/`. To force a run, touch `ci/trigger` and push.
+GitHub Actions builds and tests on every push, and saves its logs and generated IR in `ci/logs/` and `ci/out/`. The optimized IR (`*.opt.ll`) is saved too, so you can see what `-O2` does to the code. To force a run, touch `ci/trigger` and push.
 
 ## Roadmap
 
 - [x] Lexer with indentation, comments, single/double-quoted strings
 - [x] Parser for functions, `let`, `return`, arithmetic, calls
+- [x] `if` / `else`, comparisons, short-circuit `and` / `or` / `not`
 - [x] LLVM IR codegen + clang linking
-- [ ] `if` / `else`, `while`, `for`
-- [ ] Booleans and comparisons
+- [ ] `while` / `for` loops
+- [ ] Arrays and indexing
 - [ ] Structs and methods
 - [ ] Generics (monomorphized)
 - [ ] Ownership / RAII memory model
 - [ ] String interpolation
 - [ ] Modules and a standard library
+- [ ] Benchmarks against C and Rust
 
 ## License
 

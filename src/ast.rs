@@ -3,6 +3,7 @@ use crate::diag::Span;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Int,
+    Bool,
     Str,
     Void,
 }
@@ -11,6 +12,7 @@ impl Type {
     pub fn name(&self) -> &'static str {
         match self {
             Type::Int => "int",
+            Type::Bool => "bool",
             Type::Str => "string",
             Type::Void => "void",
         }
@@ -45,9 +47,17 @@ pub struct Stmt {
 
 #[derive(Debug, Clone)]
 pub enum StmtKind {
-    Let { name: String, value: Expr },
+    Let {
+        name: String,
+        value: Expr,
+    },
     Return(Option<Expr>),
     Expr(Expr),
+    If {
+        cond: Expr,
+        then_body: Vec<Stmt>,
+        else_body: Option<Vec<Stmt>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -59,9 +69,13 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Int(i64),
+    Bool(bool),
     Str(String),
     Var(String),
-    Call { name: String, args: Vec<Expr> },
+    Call {
+        name: String,
+        args: Vec<Expr>,
+    },
     Binary {
         op: BinOp,
         lhs: Box<Expr>,
@@ -79,6 +93,14 @@ pub enum BinOp {
     Sub,
     Mul,
     Div,
+    Eq,
+    Ne,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    And,
+    Or,
 }
 
 impl BinOp {
@@ -88,6 +110,14 @@ impl BinOp {
             BinOp::Sub => "-",
             BinOp::Mul => "*",
             BinOp::Div => "/",
+            BinOp::Eq => "==",
+            BinOp::Ne => "!=",
+            BinOp::Lt => "<",
+            BinOp::Gt => ">",
+            BinOp::Le => "<=",
+            BinOp::Ge => ">=",
+            BinOp::And => "and",
+            BinOp::Or => "or",
         }
     }
 }
@@ -95,4 +125,5 @@ impl BinOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
+    Not,
 }

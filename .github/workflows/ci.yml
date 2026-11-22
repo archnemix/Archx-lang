@@ -110,6 +110,39 @@ jobs:
               fail=1
             fi
 
+            echo "== emit-ir: if =="
+            ./target/release/archx examples/if.archx.lang --emit-ir > ci/out/if.ll
+            code=$?
+            echo "exit=$code"
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== compile: if =="
+            ./target/release/archx examples/if.archx.lang -o /tmp/archx-if > ci/logs/compile-if.log 2>&1
+            code=$?
+            echo "exit=$code"
+            cat ci/logs/compile-if.log
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== run: if =="
+            if [ -x /tmp/archx-if ]; then
+              /tmp/archx-if > ci/out/if.txt
+              code=$?
+              echo "exit=$code"
+              cat ci/out/if.txt
+              [ "$code" -ne 0 ] && fail=1
+            else
+              echo "binary missing"
+              fail=1
+            fi
+
+            echo "== optimized IR (clang -O2) =="
+            for name in hello functions if; do
+              clang -O2 -Wno-override-module -S -emit-llvm "ci/out/$name.ll" -o "ci/out/$name.opt.ll"
+              code=$?
+              echo "$name.opt.ll exit=$code"
+              [ "$code" -ne 0 ] && fail=1
+            done
+
             exit "$fail"
           ) > ci/logs/examples.log 2>&1
           status=$?
