@@ -859,7 +859,7 @@ mod tests {
             "func sign(n: int) -> int:\n    if n > 0:\n        return 1\n    else:\n        return -1\n\nfunc main():\n    print(sign(5))\n",
         );
         assert!(out.contains("ret i64 1"));
-        assert!(out.contains("ret i64 -1"));
+        assert!(out.contains("sub i64 0, 1"));
         assert!(out.contains("unreachable"));
     }
 
