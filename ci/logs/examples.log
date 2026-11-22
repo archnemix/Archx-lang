@@ -2,8 +2,6 @@
 exit=0
 == compile: hello ==
 exit=0
-warning: overriding the module target triple with x86_64-pc-linux-gnu [-Woverride-module]
-1 warning generated.
 compiled `examples/hello.archx` -> `/tmp/archx-hello`
 == run: hello ==
 exit=0
@@ -14,8 +12,6 @@ single quotes work too
 exit=0
 == compile: functions ==
 exit=0
-warning: overriding the module target triple with x86_64-pc-linux-gnu [-Woverride-module]
-1 warning generated.
 compiled `examples/functions.archx` -> `/tmp/archx-functions`
 == run: functions ==
 exit=0
