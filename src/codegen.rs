@@ -1998,7 +1998,7 @@ impl Codegen {
 
         if let Some(idx) = eval_const_int(index) {
             if idx >= 0 {
-                if let Some(KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
+                if let Some(&KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
                     if idx < len {
                         return true;
                     }
@@ -2019,7 +2019,7 @@ impl Codegen {
                             }
                         }
                         UpperBound::Const(limit) => {
-                            if let Some(KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
+                            if let Some(&KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
                                 if *limit <= len {
                                     return true;
                                 }
@@ -2050,7 +2050,7 @@ impl Codegen {
                 ));
             }
             if let ExprKind::Var(arr_name) = &target.kind {
-                if let Some(KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
+                if let Some(&KnownLen::Const(len)) = self.lookup_known_len(arr_name) {
                     if idx >= len {
                         return Err(Diagnostic::new(
                             format!("index {idx} is out of bounds for array of length {len}"),
