@@ -101,7 +101,7 @@ It is not about speed. Python is interpreted, so the interpreter can start execu
 - There is **no heap** yet.
 - At `-O2`, LLVM's `mem2reg`/SROA passes promote allocas to SSA registers, so locals usually disappear from the final machine code.
 
-See `docs/OPTIMIZATION.md` for the before/after IR, the optimization strategy, and the research behind it.
+See [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for the language design fundamentals (why existing languages fall short, memory model, binary size, readability, and straightforwardness) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the before/after IR and optimization strategy.
 
 ## Optimization
 
@@ -128,10 +128,18 @@ numbers or the run fails.
 bash benchmarks/run.sh
 ```
 
-Results land in `ci/out/benchmarks.txt` and are committed back to the repo by CI.
-The point of the exercise: because Archx emits LLVM IR, it is optimized by the
-*same* optimizer as C and Rust, so it lands in the same speed class — with a
-binary the size of C's. See `benchmarks/README.md` for how to read the numbers.
+Results land in `ci/out/benchmarks.txt` and are committed back to the repo by CI:
+
+| Language | Compiler | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
+|---|---|---:|---:|---:|
+| C | `clang 21 -O2` | **87 ms** (87 ms) | 16 KB | **14 KB** |
+| Rust | `rustc 1.100 -O` | **87 ms** (88 ms) | 4,388 KB | **330 KB** |
+| Archx | `archx` (`clang 21 -O2`) | **87 ms** (87 ms) | 16 KB | **14 KB** |
+
+Because Archx emits clean LLVM IR, it is optimized by the *same* optimizer as C
+and Rust, landing at identical speed with a binary the size of C's. See
+[`benchmarks/README.md`](benchmarks/README.md) and
+[`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for details.
 
 ## Architecture
 

@@ -13,7 +13,7 @@ That does **not** mean hand-optimizing every expression in the frontend. It mean
 | 3. LLVM middle-end | LLVM | Inlining, SROA, GVN, LICM, loop unrolling, vectorization | `clang -O2` / `-O3` |
 | 4. Backend / runtime | LLVM + **Archx** | Instruction selection, register allocation, allocators, GC/arena runtime | custom allocator, bounds-check elision |
 
-## How memory works today (milestone 2)
+## How memory works today (milestone 3)
 
 Every local variable is a stack slot:
 
@@ -42,7 +42,7 @@ store i64 %t2, ptr %var.answer.3
 %call = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 42)
 ```
 
-The multiply, alloca, store, and load all disappear. The compiler turned "simple" code into "highly optimized" code — that is the model.
+The multiply, alloca, store, and load all disappear. Loops optimize the same way: in `ci/out/loops.opt.ll`, LLVM recognizes the induction variable in `sum_to(n)` (`for i in 1..n + 1: total = total + i`) and collapses the entire loop into closed-form arithmetic with zero runtime iterations — and folds `sum_to(10)` in `main` straight to `printf("%lld\n", 55)`. The compiler turned "simple" code into "highly optimized" code — that is the model.
 
 ## Research: what the fastest approaches do, and what we can improve
 
@@ -78,7 +78,7 @@ The multiply, alloca, store, and load all disappear. The compiler turned "simple
 
 ## What we add later (with milestones)
 
-- **Loops** → LLVM loop unrolling, vectorization, LICM, strength reduction.
+- **Loops** — done (`while`, `for i in a..b`, `break`, `continue`) → LLVM loop unrolling, closed-form induction elimination, LICM, strength reduction, vectorization.
 - **Arrays** → contiguous layout, bounds-check elision, `noalias` slices.
 - **Structs** → value semantics, SoA/AoS layout control, scalar replacement of aggregates.
 - **Generics** → monomorphization (zero-cost abstraction), then inlining.
@@ -87,15 +87,14 @@ The multiply, alloca, store, and load all disappear. The compiler turned "simple
 - **String SSO** → small strings stored inline instead of on the heap.
 - **PGO/LTO** → profile-guided optimization and link-time optimization.
 
-## Benchmarking plan
+## Benchmarking
 
-Optimization claims must be measured, not guessed. The plan:
+Optimization claims must be measured, not guessed:
 
-1. Add a `benchmarks/` directory with small, focused programs (arithmetic, loops, strings, allocation, function calls).
-2. Compile the same algorithms in C (clang) and Rust, and compare wall-clock time.
-3. Record results in `ci/out/benchmarks.txt` on every CI run.
-4. Only keep an optimization if it wins on the benchmark suite.
-5. Watch compile time too — a fast compiler is part of the developer experience.
+1. `benchmarks/` holds identical workloads in C (`clang -O2`), Rust (`rustc -O`), and Archx (`archx` → `clang -O2`) — currently a 20M-iteration arithmetic loop and prime counting up to 400,000.
+2. CI runs `bash benchmarks/run.sh 5` on every push, verifies identical stdout across all three, and records best-of-5 wall-clock ms and raw/stripped binary sizes in `ci/out/benchmarks.txt` (currently **87 ms** across C, Rust, and Archx; **14 KB** stripped for Archx and C vs **330 KB** stripped for Rust).
+3. As arrays, strings, structs, and arenas land, matching benchmarks get added to `benchmarks/`.
+4. Only keep a frontend or pass optimization if it wins on the suite without hurting compile speed.
 
 ## Principles
 

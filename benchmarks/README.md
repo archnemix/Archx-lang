@@ -40,6 +40,18 @@ the mean in parentheses so jitter is visible.
 Results go to stdout and to `ci/out/benchmarks.txt`. CI runs this on every push
 and commits the table back to the repo, so the history of the numbers is in git.
 
+## Latest CI measurement (`ci/out/benchmarks.txt`)
+
+Measured on GitHub Actions (`x86_64-pc-linux-gnu`, `clang 21.1.8`, `rustc 1.100.0`):
+
+| Language | Build | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
+|----------|-------|-----------------:|-------------:|------------------:|
+| C | `clang -O2` | **87 ms** (87 ms) | 16 KB | **14 KB** |
+| Rust | `rustc -O` | **87 ms** (88 ms) | 4,388 KB | **330 KB** |
+| Archx | `archx` (`clang -O2`) | **87 ms** (87 ms) | 16 KB | **14 KB** |
+
+All three printed `75517` and `33860`.
+
 ## How to read the result
 
 The three programs compile to **the same LLVM IR**, so they should land within
