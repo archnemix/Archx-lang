@@ -2,7 +2,7 @@
 exit=0
 == compile: hello ==
 exit=0
-compiled `examples/hello.archx` -> `/tmp/archx-hello`
+compiled `examples/hello.archx.lang` -> `/tmp/archx-hello`
 == run: hello ==
 exit=0
 Hello, Archx!
@@ -12,7 +12,7 @@ single quotes work too
 exit=0
 == compile: functions ==
 exit=0
-compiled `examples/functions.archx` -> `/tmp/archx-functions`
+compiled `examples/functions.archx.lang` -> `/tmp/archx-functions`
 == run: functions ==
 exit=0
 42
