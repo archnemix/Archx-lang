@@ -32,9 +32,10 @@ bash benchmarks/run.sh          # best of 5 runs
 bash benchmarks/run.sh 20       # best of 20, less noise, slower
 ```
 
-All three are built with `-O2` and timed the same way: the binary is run N
-times, the **best** time is reported (the most stable estimator on a shared
-machine), with the mean in parentheses so jitter is visible.
+All three are built at optimisation level 2 (`clang -O2`, `rustc -O`, and
+Archx's own `clang -O2`) and timed the same way: the binary is run N times, the
+**best** time is reported (the most stable estimator on a shared machine), with
+the mean in parentheses so jitter is visible.
 
 Results go to stdout and to `ci/out/benchmarks.txt`. CI runs this on every push
 and commits the table back to the repo, so the history of the numbers is in git.
@@ -52,7 +53,7 @@ Where the languages *do* differ, and why:
 
 | Axis | C | Rust | Archx |
 |------|---|------|-------|
-| Optimizer | LLVM (`clang -O2`) | LLVM (`rustc -O2`) | LLVM (`clang -O2`) |
+| Optimizer | LLVM (`clang -O2`) | LLVM (`rustc -O`) | LLVM (`clang -O2`) |
 | Loop IR | `icmp slt` + `br` | `icmp slt` + `br` | `icmp slt` + `br` |
 | Binary size | smallest | largest (static runtime, panic machinery) | smallest |
 | Build time | fastest | slowest | fast (text IR → one clang call) |
@@ -70,4 +71,5 @@ designed around: pay for what you use.
   numbers as a sanity check, not a verdict.
 - `-O2` everywhere is deliberate. If you want to see what `-O3` or LTO adds,
   change one flag and re-run: the interesting question is whether Archx's IR
-  gives LLVM the same opportunities the other front-ends do.
+  gives LLVM the same opportunities the other front-ends do. (In Rust, `-O2`
+  is spelled `-O` or `-C opt-level=2`.)

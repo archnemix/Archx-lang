@@ -23,7 +23,8 @@ cd "$ROOT" || exit 1
 # ---------------------------------------------------------------- build ------
 echo "== building =="
 clang -O2 -o "$TMP/c" benchmarks/primes.c || exit 1
-rustc -O2 -o "$TMP/rust" benchmarks/primes.rs || exit 1
+# rustc spells it `-O` (an alias for -C opt-level=2); it has no `-O2`.
+rustc -O -o "$TMP/rust" benchmarks/primes.rs || exit 1
 cargo build --release >/dev/null 2>&1 || { echo "archx build failed"; exit 1; }
 ./target/release/archx benchmarks/primes.archx.lang -o "$TMP/archx" || exit 1
 
@@ -87,7 +88,7 @@ Toolchain
 $(clang --version | head -1)
 $(rustc --version)
 archx (this repo, cargo build --release)
-optimisation: -O2 for all three
+optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
 
 Output (identical in all three)
 -------------------------------
@@ -96,7 +97,7 @@ $(sed 's/^/  /' "$TMP/out_c")
 Time in milliseconds (best of $RUNS runs, mean in parentheses)
 --------------------------------------------------------------
   C      (clang -O2)   ${C_BEST}  (${C_MEAN})
-  Rust   (rustc -O2)   ${R_BEST}  (${R_MEAN})
+  Rust   (rustc -O)    ${R_BEST}  (${R_MEAN})
   Archx  (archx -O2)   ${A_BEST}  (${A_MEAN})
 
 Binary size (KB)

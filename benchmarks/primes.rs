@@ -3,7 +3,7 @@
 //!   1. sum of squares, reduced mod 1_000_007 so the accumulator stays small
 //!   2. prime counting by trial division (nested loops, branch, early break)
 //!
-//! Build:  rustc -O2 -o primes_rs primes.rs
+//! Build:  rustc -O -o primes_rs primes.rs   (`-O` means opt-level 2)
 
 const SUM_N: i64 = 20_000_000;
 const PRIME_LIMIT: i64 = 400_000;
