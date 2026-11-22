@@ -25,13 +25,22 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Make sure clang is available
+        run: |
+          if ! command -v clang >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y clang
+          fi
+
       - name: Record toolchain
         run: |
           mkdir -p ci/logs ci/out
           {
             rustc --version
             cargo --version
+            echo "clang path: $(command -v clang || echo missing)"
             clang --version || true
+            ls -l target/release/archx || true
           } | tee ci/logs/toolchain.log
 
       - name: Test
@@ -46,15 +55,69 @@ jobs:
 
       - name: Run examples
         run: |
-          set -o pipefail
-          mkdir -p ci/out
-          ./target/release/archx examples/hello.archx --emit-ir > ci/out/hello.ll
-          ./target/release/archx examples/hello.archx --run > ci/out/hello.txt
-          ./target/release/archx examples/functions.archx --run > ci/out/functions.txt
-          ./target/release/archx examples/hello.archx > ci/out/compile.txt 2>&1
-          rm -f examples/hello examples/hello.ll examples/functions examples/functions.ll
+          mkdir -p ci/out ci/logs
+          set +e
+          (
+            fail=0
+
+            echo "== emit-ir: hello =="
+            ./target/release/archx examples/hello.archx --emit-ir > ci/out/hello.ll
+            code=$?
+            echo "exit=$code"
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== compile: hello =="
+            ./target/release/archx examples/hello.archx -o /tmp/archx-hello > ci/logs/compile-hello.log 2>&1
+            code=$?
+            echo "exit=$code"
+            cat ci/logs/compile-hello.log
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== run: hello =="
+            if [ -x /tmp/archx-hello ]; then
+              /tmp/archx-hello > ci/out/hello.txt
+              code=$?
+              echo "exit=$code"
+              cat ci/out/hello.txt
+              [ "$code" -ne 0 ] && fail=1
+            else
+              echo "binary missing"
+              fail=1
+            fi
+
+            echo "== emit-ir: functions =="
+            ./target/release/archx examples/functions.archx --emit-ir > ci/out/functions.ll
+            code=$?
+            echo "exit=$code"
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== compile: functions =="
+            ./target/release/archx examples/functions.archx -o /tmp/archx-functions > ci/logs/compile-functions.log 2>&1
+            code=$?
+            echo "exit=$code"
+            cat ci/logs/compile-functions.log
+            [ "$code" -ne 0 ] && fail=1
+
+            echo "== run: functions =="
+            if [ -x /tmp/archx-functions ]; then
+              /tmp/archx-functions > ci/out/functions.txt
+              code=$?
+              echo "exit=$code"
+              cat ci/out/functions.txt
+              [ "$code" -ne 0 ] && fail=1
+            else
+              echo "binary missing"
+              fail=1
+            fi
+
+            exit "$fail"
+          ) > ci/logs/examples.log 2>&1
+          status=$?
+          cat ci/logs/examples.log
+          exit "$status"
 
       - name: Save CI output to the repo
+        if: always()
         run: |
           git config user.name "archx-ci"
           git config user.email "ci@archx.local"
@@ -63,5 +126,5 @@ jobs:
             echo "No new CI output to commit."
           else
             git commit -m "ci: update logs and outputs for ${GITHUB_SHA::7}"
-            git push origin HEAD:"$GITHUB_REF_NAME"
+            git push origin HEAD:"$GITHUB_REF_NAME" || echo "push failed (branch may have moved)"
           fi
