@@ -11,14 +11,14 @@ declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unna
 ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
 define i64 @archx_add(i64 %param.a, i64 %param.b) local_unnamed_addr #1 {
 entry:
-  %t2 = add i64 %param.b, %param.a
-  ret i64 %t2
+  %t0 = add i64 %param.b, %param.a
+  ret i64 %t0
 }
 
 ; Function Attrs: nofree nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
 entry:
-  %t3 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 42)
+  %t1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 42)
   ret i32 0
 }
 

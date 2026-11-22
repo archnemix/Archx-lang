@@ -6,42 +6,39 @@ declare i32 @printf(ptr, ...)
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00"
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-define i64 @archx_sum_to(i64 %param.n) {
+define i64 @archx_sum_to(i64 %param.n) nounwind {
 entry:
-  %param.n.addr = alloca i64
   %var.total.0 = alloca i64
-  %for.i.3 = alloca i64
-  store i64 %param.n, ptr %param.n.addr
+  %for.i.2 = alloca i64
   store i64 0, ptr %var.total.0
-  %t1 = load i64, ptr %param.n.addr
-  %t2 = add i64 %t1, 1
-  store i64 1, ptr %for.i.3
+  %t1 = add i64 %param.n, 1
+  store i64 1, ptr %for.i.2
   br label %for.cond.0
 
 for.cond.0:
-  %t4 = load i64, ptr %for.i.3
-  %t5 = icmp slt i64 %t4, %t2
-  br i1 %t5, label %for.body.1, label %for.end.3
+  %t3 = load i64, ptr %for.i.2
+  %t4 = icmp slt i64 %t3, %t1
+  br i1 %t4, label %for.body.1, label %for.end.3
 
 for.body.1:
-  %t6 = load i64, ptr %var.total.0
-  %t7 = load i64, ptr %for.i.3
-  %t8 = add i64 %t6, %t7
-  store i64 %t8, ptr %var.total.0
+  %t5 = load i64, ptr %var.total.0
+  %t6 = load i64, ptr %for.i.2
+  %t7 = add i64 %t5, %t6
+  store i64 %t7, ptr %var.total.0
   br label %for.step.2
 
 for.step.2:
-  %t9 = load i64, ptr %for.i.3
-  %t10 = add i64 %t9, 1
-  store i64 %t10, ptr %for.i.3
+  %t8 = load i64, ptr %for.i.2
+  %t9 = add nsw i64 %t8, 1
+  store i64 %t9, ptr %for.i.2
   br label %for.cond.0
 
 for.end.3:
-  %t11 = load i64, ptr %var.total.0
-  ret i64 %t11
+  %t10 = load i64, ptr %var.total.0
+  ret i64 %t10
 }
 
-define i32 @main() {
+define i32 @main() nounwind {
 entry:
   %var.n.2 = alloca i64
   %var.factorial.3 = alloca i64
@@ -110,7 +107,7 @@ if.merge.12:
 
 for.step.5:
   %t22 = load i64, ptr %for.i.13
-  %t23 = add i64 %t22, 1
+  %t23 = add nsw i64 %t22, 1
   store i64 %t23, ptr %for.i.13
   br label %for.cond.3
 
@@ -154,7 +151,7 @@ if.merge.23:
 
 for.step.19:
   %t37 = load i64, ptr %for.j.28
-  %t38 = add i64 %t37, 1
+  %t38 = add nsw i64 %t37, 1
   store i64 %t38, ptr %for.j.28
   br label %for.cond.17
 
@@ -163,7 +160,7 @@ for.end.20:
 
 for.step.15:
   %t39 = load i64, ptr %for.i.25
-  %t40 = add i64 %t39, 1
+  %t40 = add nsw i64 %t39, 1
   store i64 %t40, ptr %for.i.25
   br label %for.cond.13
 

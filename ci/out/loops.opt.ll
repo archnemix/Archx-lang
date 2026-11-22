@@ -11,9 +11,9 @@ declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unna
 ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
 define i64 @archx_sum_to(i64 %param.n) local_unnamed_addr #1 {
 entry:
-  %t2 = add i64 %param.n, 1
-  %t54 = icmp sgt i64 %t2, 1
-  br i1 %t54, label %for.body.1.preheader, label %for.end.3
+  %t1 = add i64 %param.n, 1
+  %t44 = icmp sgt i64 %t1, 1
+  br i1 %t44, label %for.body.1.preheader, label %for.end.3
 
 for.body.1.preheader:                             ; preds = %entry
   %0 = shl nuw i64 %param.n, 1

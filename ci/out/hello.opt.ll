@@ -15,7 +15,7 @@ define noundef i32 @main() local_unnamed_addr #0 {
 entry:
   %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @.str.0)
   %puts1 = tail call i32 @puts(ptr nonnull dereferenceable(1) @.str.1)
-  %t5 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 42)
+  %t2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 42)
   ret i32 0
 }
 

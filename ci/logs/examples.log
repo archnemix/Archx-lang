@@ -45,8 +45,25 @@ exit=0
 5
 6
 10
+== emit-ir: arrays ==
+exit=0
+== compile: arrays ==
+exit=0
+compiled `examples/arrays.archx.lang` -> `/tmp/archx-arrays`
+== run: arrays ==
+exit=0
+[10, 25, 30, 40]
+4
+40
+[10, 20, 30]
+300
+25
+B
+true
+5
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
 if.opt.ll exit=0
 loops.opt.ll exit=0
+arrays.opt.ll exit=0
