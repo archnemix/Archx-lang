@@ -15,9 +15,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         124 (124)        16          14
-  Rust   (rustc -O)          124 (124)      4388         330
-  Archx  (archx -O2)         124 (126)        16          14
+  C      (clang -O2)         118 (118)        16          14
+  Rust   (rustc -O)          119 (119)      4388         330
+  Archx  (archx -O2)         118 (118)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -26,7 +26,7 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        86 (87)        16          14
-  C checked   (slice struct -O2)     86 (86)        16          14
-  Rust        (safe Vec -O)          89 (89)      4389         331
-  Archx       (safe [T] -O2)         89 (89)        16          14
+  C raw ptr   (unchecked -O2)        55 (56)        16          14
+  C checked   (slice struct -O2)     59 (59)        16          14
+  Rust        (safe Vec -O)          61 (62)      4389         331
+  Archx       (safe [T] -O2)         61 (62)        16          14
