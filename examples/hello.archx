@@ -1,0 +1,6 @@
+# Archx hello world
+func main():
+    print("Hello, Archx!")
+    print('single quotes work too')
+    let answer = 6 * 7
+    print(answer)

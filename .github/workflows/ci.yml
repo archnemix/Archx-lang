@@ -3,11 +3,65 @@ name: CI
 on:
   push:
     branches: [main, "arena/**"]
-  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "examples/**"
+      - "Cargo.toml"
+      - "ci/trigger"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  smoke:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "actions ok"
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Record toolchain
+        run: |
+          mkdir -p ci/logs ci/out
+          {
+            rustc --version
+            cargo --version
+            clang --version || true
+          } | tee ci/logs/toolchain.log
+
+      - name: Test
+        run: |
+          set -o pipefail
+          cargo test 2>&1 | tee ci/logs/test.log
+
+      - name: Build release
+        run: |
+          set -o pipefail
+          cargo build --release 2>&1 | tee ci/logs/build.log
+
+      - name: Run examples
+        run: |
+          set -o pipefail
+          mkdir -p ci/out
+          ./target/release/archx examples/hello.archx --emit-ir > ci/out/hello.ll
+          ./target/release/archx examples/hello.archx --run > ci/out/hello.txt
+          ./target/release/archx examples/functions.archx --run > ci/out/functions.txt
+          ./target/release/archx examples/hello.archx > ci/out/compile.txt 2>&1
+          rm -f examples/hello examples/hello.ll examples/functions examples/functions.ll
+
+      - name: Save CI output to the repo
+        run: |
+          git config user.name "archx-ci"
+          git config user.email "ci@archx.local"
+          git add ci/logs ci/out
+          if git diff --cached --quiet; then
+            echo "No new CI output to commit."
+          else
+            git commit -m "ci: update logs and outputs for ${GITHUB_SHA::7}"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi

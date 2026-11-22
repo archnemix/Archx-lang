@@ -1,0 +1,12 @@
+[package]
+name = "archx"
+version = "0.1.0"
+edition = "2021"
+description = "A small, readable language that compiles to LLVM IR"
+license = "MIT"
+
+[dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1

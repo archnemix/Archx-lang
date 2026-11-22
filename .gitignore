@@ -1,0 +1,7 @@
+/target
+/examples/hello
+/examples/functions
+*.exe
+*.o
+/examples/*.ll
+/tests/*.ll

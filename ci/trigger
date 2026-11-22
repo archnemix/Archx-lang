@@ -1,0 +1,3 @@
+Touch this file and push to trigger a CI run manually.
+
+The workflow also runs automatically on pushes that change source files.
