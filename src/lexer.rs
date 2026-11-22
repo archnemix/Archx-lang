@@ -98,6 +98,10 @@ impl<'a> Lexer<'a> {
                     self.bump();
                     tokens.push(Token::new(TokenKind::Slash, span));
                 }
+                b'%' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Percent, span));
+                }
                 b'=' => {
                     self.bump();
                     if self.peek() == Some(b'=') {
@@ -135,6 +139,18 @@ impl<'a> Lexer<'a> {
                         tokens.push(Token::new(TokenKind::Ge, span));
                     } else {
                         tokens.push(Token::new(TokenKind::Gt, span));
+                    }
+                }
+                b'.' => {
+                    self.bump();
+                    if self.peek() == Some(b'.') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::DotDot, span));
+                    } else {
+                        return Err(Diagnostic::new(
+                            "unexpected character `.` (use `..` for a range)",
+                            span,
+                        ));
                     }
                 }
                 b':' => {
@@ -285,6 +301,11 @@ impl<'a> Lexer<'a> {
             "return" => TokenKind::Return,
             "if" => TokenKind::If,
             "else" => TokenKind::Else,
+            "while" => TokenKind::While,
+            "for" => TokenKind::For,
+            "in" => TokenKind::In,
+            "break" => TokenKind::Break,
+            "continue" => TokenKind::Continue,
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
@@ -484,5 +505,19 @@ mod tests {
 
         let k = kinds("a != b\n");
         assert_eq!(k[1], TokenKind::NotEq);
+    }
+
+    #[test]
+    fn loop_tokens() {
+        let k = kinds("for i in 0..10:\n    while i < 5:\n        i = i + 1\n        break\n    continue\n");
+        assert_eq!(k[0], TokenKind::For);
+        assert_eq!(k[1], TokenKind::Ident("i".into()));
+        assert_eq!(k[2], TokenKind::In);
+        assert_eq!(k[3], TokenKind::Int(0));
+        assert_eq!(k[4], TokenKind::DotDot);
+        assert_eq!(k[5], TokenKind::Int(10));
+        assert!(k.iter().any(|t| *t == TokenKind::While));
+        assert!(k.iter().any(|t| *t == TokenKind::Break));
+        assert!(k.iter().any(|t| *t == TokenKind::Continue));
     }
 }

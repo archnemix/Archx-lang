@@ -4,7 +4,7 @@ use crate::token::{Token, TokenKind};
 
 /// Recursive-descent parser.
 ///
-/// Grammar (milestone 2):
+/// Grammar (milestone 3):
 ///
 /// ```text
 /// program     := func_def*
@@ -13,9 +13,14 @@ use crate::token::{Token, TokenKind};
 /// param       := IDENT ":" type
 /// type        := "int" | "bool" | "string" | "void"
 /// stmt        := "let" IDENT "=" expr NEWLINE
+///              | IDENT "=" expr NEWLINE
 ///              | "return" expr? NEWLINE
 ///              | "if" expr ":" NEWLINE INDENT stmt+ DEDENT
 ///                ("else" ":" NEWLINE INDENT stmt+ DEDENT)?
+///              | "while" expr ":" NEWLINE INDENT stmt+ DEDENT
+///              | "for" IDENT "in" expr ".." expr ":" NEWLINE INDENT stmt+ DEDENT
+///              | "break" NEWLINE
+///              | "continue" NEWLINE
 ///              | expr NEWLINE
 /// expr        := or_expr
 /// or_expr     := and_expr ("or" and_expr)*
@@ -23,11 +28,16 @@ use crate::token::{Token, TokenKind};
 /// not_expr    := "not" not_expr | comparison
 /// comparison  := additive (("==" | "!=" | "<" | ">" | "<=" | ">=") additive)*
 /// additive    := multiplicative (("+" | "-") multiplicative)*
-/// multiplicative := unary (("*" | "/") unary)*
+/// multiplicative := unary (("*" | "/" | "%") unary)*
 /// unary       := "-" unary | primary
 /// primary     := INT | STRING | BOOL | IDENT | IDENT "(" args? ")" | "(" expr ")"
 /// args        := expr ("," expr)*
 /// ```
+///
+/// `for i in a..b` walks `a, a+1, … b-1` (the end is exclusive, like Rust's
+/// `a..b`). Both bounds are evaluated exactly once, before the first
+/// iteration. `break` leaves the innermost loop, `continue` jumps to its next
+/// iteration.
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
@@ -145,6 +155,35 @@ impl Parser {
     fn parse_stmt(&mut self) -> Result<Stmt> {
         let span = self.peek().span;
 
+        // Assignment: `name = expr` (but not `name == expr`).
+        let assign_target = {
+            let token = self.peek();
+            match &token.kind {
+                TokenKind::Ident(name)
+                    if matches!(
+                        self.tokens.get(self.pos + 1).map(|t| &t.kind),
+                        Some(TokenKind::Eq)
+                    ) =>
+                {
+                    Some(name.clone())
+                }
+                _ => None,
+            }
+        };
+        if let Some(name) = assign_target {
+            self.bump(); // identifier
+            self.bump(); // '='
+            let value = self.parse_expr()?;
+            self.expect(
+                TokenKind::Newline,
+                "a newline after the assignment",
+            )?;
+            return Ok(Stmt {
+                kind: StmtKind::Assign { name, value },
+                span,
+            });
+        }
+
         if self.check(&TokenKind::Let) {
             self.bump();
             let name = self.expect_ident("a variable name")?;
@@ -181,14 +220,7 @@ impl Parser {
             )?;
             self.expect(TokenKind::Indent, "an indented `if` body")?;
 
-            let mut then_body = Vec::new();
-            loop {
-                self.skip_newlines();
-                if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
-                    break;
-                }
-                then_body.push(self.parse_stmt()?);
-            }
+            let then_body = self.parse_block_body()?;
             self.expect(TokenKind::Dedent, "the end of the `if` body")?;
 
             if then_body.is_empty() {
@@ -202,14 +234,7 @@ impl Parser {
                 self.expect(TokenKind::Newline, "a newline after `else:`")?;
                 self.expect(TokenKind::Indent, "an indented `else` body")?;
 
-                let mut body = Vec::new();
-                loop {
-                    self.skip_newlines();
-                    if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
-                        break;
-                    }
-                    body.push(self.parse_stmt()?);
-                }
+                let body = self.parse_block_body()?;
                 self.expect(TokenKind::Dedent, "the end of the `else` body")?;
 
                 if body.is_empty() {
@@ -228,12 +253,86 @@ impl Parser {
             });
         }
 
+        if self.check(&TokenKind::While) {
+            self.bump();
+            let cond = self.parse_expr()?;
+            self.expect(TokenKind::Colon, "`:`")?;
+            self.expect(
+                TokenKind::Newline,
+                "a newline after the `while` condition",
+            )?;
+            self.expect(TokenKind::Indent, "an indented `while` body")?;
+            let body = self.parse_block_body()?;
+            self.expect(TokenKind::Dedent, "the end of the `while` body")?;
+            if body.is_empty() {
+                return Err(Diagnostic::new("`while` body cannot be empty", span));
+            }
+            return Ok(Stmt {
+                kind: StmtKind::While { cond, body },
+                span,
+            });
+        }
+
+        if self.check(&TokenKind::For) {
+            self.bump();
+            let var = self.expect_ident("a loop variable name")?;
+            self.expect(TokenKind::In, "`in`")?;
+            let start = self.parse_expr()?;
+            self.expect(TokenKind::DotDot, "`..`")?;
+            let end = self.parse_expr()?;
+            self.expect(TokenKind::Colon, "`:`")?;
+            self.expect(
+                TokenKind::Newline,
+                "a newline after the `for` header",
+            )?;
+            self.expect(TokenKind::Indent, "an indented `for` body")?;
+            let body = self.parse_block_body()?;
+            self.expect(TokenKind::Dedent, "the end of the `for` body")?;
+            if body.is_empty() {
+                return Err(Diagnostic::new("`for` body cannot be empty", span));
+            }
+            return Ok(Stmt {
+                kind: StmtKind::For { var, start, end, body },
+                span,
+            });
+        }
+
+        if self.check(&TokenKind::Break) {
+            self.bump();
+            self.expect(TokenKind::Newline, "a newline after `break`")?;
+            return Ok(Stmt {
+                kind: StmtKind::Break,
+                span,
+            });
+        }
+
+        if self.check(&TokenKind::Continue) {
+            self.bump();
+            self.expect(TokenKind::Newline, "a newline after `continue`")?;
+            return Ok(Stmt {
+                kind: StmtKind::Continue,
+                span,
+            });
+        }
+
         let value = self.parse_expr()?;
         self.expect(TokenKind::Newline, "a newline after the statement")?;
         Ok(Stmt {
             kind: StmtKind::Expr(value),
             span,
         })
+    }
+
+    fn parse_block_body(&mut self) -> Result<Vec<Stmt>> {
+        let mut body = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                break;
+            }
+            body.push(self.parse_stmt()?);
+        }
+        Ok(body)
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
@@ -366,6 +465,7 @@ impl Parser {
             let op = match &self.peek().kind {
                 TokenKind::Star => BinOp::Mul,
                 TokenKind::Slash => BinOp::Div,
+                TokenKind::Percent => BinOp::Mod,
                 _ => break,
             };
             let span = self.peek().span;
@@ -562,6 +662,22 @@ mod tests {
     fn parses_booleans_and_comparisons() {
         let program = parse("func main():\n    let b = 1 < 2 and not false\n    print(b)\n");
         assert_eq!(program.funcs[0].body.len(), 2);
+    }
+
+    #[test]
+    fn parses_while_and_assignment() {
+        let program = parse(
+            "func main():\n    let n = 0\n    while n < 5:\n        n = n + 1\n    print(n)\n",
+        );
+        assert_eq!(program.funcs[0].body.len(), 3);
+    }
+
+    #[test]
+    fn parses_for_and_break_continue() {
+        let program = parse(
+            "func main():\n    for i in 0..10:\n        if i == 3:\n            continue\n        if i == 7:\n            break\n        print(i)\n",
+        );
+        assert_eq!(program.funcs[0].body.len(), 1);
     }
 
     #[test]

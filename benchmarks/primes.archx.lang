@@ -1,0 +1,30 @@
+# Benchmark workload, shared by C, Rust and Archx.
+#
+#   1. sum of squares, reduced mod 1_000_007 so the accumulator stays small
+#   2. prime counting by trial division (nested loops, branch, early break)
+#
+# Build & time all three:  bash benchmarks/run.sh
+
+func sum_squares(n: int) -> int:
+    let total = 0
+    for i in 0..n:
+        total = (total + i * i) % 1000007
+    return total
+
+func count_primes(limit: int) -> int:
+    let count = 0
+    for n in 2..limit:
+        let is_prime = true
+        let d = 2
+        while d * d <= n:
+            if n % d == 0:
+                is_prime = false
+                break
+            d = d + 1
+        if is_prime:
+            count = count + 1
+    return count
+
+func main():
+    print(sum_squares(20000000))
+    print(count_primes(400000))

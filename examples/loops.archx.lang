@@ -1,0 +1,36 @@
+# Loops: while, for, break, continue -- and assignment.
+#
+# Run:  cargo run -- examples/loops.archx.lang
+
+func sum_to(n: int) -> int:
+    let total = 0
+    for i in 1..n + 1:
+        total = total + i
+    return total
+
+func main():
+    print(sum_to(10))
+
+    # while: factorial of 5
+    let n = 5
+    let factorial = 1
+    while n > 1:
+        factorial = factorial * n
+        n = n - 1
+    print(factorial)
+
+    # break and continue
+    for i in 0..10:
+        if i == 3:
+            continue
+        if i == 7:
+            break
+        print(i)
+
+    # nested loops count the pairs that add up to 9
+    let pairs = 0
+    for i in 0..10:
+        for j in 0..10:
+            if i + j == 9:
+                pairs = pairs + 1
+    print(pairs)

@@ -7,6 +7,7 @@ on:
       - "src/**"
       - "tests/**"
       - "examples/**"
+      - "benchmarks/**"
       - "Cargo.toml"
       - "ci/trigger"
       - ".github/workflows/ci.yml"
@@ -59,84 +60,35 @@ jobs:
           set +e
           (
             fail=0
-
-            echo "== emit-ir: hello =="
-            ./target/release/archx examples/hello.archx.lang --emit-ir > ci/out/hello.ll
-            code=$?
-            echo "exit=$code"
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== compile: hello =="
-            ./target/release/archx examples/hello.archx.lang -o /tmp/archx-hello > ci/logs/compile-hello.log 2>&1
-            code=$?
-            echo "exit=$code"
-            cat ci/logs/compile-hello.log
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== run: hello =="
-            if [ -x /tmp/archx-hello ]; then
-              /tmp/archx-hello > ci/out/hello.txt
+            for name in hello functions if loops; do
+              echo "== emit-ir: $name =="
+              ./target/release/archx "examples/$name.archx.lang" --emit-ir > "ci/out/$name.ll"
               code=$?
               echo "exit=$code"
-              cat ci/out/hello.txt
               [ "$code" -ne 0 ] && fail=1
-            else
-              echo "binary missing"
-              fail=1
-            fi
 
-            echo "== emit-ir: functions =="
-            ./target/release/archx examples/functions.archx.lang --emit-ir > ci/out/functions.ll
-            code=$?
-            echo "exit=$code"
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== compile: functions =="
-            ./target/release/archx examples/functions.archx.lang -o /tmp/archx-functions > ci/logs/compile-functions.log 2>&1
-            code=$?
-            echo "exit=$code"
-            cat ci/logs/compile-functions.log
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== run: functions =="
-            if [ -x /tmp/archx-functions ]; then
-              /tmp/archx-functions > ci/out/functions.txt
+              echo "== compile: $name =="
+              ./target/release/archx "examples/$name.archx.lang" -o "/tmp/archx-$name" > "ci/logs/compile-$name.log" 2>&1
               code=$?
               echo "exit=$code"
-              cat ci/out/functions.txt
+              cat "ci/logs/compile-$name.log"
               [ "$code" -ne 0 ] && fail=1
-            else
-              echo "binary missing"
-              fail=1
-            fi
 
-            echo "== emit-ir: if =="
-            ./target/release/archx examples/if.archx.lang --emit-ir > ci/out/if.ll
-            code=$?
-            echo "exit=$code"
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== compile: if =="
-            ./target/release/archx examples/if.archx.lang -o /tmp/archx-if > ci/logs/compile-if.log 2>&1
-            code=$?
-            echo "exit=$code"
-            cat ci/logs/compile-if.log
-            [ "$code" -ne 0 ] && fail=1
-
-            echo "== run: if =="
-            if [ -x /tmp/archx-if ]; then
-              /tmp/archx-if > ci/out/if.txt
-              code=$?
-              echo "exit=$code"
-              cat ci/out/if.txt
-              [ "$code" -ne 0 ] && fail=1
-            else
-              echo "binary missing"
-              fail=1
-            fi
+              echo "== run: $name =="
+              if [ -x "/tmp/archx-$name" ]; then
+                "/tmp/archx-$name" > "ci/out/$name.txt"
+                code=$?
+                echo "exit=$code"
+                cat "ci/out/$name.txt"
+                [ "$code" -ne 0 ] && fail=1
+              else
+                echo "binary missing"
+                fail=1
+              fi
+            done
 
             echo "== optimized IR (clang -O2) =="
-            for name in hello functions if; do
+            for name in hello functions if loops; do
               clang -O2 -Wno-override-module -S -emit-llvm "ci/out/$name.ll" -o "ci/out/$name.opt.ll"
               code=$?
               echo "$name.opt.ll exit=$code"
@@ -148,6 +100,11 @@ jobs:
           status=$?
           cat ci/logs/examples.log
           exit "$status"
+
+      - name: Benchmark against C and Rust
+        run: |
+          set -o pipefail
+          bash benchmarks/run.sh 5 2>&1 | tee ci/logs/benchmarks.log
 
       - name: Save CI output to the repo
         if: always()

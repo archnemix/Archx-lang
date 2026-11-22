@@ -83,6 +83,8 @@ pub fn lower(program: &Program) -> Result<String> {
         strings: StringTable::new(),
         sigs,
         scopes: Vec::new(),
+        loop_stack: Vec::new(),
+        break_count: 0,
         tmp: 0,
         label_counter: 0,
         terminated: false,
@@ -124,6 +126,11 @@ struct FuncSig {
     ret: Option<Type>,
 }
 
+struct LoopLabels {
+    break_label: String,
+    continue_label: String,
+}
+
 struct StringTable {
     values: Vec<String>,
     index: HashMap<String, usize>,
@@ -153,6 +160,11 @@ struct Codegen {
     sigs: HashMap<String, FuncSig>,
     /// Lexical scopes; the last element is the innermost block.
     scopes: Vec<HashMap<String, (Type, String)>>,
+    /// Innermost-first stack of active loops, for `break`/`continue`.
+    loop_stack: Vec<LoopLabels>,
+    /// Total number of `break`s emitted so far; used to tell whether a loop's
+    /// exit block is reachable when its condition is literally `true`.
+    break_count: usize,
     tmp: usize,
     label_counter: usize,
     terminated: bool,
@@ -165,6 +177,8 @@ struct Codegen {
 impl Codegen {
     fn gen_func(&mut self, func: &Func, out: &mut String) -> Result<()> {
         self.scopes = vec![HashMap::new()];
+        self.loop_stack.clear();
+        self.break_count = 0;
         self.tmp = 0;
         self.label_counter = 0;
         self.terminated = false;
@@ -338,6 +352,171 @@ impl Codegen {
                 Ok(())
             }
 
+            StmtKind::Assign { name, value } => {
+                let (ty, ptr) = self.lookup_var(name).cloned().ok_or_else(|| {
+                    Diagnostic::new(format!("undefined variable `{name}`"), stmt.span)
+                })?;
+                let (val_ty, val) = self.eval_expr(value, out)?;
+                if val_ty != ty {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "cannot assign `{}` to variable `{}` of type `{}`",
+                            val_ty.name(),
+                            name,
+                            ty.name()
+                        ),
+                        stmt.span,
+                    ));
+                }
+                let _ = writeln!(out, "  store {} {}, ptr {}", ir_type(&ty), val, ptr);
+                Ok(())
+            }
+
+            StmtKind::While { cond, body } => {
+                let cond_label = self.fresh_label("while.cond");
+                let body_label = self.fresh_label("while.body");
+                let end_label = self.fresh_label("while.end");
+
+                self.emit_br(&cond_label, out);
+
+                self.start_block(&cond_label, out);
+                let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+                if cond_ty != Type::Bool {
+                    return Err(Diagnostic::new(
+                        "`while` condition must be a `bool`",
+                        cond.span,
+                    ));
+                }
+                self.emit_cond_br(&cond_val, &body_label, &end_label, out);
+
+                self.start_block(&body_label, out);
+                self.push_scope();
+                let breaks_before = self.break_count;
+                self.loop_stack.push(LoopLabels {
+                    break_label: end_label.clone(),
+                    continue_label: cond_label.clone(),
+                });
+                for stmt in body {
+                    self.gen_stmt(stmt, out)?;
+                }
+                self.loop_stack.pop();
+                self.pop_scope();
+                if !self.terminated {
+                    self.emit_br(&cond_label, out);
+                }
+
+                // `while true:` with no `break` never falls through, so the
+                // code after it is unreachable (keeps return-path checking
+                // honest instead of demanding a dead `return`).
+                let always_true = matches!(&cond.kind, ExprKind::Bool(true));
+                let had_break = self.break_count > breaks_before;
+
+                self.start_block(&end_label, out);
+                if always_true && !had_break {
+                    // Nothing can reach this block, but LLVM still requires
+                    // every block to end in a terminator.
+                    let _ = writeln!(out, "  unreachable");
+                    self.terminated = true;
+                }
+                Ok(())
+            }
+
+            StmtKind::For {
+                var,
+                start,
+                end,
+                body,
+            } => {
+                let (start_ty, start_val) = self.eval_expr(start, out)?;
+                if start_ty != Type::Int {
+                    return Err(Diagnostic::new("`for` start must be an `int`", start.span));
+                }
+                let (end_ty, end_val) = self.eval_expr(end, out)?;
+                if end_ty != Type::Int {
+                    return Err(Diagnostic::new("`for` end must be an `int`", end.span));
+                }
+
+                if self.lookup_var(var).is_some() {
+                    return Err(Diagnostic::new(
+                        format!("loop variable `{var}` is already defined"),
+                        stmt.span,
+                    ));
+                }
+
+                let slot = self.next_slot(&format!("for.{var}"));
+                let _ = writeln!(self.allocas, "  {slot} = alloca i64");
+                let _ = writeln!(out, "  store i64 {start_val}, ptr {slot}");
+
+                let cond_label = self.fresh_label("for.cond");
+                let body_label = self.fresh_label("for.body");
+                let step_label = self.fresh_label("for.step");
+                let end_label = self.fresh_label("for.end");
+
+                self.emit_br(&cond_label, out);
+
+                self.start_block(&cond_label, out);
+                let i = self.next_tmp();
+                let _ = writeln!(out, "  {i} = load i64, ptr {slot}");
+                let cmp = self.next_tmp();
+                let _ = writeln!(out, "  {cmp} = icmp slt i64 {i}, {end_val}");
+                self.emit_cond_br(&cmp, &body_label, &end_label, out);
+
+                self.start_block(&body_label, out);
+                self.push_scope();
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .insert(var.clone(), (Type::Int, slot.clone()));
+                self.loop_stack.push(LoopLabels {
+                    break_label: end_label.clone(),
+                    continue_label: step_label.clone(),
+                });
+                for stmt in body {
+                    self.gen_stmt(stmt, out)?;
+                }
+                self.loop_stack.pop();
+                self.pop_scope();
+                if !self.terminated {
+                    self.emit_br(&step_label, out);
+                }
+
+                self.start_block(&step_label, out);
+                let i2 = self.next_tmp();
+                let _ = writeln!(out, "  {i2} = load i64, ptr {slot}");
+                let next = self.next_tmp();
+                let _ = writeln!(out, "  {next} = add i64 {i2}, 1");
+                let _ = writeln!(out, "  store i64 {next}, ptr {slot}");
+                self.emit_br(&cond_label, out);
+
+                self.start_block(&end_label, out);
+                Ok(())
+            }
+
+            StmtKind::Break => {
+                let label = self
+                    .loop_stack
+                    .last()
+                    .map(|labels| labels.break_label.clone())
+                    .ok_or_else(|| {
+                        Diagnostic::new("`break` is only allowed inside a loop", stmt.span)
+                    })?;
+                self.break_count += 1;
+                self.emit_br(&label, out);
+                Ok(())
+            }
+
+            StmtKind::Continue => {
+                let label = self
+                    .loop_stack
+                    .last()
+                    .map(|labels| labels.continue_label.clone())
+                    .ok_or_else(|| {
+                        Diagnostic::new("`continue` is only allowed inside a loop", stmt.span)
+                    })?;
+                self.emit_br(&label, out);
+                Ok(())
+            }
+
             StmtKind::If {
                 cond,
                 then_body,
@@ -463,7 +642,7 @@ impl Codegen {
         let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
 
         match op {
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
                     return Err(Diagnostic::new(
                         format!(
@@ -482,6 +661,7 @@ impl Codegen {
                     BinOp::Sub => "sub",
                     BinOp::Mul => "mul",
                     BinOp::Div => "sdiv",
+                    BinOp::Mod => "srem",
                     _ => unreachable!(),
                 };
                 let _ = writeln!(out, "  {reg} = {instr} i64 {lhs_val}, {rhs_val}");
@@ -851,6 +1031,44 @@ mod tests {
         assert!(out.contains("store i1 false"));
         assert!(out.contains("br i1"));
         assert!(out.contains("load i1"));
+    }
+
+    #[test]
+    fn while_loop_ir() {
+        let out = ir("func main():\n    let n = 0\n    while n < 5:\n        n = n + 1\n    print(n)\n");
+        assert!(out.contains("while.cond"));
+        assert!(out.contains("while.body"));
+        assert!(out.contains("icmp slt"));
+        assert!(out.contains("br label %while.cond"));
+    }
+
+    #[test]
+    fn for_loop_ir() {
+        let out = ir(
+            "func main():\n    let total = 0\n    for i in 1..101:\n        total = total + i\n    print(total)\n",
+        );
+        assert!(out.contains("for.cond"));
+        assert!(out.contains("for.step"));
+        assert!(out.contains("icmp slt"));
+        assert!(out.contains("add i64"));
+    }
+
+    #[test]
+    fn break_continue_ir() {
+        let out = ir(
+            "func main():\n    for i in 0..10:\n        if i == 3:\n            continue\n        if i == 7:\n            break\n",
+        );
+        assert!(out.contains("br label %for.step"));
+        assert!(out.contains("br label %for.end"));
+    }
+
+    #[test]
+    fn infinite_loop_does_not_demand_a_return() {
+        // `while true:` with no `break` never falls through, so a function that
+        // promises an `int` is still exhaustive.
+        let out = ir("func spin() -> int:\n    while true:\n        print(1)\n");
+        assert!(out.contains("unreachable"));
+        assert!(out.contains("while.end"));
     }
 
     #[test]

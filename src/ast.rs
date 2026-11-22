@@ -51,6 +51,10 @@ pub enum StmtKind {
         name: String,
         value: Expr,
     },
+    Assign {
+        name: String,
+        value: Expr,
+    },
     Return(Option<Expr>),
     Expr(Expr),
     If {
@@ -58,6 +62,18 @@ pub enum StmtKind {
         then_body: Vec<Stmt>,
         else_body: Option<Vec<Stmt>>,
     },
+    While {
+        cond: Expr,
+        body: Vec<Stmt>,
+    },
+    For {
+        var: String,
+        start: Expr,
+        end: Expr,
+        body: Vec<Stmt>,
+    },
+    Break,
+    Continue,
 }
 
 #[derive(Debug, Clone)]
@@ -93,6 +109,7 @@ pub enum BinOp {
     Sub,
     Mul,
     Div,
+    Mod,
     Eq,
     Ne,
     Lt,
@@ -110,6 +127,7 @@ impl BinOp {
             BinOp::Sub => "-",
             BinOp::Mul => "*",
             BinOp::Div => "/",
+            BinOp::Mod => "%",
             BinOp::Eq => "==",
             BinOp::Ne => "!=",
             BinOp::Lt => "<",

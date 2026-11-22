@@ -1,6 +1,11 @@
 /target
 /examples/hello
 /examples/functions
+/examples/if
+/examples/loops
+/benchmarks/primes_c
+/benchmarks/primes_rs
+/benchmarks/primes
 *.exe
 *.o
 /examples/*.ll
