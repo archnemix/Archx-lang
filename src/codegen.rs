@@ -1066,9 +1066,12 @@ mod tests {
     fn infinite_loop_does_not_demand_a_return() {
         // `while true:` with no `break` never falls through, so a function that
         // promises an `int` is still exhaustive.
-        let out = ir("func spin() -> int:\n    while true:\n        print(1)\n");
-        assert!(out.contains("unreachable"));
+        let out = ir(
+            "func spin() -> int:\n    while true:\n        print(1)\n\nfunc main():\n    print(1)\n",
+        );
+        assert!(out.contains("define i64 @archx_spin()"));
         assert!(out.contains("while.end"));
+        assert!(out.contains("unreachable"));
     }
 
     #[test]
