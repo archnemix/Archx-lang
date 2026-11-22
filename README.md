@@ -4,11 +4,13 @@
 
 Archx compiles to **LLVM IR**, so it uses the same optimizer and backends as C, Rust, Swift, Zig, and Julia. One frontend, every architecture LLVM supports: x86-64, ARM64, RISC-V, WASM, and more.
 
-> Status: milestone 3 — `while` / `for` loops, `break` / `continue`, assignment,
-> `if`/`else`, booleans, comparisons, short-circuit `and`/`or`/`not`, user
-> functions, `let`/`return`, arithmetic, and `print`.
+> Status: milestone 4 — arrays (`[T]`, `[a, b, c]`, `[val; count]`, `len`,
+> `push`, `pop`), indexing with compile-time bounds-check elision, `elif`,
+> compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`), `while` / `for` loops,
+> `break` / `continue`, booleans, short-circuit `and`/`or`/`not`, functions,
+> `let`/`return`, and `print`.
 >
-> Benchmarked against C and Rust — see [Benchmarks](#benchmarks).
+> Benchmarked against C and Rust on both scalar and array loops — see [Benchmarks](#benchmarks).
 
 ## Why LLVM?
 
@@ -41,51 +43,53 @@ archx examples/hello.archx.lang -o hello     # choose the output name
 ## Syntax
 
 ```archx
-func sign(n: int) -> int:
-    if n > 0:
-        return 1
-    else:
-        return -1
-
-func sum_to(n: int) -> int:
+func dot(a: [int], b: [int]) -> int:
     let total = 0
-    for i in 1..n + 1:
-        total = total + i
+    for i in 0..len(a):
+        total += a[i] * b[i]
     return total
 
-func main():
-    let x = 7
-    if x > 5 and x < 10:
-        print("big")
+func grade(score: int) -> string:
+    if score >= 90:
+        return "A"
+    elif score >= 80:
+        return "B"
     else:
-        print("small")
+        return "C"
 
-    print(sign(5))
-    print(sign(-5))
-    print(sum_to(10))
+func main():
+    let nums = [10, 20, 30, 40]
+    nums[1] += 5
+    print(nums)
+    print(dot(nums, [1, 2, 3, 4]))
 
-    let n = 5
-    let fact = 1
-    while n > 1:
-        fact = fact * n
-        n = n - 1
-    print(fact)
+    let stack: [int] = []
+    for i in 1..4:
+        push(stack, i * 10)
+    print(pop(stack))
+    print(grade(85))
 ```
 
 Rules so far:
 
 - Blocks are indentation-based (4 spaces per level; a tab counts as 4 columns).
-- No semicolons.
+- No semicolons at the end of statements (`;` is only used in `[value; count]` repeat arrays).
 - `#` starts a comment.
-- Strings use `'single'` or `"double"` quotes.
-- `int` is a 64-bit signed integer; `bool` is `true`/`false`; `string` is an immutable UTF-8 string.
-- Arithmetic: `+`, `-`, `*`, `/`, `%`. Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
+- Strings use `'single'` or `"double"` quotes; `==`, `!=`, and `len(s)` work on strings.
+- Scalar types: `int` (64-bit signed), `bool` (`true`/`false`), `string` (immutable UTF-8).
+- Array types: `[T]` (for example `[int]`, `[bool]`, `[string]`, `[[int]]`).
+  - Literals: `[1, 2, 3]`, empty `let xs: [int] = []`, or sized/filled `[0; n]` / `[true; limit]`.
+  - Builtins: `len(arr)`, `push(arr, value)`, `pop(arr)`, and `print(arr)`.
+  - Indexing `arr[i]` and `arr[i] = v` are memory-safe: out-of-bounds accesses panic cleanly, and bounds checks are **elided at compile time** when `0 <= i < len(arr)` is proven (such as `for i in 0..len(arr):`).
+- Arithmetic: `+`, `-`, `*`, `/`, `%`. Compound assignment: `+=`, `-=`, `*=`, `/=`, `%=`.
+- Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Logical operators: `and`, `or`, `not` — `and`/`or` short-circuit.
+- Conditionals: `if cond:`, `elif cond:`, `else:`.
 - `while cond:` repeats while `cond` is true.
 - `for i in a..b:` counts `a, a+1, … b-1` — the end is **exclusive**, like Rust's `a..b`. Both bounds are evaluated once, up front.
 - `break` leaves the innermost loop; `continue` starts its next iteration.
-- `name = value` assigns to an existing variable.
-- `print(...)` is a builtin; it prints `int`, `bool`, or `string`.
+- `let name = value` (or `let name: Type = value`) declares a variable; `name = value` assigns to an existing variable.
+- `print(...)` prints `int`, `bool`, `string`, or 1D arrays.
 - `func main():` is the executable entry point.
 - Files use a double extension: `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`.
 
@@ -95,11 +99,10 @@ It is not about speed. Python is interpreted, so the interpreter can start execu
 
 ## How memory works today
 
-- Every local variable is a **stack slot** (`alloca`) created in the function's entry block.
-- `let` stores into the slot; reads load from it. Parameters are spilled to stack slots too.
-- Strings are interned global constants.
-- There is **no heap** yet.
-- At `-O2`, LLVM's `mem2reg`/SROA passes promote allocas to SSA registers, so locals usually disappear from the final machine code.
+- **Immutable scalars (`int`, `bool`, `string`)** — parameters and `let` bindings that are never reassigned stay directly in **LLVM SSA registers** with zero stack allocations.
+- **Mutable locals** — use entry-block stack slots (`alloca`), promoted to CPU registers by LLVM's `mem2reg`/SROA passes at `-O2`.
+- **Strings** — interned global UTF-8 constants in `.rodata`.
+- **Arrays (`[T]`)** — contiguous heap buffers represented by a 24-byte `{ len, cap, data }` value (`%ArchxVec`), with `@calloc` zero-page allocation for `[0; n]` / `[false; n]`, 1-byte-per-element `[bool]` storage, and **automatic deterministic scope-exit `free`** for non-escaping local arrays (no GC pauses).
 
 See [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for the language design fundamentals (why existing languages fall short, memory model, binary size, readability, and straightforwardness) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the before/after IR and optimization strategy.
 
@@ -116,30 +119,28 @@ Archx optimizes at four layers:
 
 ## Benchmarks
 
-`benchmarks/` holds **the same two workloads in C, Rust and Archx**:
+`benchmarks/` compares **C, Rust, and Archx** across two suites (compiled at `-O2` / `rustc -O`, timed best-of-5, with stdout verified identical via `cmp`):
 
-1. **Sum of squares** — 20,000,000 iterations of `total = (total + i*i) % 1_000_007`. A tight arithmetic loop.
-2. **Prime counting** — trial division up to 400,000. Nested loop, a branch, and an early `break`.
-
-Both are compiled with `-O2` and timed best-of-5. All three must print the same
-numbers or the run fails.
+1. **Scalar loops (`benchmarks/primes.*`)** — 20M iterations of `(total + i*i) % 1_000_007` + trial-division prime counting below 400,000.
+2. **Array loops & bounds checking (`benchmarks/arrays*`)** — 60 rounds of 1,000,000-element vector math (`dst[i] = a[i]*3 + b[i] + r`) + Sieve of Eratosthenes below 5,000,000.
 
 ```sh
 bash benchmarks/run.sh
 ```
 
-Results land in `ci/out/benchmarks.txt` and are committed back to the repo by CI:
+Latest GitHub Actions run (`ci/out/benchmarks.txt`):
 
-| Language | Compiler | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
+| Suite | Implementation | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
 |---|---|---:|---:|---:|
-| C | `clang 21 -O2` | **87 ms** (87 ms) | 16 KB | **14 KB** |
-| Rust | `rustc 1.100 -O` | **87 ms** (88 ms) | 4,388 KB | **330 KB** |
-| Archx | `archx` (`clang 21 -O2`) | **87 ms** (87 ms) | 16 KB | **14 KB** |
+| **Scalar (`primes`)** | C (`clang -O2`) | **124 ms** (124 ms) | 16 KB | **14 KB** |
+| | Rust (`rustc -O`) | **124 ms** (124 ms) | 4,388 KB | **330 KB** |
+| | Archx (`archx -O2`) | **124 ms** (126 ms) | 16 KB | **14 KB** |
+| **Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **86 ms** (87 ms) | 16 KB | **14 KB** |
+| | C checked (slice struct `-O2`) | **86 ms** (86 ms) | 16 KB | **14 KB** |
+| | Rust (safe `Vec` `-O`) | **89 ms** (89 ms) | 4,389 KB | **331 KB** |
+| | Archx (safe `[T]` `-O2`) | **89 ms** (89 ms) | 16 KB | **14 KB** |
 
-Because Archx emits clean LLVM IR, it is optimized by the *same* optimizer as C
-and Rust, landing at identical speed with a binary the size of C's. See
-[`benchmarks/README.md`](benchmarks/README.md) and
-[`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for details.
+Archx matches Rust **to the exact millisecond (89 ms)** on safe bounds-checked array workloads and ties C to the millisecond (**124 ms**) on scalar loops — while keeping a **14 KB** stripped binary. See [`benchmarks/README.md`](benchmarks/README.md) and [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for details.
 
 ## Architecture
 
@@ -180,10 +181,11 @@ GitHub Actions builds and tests on every push, and saves its logs and generated 
 - [x] LLVM IR codegen + clang linking
 - [x] `while` / `for` loops, `break` / `continue`, assignment
 - [x] Benchmarks against C and Rust
-- [ ] Arrays and indexing
+- [x] Arrays, indexing, bounds-check elision, `elif`, compound assignment
+- [ ] Strided `for i in a..b step k` loops & `for x in arr` iteration
 - [ ] Structs and methods
 - [ ] Generics (monomorphized)
-- [ ] Ownership / RAII memory model
+- [ ] Full ownership / RAII & scoped arenas
 - [ ] String interpolation
 - [ ] Modules and a standard library
 

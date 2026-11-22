@@ -13,18 +13,16 @@ That does **not** mean hand-optimizing every expression in the frontend. It mean
 | 3. LLVM middle-end | LLVM | Inlining, SROA, GVN, LICM, loop unrolling, vectorization | `clang -O2` / `-O3` |
 | 4. Backend / runtime | LLVM + **Archx** | Instruction selection, register allocation, allocators, GC/arena runtime | custom allocator, bounds-check elision |
 
-## How memory works today (milestone 3)
+## How memory & IR optimization work today (milestone 4)
 
-Every local variable is a stack slot:
-
-```llvm
-entry:
-  %var.answer.3 = alloca i64
-  store i64 %t2, ptr %var.answer.3
-  %t4 = load i64, ptr %var.answer.3
-```
-
-This is deliberately simple and correct. It also optimizes well: LLVM's `mem2reg` and SROA passes promote entry-block allocas to SSA registers at `-O2`, so the final machine code usually has no stack traffic for locals.
+- **Immutable scalars (`int`, `bool`, `string`)** — parameters and `let` bindings that are never reassigned lower directly to SSA values (`VarStorage::Imm`) with zero `alloca`/`store`/`load` instructions.
+- **Constant folding** — integer arithmetic on constants (`6 * 7` → `42`) is folded in the frontend before IR emission.
+- **Mutable locals** — use entry-block `alloca` slots promoted to registers by LLVM's `mem2reg` / SROA passes at `-O2`.
+- **Non-wrapping `for` counters (`add nsw`)** — when `i` in `for i in a..b:` is not reassigned in the body, `i < b <= i64::MAX` guarantees `i + 1` never signed-overflows, so Archx emits `add nsw i64 %i, 1` without C's undefined behavior.
+- **Arrays (`%ArchxVec = { i64 len, i64 cap, ptr data }`)**:
+  - `[0; n]` and `[false; n]` lower directly to `@calloc` (`noalias` zero-initialized OS pages); `[true; n]` lowers to `@malloc` + fill loop, which LLVM collapses into `@llvm.memset`.
+  - Bounds checks use a single unsigned compare (`icmp ult i64 %idx, %len`) branching to a `cold noreturn nounwind` panic helper — and **Archx elides the check completely at compile time** whenever `0 <= idx < len` is proven (`for i in 0..len(xs):`, `for i in 0..n:` on `[v; n]`, or constant indices on literals).
+  - Non-escaping local 1D arrays emit deterministic `@free` calls at scope exit (including early `return`, `break`, and `continue`) — zero leaks and zero GC pauses.
 
 **Before optimization** (`--emit-ir`):
 
@@ -63,23 +61,28 @@ The multiply, alloca, store, and load all disappear. Loops optimize the same way
 - Arena allocators can be roughly 8–10× faster than `malloc`/`free` for allocation-heavy workloads, because allocation is a pointer bump and deallocation is a single reset ([arena benchmark](https://github.com/Sakar195/arena-allocator), [arena write-up](https://andreleite.com/posts/2025/nstl/virtual-memory-arena-allocator/)).
 - `-O2` is the usual release sweet spot. `-O3` adds aggressive vectorization, unrolling, and inlining, but can be slower on branch-heavy code because of instruction-cache pressure; LTO is needed for cross-translation-unit optimization ([C++ optimization guide](https://www.abhik.ai/concepts/language-internals/optimization), [compiler optimization landscape](https://awesome-embedded-learning-studio.github.io/Tutorial_AwesomeModernCPP/en/vol6-performance/ch04-tuning-by-bottleneck/04-04-inline-devirt-compiler)).
 
-## What we can optimize now
+## What we have implemented so far
 
-1. **Entry-block allocas** — done. Every `alloca` is hoisted into the entry block, which is what `mem2reg`/SROA wants.
-2. **String interning** — done. Identical string literals share one global.
-3. **Short-circuit `and`/`or`** — done with basic blocks and a stack slot; LLVM promotes the slot.
-4. **Constant folding in the frontend** — next. `6 * 7` becomes `42` before IR is emitted, shrinking the IR and compile time.
-5. **Immutable `let` → direct SSA value** — next. A `let` that is never reassigned does not need an alloca at all.
-6. **Attributes** — add `noalias`, `nocapture`, `readonly`, `nonnull`, `willreturn`, `nounwind`, `mustprogress` where legal. These unlock LLVM optimizations.
-7. **Avoid redundant loads/stores** — LLVM's GVN already removes many, but the frontend can avoid emitting them in the first place.
-8. **`-O3` opt-in** — keep `-O2` as the default, add `--release-fast` later.
-9. **LTO** — `-flto` for cross-function inlining once multi-file programs exist.
-10. **Custom passes** — bounds-check elision, devirtualization, allocation sinking, escape analysis. These need language knowledge LLVM does not have.
+1. **Entry-block allocas for mutable locals** — done.
+2. **String interning + compile-time `len("...")`** — done.
+3. **Short-circuit `and`/`or`** — done.
+4. **Constant folding in the frontend** — done (`6 * 7` folds to `42` before IR is emitted).
+5. **Immutable `let` & parameters → direct SSA** — done (no `alloca`/`store`/`load` for bindings that are never reassigned).
+6. **`nounwind`, `noalias` allocators, `cold noreturn` panic paths, and `add nsw` range induction** — done.
+7. **Compile-time bounds-check elision + 1-instruction `icmp ult` fallback** — done (proven in `ci/out/arrays.opt.ll`, where `dot(a, b)` hoists `b`'s check to the preheader and auto-vectorizes into SIMD `<2 x i64>`).
+8. **Deterministic scope-exit RAII `free` for non-escaping local arrays** — done.
+
+## What we can optimize next
+
+1. **Strided range loops (`for j in a..b step k`)** — proves `0 <= j < b` monotonically so strided loops like Sieve of Eratosthenes elide their single remaining `icmp ult` bounds check without C's signed-overflow UB.
+2. **`readonly` / `noalias` slice parameter lowering** — unpack non-mutated `%ArchxVec` parameters to `(i64 %len, ptr readonly %data)` on internal `@archx_*` functions so non-inlined cross-function array loops get alias-free SIMD without runtime overlap checks.
+3. **`-O3` and `-flto` CLI flags (`--release-fast`)** — keep `-O2` as default, expose `-O3` + LTO when requested.
+4. **Scoped bump arenas (`with arena:`)** — O(1) allocation and bulk reset for temporary graphs/strings/arrays.
 
 ## What we add later (with milestones)
 
 - **Loops** — done (`while`, `for i in a..b`, `break`, `continue`) → LLVM loop unrolling, closed-form induction elimination, LICM, strength reduction, vectorization.
-- **Arrays** → contiguous layout, bounds-check elision, `noalias` slices.
+- **Arrays** — done (`[T]`, `[0; n]`, `len`/`push`/`pop`, contiguous layout, compile-time bounds-check elision, automatic scope-exit `free`).
 - **Structs** → value semantics, SoA/AoS layout control, scalar replacement of aggregates.
 - **Generics** → monomorphization (zero-cost abstraction), then inlining.
 - **Ownership/RAII** → deterministic destruction with no runtime cost.

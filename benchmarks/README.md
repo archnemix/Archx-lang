@@ -1,87 +1,72 @@
 # Benchmarks
 
-One workload, three languages, one optimizer. The point is not to prove Archx
-beats anybody — it is to show **why** Archx is in the same speed class as C and
-Rust, with numbers you can reproduce yourself.
+Two suites, three languages, one optimizer (`LLVM`). Every benchmark compiles at
+opt-level 2 (`clang -O2`, `rustc -O`, and `archx` → `clang -O2`), verifies that
+every implementation prints the **exact same stdout**, and reports the best of N
+runs (with the mean in parentheses) plus raw and stripped binary sizes.
 
-## The workload
+## The two suites
 
-`primes.c`, `primes.rs`, `primes.archx.lang` contain the same two loops, written
-as plainly as possible in each language. No SIMD intrinsics, no `unsafe`, no
-clever tricks — whatever happens, the compiler has to do it on its own.
+### 1. Scalar loops (`primes.c`, `primes.rs`, `primes.archx.lang`)
 
-| # | Workload | What it exercises |
-|---|----------|-------------------|
-| 1 | `sum_squares(20_000_000)` — `total = (total + i*i) % 1_000_007` | a tight arithmetic loop: multiply, add, divide |
-| 2 | `count_primes(400_000)` — trial division | a nested loop with a data-dependent branch and an early `break` |
+| # | Workload | What it exercises | Expected output |
+|---|----------|-------------------|-----------------|
+| 1 | `sum_squares(20_000_000)` — `(total + i*i) % 1_000_007` | tight scalar loop: multiply, add, `srem` | `75517` |
+| 2 | `count_primes(400_000)` — trial division | nested loop, data-dependent branch, early `break` | `33860` |
 
-Both print their results. **The run fails if C, Rust and Archx disagree** — the
-benchmark is also a correctness test.
+### 2. Array loops & bounds checking (`arrays_raw.c`, `arrays_checked.c`, `arrays.rs`, `arrays.archx.lang`)
 
-Expected output on every platform:
-
-```
-75517
-33860
-```
+| # | Workload | What it exercises | Expected output |
+|---|----------|-------------------|-----------------|
+| 1 | `vec_kernel(1_000_000, 60)` — 60M `dst[i] = a[i]*3 + b[i] + r` | heap allocation, bounds-check elision, SIMD auto-vectorization | `57243166` |
+| 2 | `sieve_count(5_000_000)` — Sieve of Eratosthenes | 5 MB `[bool]` byte buffer, `memset`, strided `while` indexing | `348513` |
 
 ## Running it
 
 ```sh
 bash benchmarks/run.sh          # best of 5 runs
-bash benchmarks/run.sh 20       # best of 20, less noise, slower
+bash benchmarks/run.sh 20       # best of 20, less noise
 ```
 
-All three are built at optimisation level 2 (`clang -O2`, `rustc -O`, and
-Archx's own `clang -O2`) and timed the same way: the binary is run N times, the
-**best** time is reported (the most stable estimator on a shared machine), with
-the mean in parentheses so jitter is visible.
-
-Results go to stdout and to `ci/out/benchmarks.txt`. CI runs this on every push
-and commits the table back to the repo, so the history of the numbers is in git.
+Results go to stdout and to `ci/out/benchmarks.txt`, committed back by CI on
+every push.
 
 ## Latest CI measurement (`ci/out/benchmarks.txt`)
 
 Measured on GitHub Actions (`x86_64-pc-linux-gnu`, `clang 21.1.8`, `rustc 1.100.0`):
 
+### Suite 1 — Scalar loops (`primes`)
+
 | Language | Build | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
 |----------|-------|-----------------:|-------------:|------------------:|
-| C | `clang -O2` | **87 ms** (87 ms) | 16 KB | **14 KB** |
-| Rust | `rustc -O` | **87 ms** (88 ms) | 4,388 KB | **330 KB** |
-| Archx | `archx` (`clang -O2`) | **87 ms** (87 ms) | 16 KB | **14 KB** |
+| C | `clang -O2` | **124 ms** (124 ms) | 16 KB | **14 KB** |
+| Rust | `rustc -O` | **124 ms** (124 ms) | 4,388 KB | **330 KB** |
+| Archx | `archx -O2` | **124 ms** (126 ms) | 16 KB | **14 KB** |
 
-All three printed `75517` and `33860`.
+### Suite 2 — Array loops & bounds checking (`arrays`)
 
-## How to read the result
+| Implementation | Safety | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
+|----------------|--------|:----------------:|-------------:|------------------:|
+| C raw ptr (`clang -O2`) | unchecked | **86 ms** (87 ms) | 16 KB | **14 KB** |
+| C checked (`clang -O2`) | slice struct | **86 ms** (86 ms) | 16 KB | **14 KB** |
+| Rust (`rustc -O`) | safe `Vec<T>` | **89 ms** (89 ms) | 4,389 KB | **331 KB** |
+| Archx (`archx -O2`) | safe `[T]` | **89 ms** (89 ms) | 16 KB | **14 KB** |
 
-The three programs compile to **the same LLVM IR**, so they should land within
-measurement noise of each other. If they do, that is the whole argument for
-Archx's design in one table:
+## How to read the numbers (and why `89 ms` vs `86 ms` happens)
 
-> Archx does not need its own optimizer to be fast. It needs to emit IR that
-> LLVM's optimizer can understand.
-
-Where the languages *do* differ, and why:
-
-| Axis | C | Rust | Archx |
-|------|---|------|-------|
-| Optimizer | LLVM (`clang -O2`) | LLVM (`rustc -O`) | LLVM (`clang -O2`) |
-| Loop IR | `icmp slt` + `br` | `icmp slt` + `br` | `icmp slt` + `br` |
-| Binary size | smallest | largest (static runtime, panic machinery) | smallest |
-| Build time | fastest | slowest | fast (text IR → one clang call) |
-
-Binary size is measured twice: as linked, and after `strip`. The gap between
-Rust and the other two is the Rust runtime being linked in statically — it buys
-panic messages and backtraces, not speed. That is the trade-off Archx is
-designed around: pay for what you use.
-
-## What this does *not* prove
-
-- It says nothing about I/O, allocation, strings or generics — Archx does not
-  have those yet. Benchmarks will be added as the features are.
-- Two loops on one machine is a smoke test, not a benchmark suite. Treat the
-  numbers as a sanity check, not a verdict.
-- `-O2` everywhere is deliberate. If you want to see what `-O3` or LTO adds,
-  change one flag and re-run: the interesting question is whether Archx's IR
-  gives LLVM the same opportunities the other front-ends do. (In Rust, `-O2`
-  is spelled `-O` or `-C opt-level=2`.)
+1. **Scalar loops (`124 ms / 124 ms / 124 ms`)**: C already has zero runtime
+   checks on scalar registers, so all three lower to identical SSA loops.
+2. **Counted `for` array loops (`vec_step`, `dot`)**: Archx's compile-time
+   bounds-check prover eliminates `dst[i]`, `a[i]`, and `b[i]` checks in
+   `for i in 0..n:` over `[0; n]` arrays (and LLVM hoists cross-slice checks
+   like `b[i]` in `dot` to a single preheader branch before entering SIMD
+   `vector.body` — see `ci/out/arrays.opt.ll`).
+3. **Strided `while` array loops (`while j < limit: is_prime[j] = false; j += p`)**:
+   Both **Rust (`89 ms`)** and **Archx (`89 ms`)** define integer `j += p` with
+   two's-complement wrap rather than C's signed-overflow undefined behavior.
+   Because `j + p` could theoretically wrap negative if `limit` were near
+   `i64::MAX` while still satisfying signed `j < limit`, LLVM keeps **one**
+   `icmp ult i64 %j, %limit` instruction inside `while.body` in both Rust and
+   Archx — accounting for the entire ~3 ms difference vs C (`86 ms`). Adding
+   first-class strided ranges (`for j in p*p..limit step p:`) will let Archx
+   prove `0 <= j < limit` there too without giving up defined arithmetic.
