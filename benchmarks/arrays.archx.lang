@@ -1,0 +1,53 @@
+# Array & loop benchmark — safe Archx (`[int]` / `[bool]`, bounds-checked with
+# compile-time bounds-check elision on proven ranges + automatic scope-exit free).
+#
+#   1. vec_kernel: 60 rounds of 1,000,000-element vector math
+#   2. sieve_count: Sieve of Eratosthenes below 5,000,000
+
+func vec_step(dst: [int], a: [int], b: [int], r: int):
+    for i in 0..len(dst):
+        dst[i] = a[i] * 3 + b[i] + r
+
+func vec_kernel(n: int, rounds: int) -> int:
+    let a = [0; n]
+    let b = [0; n]
+    let dst = [0; n]
+
+    for i in 0..n:
+        a[i] = (i * 7 + 3) % 1000
+        b[i] = (i * 13 + 5) % 1000
+
+    let checksum = 0
+    for r in 0..rounds:
+        vec_step(dst, a, b, r)
+        let idx = r % n
+        checksum = (checksum + dst[idx] + dst[(n - 1) - idx]) % 1000000007
+
+    let total = checksum
+    for i in 0..n:
+        total = (total + dst[i]) % 1000000007
+    return total
+
+func sieve_count(limit: int) -> int:
+    let is_prime = [true; limit]
+    is_prime[0] = false
+    is_prime[1] = false
+
+    let p = 2
+    while p * p < limit:
+        if is_prime[p]:
+            let j = p * p
+            while j < limit:
+                is_prime[j] = false
+                j += p
+        p += 1
+
+    let count = 0
+    for i in 2..limit:
+        if is_prime[i]:
+            count += 1
+    return count
+
+func main():
+    print(vec_kernel(1000000, 60))
+    print(sieve_count(5000000))

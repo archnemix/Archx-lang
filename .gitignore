@@ -3,10 +3,16 @@
 /examples/functions
 /examples/if
 /examples/loops
+/examples/arrays
 /benchmarks/primes_c
 /benchmarks/primes_rs
 /benchmarks/primes
+/benchmarks/arrays_c_raw
+/benchmarks/arrays_c_checked
+/benchmarks/arrays_rs
+/benchmarks/arrays
 *.exe
 *.o
 /examples/*.ll
+/benchmarks/*.ll
 /tests/*.ll

@@ -6,16 +6,22 @@ pub enum Type {
     Bool,
     Str,
     Void,
+    Array(Box<Type>),
 }
 
 impl Type {
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> String {
         match self {
-            Type::Int => "int",
-            Type::Bool => "bool",
-            Type::Str => "string",
-            Type::Void => "void",
+            Type::Int => "int".to_string(),
+            Type::Bool => "bool".to_string(),
+            Type::Str => "string".to_string(),
+            Type::Void => "void".to_string(),
+            Type::Array(elem) => format!("[{}]", elem.name()),
         }
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, Type::Array(_))
     }
 }
 
@@ -46,13 +52,24 @@ pub struct Stmt {
 }
 
 #[derive(Debug, Clone)]
+pub enum AssignTarget {
+    Var(String),
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub enum StmtKind {
     Let {
         name: String,
+        ty: Option<Type>,
         value: Expr,
     },
     Assign {
-        name: String,
+        target: AssignTarget,
+        op: Option<BinOp>,
         value: Expr,
     },
     Return(Option<Expr>),
@@ -88,6 +105,15 @@ pub enum ExprKind {
     Bool(bool),
     Str(String),
     Var(String),
+    ArrayLit(Vec<Expr>),
+    ArrayRepeat {
+        value: Box<Expr>,
+        count: Box<Expr>,
+    },
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
     Call {
         name: String,
         args: Vec<Expr>,

@@ -1,27 +1,29 @@
 use crate::ast::*;
-use crate::diag::{Diagnostic, Result};
+use crate::diag::{Diagnostic, Result, Span};
 use crate::token::{Token, TokenKind};
 
 /// Recursive-descent parser.
 ///
-/// Grammar (milestone 3):
+/// Grammar (milestone 4):
 ///
 /// ```text
 /// program     := func_def*
 /// func_def    := "func" IDENT "(" params? ")" ("->" type)? ":" NEWLINE INDENT stmt+ DEDENT
 /// params      := param ("," param)*
 /// param       := IDENT ":" type
-/// type        := "int" | "bool" | "string" | "void"
-/// stmt        := "let" IDENT "=" expr NEWLINE
-///              | IDENT "=" expr NEWLINE
+/// type        := "int" | "bool" | "string" | "void" | "[" type "]"
+/// stmt        := "let" IDENT (":" type)? "=" expr NEWLINE
+///              | lvalue ("=" | "+=" | "-=" | "*=" | "/=" | "%=") expr NEWLINE
 ///              | "return" expr? NEWLINE
 ///              | "if" expr ":" NEWLINE INDENT stmt+ DEDENT
+///                ("elif" expr ":" NEWLINE INDENT stmt+ DEDENT)*
 ///                ("else" ":" NEWLINE INDENT stmt+ DEDENT)?
 ///              | "while" expr ":" NEWLINE INDENT stmt+ DEDENT
 ///              | "for" IDENT "in" expr ".." expr ":" NEWLINE INDENT stmt+ DEDENT
 ///              | "break" NEWLINE
 ///              | "continue" NEWLINE
 ///              | expr NEWLINE
+/// lvalue      := IDENT | postfix "[" expr "]"
 /// expr        := or_expr
 /// or_expr     := and_expr ("or" and_expr)*
 /// and_expr    := not_expr ("and" not_expr)*
@@ -29,15 +31,13 @@ use crate::token::{Token, TokenKind};
 /// comparison  := additive (("==" | "!=" | "<" | ">" | "<=" | ">=") additive)*
 /// additive    := multiplicative (("+" | "-") multiplicative)*
 /// multiplicative := unary (("*" | "/" | "%") unary)*
-/// unary       := "-" unary | primary
-/// primary     := INT | STRING | BOOL | IDENT | IDENT "(" args? ")" | "(" expr ")"
+/// unary       := "-" unary | postfix
+/// postfix     := primary ("[" expr "]")*
+/// primary     := INT | STRING | BOOL | IDENT | IDENT "(" args? ")"
+///              | "[" "]" | "[" expr ";" expr "]" | "[" args ","? "]"
+///              | "(" expr ")"
 /// args        := expr ("," expr)*
 /// ```
-///
-/// `for i in a..b` walks `a, a+1, … b-1` (the end is exclusive, like Rust's
-/// `a..b`). Both bounds are evaluated exactly once, before the first
-/// iteration. `break` leaves the innermost loop, `continue` jumps to its next
-/// iteration.
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
@@ -102,15 +102,7 @@ impl Parser {
         )?;
         self.expect(TokenKind::Indent, "an indented function body")?;
 
-        let mut body = Vec::new();
-        loop {
-            self.skip_newlines();
-            if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
-                break;
-            }
-            body.push(self.parse_stmt()?);
-        }
-
+        let body = self.parse_block_body()?;
         self.expect(TokenKind::Dedent, "the end of the function body")?;
 
         if body.is_empty() {
@@ -129,6 +121,18 @@ impl Parser {
     fn parse_type(&mut self) -> Result<Type> {
         let token = self.peek().clone();
         match &token.kind {
+            TokenKind::LBracket => {
+                self.bump();
+                let elem = self.parse_type()?;
+                if elem == Type::Void {
+                    return Err(Diagnostic::new(
+                        "array elements cannot have type `void`",
+                        token.span,
+                    ));
+                }
+                self.expect(TokenKind::RBracket, "`]`")?;
+                Ok(Type::Array(Box::new(elem)))
+            }
             TokenKind::Ident(name) if name == "int" => {
                 self.bump();
                 Ok(Type::Int)
@@ -146,7 +150,7 @@ impl Parser {
                 Ok(Type::Void)
             }
             _ => Err(Diagnostic::new(
-                "expected a type (`int`, `bool`, `string`, or `void`)",
+                "expected a type (`int`, `bool`, `string`, `void`, or `[T]`)",
                 token.span,
             )),
         }
@@ -155,43 +159,20 @@ impl Parser {
     fn parse_stmt(&mut self) -> Result<Stmt> {
         let span = self.peek().span;
 
-        // Assignment: `name = expr` (but not `name == expr`).
-        let assign_target = {
-            let token = self.peek();
-            match &token.kind {
-                TokenKind::Ident(name)
-                    if matches!(
-                        self.tokens.get(self.pos + 1).map(|t| &t.kind),
-                        Some(TokenKind::Eq)
-                    ) =>
-                {
-                    Some(name.clone())
-                }
-                _ => None,
-            }
-        };
-        if let Some(name) = assign_target {
-            self.bump(); // identifier
-            self.bump(); // '='
-            let value = self.parse_expr()?;
-            self.expect(
-                TokenKind::Newline,
-                "a newline after the assignment",
-            )?;
-            return Ok(Stmt {
-                kind: StmtKind::Assign { name, value },
-                span,
-            });
-        }
-
         if self.check(&TokenKind::Let) {
             self.bump();
             let name = self.expect_ident("a variable name")?;
+            let ty = if self.check(&TokenKind::Colon) {
+                self.bump();
+                Some(self.parse_type()?)
+            } else {
+                None
+            };
             self.expect(TokenKind::Eq, "`=`")?;
             let value = self.parse_expr()?;
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
-                kind: StmtKind::Let { name, value },
+                kind: StmtKind::Let { name, ty, value },
                 span,
             });
         }
@@ -212,45 +193,7 @@ impl Parser {
 
         if self.check(&TokenKind::If) {
             self.bump();
-            let cond = self.parse_expr()?;
-            self.expect(TokenKind::Colon, "`:`")?;
-            self.expect(
-                TokenKind::Newline,
-                "a newline after the `if` condition",
-            )?;
-            self.expect(TokenKind::Indent, "an indented `if` body")?;
-
-            let then_body = self.parse_block_body()?;
-            self.expect(TokenKind::Dedent, "the end of the `if` body")?;
-
-            if then_body.is_empty() {
-                return Err(Diagnostic::new("`if` body cannot be empty", span));
-            }
-
-            let mut else_body = None;
-            if self.check(&TokenKind::Else) {
-                self.bump();
-                self.expect(TokenKind::Colon, "`:`")?;
-                self.expect(TokenKind::Newline, "a newline after `else:`")?;
-                self.expect(TokenKind::Indent, "an indented `else` body")?;
-
-                let body = self.parse_block_body()?;
-                self.expect(TokenKind::Dedent, "the end of the `else` body")?;
-
-                if body.is_empty() {
-                    return Err(Diagnostic::new("`else` body cannot be empty", span));
-                }
-                else_body = Some(body);
-            }
-
-            return Ok(Stmt {
-                kind: StmtKind::If {
-                    cond,
-                    then_body,
-                    else_body,
-                },
-                span,
-            });
+            return self.parse_if_tail(span, "if");
         }
 
         if self.check(&TokenKind::While) {
@@ -292,7 +235,12 @@ impl Parser {
                 return Err(Diagnostic::new("`for` body cannot be empty", span));
             }
             return Ok(Stmt {
-                kind: StmtKind::For { var, start, end, body },
+                kind: StmtKind::For {
+                    var,
+                    start,
+                    end,
+                    body,
+                },
                 span,
             });
         }
@@ -315,10 +263,98 @@ impl Parser {
             });
         }
 
-        let value = self.parse_expr()?;
+        let lhs = self.parse_expr()?;
+        let assign_op = match &self.peek().kind {
+            TokenKind::Eq => Some(None),
+            TokenKind::PlusEq => Some(Some(BinOp::Add)),
+            TokenKind::MinusEq => Some(Some(BinOp::Sub)),
+            TokenKind::StarEq => Some(Some(BinOp::Mul)),
+            TokenKind::SlashEq => Some(Some(BinOp::Div)),
+            TokenKind::PercentEq => Some(Some(BinOp::Mod)),
+            _ => None,
+        };
+
+        if let Some(op) = assign_op {
+            let eq_span = self.peek().span;
+            self.bump();
+            let target = match lhs.kind {
+                ExprKind::Var(name) => AssignTarget::Var(name),
+                ExprKind::Index { target, index } => AssignTarget::Index { target, index },
+                _ => {
+                    return Err(Diagnostic::new(
+                        "left-hand side of assignment must be a variable or array element",
+                        eq_span,
+                    ));
+                }
+            };
+            let value = self.parse_expr()?;
+            self.expect(TokenKind::Newline, "a newline after the assignment")?;
+            return Ok(Stmt {
+                kind: StmtKind::Assign { target, op, value },
+                span,
+            });
+        }
+
         self.expect(TokenKind::Newline, "a newline after the statement")?;
         Ok(Stmt {
-            kind: StmtKind::Expr(value),
+            kind: StmtKind::Expr(lhs),
+            span,
+        })
+    }
+
+    fn parse_if_tail(&mut self, span: Span, keyword: &str) -> Result<Stmt> {
+        let cond = self.parse_expr()?;
+        self.expect(TokenKind::Colon, "`:`")?;
+        self.expect(
+            TokenKind::Newline,
+            &format!("a newline after the `{keyword}` condition"),
+        )?;
+        self.expect(
+            TokenKind::Indent,
+            &format!("an indented `{keyword}` body"),
+        )?;
+
+        let then_body = self.parse_block_body()?;
+        self.expect(
+            TokenKind::Dedent,
+            &format!("the end of the `{keyword}` body"),
+        )?;
+
+        if then_body.is_empty() {
+            return Err(Diagnostic::new(
+                format!("`{keyword}` body cannot be empty"),
+                span,
+            ));
+        }
+
+        let else_body = if self.check(&TokenKind::Elif) {
+            let elif_span = self.peek().span;
+            self.bump();
+            Some(vec![self.parse_if_tail(elif_span, "elif")?])
+        } else if self.check(&TokenKind::Else) {
+            let else_span = self.peek().span;
+            self.bump();
+            self.expect(TokenKind::Colon, "`:`")?;
+            self.expect(TokenKind::Newline, "a newline after `else:`")?;
+            self.expect(TokenKind::Indent, "an indented `else` body")?;
+
+            let body = self.parse_block_body()?;
+            self.expect(TokenKind::Dedent, "the end of the `else` body")?;
+
+            if body.is_empty() {
+                return Err(Diagnostic::new("`else` body cannot be empty", else_span));
+            }
+            Some(body)
+        } else {
+            None
+        };
+
+        Ok(Stmt {
+            kind: StmtKind::If {
+                cond,
+                then_body,
+                else_body,
+            },
             span,
         })
     }
@@ -498,7 +534,25 @@ impl Parser {
             });
         }
 
-        self.parse_primary()
+        self.parse_postfix()
+    }
+
+    fn parse_postfix(&mut self) -> Result<Expr> {
+        let mut expr = self.parse_primary()?;
+        while self.check(&TokenKind::LBracket) {
+            let span = self.peek().span;
+            self.bump();
+            let index = self.parse_expr()?;
+            self.expect(TokenKind::RBracket, "`]`")?;
+            expr = Expr {
+                kind: ExprKind::Index {
+                    target: Box::new(expr),
+                    index: Box::new(index),
+                },
+                span,
+            };
+        }
+        Ok(expr)
     }
 
     fn parse_primary(&mut self) -> Result<Expr> {
@@ -553,6 +607,42 @@ impl Parser {
                         span,
                     })
                 }
+            }
+            TokenKind::LBracket => {
+                self.bump();
+                if self.check(&TokenKind::RBracket) {
+                    self.bump();
+                    return Ok(Expr {
+                        kind: ExprKind::ArrayLit(Vec::new()),
+                        span,
+                    });
+                }
+                let first = self.parse_expr()?;
+                if self.check(&TokenKind::Semicolon) {
+                    self.bump();
+                    let count = self.parse_expr()?;
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    return Ok(Expr {
+                        kind: ExprKind::ArrayRepeat {
+                            value: Box::new(first),
+                            count: Box::new(count),
+                        },
+                        span,
+                    });
+                }
+                let mut elems = vec![first];
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::RBracket) {
+                        break;
+                    }
+                    elems.push(self.parse_expr()?);
+                }
+                self.expect(TokenKind::RBracket, "`]`")?;
+                Ok(Expr {
+                    kind: ExprKind::ArrayLit(elems),
+                    span,
+                })
             }
             TokenKind::LParen => {
                 self.bump();
@@ -659,6 +749,14 @@ mod tests {
     }
 
     #[test]
+    fn parses_elif_chain() {
+        let program = parse(
+            "func main():\n    let x = 2\n    if x == 1:\n        print(1)\n    elif x == 2:\n        print(2)\n    else:\n        print(3)\n",
+        );
+        assert_eq!(program.funcs[0].body.len(), 2);
+    }
+
+    #[test]
     fn parses_booleans_and_comparisons() {
         let program = parse("func main():\n    let b = 1 < 2 and not false\n    print(b)\n");
         assert_eq!(program.funcs[0].body.len(), 2);
@@ -678,6 +776,23 @@ mod tests {
             "func main():\n    for i in 0..10:\n        if i == 3:\n            continue\n        if i == 7:\n            break\n        print(i)\n",
         );
         assert_eq!(program.funcs[0].body.len(), 1);
+    }
+
+    #[test]
+    fn parses_arrays_indexing_and_compound_assign() {
+        let program = parse(
+            "func sum(xs: [int]) -> int:\n    let total = 0\n    for i in 0..len(xs):\n        total += xs[i]\n    return total\n\nfunc main():\n    let empty: [int] = []\n    let buf = [0; 8]\n    buf[0] = 10\n    buf[0] += 5\n    print(sum([1, 2, 3,]))\n",
+        );
+        assert_eq!(program.funcs.len(), 2);
+        assert_eq!(program.funcs[0].params[0].ty, Type::Array(Box::new(Type::Int)));
+    }
+
+    #[test]
+    fn rejects_invalid_assignment_target() {
+        let tokens = Lexer::new("func main():\n    1 + 2 = 3\n")
+            .tokenize()
+            .unwrap();
+        assert!(Parser::new(tokens).parse_program().is_err());
     }
 
     #[test]

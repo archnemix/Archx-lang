@@ -60,7 +60,7 @@ jobs:
           set +e
           (
             fail=0
-            for name in hello functions if loops; do
+            for name in hello functions if loops arrays; do
               echo "== emit-ir: $name =="
               ./target/release/archx "examples/$name.archx.lang" --emit-ir > "ci/out/$name.ll"
               code=$?
@@ -88,7 +88,7 @@ jobs:
             done
 
             echo "== optimized IR (clang -O2) =="
-            for name in hello functions if loops; do
+            for name in hello functions if loops arrays; do
               clang -O2 -Wno-override-module -S -emit-llvm "ci/out/$name.ll" -o "ci/out/$name.opt.ll"
               code=$?
               echo "$name.opt.ll exit=$code"

@@ -172,6 +172,134 @@ func main():
 }
 
 #[test]
+fn arrays_run() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "arrays",
+        "\
+func build_squares(n: int) -> [int]:
+    let out: [int] = []
+    for i in 0..n:
+        push(out, i * i)
+    return out
+
+func sum_slice(xs: [int]) -> int:
+    let s = 0
+    for i in 0..len(xs):
+        s += xs[i]
+    return s
+
+func main():
+    let sq = build_squares(5)
+    print(sq)
+    let last = pop(sq)
+    print(last)
+    print(sum_slice(sq))
+
+    let zeros = [0; 4]
+    zeros[2] = 99
+    zeros[2] += 1
+    print(zeros)
+
+    let flags = [true, false, true]
+    print(flags)
+
+    let words = [\"fast\", \"clean\"]
+    print(words)
+
+    let grid = [[1, 2], [3, 4]]
+    grid[0][1] = 20
+    print(grid[0][1] + grid[1][0])
+",
+    );
+    assert_eq!(
+        out,
+        "[0, 1, 4, 9, 16]\n16\n14\n[0, 0, 100, 0]\n[true, false, true]\n[fast, clean]\n23\n"
+    );
+}
+
+#[test]
+fn elif_and_compound_assign_run() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "elif_ops",
+        "\
+func grade(n: int) -> string:
+    if n >= 90:
+        return \"A\"
+    elif n >= 80:
+        return \"B\"
+    elif n >= 70:
+        return \"C\"
+    else:
+        return \"D\"
+
+func main():
+    let x = 10
+    x += 5
+    x -= 3
+    x *= 4
+    x /= 6
+    x %= 5
+    print(x)
+    print(grade(95))
+    print(grade(82))
+    print(grade(71))
+    print(grade(50))
+    let s = \"archx\"
+    print(s == \"archx\")
+    print(s != \"other\")
+    print(len(s))
+",
+    );
+    // x: 10 -> 15 -> 12 -> 48 -> 8 -> 3
+    assert_eq!(out, "3\nA\nB\nC\nD\ntrue\ntrue\n5\n");
+}
+
+#[test]
+fn out_of_bounds_panics_cleanly() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-oob-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let src = dir.join("oob.archx.lang");
+    fs::write(
+        &src,
+        "func read_at(xs: [int], idx: int) -> int:\n    return xs[idx]\n\nfunc main():\n    let xs = [10, 20, 30]\n    print(read_at(xs, 5))\n",
+    )
+    .unwrap();
+
+    let exe = dir.join("oob");
+    let build = Command::new(archx())
+        .arg(&src)
+        .arg("-o")
+        .arg(&exe)
+        .output()
+        .unwrap();
+    assert!(build.status.success());
+
+    let run = Command::new(&exe).output().unwrap();
+    assert_eq!(run.status.code(), Some(101));
+    let stdout = String::from_utf8_lossy(&run.stdout);
+    assert!(
+        stdout.contains("index 5 out of bounds for length 3"),
+        "stdout was: {stdout}"
+    );
+}
+
+#[test]
 fn break_outside_loop_is_an_error() {
     let dir = std::env::temp_dir().join(format!("archx-brk-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();

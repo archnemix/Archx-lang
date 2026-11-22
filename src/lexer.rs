@@ -73,34 +73,71 @@ impl<'a> Lexer<'a> {
                     self.bump();
                     tokens.push(Token::new(TokenKind::RParen, span));
                 }
+                b'[' => {
+                    self.bracket_depth += 1;
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::LBracket, span));
+                }
+                b']' => {
+                    self.bracket_depth = self.bracket_depth.saturating_sub(1);
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::RBracket, span));
+                }
+                b';' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Semicolon, span));
+                }
                 b',' => {
                     self.bump();
                     tokens.push(Token::new(TokenKind::Comma, span));
                 }
                 b'+' => {
                     self.bump();
-                    tokens.push(Token::new(TokenKind::Plus, span));
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::PlusEq, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Plus, span));
+                    }
                 }
                 b'-' => {
                     self.bump();
                     if self.peek() == Some(b'>') {
                         self.bump();
                         tokens.push(Token::new(TokenKind::Arrow, span));
+                    } else if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::MinusEq, span));
                     } else {
                         tokens.push(Token::new(TokenKind::Minus, span));
                     }
                 }
                 b'*' => {
                     self.bump();
-                    tokens.push(Token::new(TokenKind::Star, span));
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::StarEq, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Star, span));
+                    }
                 }
                 b'/' => {
                     self.bump();
-                    tokens.push(Token::new(TokenKind::Slash, span));
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::SlashEq, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Slash, span));
+                    }
                 }
                 b'%' => {
                     self.bump();
-                    tokens.push(Token::new(TokenKind::Percent, span));
+                    if self.peek() == Some(b'=') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::PercentEq, span));
+                    } else {
+                        tokens.push(Token::new(TokenKind::Percent, span));
+                    }
                 }
                 b'=' => {
                     self.bump();
@@ -300,6 +337,7 @@ impl<'a> Lexer<'a> {
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
             "if" => TokenKind::If,
+            "elif" => TokenKind::Elif,
             "else" => TokenKind::Else,
             "while" => TokenKind::While,
             "for" => TokenKind::For,
@@ -519,5 +557,16 @@ mod tests {
         assert!(k.iter().any(|t| *t == TokenKind::While));
         assert!(k.iter().any(|t| *t == TokenKind::Break));
         assert!(k.iter().any(|t| *t == TokenKind::Continue));
+    }
+
+    #[test]
+    fn array_elif_and_compound_assign_tokens() {
+        let k = kinds("let a = [0; 10]\nif x == 1:\n    a[0] += 2\nelif x == 2:\n    a[1] -= 3\n");
+        assert!(k.iter().any(|t| *t == TokenKind::LBracket));
+        assert!(k.iter().any(|t| *t == TokenKind::Semicolon));
+        assert!(k.iter().any(|t| *t == TokenKind::RBracket));
+        assert!(k.iter().any(|t| *t == TokenKind::PlusEq));
+        assert!(k.iter().any(|t| *t == TokenKind::Elif));
+        assert!(k.iter().any(|t| *t == TokenKind::MinusEq));
     }
 }
