@@ -113,6 +113,7 @@ fn run(args: &[String]) -> Result<i32, String> {
     let status = Command::new(&clang)
         .arg(&ir_path)
         .arg("-O2")
+        .arg("-Wno-override-module")
         .arg("-o")
         .arg(&output)
         .status()
@@ -226,4 +227,31 @@ fn print_help() {
     println!("    --run                 compile, then run the resulting program");
     println!("    -h, --help            show this help");
     println!("    -V, --version         show the version");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_output_strips_archx_extensions() {
+        let expected = |stem: &str| {
+            let mut path = PathBuf::from(stem);
+            if cfg!(windows) {
+                path.set_extension("exe");
+            }
+            path
+        };
+
+        assert_eq!(default_output(Path::new("hello.archx")), expected("hello"));
+        assert_eq!(
+            default_output(Path::new("hello.archx.lang")),
+            expected("hello")
+        );
+        assert_eq!(
+            default_output(Path::new("hello.archx.lg")),
+            expected("hello")
+        );
+        assert_eq!(default_output(Path::new("hello.txt")), expected("hello"));
+    }
 }
