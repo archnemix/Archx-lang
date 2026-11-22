@@ -1,3 +1,42 @@
 == building ==
-error: Unrecognized option: '2'
+compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.qKtnHDiGDT/archx`
 
+== results (must match) ==
+75517
+33860
+all three agree
+
+== timing: best of 5 runs (ms) ==
+Archx vs C vs Rust -- loop benchmark
+====================================
+
+Workload (benchmarks/primes.*):
+  1. sum of squares 0..20,000,000, mod 1,000,007   (tight arithmetic loop)
+  2. count primes below 400,000 by trial division   (nested loop, branch, break)
+
+Toolchain
+---------
+Ubuntu clang version 21.1.8 (6ubuntu1)
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+archx (this repo, cargo build --release)
+optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
+
+Output (identical in all three)
+-------------------------------
+  75517
+  33860
+
+Time in milliseconds (best of 5 runs, mean in parentheses)
+--------------------------------------------------------------
+  C      (clang -O2)   87  (87)
+  Rust   (rustc -O)    87  (88)
+  Archx  (archx -O2)   87  (87)
+
+Binary size (KB)
+----------------
+                 raw   stripped
+  C              16      14
+  Rust           4388      330
+  Archx          16      14
+
+written to ci/out/benchmarks.txt
