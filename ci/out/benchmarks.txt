@@ -19,9 +19,9 @@ Output (identical in all three)
 
 Time in milliseconds (best of 5 runs, mean in parentheses)
 --------------------------------------------------------------
-  C      (clang -O2)   87  (87)
-  Rust   (rustc -O)    87  (88)
-  Archx  (archx -O2)   87  (87)
+  C      (clang -O2)   106  (106)
+  Rust   (rustc -O)    106  (106)
+  Archx  (archx -O2)   106  (106)
 
 Binary size (KB)
 ----------------
