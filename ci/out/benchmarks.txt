@@ -15,9 +15,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         119 (119)        16          14
-  Rust   (rustc -O)          119 (119)      4388         330
-  Archx  (archx -O2)         119 (119)        16          14
+  C      (clang -O2)         104 (104)        16          14
+  Rust   (rustc -O)          104 (104)      4388         330
+  Archx  (archx -O2)         104 (104)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -26,7 +26,18 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        60 (62)        16          14
-  C checked   (slice struct -O2)     62 (63)        16          14
-  Rust        (safe Vec -O)          67 (71)      4389         331
-  Archx       (safe [T] -O2)         63 (65)        16          14
+  C raw ptr   (unchecked -O2)        45 (46)        16          14
+  C checked   (slice struct -O2)     44 (46)        16          14
+  Rust        (safe Vec -O)          50 (53)      4389         331
+  Archx       (safe [T] -O2)         50 (51)        16          14
+
+3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
+------------------------------------------------------------------------------
+  - 100,000 6-field Body structs (48B) x 120 timesteps (full + step-8 update)
+  - 40,000 rounds of variable-length scratch buffer + short/long string concat/eq
+  Output: 14248875,421461999
+
+  Language                       Best ms (mean)   Raw KB   Stripped KB
+  C      (AoS + malloc/strcmp -O2)   16 (16)        16          14
+  Rust   (Vec<Body> + String -O)     19 (19)      4390         332
+  Archx  (SoA + region + SSO -O2)    15 (15)        16          14

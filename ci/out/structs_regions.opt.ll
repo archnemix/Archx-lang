@@ -139,43 +139,43 @@ fill.body.14.preheader.i:                         ; preds = %fill.body.9.prehead
   %29 = getelementptr inbounds nuw i8, ptr %t7.i, i64 240
   store <2 x i64> <i64 84, i64 87>, ptr %28, align 16
   store <2 x i64> <i64 90, i64 93>, ptr %29, align 16
-  br label %vector.body22
+  br label %vector.body23
 
 alloc.oom.12.i:                                   ; preds = %fill.body.9.preheader.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-vector.body22:                                    ; preds = %fill.body.14.preheader.i, %vector.body22
-  %index23 = phi i64 [ %index.next31, %vector.body22 ], [ 0, %fill.body.14.preheader.i ]
-  %30 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index23
+vector.body23:                                    ; preds = %fill.body.14.preheader.i, %vector.body23
+  %index24 = phi i64 [ %index.next32, %vector.body23 ], [ 0, %fill.body.14.preheader.i ]
+  %30 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index24
   %31 = getelementptr inbounds nuw i8, ptr %30, i64 16
   %wide.load = load <2 x i64>, ptr %30, align 16
-  %wide.load24 = load <2 x i64>, ptr %31, align 16
-  %32 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index23
+  %wide.load25 = load <2 x i64>, ptr %31, align 16
+  %32 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index24
   %33 = getelementptr inbounds nuw i8, ptr %32, i64 16
-  %wide.load25 = load <2 x i64>, ptr %32, align 16
-  %wide.load26 = load <2 x i64>, ptr %33, align 16
-  %34 = add <2 x i64> %wide.load25, %wide.load
-  %35 = add <2 x i64> %wide.load26, %wide.load24
+  %wide.load26 = load <2 x i64>, ptr %32, align 16
+  %wide.load27 = load <2 x i64>, ptr %33, align 16
+  %34 = add <2 x i64> %wide.load26, %wide.load
+  %35 = add <2 x i64> %wide.load27, %wide.load25
   store <2 x i64> %34, ptr %30, align 16
   store <2 x i64> %35, ptr %31, align 16
-  %36 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index23
+  %36 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index24
   %37 = getelementptr inbounds nuw i8, ptr %36, i64 16
-  %wide.load27 = load <2 x i64>, ptr %36, align 16
-  %wide.load28 = load <2 x i64>, ptr %37, align 16
-  %38 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index23
+  %wide.load28 = load <2 x i64>, ptr %36, align 16
+  %wide.load29 = load <2 x i64>, ptr %37, align 16
+  %38 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index24
   %39 = getelementptr inbounds nuw i8, ptr %38, i64 16
-  %wide.load29 = load <2 x i64>, ptr %38, align 16
-  %wide.load30 = load <2 x i64>, ptr %39, align 16
-  %40 = add <2 x i64> %wide.load29, %wide.load27
-  %41 = add <2 x i64> %wide.load30, %wide.load28
+  %wide.load30 = load <2 x i64>, ptr %38, align 16
+  %wide.load31 = load <2 x i64>, ptr %39, align 16
+  %40 = add <2 x i64> %wide.load30, %wide.load28
+  %41 = add <2 x i64> %wide.load31, %wide.load29
   store <2 x i64> %40, ptr %36, align 16
   store <2 x i64> %41, ptr %37, align 16
-  %index.next31 = add nuw i64 %index23, 4
-  %42 = icmp eq i64 %index.next31, 32
-  br i1 %42, label %for.body.29.preheader.i, label %vector.body22, !llvm.loop !0
+  %index.next32 = add nuw i64 %index24, 4
+  %42 = icmp eq i64 %index.next32, 32
+  br i1 %42, label %for.body.29.preheader.i, label %vector.body23, !llvm.loop !0
 
-for.body.29.preheader.i:                          ; preds = %vector.body22
+for.body.29.preheader.i:                          ; preds = %vector.body23
   store i64 2, ptr %t12.i, align 16
   store i64 2, ptr %t17.4.i, align 16
   store i64 2, ptr %t17.8.i, align 16
@@ -184,39 +184,39 @@ for.body.29.preheader.i:                          ; preds = %vector.body22
   store i64 2, ptr %t17.20.i, align 16
   store i64 2, ptr %t17.24.i, align 16
   store i64 2, ptr %t17.28.i, align 16
-  br label %vector.body36
+  br label %vector.body37
 
-vector.body36:                                    ; preds = %vector.body36, %for.body.29.preheader.i
-  %index37 = phi i64 [ 0, %for.body.29.preheader.i ], [ %index.next46, %vector.body36 ]
-  %43 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index37
+vector.body37:                                    ; preds = %vector.body37, %for.body.29.preheader.i
+  %index38 = phi i64 [ 0, %for.body.29.preheader.i ], [ %index.next47, %vector.body37 ]
+  %43 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index38
   %44 = getelementptr inbounds nuw i8, ptr %43, i64 16
-  %wide.load38 = load <2 x i64>, ptr %43, align 16
-  %wide.load39 = load <2 x i64>, ptr %44, align 16
-  %45 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index37
+  %wide.load39 = load <2 x i64>, ptr %43, align 16
+  %wide.load40 = load <2 x i64>, ptr %44, align 16
+  %45 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index38
   %46 = getelementptr inbounds nuw i8, ptr %45, i64 16
-  %wide.load40 = load <2 x i64>, ptr %45, align 16
-  %wide.load41 = load <2 x i64>, ptr %46, align 16
-  %47 = add <2 x i64> %wide.load40, %wide.load38
-  %48 = add <2 x i64> %wide.load41, %wide.load39
+  %wide.load41 = load <2 x i64>, ptr %45, align 16
+  %wide.load42 = load <2 x i64>, ptr %46, align 16
+  %47 = add <2 x i64> %wide.load41, %wide.load39
+  %48 = add <2 x i64> %wide.load42, %wide.load40
   store <2 x i64> %47, ptr %43, align 16
   store <2 x i64> %48, ptr %44, align 16
-  %49 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index37
+  %49 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index38
   %50 = getelementptr inbounds nuw i8, ptr %49, i64 16
-  %wide.load42 = load <2 x i64>, ptr %49, align 16
-  %wide.load43 = load <2 x i64>, ptr %50, align 16
-  %51 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index37
+  %wide.load43 = load <2 x i64>, ptr %49, align 16
+  %wide.load44 = load <2 x i64>, ptr %50, align 16
+  %51 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index38
   %52 = getelementptr inbounds nuw i8, ptr %51, i64 16
-  %wide.load44 = load <2 x i64>, ptr %51, align 16
-  %wide.load45 = load <2 x i64>, ptr %52, align 16
-  %53 = add <2 x i64> %wide.load44, %wide.load42
-  %54 = add <2 x i64> %wide.load45, %wide.load43
+  %wide.load45 = load <2 x i64>, ptr %51, align 16
+  %wide.load46 = load <2 x i64>, ptr %52, align 16
+  %53 = add <2 x i64> %wide.load45, %wide.load43
+  %54 = add <2 x i64> %wide.load46, %wide.load44
   store <2 x i64> %53, ptr %49, align 16
   store <2 x i64> %54, ptr %50, align 16
-  %index.next46 = add nuw i64 %index37, 4
-  %55 = icmp eq i64 %index.next46, 32
-  br i1 %55, label %for.body.29.preheader.i.1, label %vector.body36, !llvm.loop !3
+  %index.next47 = add nuw i64 %index38, 4
+  %55 = icmp eq i64 %index.next47, 32
+  br i1 %55, label %for.body.29.preheader.i.1, label %vector.body37, !llvm.loop !3
 
-for.body.29.preheader.i.1:                        ; preds = %vector.body36
+for.body.29.preheader.i.1:                        ; preds = %vector.body37
   store i64 3, ptr %t12.i, align 16
   store i64 3, ptr %t17.4.i, align 16
   store i64 3, ptr %t17.8.i, align 16
@@ -225,39 +225,39 @@ for.body.29.preheader.i.1:                        ; preds = %vector.body36
   store i64 3, ptr %t17.20.i, align 16
   store i64 3, ptr %t17.24.i, align 16
   store i64 3, ptr %t17.28.i, align 16
-  br label %vector.body51
+  br label %vector.body52
 
-vector.body51:                                    ; preds = %vector.body51, %for.body.29.preheader.i.1
-  %index52 = phi i64 [ 0, %for.body.29.preheader.i.1 ], [ %index.next61, %vector.body51 ]
-  %56 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index52
+vector.body52:                                    ; preds = %vector.body52, %for.body.29.preheader.i.1
+  %index53 = phi i64 [ 0, %for.body.29.preheader.i.1 ], [ %index.next62, %vector.body52 ]
+  %56 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index53
   %57 = getelementptr inbounds nuw i8, ptr %56, i64 16
-  %wide.load53 = load <2 x i64>, ptr %56, align 16
-  %wide.load54 = load <2 x i64>, ptr %57, align 16
-  %58 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index52
+  %wide.load54 = load <2 x i64>, ptr %56, align 16
+  %wide.load55 = load <2 x i64>, ptr %57, align 16
+  %58 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index53
   %59 = getelementptr inbounds nuw i8, ptr %58, i64 16
-  %wide.load55 = load <2 x i64>, ptr %58, align 16
-  %wide.load56 = load <2 x i64>, ptr %59, align 16
-  %60 = add <2 x i64> %wide.load55, %wide.load53
-  %61 = add <2 x i64> %wide.load56, %wide.load54
+  %wide.load56 = load <2 x i64>, ptr %58, align 16
+  %wide.load57 = load <2 x i64>, ptr %59, align 16
+  %60 = add <2 x i64> %wide.load56, %wide.load54
+  %61 = add <2 x i64> %wide.load57, %wide.load55
   store <2 x i64> %60, ptr %56, align 16
   store <2 x i64> %61, ptr %57, align 16
-  %62 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index52
+  %62 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index53
   %63 = getelementptr inbounds nuw i8, ptr %62, i64 16
-  %wide.load57 = load <2 x i64>, ptr %62, align 16
-  %wide.load58 = load <2 x i64>, ptr %63, align 16
-  %64 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index52
+  %wide.load58 = load <2 x i64>, ptr %62, align 16
+  %wide.load59 = load <2 x i64>, ptr %63, align 16
+  %64 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index53
   %65 = getelementptr inbounds nuw i8, ptr %64, i64 16
-  %wide.load59 = load <2 x i64>, ptr %64, align 16
-  %wide.load60 = load <2 x i64>, ptr %65, align 16
-  %66 = add <2 x i64> %wide.load59, %wide.load57
-  %67 = add <2 x i64> %wide.load60, %wide.load58
+  %wide.load60 = load <2 x i64>, ptr %64, align 16
+  %wide.load61 = load <2 x i64>, ptr %65, align 16
+  %66 = add <2 x i64> %wide.load60, %wide.load58
+  %67 = add <2 x i64> %wide.load61, %wide.load59
   store <2 x i64> %66, ptr %62, align 16
   store <2 x i64> %67, ptr %63, align 16
-  %index.next61 = add nuw i64 %index52, 4
-  %68 = icmp eq i64 %index.next61, 32
-  br i1 %68, label %for.body.29.preheader.i.2, label %vector.body51, !llvm.loop !4
+  %index.next62 = add nuw i64 %index53, 4
+  %68 = icmp eq i64 %index.next62, 32
+  br i1 %68, label %for.body.29.preheader.i.2, label %vector.body52, !llvm.loop !4
 
-for.body.29.preheader.i.2:                        ; preds = %vector.body51
+for.body.29.preheader.i.2:                        ; preds = %vector.body52
   store i64 4, ptr %t12.i, align 16
   store i64 4, ptr %t17.4.i, align 16
   store i64 4, ptr %t17.8.i, align 16
@@ -266,39 +266,39 @@ for.body.29.preheader.i.2:                        ; preds = %vector.body51
   store i64 4, ptr %t17.20.i, align 16
   store i64 4, ptr %t17.24.i, align 16
   store i64 4, ptr %t17.28.i, align 16
-  br label %vector.body66
+  br label %vector.body67
 
-vector.body66:                                    ; preds = %vector.body66, %for.body.29.preheader.i.2
-  %index67 = phi i64 [ 0, %for.body.29.preheader.i.2 ], [ %index.next76, %vector.body66 ]
-  %69 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index67
+vector.body67:                                    ; preds = %vector.body67, %for.body.29.preheader.i.2
+  %index68 = phi i64 [ 0, %for.body.29.preheader.i.2 ], [ %index.next77, %vector.body67 ]
+  %69 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index68
   %70 = getelementptr inbounds nuw i8, ptr %69, i64 16
-  %wide.load68 = load <2 x i64>, ptr %69, align 16
-  %wide.load69 = load <2 x i64>, ptr %70, align 16
-  %71 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index67
+  %wide.load69 = load <2 x i64>, ptr %69, align 16
+  %wide.load70 = load <2 x i64>, ptr %70, align 16
+  %71 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index68
   %72 = getelementptr inbounds nuw i8, ptr %71, i64 16
-  %wide.load70 = load <2 x i64>, ptr %71, align 16
-  %wide.load71 = load <2 x i64>, ptr %72, align 16
-  %73 = add <2 x i64> %wide.load70, %wide.load68
-  %74 = add <2 x i64> %wide.load71, %wide.load69
+  %wide.load71 = load <2 x i64>, ptr %71, align 16
+  %wide.load72 = load <2 x i64>, ptr %72, align 16
+  %73 = add <2 x i64> %wide.load71, %wide.load69
+  %74 = add <2 x i64> %wide.load72, %wide.load70
   store <2 x i64> %73, ptr %69, align 16
   store <2 x i64> %74, ptr %70, align 16
-  %75 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index67
+  %75 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index68
   %76 = getelementptr inbounds nuw i8, ptr %75, i64 16
-  %wide.load72 = load <2 x i64>, ptr %75, align 16
-  %wide.load73 = load <2 x i64>, ptr %76, align 16
-  %77 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index67
+  %wide.load73 = load <2 x i64>, ptr %75, align 16
+  %wide.load74 = load <2 x i64>, ptr %76, align 16
+  %77 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index68
   %78 = getelementptr inbounds nuw i8, ptr %77, i64 16
-  %wide.load74 = load <2 x i64>, ptr %77, align 16
-  %wide.load75 = load <2 x i64>, ptr %78, align 16
-  %79 = add <2 x i64> %wide.load74, %wide.load72
-  %80 = add <2 x i64> %wide.load75, %wide.load73
+  %wide.load75 = load <2 x i64>, ptr %77, align 16
+  %wide.load76 = load <2 x i64>, ptr %78, align 16
+  %79 = add <2 x i64> %wide.load75, %wide.load73
+  %80 = add <2 x i64> %wide.load76, %wide.load74
   store <2 x i64> %79, ptr %75, align 16
   store <2 x i64> %80, ptr %76, align 16
-  %index.next76 = add nuw i64 %index67, 4
-  %81 = icmp eq i64 %index.next76, 32
-  br i1 %81, label %for.body.29.preheader.i.3, label %vector.body66, !llvm.loop !5
+  %index.next77 = add nuw i64 %index68, 4
+  %81 = icmp eq i64 %index.next77, 32
+  br i1 %81, label %for.body.29.preheader.i.3, label %vector.body67, !llvm.loop !5
 
-for.body.29.preheader.i.3:                        ; preds = %vector.body66
+for.body.29.preheader.i.3:                        ; preds = %vector.body67
   store i64 5, ptr %t12.i, align 16
   store i64 5, ptr %t17.4.i, align 16
   store i64 5, ptr %t17.8.i, align 16
@@ -307,131 +307,131 @@ for.body.29.preheader.i.3:                        ; preds = %vector.body66
   store i64 5, ptr %t17.20.i, align 16
   store i64 5, ptr %t17.24.i, align 16
   store i64 5, ptr %t17.28.i, align 16
-  br label %vector.body81
+  br label %vector.body82
 
-vector.body81:                                    ; preds = %vector.body81, %for.body.29.preheader.i.3
-  %index82 = phi i64 [ 0, %for.body.29.preheader.i.3 ], [ %index.next91, %vector.body81 ]
-  %82 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index82
+vector.body82:                                    ; preds = %vector.body82, %for.body.29.preheader.i.3
+  %index83 = phi i64 [ 0, %for.body.29.preheader.i.3 ], [ %index.next92, %vector.body82 ]
+  %82 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index83
   %83 = getelementptr inbounds nuw i8, ptr %82, i64 16
-  %wide.load83 = load <2 x i64>, ptr %82, align 16
-  %wide.load84 = load <2 x i64>, ptr %83, align 16
-  %84 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index82
+  %wide.load84 = load <2 x i64>, ptr %82, align 16
+  %wide.load85 = load <2 x i64>, ptr %83, align 16
+  %84 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index83
   %85 = getelementptr inbounds nuw i8, ptr %84, i64 16
-  %wide.load85 = load <2 x i64>, ptr %84, align 16
-  %wide.load86 = load <2 x i64>, ptr %85, align 16
-  %86 = add <2 x i64> %wide.load85, %wide.load83
-  %87 = add <2 x i64> %wide.load86, %wide.load84
+  %wide.load86 = load <2 x i64>, ptr %84, align 16
+  %wide.load87 = load <2 x i64>, ptr %85, align 16
+  %86 = add <2 x i64> %wide.load86, %wide.load84
+  %87 = add <2 x i64> %wide.load87, %wide.load85
   store <2 x i64> %86, ptr %82, align 16
   store <2 x i64> %87, ptr %83, align 16
-  %88 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index82
+  %88 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index83
   %89 = getelementptr inbounds nuw i8, ptr %88, i64 16
-  %wide.load87 = load <2 x i64>, ptr %88, align 16
-  %wide.load88 = load <2 x i64>, ptr %89, align 16
-  %90 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index82
+  %wide.load88 = load <2 x i64>, ptr %88, align 16
+  %wide.load89 = load <2 x i64>, ptr %89, align 16
+  %90 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index83
   %91 = getelementptr inbounds nuw i8, ptr %90, i64 16
-  %wide.load89 = load <2 x i64>, ptr %90, align 16
-  %wide.load90 = load <2 x i64>, ptr %91, align 16
-  %92 = add <2 x i64> %wide.load89, %wide.load87
-  %93 = add <2 x i64> %wide.load90, %wide.load88
+  %wide.load90 = load <2 x i64>, ptr %90, align 16
+  %wide.load91 = load <2 x i64>, ptr %91, align 16
+  %92 = add <2 x i64> %wide.load90, %wide.load88
+  %93 = add <2 x i64> %wide.load91, %wide.load89
   store <2 x i64> %92, ptr %88, align 16
   store <2 x i64> %93, ptr %89, align 16
-  %index.next91 = add nuw i64 %index82, 4
-  %94 = icmp eq i64 %index.next91, 32
-  br i1 %94, label %vector.body96, label %vector.body81, !llvm.loop !6
+  %index.next92 = add nuw i64 %index83, 4
+  %94 = icmp eq i64 %index.next92, 32
+  br i1 %94, label %vector.body97, label %vector.body82, !llvm.loop !6
 
-vector.body96:                                    ; preds = %vector.body81
+vector.body97:                                    ; preds = %vector.body82
   %95 = getelementptr inbounds nuw i8, ptr %t3.i, i64 16
-  %wide.load99 = load <2 x i64>, ptr %t3.i, align 16
-  %wide.load100 = load <2 x i64>, ptr %95, align 16
+  %wide.load100 = load <2 x i64>, ptr %t3.i, align 16
+  %wide.load101 = load <2 x i64>, ptr %95, align 16
   %96 = getelementptr inbounds nuw i8, ptr %t7.i, i64 16
-  %wide.load101 = load <2 x i64>, ptr %t7.i, align 16
-  %wide.load102 = load <2 x i64>, ptr %96, align 16
-  %97 = add <2 x i64> %wide.load99, %wide.load101
-  %98 = add <2 x i64> %wide.load100, %wide.load102
+  %wide.load102 = load <2 x i64>, ptr %t7.i, align 16
+  %wide.load103 = load <2 x i64>, ptr %96, align 16
+  %97 = add <2 x i64> %wide.load100, %wide.load102
+  %98 = add <2 x i64> %wide.load101, %wide.load103
   %99 = getelementptr inbounds nuw i8, ptr %t3.i, i64 32
   %100 = getelementptr inbounds nuw i8, ptr %t3.i, i64 48
-  %wide.load99.1 = load <2 x i64>, ptr %99, align 16
-  %wide.load100.1 = load <2 x i64>, ptr %100, align 16
+  %wide.load100.1 = load <2 x i64>, ptr %99, align 16
+  %wide.load101.1 = load <2 x i64>, ptr %100, align 16
   %101 = getelementptr inbounds nuw i8, ptr %t7.i, i64 32
   %102 = getelementptr inbounds nuw i8, ptr %t7.i, i64 48
-  %wide.load101.1 = load <2 x i64>, ptr %101, align 16
-  %wide.load102.1 = load <2 x i64>, ptr %102, align 16
-  %103 = add <2 x i64> %wide.load99.1, %97
-  %104 = add <2 x i64> %wide.load100.1, %98
-  %105 = add <2 x i64> %103, %wide.load101.1
-  %106 = add <2 x i64> %104, %wide.load102.1
+  %wide.load102.1 = load <2 x i64>, ptr %101, align 16
+  %wide.load103.1 = load <2 x i64>, ptr %102, align 16
+  %103 = add <2 x i64> %wide.load100.1, %97
+  %104 = add <2 x i64> %wide.load101.1, %98
+  %105 = add <2 x i64> %103, %wide.load102.1
+  %106 = add <2 x i64> %104, %wide.load103.1
   %107 = getelementptr inbounds nuw i8, ptr %t3.i, i64 64
   %108 = getelementptr inbounds nuw i8, ptr %t3.i, i64 80
-  %wide.load99.2 = load <2 x i64>, ptr %107, align 16
-  %wide.load100.2 = load <2 x i64>, ptr %108, align 16
+  %wide.load100.2 = load <2 x i64>, ptr %107, align 16
+  %wide.load101.2 = load <2 x i64>, ptr %108, align 16
   %109 = getelementptr inbounds nuw i8, ptr %t7.i, i64 64
   %110 = getelementptr inbounds nuw i8, ptr %t7.i, i64 80
-  %wide.load101.2 = load <2 x i64>, ptr %109, align 16
-  %wide.load102.2 = load <2 x i64>, ptr %110, align 16
-  %111 = add <2 x i64> %wide.load99.2, %105
-  %112 = add <2 x i64> %wide.load100.2, %106
-  %113 = add <2 x i64> %111, %wide.load101.2
-  %114 = add <2 x i64> %112, %wide.load102.2
+  %wide.load102.2 = load <2 x i64>, ptr %109, align 16
+  %wide.load103.2 = load <2 x i64>, ptr %110, align 16
+  %111 = add <2 x i64> %wide.load100.2, %105
+  %112 = add <2 x i64> %wide.load101.2, %106
+  %113 = add <2 x i64> %111, %wide.load102.2
+  %114 = add <2 x i64> %112, %wide.load103.2
   %115 = getelementptr inbounds nuw i8, ptr %t3.i, i64 96
   %116 = getelementptr inbounds nuw i8, ptr %t3.i, i64 112
-  %wide.load99.3 = load <2 x i64>, ptr %115, align 16
-  %wide.load100.3 = load <2 x i64>, ptr %116, align 16
+  %wide.load100.3 = load <2 x i64>, ptr %115, align 16
+  %wide.load101.3 = load <2 x i64>, ptr %116, align 16
   %117 = getelementptr inbounds nuw i8, ptr %t7.i, i64 96
   %118 = getelementptr inbounds nuw i8, ptr %t7.i, i64 112
-  %wide.load101.3 = load <2 x i64>, ptr %117, align 16
-  %wide.load102.3 = load <2 x i64>, ptr %118, align 16
-  %119 = add <2 x i64> %wide.load99.3, %113
-  %120 = add <2 x i64> %wide.load100.3, %114
-  %121 = add <2 x i64> %119, %wide.load101.3
-  %122 = add <2 x i64> %120, %wide.load102.3
+  %wide.load102.3 = load <2 x i64>, ptr %117, align 16
+  %wide.load103.3 = load <2 x i64>, ptr %118, align 16
+  %119 = add <2 x i64> %wide.load100.3, %113
+  %120 = add <2 x i64> %wide.load101.3, %114
+  %121 = add <2 x i64> %119, %wide.load102.3
+  %122 = add <2 x i64> %120, %wide.load103.3
   %123 = getelementptr inbounds nuw i8, ptr %t3.i, i64 128
   %124 = getelementptr inbounds nuw i8, ptr %t3.i, i64 144
-  %wide.load99.4 = load <2 x i64>, ptr %123, align 16
-  %wide.load100.4 = load <2 x i64>, ptr %124, align 16
+  %wide.load100.4 = load <2 x i64>, ptr %123, align 16
+  %wide.load101.4 = load <2 x i64>, ptr %124, align 16
   %125 = getelementptr inbounds nuw i8, ptr %t7.i, i64 128
   %126 = getelementptr inbounds nuw i8, ptr %t7.i, i64 144
-  %wide.load101.4 = load <2 x i64>, ptr %125, align 16
-  %wide.load102.4 = load <2 x i64>, ptr %126, align 16
-  %127 = add <2 x i64> %wide.load99.4, %121
-  %128 = add <2 x i64> %wide.load100.4, %122
-  %129 = add <2 x i64> %127, %wide.load101.4
-  %130 = add <2 x i64> %128, %wide.load102.4
+  %wide.load102.4 = load <2 x i64>, ptr %125, align 16
+  %wide.load103.4 = load <2 x i64>, ptr %126, align 16
+  %127 = add <2 x i64> %wide.load100.4, %121
+  %128 = add <2 x i64> %wide.load101.4, %122
+  %129 = add <2 x i64> %127, %wide.load102.4
+  %130 = add <2 x i64> %128, %wide.load103.4
   %131 = getelementptr inbounds nuw i8, ptr %t3.i, i64 160
   %132 = getelementptr inbounds nuw i8, ptr %t3.i, i64 176
-  %wide.load99.5 = load <2 x i64>, ptr %131, align 16
-  %wide.load100.5 = load <2 x i64>, ptr %132, align 16
+  %wide.load100.5 = load <2 x i64>, ptr %131, align 16
+  %wide.load101.5 = load <2 x i64>, ptr %132, align 16
   %133 = getelementptr inbounds nuw i8, ptr %t7.i, i64 160
   %134 = getelementptr inbounds nuw i8, ptr %t7.i, i64 176
-  %wide.load101.5 = load <2 x i64>, ptr %133, align 16
-  %wide.load102.5 = load <2 x i64>, ptr %134, align 16
-  %135 = add <2 x i64> %wide.load99.5, %129
-  %136 = add <2 x i64> %wide.load100.5, %130
-  %137 = add <2 x i64> %135, %wide.load101.5
-  %138 = add <2 x i64> %136, %wide.load102.5
+  %wide.load102.5 = load <2 x i64>, ptr %133, align 16
+  %wide.load103.5 = load <2 x i64>, ptr %134, align 16
+  %135 = add <2 x i64> %wide.load100.5, %129
+  %136 = add <2 x i64> %wide.load101.5, %130
+  %137 = add <2 x i64> %135, %wide.load102.5
+  %138 = add <2 x i64> %136, %wide.load103.5
   %139 = getelementptr inbounds nuw i8, ptr %t3.i, i64 192
   %140 = getelementptr inbounds nuw i8, ptr %t3.i, i64 208
-  %wide.load99.6 = load <2 x i64>, ptr %139, align 16
-  %wide.load100.6 = load <2 x i64>, ptr %140, align 16
+  %wide.load100.6 = load <2 x i64>, ptr %139, align 16
+  %wide.load101.6 = load <2 x i64>, ptr %140, align 16
   %141 = getelementptr inbounds nuw i8, ptr %t7.i, i64 192
   %142 = getelementptr inbounds nuw i8, ptr %t7.i, i64 208
-  %wide.load101.6 = load <2 x i64>, ptr %141, align 16
-  %wide.load102.6 = load <2 x i64>, ptr %142, align 16
-  %143 = add <2 x i64> %wide.load99.6, %137
-  %144 = add <2 x i64> %wide.load100.6, %138
-  %145 = add <2 x i64> %143, %wide.load101.6
-  %146 = add <2 x i64> %144, %wide.load102.6
+  %wide.load102.6 = load <2 x i64>, ptr %141, align 16
+  %wide.load103.6 = load <2 x i64>, ptr %142, align 16
+  %143 = add <2 x i64> %wide.load100.6, %137
+  %144 = add <2 x i64> %wide.load101.6, %138
+  %145 = add <2 x i64> %143, %wide.load102.6
+  %146 = add <2 x i64> %144, %wide.load103.6
   %147 = getelementptr inbounds nuw i8, ptr %t3.i, i64 224
   %148 = getelementptr inbounds nuw i8, ptr %t3.i, i64 240
-  %wide.load99.7 = load <2 x i64>, ptr %147, align 16
-  %wide.load100.7 = load <2 x i64>, ptr %148, align 16
+  %wide.load100.7 = load <2 x i64>, ptr %147, align 16
+  %wide.load101.7 = load <2 x i64>, ptr %148, align 16
   %149 = getelementptr inbounds nuw i8, ptr %t7.i, i64 224
   %150 = getelementptr inbounds nuw i8, ptr %t7.i, i64 240
-  %wide.load101.7 = load <2 x i64>, ptr %149, align 16
-  %wide.load102.7 = load <2 x i64>, ptr %150, align 16
-  %151 = add <2 x i64> %wide.load99.7, %145
-  %152 = add <2 x i64> %wide.load100.7, %146
-  %153 = add <2 x i64> %151, %wide.load101.7
-  %154 = add <2 x i64> %152, %wide.load102.7
+  %wide.load102.7 = load <2 x i64>, ptr %149, align 16
+  %wide.load103.7 = load <2 x i64>, ptr %150, align 16
+  %151 = add <2 x i64> %wide.load100.7, %145
+  %152 = add <2 x i64> %wide.load101.7, %146
+  %153 = add <2 x i64> %151, %wide.load102.7
+  %154 = add <2 x i64> %152, %wide.load103.7
   %bin.rdx = add <2 x i64> %154, %153
   %155 = tail call i64 @llvm.vector.reduce.add.v2i64(<2 x i64> %bin.rdx)
   tail call void @free(ptr nonnull %t22.i)
@@ -506,19 +506,29 @@ vector.body96:                                    ; preds = %vector.body81
   store <2 x i64> splat (i64 1), ptr %185, align 16
   store <2 x i64> splat (i64 1), ptr %186, align 16
   %.fca.2.gep.i = getelementptr inbounds nuw i8, ptr %func.region.i, i64 16
-  %t29.i = call fastcc { i64, i64 } @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr { i64 7308332212187824138, i64 58709760767091 }, ptr %func.region.i)
-  %newret15 = extractvalue { i64, i64 } %t29.i, 0
-  %oldret16 = insertvalue %ArchxStr poison, i64 %newret15, 0
-  %newret17 = extractvalue { i64, i64 } %t29.i, 1
-  %oldret18 = insertvalue %ArchxStr %oldret16, i64 %newret17, 1
-  %len.i23.i = and i64 %newret15, 4294967295
-  %long.i24.i = icmp samesign ult i64 %len.i23.i, 13
-  %tag.i28.i = and i64 %newret17, 1
-  %owned.not.i29.i = icmp eq i64 %tag.i28.i, 0
-  %or.cond113 = select i1 %long.i24.i, i1 true, i1 %owned.not.i29.i
-  br i1 %or.cond113, label %archx_str_clone.exit.i, label %dup_heap.i.i
+  %t28.i = call fastcc { i64, i64 } @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr { i64 7308332212187824138, i64 58709760767091 }, ptr %func.region.i)
+  %newret16 = extractvalue { i64, i64 } %t28.i, 0
+  %newret18 = extractvalue { i64, i64 } %t28.i, 1
+  %t37.i3 = and i64 %newret16, 4294967288
+  %t38.not.i = icmp eq i64 %t37.i3, 0
+  br i1 %t38.not.i, label %archx_str_drop.exit19.i, label %if.then.11.i
 
-dup_heap.i.i:                                     ; preds = %vector.body96
+if.then.11.i:                                     ; preds = %vector.body97
+  %oldret17 = insertvalue %ArchxStr poison, i64 %newret16, 0
+  %oldret19 = insertvalue %ArchxStr %oldret17, i64 %newret18, 1
+  %t41.i4 = call fastcc { i64, i64 } @archx_str_concat(%ArchxStr %oldret19, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region.i)
+  %newret = extractvalue { i64, i64 } %t41.i4, 0
+  %oldret = insertvalue %ArchxStr poison, i64 %newret, 0
+  %newret14 = extractvalue { i64, i64 } %t41.i4, 1
+  %oldret15 = insertvalue %ArchxStr %oldret, i64 %newret14, 1
+  %len.i23.i = and i64 %newret, 4294967295
+  %long.i24.i = icmp samesign ugt i64 %len.i23.i, 12
+  %tag.i27.i = and i64 %newret14, 3
+  %is_reg.i.i = icmp eq i64 %tag.i27.i, 2
+  %or.cond114 = select i1 %long.i24.i, i1 %is_reg.i.i, i1 false
+  br i1 %or.cond114, label %dup_heap.i.i, label %archx_str_promote.exit.i
+
+dup_heap.i.i:                                     ; preds = %if.then.11.i
   %dst.i.i = tail call noalias align 16 ptr @malloc(i64 %len.i23.i)
   %isnull.i.i = icmp eq ptr %dst.i.i, null
   br i1 %isnull.i.i, label %oom.i.i, label %copy.i.i
@@ -528,150 +538,85 @@ oom.i.i:                                          ; preds = %dup_heap.i.i
   unreachable
 
 copy.i.i:                                         ; preds = %dup_heap.i.i
-  %src_i.i.i = and i64 %newret17, -2
+  %src_i.i.i = and i64 %newret14, -4
   %src.i.i = inttoptr i64 %src_i.i.i to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i, ptr nonnull align 2 %src.i.i, i64 %len.i23.i, i1 false)
+  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i, ptr nonnull align 4 %src.i.i, i64 %len.i23.i, i1 false)
   %dst_i.i.i = ptrtoint ptr %dst.i.i to i64
   %tagged.i.i = or disjoint i64 %dst_i.i.i, 1
-  %out.i.i = insertvalue %ArchxStr %oldret18, i64 %tagged.i.i, 1
-  br label %archx_str_clone.exit.i
-
-archx_str_clone.exit.i:                           ; preds = %copy.i.i, %vector.body96
-  %common.ret.op.i25.i = phi %ArchxStr [ %oldret18, %vector.body96 ], [ %out.i.i, %copy.i.i ]
-  %t39.i3 = and i64 %newret15, 4294967288
-  %t40.not.i = icmp eq i64 %t39.i3, 0
-  br i1 %t40.not.i, label %archx_str_drop.exit19.i, label %if.then.11.i
-
-if.then.11.i:                                     ; preds = %archx_str_clone.exit.i
-  %t43.i = call fastcc { i64, i64 } @archx_str_concat(%ArchxStr %common.ret.op.i25.i, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region.i)
-  %newret = extractvalue { i64, i64 } %t43.i, 0
-  %oldret = insertvalue %ArchxStr poison, i64 %newret, 0
-  %newret13 = extractvalue { i64, i64 } %t43.i, 1
-  %oldret14 = insertvalue %ArchxStr %oldret, i64 %newret13, 1
-  %len.i31.i = and i64 %newret, 4294967295
-  %long.i32.i = icmp samesign ugt i64 %len.i31.i, 12
-  br i1 %long.i32.i, label %chk_tag.i34.i, label %archx_str_promote.exit.i
-
-chk_tag.i34.i:                                    ; preds = %if.then.11.i
-  %tag.i36.i = and i64 %newret13, 1
-  %owned.not.i37.i = icmp eq i64 %tag.i36.i, 0
-  br i1 %owned.not.i37.i, label %chk_reg.i.i, label %dup_heap.i38.i
-
-dup_heap.i38.i:                                   ; preds = %chk_tag.i34.i
-  %dst.i39.i = tail call noalias align 16 ptr @malloc(i64 %len.i31.i)
-  %isnull.i40.i = icmp eq ptr %dst.i39.i, null
-  br i1 %isnull.i40.i, label %oom.i47.i, label %archx_str_clone.exit48.i
-
-oom.i47.i:                                        ; preds = %dup_heap.i38.i
-  tail call fastcc void @archx_oom_fail()
-  unreachable
-
-archx_str_clone.exit48.i:                         ; preds = %dup_heap.i38.i
-  %src_i.i42.i = and i64 %newret13, -2
-  %src.i43.i = inttoptr i64 %src_i.i42.i to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i39.i, ptr nonnull align 2 %src.i43.i, i64 %len.i31.i, i1 false)
-  %dst_i.i44.i = ptrtoint ptr %dst.i39.i to i64
-  %tagged.i45.i = or disjoint i64 %dst_i.i44.i, 1
-  %out.i46.i = insertvalue %ArchxStr %oldret14, i64 %tagged.i45.i, 1
-  br label %chk_reg.i.i
-
-chk_reg.i.i:                                      ; preds = %archx_str_clone.exit48.i, %chk_tag.i34.i
-  %w1.i53.i.pre-phi = phi i64 [ %tagged.i45.i, %archx_str_clone.exit48.i ], [ %newret13, %chk_tag.i34.i ]
-  %common.ret.op.i3386.i = phi %ArchxStr [ %out.i46.i, %archx_str_clone.exit48.i ], [ %oldret14, %chk_tag.i34.i ]
-  %tag.i54.i = and i64 %w1.i53.i.pre-phi, 3
-  %is_reg.i.i = icmp eq i64 %tag.i54.i, 2
-  br i1 %is_reg.i.i, label %dup_heap.i55.i, label %archx_str_promote.exit.i
-
-dup_heap.i55.i:                                   ; preds = %chk_reg.i.i
-  %dst.i56.i = tail call noalias align 16 ptr @malloc(i64 %len.i31.i)
-  %isnull.i57.i = icmp eq ptr %dst.i56.i, null
-  br i1 %isnull.i57.i, label %oom.i64.i, label %copy.i58.i
-
-oom.i64.i:                                        ; preds = %dup_heap.i55.i
-  tail call fastcc void @archx_oom_fail()
-  unreachable
-
-copy.i58.i:                                       ; preds = %dup_heap.i55.i
-  %src_i.i59.i = and i64 %w1.i53.i.pre-phi, -4
-  %src.i60.i = inttoptr i64 %src_i.i59.i to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i56.i, ptr nonnull align 4 %src.i60.i, i64 %len.i31.i, i1 false)
-  %dst_i.i61.i = ptrtoint ptr %dst.i56.i to i64
-  %tagged.i62.i = or disjoint i64 %dst_i.i61.i, 1
-  %out.i63.i = insertvalue %ArchxStr %common.ret.op.i3386.i, i64 %tagged.i62.i, 1
+  %out.i.i = insertvalue %ArchxStr %oldret15, i64 %tagged.i.i, 1
   br label %archx_str_promote.exit.i
 
-archx_str_promote.exit.i:                         ; preds = %copy.i58.i, %chk_reg.i.i, %if.then.11.i
-  %common.ret.op.i52.i = phi %ArchxStr [ %out.i63.i, %copy.i58.i ], [ %common.ret.op.i3386.i, %chk_reg.i.i ], [ %oldret14, %if.then.11.i ]
-  br i1 %long.i24.i, label %archx_str_drop.exit.i, label %chk_tag.i.i
-
-chk_tag.i.i:                                      ; preds = %archx_str_promote.exit.i
-  %w1.i.i = extractvalue %ArchxStr %common.ret.op.i25.i, 1
-  %tag.i.i = and i64 %w1.i.i, 1
+archx_str_promote.exit.i:                         ; preds = %copy.i.i, %if.then.11.i
+  %common.ret.op.i25.i = phi %ArchxStr [ %out.i.i, %copy.i.i ], [ %oldret15, %if.then.11.i ]
+  %len.i.i = and i64 %newret16, 4294967295
+  %long.i.i = icmp samesign ult i64 %len.i.i, 13
+  %tag.i.i = and i64 %newret18, 1
   %owned.not.i.i = icmp eq i64 %tag.i.i, 0
-  br i1 %owned.not.i.i, label %archx_str_drop.exit.i, label %do_free.i.i
+  %or.cond115 = select i1 %long.i.i, i1 true, i1 %owned.not.i.i
+  br i1 %or.cond115, label %archx_str_drop.exit.i, label %do_free.i.i
 
-do_free.i.i:                                      ; preds = %chk_tag.i.i
-  %raw.i.i = and i64 %w1.i.i, -2
+do_free.i.i:                                      ; preds = %archx_str_promote.exit.i
+  %raw.i.i = and i64 %newret18, -2
   %ptr.i.i = inttoptr i64 %raw.i.i to ptr
   tail call void @free(ptr %ptr.i.i)
   br label %archx_str_drop.exit.i
 
-archx_str_drop.exit.i:                            ; preds = %do_free.i.i, %chk_tag.i.i, %archx_str_promote.exit.i
-  %t48.i = load ptr, ptr %.fca.2.gep.i, align 8
-  %empty.i65.i = icmp eq ptr %t48.i, null
-  br i1 %empty.i65.i, label %archx_fn_format_report.exit, label %loop.i66.i
+archx_str_drop.exit.i:                            ; preds = %do_free.i.i, %archx_str_promote.exit.i
+  %t45.i = load ptr, ptr %.fca.2.gep.i, align 8
+  %empty.i28.i = icmp eq ptr %t45.i, null
+  br i1 %empty.i28.i, label %archx_fn_format_report.exit, label %loop.i29.i
 
-loop.i66.i:                                       ; preds = %archx_str_drop.exit.i, %loop.i66.i
-  %cur.i67.i = phi ptr [ %next.i68.i, %loop.i66.i ], [ %t48.i, %archx_str_drop.exit.i ]
-  %next.i68.i = load ptr, ptr %cur.i67.i, align 8
-  tail call void @free(ptr nonnull %cur.i67.i)
-  %more.not.i69.i = icmp eq ptr %next.i68.i, null
-  br i1 %more.not.i69.i, label %archx_fn_format_report.exit, label %loop.i66.i
+loop.i29.i:                                       ; preds = %archx_str_drop.exit.i, %loop.i29.i
+  %cur.i30.i = phi ptr [ %next.i31.i, %loop.i29.i ], [ %t45.i, %archx_str_drop.exit.i ]
+  %next.i31.i = load ptr, ptr %cur.i30.i, align 8
+  tail call void @free(ptr nonnull %cur.i30.i)
+  %more.not.i32.i = icmp eq ptr %next.i31.i, null
+  br i1 %more.not.i32.i, label %archx_fn_format_report.exit, label %loop.i29.i
 
-archx_str_drop.exit19.i:                          ; preds = %archx_str_clone.exit.i
-  %t53.i4 = load ptr, ptr %.fca.2.gep.i, align 8
-  %empty.i71.i = icmp eq ptr %t53.i4, null
-  br i1 %empty.i71.i, label %archx_fn_format_report.exit, label %loop.i72.i
+archx_str_drop.exit19.i:                          ; preds = %vector.body97
+  %t50.i5 = load ptr, ptr %.fca.2.gep.i, align 8
+  %empty.i34.i = icmp eq ptr %t50.i5, null
+  br i1 %empty.i34.i, label %archx_fn_format_report.exit, label %loop.i35.i
 
-loop.i72.i:                                       ; preds = %archx_str_drop.exit19.i, %loop.i72.i
-  %cur.i73.i = phi ptr [ %next.i74.i, %loop.i72.i ], [ %t53.i4, %archx_str_drop.exit19.i ]
-  %next.i74.i = load ptr, ptr %cur.i73.i, align 8
-  tail call void @free(ptr nonnull %cur.i73.i)
-  %more.not.i75.i = icmp eq ptr %next.i74.i, null
-  br i1 %more.not.i75.i, label %archx_fn_format_report.exit, label %loop.i72.i
+loop.i35.i:                                       ; preds = %archx_str_drop.exit19.i, %loop.i35.i
+  %cur.i36.i = phi ptr [ %next.i37.i, %loop.i35.i ], [ %t50.i5, %archx_str_drop.exit19.i ]
+  %next.i37.i = load ptr, ptr %cur.i36.i, align 8
+  tail call void @free(ptr nonnull %cur.i36.i)
+  %more.not.i38.i = icmp eq ptr %next.i37.i, null
+  br i1 %more.not.i38.i, label %archx_fn_format_report.exit, label %loop.i35.i
 
-archx_fn_format_report.exit:                      ; preds = %loop.i66.i, %loop.i72.i, %archx_str_drop.exit.i, %archx_str_drop.exit19.i
-  %common.ret.op.i = phi %ArchxStr [ %common.ret.op.i52.i, %archx_str_drop.exit.i ], [ { i64 7310026593965965323, i64 28548142444602209 }, %archx_str_drop.exit19.i ], [ { i64 7310026593965965323, i64 28548142444602209 }, %loop.i72.i ], [ %common.ret.op.i52.i, %loop.i66.i ]
+archx_fn_format_report.exit:                      ; preds = %loop.i29.i, %loop.i35.i, %archx_str_drop.exit.i, %archx_str_drop.exit19.i
+  %common.ret.op.i = phi %ArchxStr [ %common.ret.op.i25.i, %archx_str_drop.exit.i ], [ { i64 7310026593965965323, i64 28548142444602209 }, %archx_str_drop.exit19.i ], [ { i64 7310026593965965323, i64 28548142444602209 }, %loop.i35.i ], [ %common.ret.op.i25.i, %loop.i29.i ]
   call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %func.region.i)
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i)
-  %w0.i5 = extractvalue %ArchxStr %common.ret.op.i, 0
-  %w1.i6 = extractvalue %ArchxStr %common.ret.op.i, 1
-  %len.i7 = and i64 %w0.i5, 4294967295
-  %short.i = icmp samesign ult i64 %len.i7, 13
+  %w0.i6 = extractvalue %ArchxStr %common.ret.op.i, 0
+  %w1.i7 = extractvalue %ArchxStr %common.ret.op.i, 1
+  %len.i8 = and i64 %w0.i6, 4294967295
+  %short.i = icmp samesign ult i64 %len.i8, 13
   br i1 %short.i, label %emit.i, label %emit.thread.i
 
 emit.thread.i:                                    ; preds = %archx_fn_format_report.exit
-  %raw.i8 = and i64 %w1.i6, -4
-  %lptr.i = inttoptr i64 %raw.i8 to ptr
+  %raw.i9 = and i64 %w1.i7, -4
+  %lptr.i = inttoptr i64 %raw.i9 to ptr
   br label %chk_nul.i
 
 emit.i:                                           ; preds = %archx_fn_format_report.exit
-  %p4.i = lshr i64 %w0.i5, 32
+  %p4.i = lshr i64 %w0.i6, 32
   %p4_32.i = trunc nuw i64 %p4.i to i32
   store i32 %p4_32.i, ptr %tmp.i, align 4
   %tmp4.i = getelementptr inbounds nuw i8, ptr %tmp.i, i64 4
-  store i64 %w1.i6, ptr %tmp4.i, align 4
-  %pos.not.i = icmp eq i64 %len.i7, 0
+  store i64 %w1.i7, ptr %tmp4.i, align 4
+  %pos.not.i = icmp eq i64 %len.i8, 0
   br i1 %pos.not.i, label %do_nl.i, label %chk_nul.i
 
 chk_nul.i:                                        ; preds = %emit.i, %emit.thread.i
   %data3.i = phi ptr [ %lptr.i, %emit.thread.i ], [ %tmp.i, %emit.i ]
-  %nul.i = call ptr @memchr(ptr nonnull %data3.i, i32 0, i64 %len.i7)
+  %nul.i = call ptr @memchr(ptr nonnull %data3.i, i32 0, i64 %len.i8)
   %has_nul.not.i = icmp eq ptr %nul.i, null
   br i1 %has_nul.not.i, label %fast_printf.i, label %byte_loop.i
 
 fast_printf.i:                                    ; preds = %chk_nul.i
-  %len32.i = trunc i64 %w0.i5 to i32
+  %len32.i = trunc i64 %w0.i6 to i32
   %np.i = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i, ptr nonnull %data3.i)
   br label %archx_str_print.exit
 
@@ -682,8 +627,8 @@ byte_loop.i:                                      ; preds = %chk_nul.i, %byte_lo
   %ch32.i = zext i8 %ch8.i to i32
   %pc.i = tail call i32 @putchar(i32 %ch32.i)
   %bnext.i = add nuw nsw i64 %bi.i, 1
-  %exitcond.not.i9 = icmp eq i64 %bnext.i, %len.i7
-  br i1 %exitcond.not.i9, label %do_nl.i, label %byte_loop.i
+  %exitcond.not.i10 = icmp eq i64 %bnext.i, %len.i8
+  br i1 %exitcond.not.i10, label %do_nl.i, label %byte_loop.i
 
 do_nl.i:                                          ; preds = %byte_loop.i, %emit.i
   %nc.i = tail call i32 @putchar(i32 10)
@@ -691,13 +636,13 @@ do_nl.i:                                          ; preds = %byte_loop.i, %emit.
 
 archx_str_print.exit:                             ; preds = %fast_printf.i, %do_nl.i
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i)
-  %tag.i = and i64 %w1.i6, 1
+  %tag.i = and i64 %w1.i7, 1
   %owned.not.i = icmp eq i64 %tag.i, 0
   %or.cond = select i1 %short.i, i1 true, i1 %owned.not.i
   br i1 %or.cond, label %archx_str_drop.exit, label %do_free.i
 
 do_free.i:                                        ; preds = %archx_str_print.exit
-  %raw.i = and i64 %w1.i6, -2
+  %raw.i = and i64 %w1.i7, -2
   %ptr.i = inttoptr i64 %raw.i to ptr
   call void @free(ptr %ptr.i)
   br label %archx_str_drop.exit
