@@ -1,0 +1,30 @@
+{
+  "_comment": "Indexed external technical research, benchmarks, and compiler design references used in Archx.",
+  "entries": {
+    "german_umbra_strings": {
+      "summary": "16-byte string representation storing u32 length + 4-byte prefix in word 0 and either 8 inline bytes (<= 12 B total) or a pointer in word 1. Enables register-only short strings and O(1) prefix-rejected equality without pointer dereferences.",
+      "applied_in": ["src/codegen/expr.rs", "src/codegen/runtime.rs"],
+      "url": "https://cedardb.com/blog/german_strings/"
+    },
+    "arena_bump_allocators": {
+      "summary": "Bump-pointer arena allocation inside contiguous 64 KB slabs reduces temporary batch allocation to 2 pointer instructions and O(1) watermark reset, outperforming per-object malloc/free by 8-10x on allocation-heavy loops.",
+      "applied_in": ["src/codegen/stmt.rs", "src/codegen/runtime.rs"],
+      "url": "https://andreleite.com/posts/2025/nstl/virtual-memory-arena-allocator/"
+    },
+    "aos_vs_soa_vectorization": {
+      "summary": "Splitting Array-of-Structs (AoS) into Structure-of-Arrays (SoA) contiguous 16B-aligned planes avoids loading untouched fields into L1 cache lines and eliminates SIMD gather/shufflevector blend instructions in LLVM LoopVectorize.",
+      "applied_in": ["src/codegen/stmt.rs", "src/codegen/loops.rs", "src/codegen/analysis.rs"],
+      "url": "https://llvm.org/docs/Vectorizers.html"
+    },
+    "llvm_o2_pipeline_and_overflow_intrinsics": {
+      "summary": "-O2 provides the release sweet spot (IPSCCP, Inliner, SROA, InstCombine, IndVarSimplify, LoopVectorize) without -O3 icache bloat; @llvm.sadd/ssub/smul.with.overflow.i64 provides deterministic overflow checking without signed-overflow UB.",
+      "applied_in": ["src/codegen/expr.rs", "src/codegen/memory.rs", "src/main.rs"],
+      "url": "https://llvm.org/docs/LangRef.html#arithmetic-with-overflow-intrinsics"
+    },
+    "windows_msvc_ucrt_printf": {
+      "summary": "On x86_64-pc-windows-msvc, UCRT moves classic printf/sprintf wrappers into legacy_stdio_definitions.lib; linking raw LLVM IR calling @printf via clang on MSVC Windows requires -llegacy_stdio_definitions.",
+      "applied_in": ["src/main.rs", "docs/Workaround.md"],
+      "url": "https://learn.microsoft.com/en-us/cpp/porting/visual-cpp-change-history-2003-2015#stdio_and_conio"
+    }
+  }
+}

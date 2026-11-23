@@ -1,3 +1,5 @@
+//! Bounded-depth recursive-descent parser turning token streams into the Archx AST.
+
 use crate::ast::*;
 use crate::diag::{Diagnostic, Result, Span};
 use crate::token::{Token, TokenKind};
@@ -157,7 +159,7 @@ impl Parser {
                 self.bump();
                 Ok(Type::Bool)
             }
-            TokenKind::Ident(name) if name == "string" => {
+            TokenKind::Ident(name) if name == "string" || name == "str" => {
                 self.bump();
                 Ok(Type::Str)
             }

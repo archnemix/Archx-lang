@@ -1,3 +1,5 @@
+//! Abstract syntax tree (AST) definitions for Archx types, declarations, statements, and expressions.
+
 use crate::diag::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

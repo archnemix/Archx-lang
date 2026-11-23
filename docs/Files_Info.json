@@ -1,0 +1,106 @@
+{
+  "_comment": "Fast-lookup index of every key file in the Archx repository: inputs, outputs, and single responsibility.",
+  "version": "0.5.0",
+  "files": {
+    "Cargo.toml": {
+      "purpose": "Rust crate manifest for the zero-dependency archx compiler.",
+      "inputs": [],
+      "outputs": ["target/release/archx"]
+    },
+    "src/main.rs": {
+      "purpose": "CLI driver: flag parsing, extension/clobber checks, temp .ll handling, cross-platform clang invocation, and --run execution.",
+      "inputs": ["CLI args", ".archx.lang source file"],
+      "outputs": ["Native executable", "--emit-ir LLVM IR stdout", "Process exit code"]
+    },
+    "src/diag.rs": {
+      "purpose": "1-based source Span and Diagnostic error type.",
+      "inputs": ["line: usize, col: usize, message: String"],
+      "outputs": ["Span", "Diagnostic", "Result<T>"]
+    },
+    "src/token.rs": {
+      "purpose": "Lexical token enum and human-readable token descriptions.",
+      "inputs": ["TokenKind, Span"],
+      "outputs": ["Token", "TokenKind::describe()"]
+    },
+    "src/lexer.rs": {
+      "purpose": "4-space indentation-aware UTF-8 lexer with string escape decoding.",
+      "inputs": ["source: &str"],
+      "outputs": ["Result<Vec<Token>>"]
+    },
+    "src/ast.rs": {
+      "purpose": "AST definitions for Program, StructDef, Func, Stmt, Expr, AssignTarget, and Type.",
+      "inputs": ["Parsed nodes and Spans"],
+      "outputs": ["ast::Program"]
+    },
+    "src/parser.rs": {
+      "purpose": "Bounded-depth recursive-descent + iterative-unary parser producing ast::Program.",
+      "inputs": ["Vec<Token>"],
+      "outputs": ["Result<Program>"]
+    },
+    "src/codegen/mod.rs": {
+      "purpose": "LLVM IR module orchestrator, struct cycle/topological layout, Codegen state, function frames, and IR formatting helpers.",
+      "inputs": ["&ast::Program"],
+      "outputs": ["Result<String> (textual LLVM IR)"]
+    },
+    "src/codegen/analysis.rs": {
+      "purpose": "Pure AST static analyses: SoA escape detection, monotonic while stride verification, mutation/return sets, and constant int folding.",
+      "inputs": ["&[Stmt]", "&Expr"],
+      "outputs": ["bool", "HashSet<String>", "Option<i64>"]
+    },
+    "src/codegen/stmt.rs": {
+      "purpose": "Statement, region: block, transparent AoS-to-SoA allocation, and assignment lowering.",
+      "inputs": ["&Stmt", "rest_in_block: &[Stmt]"],
+      "outputs": ["Appended LLVM IR instructions"]
+    },
+    "src/codegen/loops.rs": {
+      "purpose": "while, for i in a..b, for i in a..b step k, and for x in arr lowering with preheader range guards.",
+      "inputs": ["Loop AST nodes"],
+      "outputs": ["Appended LLVM IR basic blocks"]
+    },
+    "src/codegen/expr.rs": {
+      "purpose": "Expression lowering: literals, variables, indexing, struct fields, checked i64 ops, short-circuit booleans, and 16B prefix-SSO strings.",
+      "inputs": ["&Expr", "Option<&Type>"],
+      "outputs": ["Result<(Type, String)>"]
+    },
+    "src/codegen/calls.rs": {
+      "purpose": "User fastcc calls, positional struct constructors, and builtins (print, len, push, pop).",
+      "inputs": ["name: &str", "args: &[Expr]"],
+      "outputs": ["Result<(Type, String)>"]
+    },
+    "src/codegen/ownership.rs": {
+      "purpose": "Deterministic RAII ownership: statement temporaries, recursive drops, deep clones, and region return heap promotion.",
+      "inputs": ["&Type", "SSA value / Scope"],
+      "outputs": ["Appended RAII LLVM IR calls/instructions"]
+    },
+    "src/codegen/memory.rs": {
+      "purpose": "Checked malloc/calloc/realloc (align 16, 2^47 cap), element store/load/fill loops, and bounds-check elision proofs.",
+      "inputs": ["&Type", "count/index SSA values"],
+      "outputs": ["Checked pointer / bounds-check IR"]
+    },
+    "src/codegen/runtime.rs": {
+      "purpose": "On-demand LLVM IR runtime helpers (@archx_region_*, @archx_str_*, panic handlers) and libc/LLVM intrinsic declarations.",
+      "inputs": ["Codegen used_* flags"],
+      "outputs": ["Private LLVM IR helper functions and declares"]
+    },
+    "src/codegen/tests.rs": {
+      "purpose": "Unit tests for LLVM IR codegen, bounds elision, SoA structs, SSO strings, and region escape checking.",
+      "inputs": ["Archx source snippets"],
+      "outputs": ["cargo test --lib pass/fail"]
+    },
+    "tests/cli.rs": {
+      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests.",
+      "inputs": ["CARGO_BIN_EXE_archx", "Temp .archx.lang programs"],
+      "outputs": ["cargo test --test cli pass/fail"]
+    },
+    "benchmarks/run.sh": {
+      "purpose": "Builds, verifies stdout via cmp, and times C vs Rust vs Archx across primes, arrays, and composite suites.",
+      "inputs": ["benchmarks/*.{c,rs,archx.lang}"],
+      "outputs": ["ci/out/benchmarks.txt"]
+    },
+    ".github/workflows/ci.yml": {
+      "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), ASan+LSan verification, benchmarks, and repo-committed logs/test-history.",
+      "inputs": ["Git push or workflow_dispatch"],
+      "outputs": ["ci/logs/*", "ci/out/*", "ci/test-history/v<VERSION>/*"]
+    }
+  }
+}

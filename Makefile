@@ -1,3 +1,5 @@
+# Convenience developer targets for building, testing, running, and inspecting Archx LLVM IR.
+
 .PHONY: build test run ir clean
 
 build:

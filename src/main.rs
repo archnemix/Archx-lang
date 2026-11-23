@@ -1,3 +1,5 @@
+//! CLI entry point and compiler driver: parses flags, runs frontend + LLVM IR codegen, and invokes `clang`.
+
 mod ast;
 mod codegen;
 mod diag;
@@ -127,13 +129,18 @@ fn run(args: &[String]) -> Result<i32, String> {
 
     let ir_path = write_exclusive_temp_ir(&ir)?;
 
-    let clang_res = Command::new(&clang)
+    let mut clang_cmd = Command::new(&clang);
+    clang_cmd
         .arg(&ir_path)
         .arg("-O2")
         .arg("-Wno-override-module")
         .arg("-o")
-        .arg(&output)
-        .status();
+        .arg(&output);
+    if cfg!(windows) && clang_uses_msvc_target(&clang) {
+        clang_cmd.arg("-llegacy_stdio_definitions");
+    }
+
+    let clang_res = clang_cmd.status();
 
     let _ = fs::remove_file(&ir_path);
 
@@ -145,9 +152,14 @@ fn run(args: &[String]) -> Result<i32, String> {
     }
 
     if options.run {
-        let status = Command::new(&output)
+        let run_path = if output.parent().map_or(true, |p| p.as_os_str().is_empty()) {
+            PathBuf::from(".").join(&output)
+        } else {
+            output.clone()
+        };
+        let status = Command::new(&run_path)
             .status()
-            .map_err(|error| format!("failed to run `{}`: {error}", output.display()))?;
+            .map_err(|error| format!("failed to run `{}`: {error}", run_path.display()))?;
         return Ok(status.code().unwrap_or(0));
     }
 
@@ -259,7 +271,22 @@ fn find_clang() -> Option<PathBuf> {
         }
     }
 
+    if cfg!(windows) {
+        let win_llvm = PathBuf::from(r"C:\Program Files\LLVM\bin\clang.exe");
+        if win_llvm.is_file() {
+            return Some(win_llvm);
+        }
+    }
+
     None
+}
+
+fn clang_uses_msvc_target(clang: &Path) -> bool {
+    Command::new(clang)
+        .arg("--version")
+        .output()
+        .map(|out| String::from_utf8_lossy(&out.stdout).contains("windows-msvc"))
+        .unwrap_or(false)
 }
 
 fn render_error(source: &str, diagnostic: &diag::Diagnostic) -> String {

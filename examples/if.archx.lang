@@ -1,3 +1,5 @@
+# Conditionals (`if`/`else`), booleans, and short-circuit logical operators (`and`, `or`, `not`).
+
 func sign(n: int) -> int:
     if n > 0:
         return 1

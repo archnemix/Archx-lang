@@ -1,3 +1,5 @@
+//! Lexical token definitions and human-readable token descriptions for parser diagnostics.
+
 use crate::diag::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,3 +1,5 @@
+//! Source span tracking and compiler diagnostic error types.
+
 use std::fmt;
 
 /// A position in the source text (1-based line and column).

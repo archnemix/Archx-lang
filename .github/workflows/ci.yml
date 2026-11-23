@@ -1,3 +1,6 @@
+# GitHub Actions CI pipeline: runs unit & integration tests across Linux, macOS, and Windows (3 runners <= 5 cap),
+# verifies ASan+LSan zero-leak safety, runs 3-suite C/Rust/Archx benchmarks, and commits logs + versioned test history into `ci/`.
+
 name: CI
 
 on:
@@ -21,8 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -41,20 +42,19 @@ jobs:
             cargo --version
             echo "clang path: $(command -v clang || echo missing)"
             clang --version || true
-            ls -l target/release/archx || true
           } | tee ci/logs/toolchain.log
 
-      - name: Test
+      - name: Unit & integration tests (Linux)
         run: |
           set -o pipefail
-          cargo test 2>&1 | tee ci/logs/test.log
+          cargo test -- --nocapture 2>&1 | tee ci/logs/test.log
 
       - name: Build release
         run: |
           set -o pipefail
           cargo build --release 2>&1 | tee ci/logs/build.log
 
-      - name: Run examples
+      - name: Run examples & emit optimized IR
         run: |
           mkdir -p ci/out ci/logs
           set +e
@@ -123,15 +123,103 @@ jobs:
           clang -O2 -S -emit-llvm benchmarks/composite.c -o ci/out/bench_composite_c.opt.ll
           bash benchmarks/run.sh 7 2>&1 | tee ci/logs/benchmarks.log
 
-      - name: Save CI output to the repo
+      - name: Stage Linux CI outputs
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-linux
+          path: |
+            ci/logs/**
+            ci/out/**
+
+  cross-platform-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macos
+          - os: windows-latest
+            label: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Ensure clang is on PATH (Windows)
+        if: matrix.label == 'windows'
+        shell: bash
         run: |
+          if [ -d "/c/Program Files/LLVM/bin" ]; then
+            echo "C:\\Program Files\\LLVM\\bin" >> "$GITHUB_PATH"
+          elif ! command -v clang >/dev/null 2>&1; then
+            choco install llvm -y
+            echo "C:\\Program Files\\LLVM\\bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Run unit & CLI integration tests (${{ matrix.label }})
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p ci-xplat
+          {
+            echo "OS: ${{ matrix.os }}"
+            rustc --version
+            cargo --version
+            clang --version || true
+            echo "--- cargo test ---"
+            cargo test
+          } 2>&1 | tee "ci-xplat/${{ matrix.label }}-test.log"
+
+      - name: Stage ${{ matrix.label }} test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-${{ matrix.label }}
+          path: ci-xplat/${{ matrix.label }}-test.log
+
+  save-ci-records:
+    needs: [build-and-test, cross-platform-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect Linux, macOS, and Windows outputs
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/ci-collected
+
+      - name: Save logs, outputs, and versioned test history (retaining latest 3 versions)
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          VDIR="ci/test-history/v${VERSION}"
+          mkdir -p ci/logs ci/out "$VDIR"
+
+          if [ -d /tmp/ci-collected/ci-linux ]; then
+            cp -r /tmp/ci-collected/ci-linux/ci/logs/* ci/logs/ 2>/dev/null || true
+            cp -r /tmp/ci-collected/ci-linux/ci/out/* ci/out/ 2>/dev/null || true
+            cp ci/logs/test.log "$VDIR/linux-test.log" 2>/dev/null || true
+          fi
+          if [ -f /tmp/ci-collected/ci-macos/macos-test.log ]; then
+            cp /tmp/ci-collected/ci-macos/macos-test.log "$VDIR/macos-test.log"
+          fi
+          if [ -f /tmp/ci-collected/ci-windows/windows-test.log ]; then
+            cp /tmp/ci-collected/ci-windows/windows-test.log "$VDIR/windows-test.log"
+          fi
+
+          # Retain at most the latest 3 version directories (previous 2 + current):
+          ls -1dt ci/test-history/v* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+
           git config user.name "archx-ci"
           git config user.email "ci@archx.local"
-          git add ci/logs ci/out
+          git add ci/logs ci/out ci/test-history
           if git diff --cached --quiet; then
             echo "No new CI output to commit."
           else
-            git commit -m "ci: update logs and outputs for ${GITHUB_SHA::7}"
+            git commit -m "ci: update Linux/macOS/Windows logs and test history for ${GITHUB_SHA::7}"
             git push origin HEAD:"$GITHUB_REF_NAME" || echo "push failed (branch may have moved)"
           fi

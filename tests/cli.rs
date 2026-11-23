@@ -1,5 +1,8 @@
+//! End-to-end CLI integration tests exercising compilation, execution, runtime panics, and CLI flags
+//! across Linux, macOS, and Windows.
+
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn archx() -> PathBuf {
@@ -7,15 +10,30 @@ fn archx() -> PathBuf {
 }
 
 fn has_clang() -> bool {
-    Command::new("clang")
+    if Command::new("clang")
         .arg("--version")
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
+    {
+        return true;
+    }
+    if cfg!(windows) {
+        return Path::new(r"C:\Program Files\LLVM\bin\clang.exe").is_file();
+    }
+    false
+}
+
+fn exe_path(dir: &Path, stem: &str) -> PathBuf {
+    let mut p = dir.join(stem);
+    if cfg!(windows) {
+        p.set_extension("exe");
+    }
+    p
 }
 
 /// Compiles `source` with the freshly built archx binary and returns the
-/// program's stdout. Panics with the compiler's stderr if compilation fails.
+/// program's stdout (with Windows CRLF normalized to LF). Panics if compilation fails.
 fn build_and_run(tag: &str, source: &str) -> String {
     let dir = std::env::temp_dir().join(format!("archx-{tag}-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
@@ -23,7 +41,7 @@ fn build_and_run(tag: &str, source: &str) -> String {
     let src = dir.join(format!("{tag}.archx.lang"));
     fs::write(&src, source).unwrap();
 
-    let exe = dir.join(tag);
+    let exe = exe_path(&dir, tag);
     let build = Command::new(archx())
         .arg(&src)
         .arg("-o")
@@ -43,7 +61,7 @@ fn build_and_run(tag: &str, source: &str) -> String {
         "program failed: {}",
         String::from_utf8_lossy(&run.stderr)
     );
-    String::from_utf8_lossy(&run.stdout).to_string()
+    String::from_utf8_lossy(&run.stdout).replace("\r\n", "\n")
 }
 
 #[test]
@@ -281,7 +299,7 @@ fn out_of_bounds_panics_cleanly() {
     )
     .unwrap();
 
-    let exe = dir.join("oob");
+    let exe = exe_path(&dir, "oob");
     let build = Command::new(archx())
         .arg(&src)
         .arg("-o")
@@ -306,7 +324,7 @@ fn out_of_bounds_panics_cleanly() {
         "func step(dst: [int], a: [int], b: [int]):\n    for i in 0..len(dst):\n        dst[i] = a[i] + b[i]\n\nfunc main():\n    let dst = [0; 4]\n    let a = [1; 4]\n    let b = [2; 2]\n    step(dst, a, b)\n",
     )
     .unwrap();
-    let exe2 = dir.join("oob_for");
+    let exe2 = exe_path(&dir, "oob_for");
     assert!(
         Command::new(archx())
             .arg(&src2)
@@ -332,7 +350,7 @@ fn out_of_bounds_panics_cleanly() {
         "func bad_sieve(limit: int):\n    let flags = [true; limit]\n    let j = -2\n    while j < limit:\n        flags[j] = false\n        j += 3\n\nfunc main():\n    bad_sieve(10)\n",
     )
     .unwrap();
-    let exe3 = dir.join("oob_while");
+    let exe3 = exe_path(&dir, "oob_while");
     assert!(
         Command::new(archx())
             .arg(&src3)
@@ -461,7 +479,7 @@ func main():
         "func divide(a: int, b: int) -> int:\n    return a / b\n\nfunc main():\n    print(divide(10, 0))\n",
     )
     .unwrap();
-    let exe = dir.join("divz");
+    let exe = exe_path(&dir, "divz");
     assert!(
         Command::new(archx())
             .arg(&src)
@@ -625,5 +643,39 @@ func main():
     // 1 + 4 + 7 + 10 + 13 + 16 + 19 = 70
     // iter=499 -> mat[1][1] = 502
     assert_eq!(out, "70\n27\n502\nok:region-promoted-result\n");
+}
+
+#[test]
+fn run_flag_default_output_and_str_alias_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-runflag-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let src = dir.join("echo_str.ax.lg");
+    fs::write(
+        &src,
+        "func tag(s: str) -> str:\n    return \"[\" + s + \"]\"\n\nfunc main():\n    print(tag(\"ok\"))\n",
+    )
+    .unwrap();
+
+    let out = Command::new(archx())
+        .current_dir(&dir)
+        .arg(&src)
+        .arg("--run")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
+        "[ok]\n"
+    );
 }
 

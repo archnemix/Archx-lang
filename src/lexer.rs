@@ -1,13 +1,14 @@
+//! Indentation-aware lexical scanner converting `.archx.lang` UTF-8 source into tokens with spans.
+
 use crate::diag::{Diagnostic, Result, Span};
 use crate::token::{Token, TokenKind};
 
 /// An indentation-aware lexer, in the style of Python.
 ///
 /// Layout rules:
-/// - Blocks are opened by indenting and closed by dedenting.
+/// - Blocks are opened by indenting and closed by dedenting (4 spaces per level; tabs before code error).
 /// - Blank lines and comment-only lines do not affect indentation.
-/// - A tab counts as advancing to the next multiple of 4 columns.
-/// - Newlines inside parentheses are ignored, so calls can span lines.
+/// - Newlines inside `(...)` or `[...]` are ignored so expressions can span lines.
 pub struct Lexer<'a> {
     src: &'a [u8],
     pos: usize,

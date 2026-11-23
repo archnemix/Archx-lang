@@ -6,7 +6,9 @@ Archx compiles to **LLVM IR**, so it uses the same optimizer and backends as C, 
 
 > Status: milestone 5 — value `struct`s with **transparent AoS-to-SoA planarization** for `[Struct]` arrays, scoped `region:` bump arenas with compile-time escape checking + `return` heap promotion, 16-byte German/Umbra **prefix-SSO `string`s** (`str` / `string`, `+`, `==`, `!=`, `len`, embedded-NUL safe), `for x in arr:` foreach iteration, strided `for i in a..b step k:` loops, hybrid RAII zero-leak ownership, checked integer arithmetic (`sadd`/`ssub`/`smul.with.overflow`, safe `/` & `%`), arrays (`[T]`, `[a, b]`, `[val; n]`, `push`, `pop`), `if`/`elif`/`else`, `while`, `break`/`continue`, functions, and `print`.
 >
-> Verified leak- and UB-free under **AddressSanitizer + LeakSanitizer** in CI, and benchmarked head-to-head against C and Rust across 3 suites — see [Benchmarks](#benchmarks).
+> Verified leak- and UB-free under **AddressSanitizer + LeakSanitizer** in CI, tested across **Linux, macOS, and Windows**, and benchmarked head-to-head against C and Rust across 3 suites — see [Benchmarks](#benchmarks).
+>
+> **New here?** Read [`docs/USAGE.md`](docs/USAGE.md) for the complete step-by-step guide to everything built so far and how to use it, and [`docs/Roadmap.md`](docs/Roadmap.md) for what comes next.
 
 ## Why LLVM?
 
@@ -47,7 +49,7 @@ struct Body:
 
 func step_world(n: int) -> int:
     # Local [Body] transparently planarizes into 4 contiguous 16B-aligned SoA planes
-    let bodies = [Body(x: 1, y: 2, vx: 3, vy: -1); n]
+    let bodies = [Body(1, 2, 3, -1); n]
     for i in 0..len(bodies):
         bodies[i].x += bodies[i].vx
         bodies[i].y += bodies[i].vy
@@ -83,7 +85,7 @@ Language summary:
   - `str` (or `string`) — 16-byte immutable UTF-8 **German/Umbra prefix-SSO** value (`<= 12` bytes stored inline in two 64-bit registers with zero heap work; `> 12` bytes store a 4-byte inline prefix + tagged static/heap/region pointer for O(1) prefix-rejected equality; supports `+`, `==`, `!=`, `len(s)`, and embedded NUL bytes).
 - Value `struct`s:
   - Declared with `struct Name:` and indented `field: Type` lines (supporting nested structs, `[T]`, and `str` fields; cyclic definitions are rejected cleanly).
-  - Constructed with `Name(field: expr, ...)`, accessed/mutated via `s.field` and `arr[i].field += expr`, compared with `==` / `!=`, and printed with `print(s)`.
+  - Constructed with positional `Name(arg1, arg2, ...)`, accessed/mutated via `s.field` and `arr[i].field += expr`, compared with `==` / `!=`, and printed with `print(s)`.
   - **Transparent AoS-to-SoA planarization**: local fixed-length `[Struct]` arrays of scalar structs automatically lower to separate 16-byte-aligned per-field planes so loops touching a subset of fields stream at 100% cache-line utilization and auto-vectorize without gather/scatter instructions.
 - Scoped `region:` arenas:
   - `region:` activates a 64 KB bump-allocated slab arena (O(1) pointer bump, nested watermark save/restore, and root-slab cursor rewind across loop iterations).
@@ -131,18 +133,18 @@ Latest GitHub Actions run (`ci/out/benchmarks.txt`, best of 7 on `clang 21.1.8` 
 
 | Suite | Implementation | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
 |---|---|---:|---:|---:|
-| **1. Scalar (`primes`)** | C (`clang -O2`) | **134 ms** (134 ms) | 16 KB | **14 KB** |
-| | Rust (`rustc -O`) | **134 ms** (134 ms) | 4,388 KB | **330 KB** |
-| | Archx (`archx -O2`) | **134 ms** (134 ms) | 16 KB | **14 KB** |
-| **2. Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **62 ms** (63 ms) | 16 KB | **14 KB** |
-| | C checked (slice struct `-O2`) | **58 ms** (60 ms) | 16 KB | **14 KB** |
-| | Rust (safe `Vec` `-O`) | **64 ms** (72 ms) | 4,389 KB | **331 KB** |
-| | Archx (safe `[T]` `-O2`) | **63 ms** (64 ms) | 16 KB | **14 KB** |
-| **3. Composite (`composite`)** | C (`AoS + malloc/strcmp -O2`) | **21 ms** (21 ms) | 16 KB | **14 KB** |
-| | Rust (`Vec<Body> + String -O`) | **23 ms** (23 ms) | 4,390 KB | **332 KB** |
-| | **Archx (`SoA + region + SSO -O2`)** | **18 ms** (18 ms) | 16 KB | **14 KB** |
+| **1. Scalar (`primes`)** | C (`clang -O2`) | **104 ms** (105 ms) | 16 KB | **14 KB** |
+| | Rust (`rustc -O`) | **104 ms** (104 ms) | 4,388 KB | **330 KB** |
+| | Archx (`archx -O2`) | **104 ms** (104 ms) | 16 KB | **14 KB** |
+| **2. Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **47 ms** (48 ms) | 16 KB | **14 KB** |
+| | C checked (slice struct `-O2`) | **46 ms** (50 ms) | 16 KB | **14 KB** |
+| | Rust (safe `Vec` `-O`) | **50 ms** (53 ms) | 4,389 KB | **331 KB** |
+| | Archx (safe `[T]` `-O2`) | **47 ms** (47 ms) | 16 KB | **14 KB** |
+| **3. Composite (`composite`)** | C (`AoS + malloc/strcmp -O2`) | **16 ms** (16 ms) | 16 KB | **14 KB** |
+| | Rust (`Vec<Body> + String -O`) | **18 ms** (18 ms) | 4,390 KB | **332 KB** |
+| | **Archx (`SoA + region + SSO -O2`)** | **14 ms** (15 ms) | 16 KB | **14 KB** |
 
-On Suite 3 (`composite`), **Archx beats both C (`18 ms` vs `21 ms`, 14% faster) and Rust (`18 ms` vs `23 ms`, 22% faster)** while remaining 100% bounds-, overflow-, and memory-safe in a **14 KB** stripped binary (**23.7× smaller** than stripped Rust and **274× smaller** unstripped):
+On Suite 3 (`composite`), **Archx beats both C (`14 ms` vs `16 ms`) and Rust (`14 ms` vs `18 ms`)** while remaining 100% bounds-, overflow-, and memory-safe in a **14 KB** stripped binary (**23.7× smaller** than stripped Rust and **274× smaller** unstripped):
 
 - **Transparent SoA vs C/Rust AoS**: C's `struct Body` strides by 48 bytes (wasting 33% of every cache line on untouched `z, vz` fields and emitting `shufflevector` blends), whereas Archx's 6 `align 16` planes stream `<2 x i64>` SIMD `add`/`sub` instructions at 100% cache-line utilization (`ci/out/bench_composite.opt.ll` vs `ci/out/bench_composite_c.opt.ll`).
 - **64 KB `region:` slab reuse vs per-round `malloc`/`free`**: Archx allocates its 64 KB region slab **once** on round 0 and rewinds the bump cursor in registers for all 39,999 remaining rounds, vs C's 240,000 `calloc`/`malloc`/`free` calls.

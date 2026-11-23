@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds and times two benchmark suites across C, Rust, and Archx:
+# Builds and times all three benchmark suites (primes, arrays, composite) across C, Rust, and Archx:
 #
 #   1. Scalar loops (benchmarks/primes.*): arithmetic reduction + trial-division primes
 #   2. Array loops & bounds checking (benchmarks/arrays*):
