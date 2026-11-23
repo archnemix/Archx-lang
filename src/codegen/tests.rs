@@ -138,9 +138,11 @@ class Body:
 
 def step_bodies(n: int) -> float:
     bodies = [Body(0.0, 1.5)] * n
+    total = 0.0
     for i in range(n):
         bodies[i].x += bodies[i].speed()
-    return bodies[0].x
+        total += bodies[i].x
+    return total
 
 line = input()
 val = step_bodies(16)

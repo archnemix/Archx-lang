@@ -404,8 +404,27 @@ impl Codegen {
         self.start_block(&cond_label, out);
         let i = self.next_tmp();
         let _ = writeln!(out, "  {i} = load i64, ptr {slot}, align 8");
-        let cmp = self.next_tmp();
-        let _ = writeln!(out, "  {cmp} = icmp slt i64 {i}, {end_val}");
+        let cmp = match &step_dir {
+            StepDir::PosConst => {
+                let c = self.next_tmp();
+                let _ = writeln!(out, "  {c} = icmp slt i64 {i}, {end_val}");
+                c
+            }
+            StepDir::NegConst => {
+                let c = self.next_tmp();
+                let _ = writeln!(out, "  {c} = icmp sgt i64 {i}, {end_val}");
+                c
+            }
+            StepDir::Dynamic(is_pos) => {
+                let lt = self.next_tmp();
+                let gt = self.next_tmp();
+                let c = self.next_tmp();
+                let _ = writeln!(out, "  {lt} = icmp slt i64 {i}, {end_val}");
+                let _ = writeln!(out, "  {gt} = icmp sgt i64 {i}, {end_val}");
+                let _ = writeln!(out, "  {c} = select i1 {is_pos}, i1 {lt}, i1 {gt}");
+                c
+            }
+        };
         self.emit_cond_br(&cmp, &body_label, &end_label, out);
 
         self.start_block(&body_label, out);

@@ -203,6 +203,8 @@ jobs:
           mkdir -p ci/logs ci/out "$VDIR"
 
           if [ -d /tmp/ci-collected/ci-linux ]; then
+            cp -r /tmp/ci-collected/ci-linux/logs/* ci/logs/ 2>/dev/null || true
+            cp -r /tmp/ci-collected/ci-linux/out/* ci/out/ 2>/dev/null || true
             cp -r /tmp/ci-collected/ci-linux/ci/logs/* ci/logs/ 2>/dev/null || true
             cp -r /tmp/ci-collected/ci-linux/ci/out/* ci/out/ 2>/dev/null || true
             cp ci/logs/test.log "$VDIR/linux-test.log" 2>/dev/null || true
