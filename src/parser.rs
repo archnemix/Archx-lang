@@ -2,7 +2,7 @@ use crate::ast::*;
 use crate::diag::{Diagnostic, Result, Span};
 use crate::token::{Token, TokenKind};
 
-const MAX_NESTING: usize = 256;
+const MAX_NESTING: usize = 128;
 
 /// Recursive-descent parser (milestone 5: structs, regions, strided/foreach loops).
 pub struct Parser {
@@ -512,20 +512,25 @@ impl Parser {
     }
 
     fn parse_not(&mut self) -> Result<Expr> {
-        if self.check(&TokenKind::Not) {
-            let span = self.peek().span;
+        let mut spans = Vec::new();
+        while self.check(&TokenKind::Not) {
+            if self.depth + spans.len() >= MAX_NESTING {
+                return Err(self.error(format!("maximum nesting depth ({MAX_NESTING}) exceeded")));
+            }
+            spans.push(self.peek().span);
             self.bump();
-            let expr = self.parse_expr()?;
-            return Ok(Expr {
+        }
+        let mut expr = self.parse_comparison()?;
+        for span in spans.into_iter().rev() {
+            expr = Expr {
                 kind: ExprKind::Unary {
                     op: UnOp::Not,
                     expr: Box::new(expr),
                 },
                 span,
-            });
+            };
         }
-
-        self.parse_comparison()
+        Ok(expr)
     }
 
     fn parse_comparison(&mut self) -> Result<Expr> {
@@ -609,20 +614,25 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Expr> {
-        if self.check(&TokenKind::Minus) {
-            let span = self.peek().span;
+        let mut spans = Vec::new();
+        while self.check(&TokenKind::Minus) {
+            if self.depth + spans.len() >= MAX_NESTING {
+                return Err(self.error(format!("maximum nesting depth ({MAX_NESTING}) exceeded")));
+            }
+            spans.push(self.peek().span);
             self.bump();
-            let expr = self.parse_expr()?;
-            return Ok(Expr {
+        }
+        let mut expr = self.parse_postfix()?;
+        for span in spans.into_iter().rev() {
+            expr = Expr {
                 kind: ExprKind::Unary {
                     op: UnOp::Neg,
                     expr: Box::new(expr),
                 },
                 span,
-            });
+            };
         }
-
-        self.parse_postfix()
+        Ok(expr)
     }
 
     fn parse_postfix(&mut self) -> Result<Expr> {

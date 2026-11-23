@@ -10,7 +10,7 @@ const BUILTINS: [&str; 4] = ["print", "len", "push", "pop"];
 const PRIMITIVE_TYPES: [&str; 4] = ["int", "bool", "string", "void"];
 const MAX_ARRAY_LEN: i64 = 1_i64 << 47;
 const MAX_STR_LEN: i64 = i32::MAX as i64;
-const MAX_NESTING: usize = 256;
+const MAX_NESTING: usize = 128;
 
 /// Lowers an Archx program to textual LLVM IR:
 /// - Hardened zero-UB arithmetic & checked allocations
@@ -775,7 +775,7 @@ impl Codegen {
                 }
 
                 let needs_drop = self.type_needs_drop(&ty);
-                let val = if needs_drop {
+                let val = if needs_drop && !matches!(&value.kind, ExprKind::Str(_)) {
                     if self.claim_stmt_temp(&raw_val) {
                         raw_val
                     } else {
@@ -2081,7 +2081,7 @@ impl Codegen {
                         ));
                     }
                     let needs_drop = self.type_needs_drop(&entry.ty);
-                    let new_val = if needs_drop {
+                    let new_val = if needs_drop && !matches!(&value.kind, ExprKind::Str(_)) {
                         if self.claim_stmt_temp(&raw_val) {
                             raw_val
                         } else {
@@ -3901,6 +3901,9 @@ impl Codegen {
         }
         match ty {
             Type::Str => {
+                if val.starts_with("{ i64 ") {
+                    return;
+                }
                 self.used_str_drop = true;
                 let _ = writeln!(out, "  call fastcc void @archx_str_drop(%ArchxStr {val})");
             }
@@ -3948,6 +3951,9 @@ impl Codegen {
         }
         match ty {
             Type::Str => {
+                if val.starts_with("{ i64 ") {
+                    return val.to_string();
+                }
                 self.used_str_clone = true;
                 let res = self.next_tmp();
                 let _ = writeln!(
@@ -3997,6 +4003,9 @@ impl Codegen {
         }
         match ty {
             Type::Str => {
+                if val.starts_with("{ i64 ") {
+                    return val.to_string();
+                }
                 self.used_str_promote = true;
                 let res = self.next_tmp();
                 let _ = writeln!(
