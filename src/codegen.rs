@@ -394,10 +394,13 @@ struct Scope {
 }
 
 #[derive(Clone)]
-struct RegionSave {
-    saved_cur: String,
-    saved_end: String,
-    saved_tail: String,
+enum RegionSave {
+    Root,
+    Nested {
+        saved_cur: String,
+        saved_end: String,
+        saved_tail: String,
+    },
 }
 
 struct LoopLabels {
@@ -1091,29 +1094,33 @@ impl Codegen {
     fn gen_region(&mut self, body: &[Stmt], out: &mut String) -> Result<()> {
         let rslot = self.func_region_slot.clone().expect("func_region_slot set");
 
-        let saved_cur = self.next_tmp();
-        let _ = writeln!(out, "  {saved_cur} = load ptr, ptr {rslot}, align 8");
-        let end_gep = self.next_tmp();
-        let _ = writeln!(
-            out,
-            "  {end_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 1"
-        );
-        let saved_end = self.next_tmp();
-        let _ = writeln!(out, "  {saved_end} = load ptr, ptr {end_gep}, align 8");
-        let tail_gep = self.next_tmp();
-        let _ = writeln!(
-            out,
-            "  {tail_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 3"
-        );
-        let saved_tail = self.next_tmp();
-        let _ = writeln!(out, "  {saved_tail} = load ptr, ptr {tail_gep}, align 8");
+        let rsave = if self.region_stack.is_empty() {
+            RegionSave::Root
+        } else {
+            let saved_cur = self.next_tmp();
+            let _ = writeln!(out, "  {saved_cur} = load ptr, ptr {rslot}, align 8");
+            let end_gep = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {end_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 1"
+            );
+            let saved_end = self.next_tmp();
+            let _ = writeln!(out, "  {saved_end} = load ptr, ptr {end_gep}, align 8");
+            let tail_gep = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {tail_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 3"
+            );
+            let saved_tail = self.next_tmp();
+            let _ = writeln!(out, "  {saved_tail} = load ptr, ptr {tail_gep}, align 8");
+            RegionSave::Nested {
+                saved_cur,
+                saved_end,
+                saved_tail,
+            }
+        };
 
         self.push_scope();
-        let rsave = RegionSave {
-            saved_cur,
-            saved_end,
-            saved_tail,
-        };
         self.region_stack.push(rsave.clone());
 
         self.gen_block(body, out)?;
@@ -1128,27 +1135,33 @@ impl Codegen {
 
     fn emit_single_region_exit(&mut self, rsave: &RegionSave, out: &mut String) {
         let rslot = self.func_region_slot.clone().unwrap();
-        let _ = writeln!(
-            out,
-            "  store ptr {}, ptr {rslot}, align 8",
-            rsave.saved_cur
-        );
-        let end_gep = self.next_tmp();
-        let _ = writeln!(
-            out,
-            "  {end_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 1"
-        );
-        let _ = writeln!(out, "  store ptr {}, ptr {end_gep}, align 8", rsave.saved_end);
-        let tail_gep = self.next_tmp();
-        let _ = writeln!(
-            out,
-            "  {tail_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 3"
-        );
-        let _ = writeln!(
-            out,
-            "  store ptr {}, ptr {tail_gep}, align 8",
-            rsave.saved_tail
-        );
+        match rsave {
+            RegionSave::Root => {
+                let _ = writeln!(
+                    out,
+                    "  call fastcc void @archx_region_rewind_root(ptr {rslot})"
+                );
+            }
+            RegionSave::Nested {
+                saved_cur,
+                saved_end,
+                saved_tail,
+            } => {
+                let _ = writeln!(out, "  store ptr {saved_cur}, ptr {rslot}, align 8");
+                let end_gep = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {end_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 1"
+                );
+                let _ = writeln!(out, "  store ptr {saved_end}, ptr {end_gep}, align 8");
+                let tail_gep = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {tail_gep} = getelementptr inbounds %ArchxRegion, ptr {rslot}, i32 0, i32 3"
+                );
+                let _ = writeln!(out, "  store ptr {saved_tail}, ptr {tail_gep}, align 8");
+            }
+        }
     }
 
     fn emit_region_exits_down_to(&mut self, target_depth: usize, out: &mut String) {
@@ -5143,32 +5156,31 @@ finish:
   ret ptr %data
 }
 
-define private fastcc noalias nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %size) alwaysinline {
+define private fastcc void @archx_region_rewind_root(ptr %reg) alwaysinline nounwind {
 entry:
-  %z = icmp sle i64 %size, 0
-  %sz = select i1 %z, i64 16, i64 %size
-  %too_big = icmp sgt i64 %sz, 9223372036854775776
-  br i1 %too_big, label %oom, label %align_ok
-oom:
-  call void @archx_oom_fail()
-  unreachable
-align_ok:
-  %a1 = add nuw nsw i64 %sz, 15
-  %aligned = and i64 %a1, -16
+  %head_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 2
+  %head = load ptr, ptr %head_slot, align 8
+  %empty = icmp eq ptr %head, null
+  br i1 %empty, label %done, label %rewind
+rewind:
+  %cap_ptr = getelementptr inbounds i8, ptr %head, i64 8
+  %cap = load i64, ptr %cap_ptr, align 8
+  %data = getelementptr inbounds i8, ptr %head, i64 16
+  %end = getelementptr inbounds i8, ptr %data, i64 %cap
+  %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
+  %tail_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 3
+  store ptr %data, ptr %reg, align 8
+  store ptr %end, ptr %end_slot, align 8
+  store ptr %head, ptr %tail_slot, align 8
+  br label %done
+done:
+  ret void
+}
+
+define private fastcc noalias nonnull align 16 ptr @archx_region_alloc_fallback(ptr %reg, i64 %aligned) noinline {
+entry:
   %cur_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 0
   %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
-  %cur = load ptr, ptr %cur_slot, align 8
-  %end = load ptr, ptr %end_slot, align 8
-  %cur_i = ptrtoint ptr %cur to i64
-  %end_i = ptrtoint ptr %end to i64
-  %rem = sub i64 %end_i, %cur_i
-  %fits = icmp sge i64 %rem, %aligned
-  br i1 %fits, label %fast, label %check_reuse
-fast:
-  %next = getelementptr inbounds i8, ptr %cur, i64 %aligned
-  store ptr %next, ptr %cur_slot, align 8
-  ret ptr %cur
-check_reuse:
   %tail_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 3
   %tail = load ptr, ptr %tail_slot, align 8
   %has_tail = icmp ne ptr %tail, null
@@ -5211,6 +5223,36 @@ free_cand:
   br label %slow
 slow:
   %res = call fastcc nonnull align 16 ptr @archx_region_alloc_slow(ptr %reg, i64 %aligned)
+  ret ptr %res
+}
+
+define private fastcc noalias nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %size) alwaysinline {
+entry:
+  %z = icmp sle i64 %size, 0
+  %sz = select i1 %z, i64 16, i64 %size
+  %too_big = icmp sgt i64 %sz, 9223372036854775776
+  br i1 %too_big, label %oom, label %align_ok
+oom:
+  call void @archx_oom_fail()
+  unreachable
+align_ok:
+  %a1 = add nuw nsw i64 %sz, 15
+  %aligned = and i64 %a1, -16
+  %cur_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 0
+  %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
+  %cur = load ptr, ptr %cur_slot, align 8
+  %end = load ptr, ptr %end_slot, align 8
+  %cur_i = ptrtoint ptr %cur to i64
+  %end_i = ptrtoint ptr %end to i64
+  %rem = sub i64 %end_i, %cur_i
+  %fits = icmp sge i64 %rem, %aligned
+  br i1 %fits, label %fast, label %fallback
+fast:
+  %next = getelementptr inbounds i8, ptr %cur, i64 %aligned
+  store ptr %next, ptr %cur_slot, align 8
+  ret ptr %cur
+fallback:
+  %res = call fastcc nonnull align 16 ptr @archx_region_alloc_fallback(ptr %reg, i64 %aligned)
   ret ptr %res
 }
 
@@ -5420,7 +5462,7 @@ done:
 
         if self.used_str_concat {
             out.push_str(
-                r#"define private fastcc %ArchxStr @archx_str_concat(%ArchxStr %a, %ArchxStr %b, ptr %reg) {
+                r#"define private fastcc %ArchxStr @archx_str_concat(%ArchxStr %a, %ArchxStr %b, ptr %reg) alwaysinline {
 entry:
   %atmp = alloca [12 x i8], align 4
   %btmp = alloca [12 x i8], align 4
@@ -5525,7 +5567,8 @@ build_sso:
 alloc_reg:
   %rp = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %tot)
   %rp_i = ptrtoint ptr %rp to i64
-  %rtagged = or i64 %rp_i, 2
+  %rp_a = and i64 %rp_i, -4
+  %rtagged = or i64 %rp_a, 2
   br label %copy_long
 alloc_heap:
   %hp = call noalias align 16 ptr @malloc(i64 %tot)
