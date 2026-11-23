@@ -15,9 +15,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         134 (134)        16          14
-  Rust   (rustc -O)          134 (134)      4388         330
-  Archx  (archx -O2)         134 (134)        16          14
+  C      (clang -O2)         104 (105)        16          14
+  Rust   (rustc -O)          104 (104)      4388         330
+  Archx  (archx -O2)         104 (104)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -26,10 +26,10 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        62 (63)        16          14
-  C checked   (slice struct -O2)     58 (60)        16          14
-  Rust        (safe Vec -O)          64 (72)      4389         331
-  Archx       (safe [T] -O2)         63 (64)        16          14
+  C raw ptr   (unchecked -O2)        47 (48)        16          14
+  C checked   (slice struct -O2)     46 (50)        16          14
+  Rust        (safe Vec -O)          50 (53)      4389         331
+  Archx       (safe [T] -O2)         47 (47)        16          14
 
 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 ------------------------------------------------------------------------------
@@ -38,6 +38,6 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 14248875,421461999
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS + malloc/strcmp -O2)   21 (21)        16          14
-  Rust   (Vec<Body> + String -O)     23 (23)      4390         332
-  Archx  (SoA + region + SSO -O2)    18 (18)        16          14
+  C      (AoS + malloc/strcmp -O2)   16 (16)        16          14
+  Rust   (Vec<Body> + String -O)     18 (18)      4390         332
+  Archx  (SoA + region + SSO -O2)    14 (15)        16          14
