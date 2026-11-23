@@ -13,10 +13,7 @@ mod stmt;
 mod tests;
 
 use self::analysis::*;
-use crate::ast::{
-    AssignTarget, BinOp, Expr, ExprKind, Func, Param, Program, Stmt, StmtKind, StructDef, Type,
-    UnOp,
-};
+use crate::ast::{Func, Param, Program, StructDef, Type};
 use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
