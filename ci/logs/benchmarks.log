@@ -1,7 +1,7 @@
 == building scalar benchmark (primes) ==
-compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.zNe7wUBfCU/primes_ax`
+compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.4RV0KTOtxW/primes_ax`
 == building array benchmark (arrays) ==
-compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.zNe7wUBfCU/arrays_ax`
+compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.4RV0KTOtxW/arrays_ax`
 
 == verifying scalar outputs match ==
 75517
@@ -32,9 +32,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         94 (94)        16          14
-  Rust   (rustc -O)          94 (94)      4388         330
-  Archx  (archx -O2)         93 (93)        16          14
+  C      (clang -O2)         119 (119)        16          14
+  Rust   (rustc -O)          119 (119)      4388         330
+  Archx  (archx -O2)         119 (119)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -43,9 +43,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        44 (47)        16          14
-  C checked   (slice struct -O2)     45 (46)        16          14
-  Rust        (safe Vec -O)          45 (46)      4389         331
-  Archx       (safe [T] -O2)         44 (46)        16          14
+  C raw ptr   (unchecked -O2)        60 (62)        16          14
+  C checked   (slice struct -O2)     62 (63)        16          14
+  Rust        (safe Vec -O)          67 (71)      4389         331
+  Archx       (safe [T] -O2)         63 (65)        16          14
 
 written to ci/out/benchmarks.txt
