@@ -4,13 +4,9 @@
 
 Archx compiles to **LLVM IR**, so it uses the same optimizer and backends as C, Rust, Swift, Zig, and Julia. One frontend, every architecture LLVM supports: x86-64, ARM64, RISC-V, WASM, and more.
 
-> Status: milestone 4 — arrays (`[T]`, `[a, b, c]`, `[val; count]`, `len`,
-> `push`, `pop`), indexing with compile-time bounds-check elision, `elif`,
-> compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`), `while` / `for` loops,
-> `break` / `continue`, booleans, short-circuit `and`/`or`/`not`, functions,
-> `let`/`return`, and `print`.
+> Status: milestone 5 — value `struct`s with **transparent AoS-to-SoA planarization** for `[Struct]` arrays, scoped `region:` bump arenas with compile-time escape checking + `return` heap promotion, 16-byte German/Umbra **prefix-SSO `string`s** (`str` / `string`, `+`, `==`, `!=`, `len`, embedded-NUL safe), `for x in arr:` foreach iteration, strided `for i in a..b step k:` loops, hybrid RAII zero-leak ownership, checked integer arithmetic (`sadd`/`ssub`/`smul.with.overflow`, safe `/` & `%`), arrays (`[T]`, `[a, b]`, `[val; n]`, `push`, `pop`), `if`/`elif`/`else`, `while`, `break`/`continue`, functions, and `print`.
 >
-> Benchmarked against C and Rust on both scalar and array loops — see [Benchmarks](#benchmarks).
+> Verified leak- and UB-free under **AddressSanitizer + LeakSanitizer** in CI, and benchmarked head-to-head against C and Rust across 3 suites — see [Benchmarks](#benchmarks).
 
 ## Why LLVM?
 
@@ -37,110 +33,122 @@ The compiler binary is `target/release/archx`.
 archx examples/hello.archx.lang              # compile to ./examples/hello
 archx examples/hello.archx.lang --run        # compile and run
 archx examples/hello.archx.lang --emit-ir    # print the generated LLVM IR
-archx examples/hello.archx.lang -o hello     # choose the output name
+archx examples/hello.archx.lang -o build/app # choose the output path
 ```
 
 ## Syntax
 
 ```archx
-func dot(a: [int], b: [int]) -> int:
-    let total = 0
-    for i in 0..len(a):
-        total += a[i] * b[i]
-    return total
+struct Body:
+    x: int
+    y: int
+    vx: int
+    vy: int
 
-func grade(score: int) -> string:
-    if score >= 90:
-        return "A"
-    elif score >= 80:
-        return "B"
-    else:
-        return "C"
+func step_world(n: int) -> int:
+    # Local [Body] transparently planarizes into 4 contiguous 16B-aligned SoA planes
+    let bodies = [Body(x: 1, y: 2, vx: 3, vy: -1); n]
+    for i in 0..len(bodies):
+        bodies[i].x += bodies[i].vx
+        bodies[i].y += bodies[i].vy
+
+    let sum = 0
+    for b in bodies:
+        sum += b.x + b.y
+    return sum
+
+func build_tag(id: str) -> str:
+    region:
+        let scratch = [0; 64]
+        for k in 0..len(scratch) step 4:
+            scratch[k] = k * 3
+        let msg = "node_" + id
+        if msg == "node_alpha":
+            return msg + "_primary"   # promoted cleanly out of region on return
+        return msg
 
 func main():
-    let nums = [10, 20, 30, 40]
-    nums[1] += 5
-    print(nums)
-    print(dot(nums, [1, 2, 3, 4]))
-
-    let stack: [int] = []
-    for i in 1..4:
-        push(stack, i * 10)
-    print(pop(stack))
-    print(grade(85))
+    print(step_world(1000))
+    print(build_tag("alpha"))
 ```
 
-Rules so far:
+Language summary:
 
-- Blocks are indentation-based (4 spaces per level; a tab counts as 4 columns).
+- Blocks are indentation-based (4 spaces per level; tabs before code are rejected with a diagnostic).
 - No semicolons at the end of statements (`;` is only used in `[value; count]` repeat arrays).
 - `#` starts a comment.
-- Strings use `'single'` or `"double"` quotes; `==`, `!=`, and `len(s)` work on strings.
-- Scalar types: `int` (64-bit signed), `bool` (`true`/`false`), `string` (immutable UTF-8).
-- Array types: `[T]` (for example `[int]`, `[bool]`, `[string]`, `[[int]]`).
-  - Literals: `[1, 2, 3]`, empty `let xs: [int] = []`, or sized/filled `[0; n]` / `[true; limit]`.
-  - Builtins: `len(arr)`, `push(arr, value)`, `pop(arr)`, and `print(arr)`.
-  - Indexing `arr[i]` and `arr[i] = v` are memory-safe: out-of-bounds accesses panic cleanly, and bounds checks are **elided at compile time** when `0 <= i < len(arr)` is proven (such as `for i in 0..len(arr):`).
-- Arithmetic: `+`, `-`, `*`, `/`, `%`. Compound assignment: `+=`, `-=`, `*=`, `/=`, `%=`.
-- Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
-- Logical operators: `and`, `or`, `not` — `and`/`or` short-circuit.
-- Conditionals: `if cond:`, `elif cond:`, `else:`.
-- `while cond:` repeats while `cond` is true.
-- `for i in a..b:` counts `a, a+1, … b-1` — the end is **exclusive**, like Rust's `a..b`. Both bounds are evaluated once, up front.
-- `break` leaves the innermost loop; `continue` starts its next iteration.
-- `let name = value` (or `let name: Type = value`) declares a variable; `name = value` assigns to an existing variable.
-- `print(...)` prints `int`, `bool`, `string`, or 1D arrays.
-- `func main():` is the executable entry point.
-- Files use a double extension: `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`.
+- Scalar types:
+  - `int` — 64-bit signed integer with **checked overflow** (`+`, `-`, `*`, unary `-`, `/`, `%` panic cleanly instead of C signed-overflow UB; proven non-overflowing loop math compiles with `nsw`/`nuw`).
+  - `bool` — `true` / `false` (`and`, `or`, `not` with short-circuiting; no implicit truthiness).
+  - `str` (or `string`) — 16-byte immutable UTF-8 **German/Umbra prefix-SSO** value (`<= 12` bytes stored inline in two 64-bit registers with zero heap work; `> 12` bytes store a 4-byte inline prefix + tagged static/heap/region pointer for O(1) prefix-rejected equality; supports `+`, `==`, `!=`, `len(s)`, and embedded NUL bytes).
+- Value `struct`s:
+  - Declared with `struct Name:` and indented `field: Type` lines (supporting nested structs, `[T]`, and `str` fields; cyclic definitions are rejected cleanly).
+  - Constructed with `Name(field: expr, ...)`, accessed/mutated via `s.field` and `arr[i].field += expr`, compared with `==` / `!=`, and printed with `print(s)`.
+  - **Transparent AoS-to-SoA planarization**: local fixed-length `[Struct]` arrays of scalar structs automatically lower to separate 16-byte-aligned per-field planes so loops touching a subset of fields stream at 100% cache-line utilization and auto-vectorize without gather/scatter instructions.
+- Scoped `region:` arenas:
+  - `region:` activates a 64 KB bump-allocated slab arena (O(1) pointer bump, nested watermark save/restore, and root-slab cursor rewind across loop iterations).
+  - Compile-time **escape analysis** rejects assigning region-allocated arrays/structs into outer variables (`error: cannot assign region-allocated value to outer variable '...'`), while `return expr` from inside `region:` automatically deep-promotes any region-backed buffers to heap ownership before rewinding the region.
+- Arrays (`[T]`):
+  - Literals `[1, 2, 3]`, empty `let xs: [int] = []`, or sized `[val; count]` (deep-cloning owning elements when needed).
+  - Builtins: `len(arr)`, `push(arr, val)`, `pop(arr)`, `print(arr)`.
+  - Bounds-safe indexing `arr[i]` and `arr[i] = v`, with compile-time bounds-check elision on proven loops.
+- Loops:
+  - `for i in a..b:` (half-open `[a, b)`, bounds evaluated once).
+  - `for i in a..b step k:` (strided range with compile-time step > 0 verification and bounds elision).
+  - `for x in arr:` (bounds-check-free element iteration over arrays and SoA planes).
+  - `while cond:`, `break`, and `continue` (running deterministic RAII drops and region unwinds across intermediate scopes).
+- Files use `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg` (CLI rejects unknown extensions and refuses to clobber source files with `-o`).
 
 ## Why `main`?
 
 It is not about speed. Python is interpreted, so the interpreter can start executing top-level statements anywhere. A compiled binary is raw machine code: the operating system loader needs **one exact entry address** to jump to. That address is `main`. It is a linking convention, not a performance feature.
 
-## How memory works today
+## Memory & Hybrid Zero-Leak Ownership
 
-- **Immutable scalars (`int`, `bool`, `string`)** — parameters and `let` bindings that are never reassigned stay directly in **LLVM SSA registers** with zero stack allocations.
-- **Mutable locals** — use entry-block stack slots (`alloca`), promoted to CPU registers by LLVM's `mem2reg`/SROA passes at `-O2`.
-- **Strings** — interned global UTF-8 constants in `.rodata`.
-- **Arrays (`[T]`)** — contiguous heap buffers represented by a 24-byte `{ len, cap, data }` value (`%ArchxVec`), with `@calloc` zero-page allocation for `[0; n]` / `[false; n]`, 1-byte-per-element `[bool]` storage, and **automatic deterministic scope-exit `free`** for non-escaping local arrays (no GC pauses).
+Archx runs with **zero garbage collector** and **zero lifetime annotations**:
 
-See [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for the language design fundamentals (why existing languages fall short, memory model, binary size, readability, and straightforwardness) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the before/after IR and optimization strategy.
+- **Immutable bindings (`int`, `bool`, `str`, `struct`, `[T]`)** — live directly in **LLVM SSA values** (`VarStorage::Imm`) with zero `alloca` stack traffic.
+- **16-byte German/Umbra `str`** — `{ len: u32 | prefix4: [u8; 4], payload_or_tagged_ptr: u64 }` fits in two CPU registers (`16 B` vs Rust `String`'s `24 B`). Strings up to 12 bytes never touch an allocator; longer strings tag bit `0..1` as `STATIC (00)`, `HEAP (01)`, or `REGION (10)` so `drop` frees only heap-owned buffers.
+- **Deterministic recursive RAII** — owning variables (`[T]`, `str`, nested `[Struct]`, `[[int]]`), overwritten assignments, and unclaimed statement temporaries free deterministically on scope exit, `return`, `break`, and `continue`.
+- **Scoped `region:` bump arenas** — temporary batch allocations inside loops bump a single pointer in a reused 64 KB slab with **zero per-iteration `malloc`/`free` calls**.
+- **ASan + LSan verified in CI** — every push compiles and runs `arrays`, `structs_regions`, and `composite` under `clang -fsanitize=address,leak` (`0` bytes leaked, `0` invalid accesses in `ci/logs/asan_lsan.log`).
 
-## Optimization
-
-Archx optimizes at four layers:
-
-1. **Language design** — value semantics, no hidden allocations, monomorphized generics (later), defined overflow, no UB-driven surprises.
-2. **Frontend** — clean IR, entry-block allocas, string interning, constant folding (next), no unnecessary loads.
-3. **LLVM middle-end** — `-O2` by default (SROA, GVN, inlining, loop unrolling, vectorization).
-4. **Backend/runtime** — instruction selection, register allocation, and later custom allocators/arenas.
-
-`-O3`, LTO, PGO, and custom passes are available later once there is a benchmark suite to measure them. See `docs/OPTIMIZATION.md`.
+See [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for the language design fundamentals and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the LLVM IR architecture and `-O2` proof points.
 
 ## Benchmarks
 
-`benchmarks/` compares **C, Rust, and Archx** across two suites (compiled at `-O2` / `rustc -O`, timed best-of-5, with stdout verified identical via `cmp`):
+`benchmarks/` compares **C, Rust, and Archx** across **three suites** (compiled at `-O2` / `rustc -O`, timed best-of-7 in CI, with stdout verified byte-for-byte via `cmp`):
 
 1. **Scalar loops (`benchmarks/primes.*`)** — 20M iterations of `(total + i*i) % 1_000_007` + trial-division prime counting below 400,000.
 2. **Array loops & bounds checking (`benchmarks/arrays*`)** — 60 rounds of 1,000,000-element vector math (`dst[i] = a[i]*3 + b[i] + r`) + Sieve of Eratosthenes below 5,000,000.
+3. **Structs (SoA vs AoS), Regions & Prefix-SSO Strings (`benchmarks/composite.*`)** — 100,000 6-field `Body` structs (48 B) × 120 timesteps (full + `step 8` partial-field update + `foreach` reduction) + 40,000 rounds of variable-length scratch buffers and short/long string concatenation & equality.
 
 ```sh
 bash benchmarks/run.sh
 ```
 
-Latest GitHub Actions run (`ci/out/benchmarks.txt`, best of 7):
+Latest GitHub Actions run (`ci/out/benchmarks.txt`, best of 7 on `clang 21.1.8` / `rustc 1.100.0`):
 
 | Suite | Implementation | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
 |---|---|---:|---:|---:|
-| **Scalar (`primes`)** | C (`clang -O2`) | **94 ms** (94 ms) | 16 KB | **14 KB** |
-| | Rust (`rustc -O`) | **94 ms** (94 ms) | 4,388 KB | **330 KB** |
-| | Archx (`archx -O2`) | **93 ms** (93 ms) | 16 KB | **14 KB** |
-| **Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **44 ms** (47 ms) | 16 KB | **14 KB** |
-| | C checked (slice struct `-O2`) | **45 ms** (46 ms) | 16 KB | **14 KB** |
-| | Rust (safe `Vec` `-O`) | **45 ms** (46 ms) | 4,389 KB | **331 KB** |
-| | Archx (safe `[T]` `-O2`) | **44 ms** (46 ms) | 16 KB | **14 KB** |
+| **1. Scalar (`primes`)** | C (`clang -O2`) | **134 ms** (134 ms) | 16 KB | **14 KB** |
+| | Rust (`rustc -O`) | **134 ms** (134 ms) | 4,388 KB | **330 KB** |
+| | Archx (`archx -O2`) | **134 ms** (134 ms) | 16 KB | **14 KB** |
+| **2. Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **62 ms** (63 ms) | 16 KB | **14 KB** |
+| | C checked (slice struct `-O2`) | **58 ms** (60 ms) | 16 KB | **14 KB** |
+| | Rust (safe `Vec` `-O`) | **64 ms** (72 ms) | 4,389 KB | **331 KB** |
+| | Archx (safe `[T]` `-O2`) | **63 ms** (64 ms) | 16 KB | **14 KB** |
+| **3. Composite (`composite`)** | C (`AoS + malloc/strcmp -O2`) | **21 ms** (21 ms) | 16 KB | **14 KB** |
+| | Rust (`Vec<Body> + String -O`) | **23 ms** (23 ms) | 4,390 KB | **332 KB** |
+| | **Archx (`SoA + region + SSO -O2`)** | **18 ms** (18 ms) | 16 KB | **14 KB** |
 
-By analyzing LLVM's pass pipeline directly (range-guarded loop versioning, monotonic strided `while` versioning, `2^47` allocation invariants, direct SSA for immutable arrays, `internal` linkage, and `align 16` allocators), Archx matches **even raw unchecked C (`44 ms`)** while remaining 100% bounds- and overflow-safe in a **14 KB** stripped binary. See [`benchmarks/README.md`](benchmarks/README.md) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the IR breakdown.
+On Suite 3 (`composite`), **Archx beats both C (`18 ms` vs `21 ms`, 14% faster) and Rust (`18 ms` vs `23 ms`, 22% faster)** while remaining 100% bounds-, overflow-, and memory-safe in a **14 KB** stripped binary (**23.7× smaller** than stripped Rust and **274× smaller** unstripped):
+
+- **Transparent SoA vs C/Rust AoS**: C's `struct Body` strides by 48 bytes (wasting 33% of every cache line on untouched `z, vz` fields and emitting `shufflevector` blends), whereas Archx's 6 `align 16` planes stream `<2 x i64>` SIMD `add`/`sub` instructions at 100% cache-line utilization (`ci/out/bench_composite.opt.ll` vs `ci/out/bench_composite_c.opt.ll`).
+- **64 KB `region:` slab reuse vs per-round `malloc`/`free`**: Archx allocates its 64 KB region slab **once** on round 0 and rewinds the bump cursor in registers for all 39,999 remaining rounds, vs C's 240,000 `calloc`/`malloc`/`free` calls.
+- **16 B prefix-SSO strings**: `"id_" + s_rhs` (`9 B <= 12 B`) and `s1 == "id_alpha0"` constant-fold completely into CPU registers with zero allocations and zero `drop` instructions.
+
+See [`benchmarks/README.md`](benchmarks/README.md) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the full `-O2` LLVM IR breakdown.
 
 ## Architecture
 
@@ -148,44 +156,46 @@ By analyzing LLVM's pass pipeline directly (range-guarded loop versioning, monot
 .archx.lang source
     │
     ▼
-lexer (indentation-aware)
+lexer (4-space indentation, contextual tokens, spans)
     │
     ▼
-parser → AST
+parser → AST (iterative unary + bounded nesting depth)
     │
     ▼
-type checks + codegen → LLVM IR (text)
+type/escape checks + LLVM-direct codegen → LLVM IR (text)
     │
     ▼
-clang -O2 → native executable
+clang -O2 → native executable (14 KB stripped)
 ```
 
-The frontend is written in Rust with **zero external crates**. LLVM IR is emitted as text, so you can inspect it with `--emit-ir`, and clang handles optimization and code generation.
+The frontend is written in Rust with **zero external crates**. LLVM IR is emitted as text (`--emit-ir`), and clang handles target optimization and native linking.
 
 ## Development
 
 ```sh
 cargo test
-cargo run -- examples/hello.archx.lang --emit-ir
+cargo run -- examples/structs_regions.archx.lang --emit-ir
 ```
 
 ### CI
 
-GitHub Actions builds and tests on every push, and saves its logs and generated IR in `ci/logs/` and `ci/out/`. The optimized IR (`*.opt.ll`) is saved too, so you can see what `-O2` does to the code, and the C/Rust/Archx benchmark table is saved to `ci/out/benchmarks.txt`. To force a run, touch `ci/trigger` and push.
+GitHub Actions builds and runs unit + CLI tests, compiles all examples, verifies **0 leaks / 0 invalid accesses** under AddressSanitizer + LeakSanitizer (`ci/logs/asan_lsan.log`), saves unoptimized & `-O2` LLVM IR (`ci/out/*.opt.ll`), and runs the 3-suite C/Rust/Archx benchmark (`ci/out/benchmarks.txt`).
 
 ## Roadmap
 
-- [x] Lexer with indentation, comments, single/double-quoted strings
-- [x] Parser for functions, `let`, `return`, arithmetic, calls
-- [x] `if` / `else`, comparisons, short-circuit `and` / `or` / `not`
-- [x] LLVM IR codegen + clang linking
-- [x] `while` / `for` loops, `break` / `continue`, assignment
-- [x] Benchmarks against C and Rust
-- [x] Arrays, indexing, bounds-check elision, `elif`, compound assignment
-- [ ] Strided `for i in a..b step k` loops & `for x in arr` iteration
-- [ ] Structs and methods
+- [x] Lexer with indentation, comments, single/double-quoted strings, contextual keywords
+- [x] Parser for functions, `let`, `return`, arithmetic, calls, bounded recursion
+- [x] `if` / `elif` / `else`, comparisons, short-circuit `and` / `or` / `not`
+- [x] `while`, `for i in a..b`, `for i in a..b step k`, `for x in arr`, `break` / `continue`
+- [x] Checked overflow/division arithmetic & CLI hardening
+- [x] Arrays, indexing, compile-time bounds-check elision
+- [x] Value `struct`s + transparent AoS-to-SoA planarization
+- [x] Scoped `region:` bump arenas + escape checker + return promotion
+- [x] 16-byte German/Umbra prefix-SSO `str` (`+`, `==`, `!=`, `len`)
+- [x] Deterministic recursive RAII ownership (ASan + LSan verified)
+- [x] 3-suite benchmarks against C and Rust
+- [ ] Methods and traits / interfaces
 - [ ] Generics (monomorphized)
-- [ ] Full ownership / RAII & scoped arenas
 - [ ] String interpolation
 - [ ] Modules and a standard library
 

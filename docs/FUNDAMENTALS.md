@@ -2,15 +2,15 @@
 
 Archx is built around a simple premise: **you should not have to choose between code a human enjoys reading and code a CPU enjoys executing.**
 
-Most languages pick a side early and spend the next twenty years trying to bolt the other side on. Dynamic languages start friendly and later add JITs, type hints, C extensions, and native bundlers. Systems languages start close to the metal and accumulate punctuation, footguns, or lifetime ceremony that every line of ordinary logic has to pay for.
+Most languages pick a side early and spend the next twenty years trying to bolt the other side on. Dynamic languages start friendly and later add JITs, type hints, C extensions, and native bundlers. Systems languages start close to the metal and accumulate punctuation, undefined-behavior footguns, or lifetime ceremony that every line of ordinary logic has to pay for.
 
 This document sets down the five fundamentals guiding Archx:
 
 1. **What is broken in existing languages** — the specific trade-offs Archx refuses to inherit.
-2. **Memory** — how data lives in registers, on the stack, and (next) on the heap without a garbage collector.
-3. **Binary size** — why an Archx executable is 14 KB stripped while doing the same work at the same speed as C and Rust.
+2. **Memory** — how scalars, value `struct`s, SoA planes, 16-byte prefix-SSO strings, RAII containers, and `region:` bump arenas work together without a garbage collector or `'a` lifetime annotations.
+3. **Binary size & speed** — why an Archx executable is **14 KB stripped** while matching or beating C and Rust across scalar, array, and composite struct/arena/string workloads.
 4. **Readability** — concrete syntax choices that keep code scannable.
-5. **Straightforwardness** — no hidden control flow, no implicit conversions, no compiler magic you cannot inspect.
+5. **Straightforwardness & safety** — checked arithmetic, bounds safety, zero implicit conversions, and inspectable `--emit-ir` output.
 
 ---
 
@@ -21,15 +21,15 @@ Every mainstream language solves a real problem well, and each leaves a specific
 | Language | What it gets right | The tax you pay |
 |---|---|---|
 | **Python** | Clean indentation, minimal ceremony, immediately readable | Every `int` is a heap-allocated PyObject; interpreter dispatch + refcounting make tight loops 30–100× slower than native code; shipping a program means shipping a runtime |
-| **C / C++** | Zero forced runtime, tiny binaries, full hardware reach | **Undefined behavior** (signed overflow, buffer overruns, use-after-free, uninitialized reads), implicit conversions (`int` ↔ `bool`, narrowing), headers/macros, arcane declarations |
-| **Rust** | Memory safety without a GC, C-tier speed, strong tooling | Heavy syntactic density (`&'a mut`, turbofish, `Box<dyn ...>`), borrow-checker friction on straightforward graphs/arenas, slow builds, multi-megabyte default binaries |
+| **C / C++** | Zero forced runtime, tiny binaries, full hardware reach | **Undefined behavior** (signed overflow, buffer overruns, use-after-free, uninitialized reads), manual `malloc`/`free` leaks, AoS cache waste unless rewritten by hand |
+| **Rust** | Memory safety without a GC, C-tier speed, strong tooling | Heavy syntactic density (`&'a mut`, turbofish, `Box<dyn ...>`), borrow-checker friction on arenas/graphs, slow builds, 330 KB–4.4 MB binaries even for tiny programs |
 | **Go** | Fast builds, simple mental model, easy deployment | Mandatory garbage collector (latency tail + ~2× live-heap headroom), hidden heap escapes across interfaces/closures, ~2 MB minimum binary for the runtime |
-| **Zig** | Explicit control, tiny binaries, no hidden allocations | C-family low-level ceremony everywhere — ideal for writing kernels and allocators, noisier than necessary for everyday application and algorithmic code |
+| **Zig** | Explicit control, tiny binaries, no hidden allocations | C-family low-level ceremony everywhere — ideal for writing kernels and allocators, noisier than necessary for everyday algorithmic and systems application code |
 
-Archx sits in the gap between **Python's surface** and **C/Zig's compiled output**:
+Archx sits in the gap between **Python's surface** and **C/Zig's compiled output**, while giving the compiler higher-level structural freedom than C pointers allow:
 
-- **Surface**: indentation-scoped blocks, words instead of symbol soup (`and`, `or`, `not`), local type inference, zero semicolons.
-- **Underneath**: ahead-of-time compilation to LLVM IR, unboxed machine types in CPU registers, zero garbage collector, zero VM, and a binary linked straight against the OS `libc`.
+- **Surface**: 4-space indentation blocks, words instead of symbol soup (`and`, `or`, `not`, `in`, `step`, `region`), local type inference, zero semicolons.
+- **Underneath**: ahead-of-time compilation to LLVM IR, unboxed SSA values, transparent AoS-to-SoA struct array planarization, 64 KB bump arenas, 16-byte prefix-SSO strings, deterministic RAII, zero garbage collector, and a **14 KB** stripped binary linked straight against system `libc`.
 
 ---
 
@@ -37,145 +37,87 @@ Archx sits in the gap between **Python's surface** and **C/Zig's compiled output
 
 ### Why memory layout is the whole game
 
-On a modern CPU, arithmetic is nearly free and **moving bytes is expensive**:
+On a modern CPU, arithmetic is nearly free and **moving cache lines + calling general-purpose allocators is expensive**:
 
-| Where the value lives | Typical access cost | What puts data there |
+| Where the value lives | Typical access cost | How Archx puts data there |
 |---|---|---|
-| CPU register | ~0–1 cycle | Local scalars promoted to SSA (`int`, `bool`, loop counters) |
-| L1 cache / stack frame | ~3–5 cycles | Current function's stack slots, small local structs/arrays |
-| L3 cache | ~30–40 cycles | Contiguous arrays, arena slabs |
-| Main memory (DRAM) | ~150–250 cycles | Pointer-chasing heap objects (boxed ints, linked nodes, GC heaps) |
+| CPU register | ~0–1 cycle | Immutable `int`, `bool`, `struct` values, and `<= 12 B` SSO `str` values in LLVM SSA |
+| L1 cache / stack frame | ~3–5 cycles | Mutable local slots promoted by `mem2reg`/`SROA`, inline struct fields |
+| Contiguous 16B-aligned SoA planes / 64 KB `region:` slab | ~4–30 cycles (hardware prefetcher + SIMD) | Local `[Struct]` planarized per field; temporary buffers/strings bump-allocated in `region:` |
+| General heap (`malloc`/`calloc`) | ~40–250 cycles + allocator metadata | Long-lived growable `[T]` arrays and `> 12 B` heap-owned strings, freed deterministically via RAII |
 
-When Python runs `total = total + i`, it dereferences heap pointers, checks types, allocates a new integer object, and updates reference counts. When Archx runs `total = total + i`, both `total` and `i` live in 64-bit hardware registers — not a single byte of heap memory is touched.
+### How Archx memory works today (Milestone 5)
 
-### How Archx memory works today (Milestone 3)
+1. **Direct SSA (`VarStorage::Imm`) + entry-block `alloca`s.**
+   Immutable parameters and `let` bindings (`int`, `bool`, `str`, `struct`, and fixed `[T]`) stay directly in LLVM SSA registers with zero stack traffic. Mutable bindings use entry-block `alloca` slots that LLVM's `mem2reg` / `SROA` passes promote into registers at `-O2`.
 
-1. **Entry-block stack slots (`alloca`), promoted to registers.**
-   Every parameter and `let` binding starts life as a typed stack slot in the function's entry block:
-   ```llvm
-   %var.total.0 = alloca i64
-   store i64 0, ptr %var.total.0
-   ```
-   Emitting allocas in the entry block is the canonical pattern LLVM's `mem2reg` / SROA passes expect. At `-O2`, LLVM rewrites those loads and stores into pure SSA registers (`phi` nodes and register values), eliminating stack traffic in loops completely.
+2. **Value `struct`s + Transparent AoS-to-SoA Planarization.**
+   A `struct Body` is an unboxed value type — never implicitly heap-boxed behind an object pointer. Better still, because Archx does not expose raw C interior pointers (`&bodies[i].x`), when you allocate a local fixed-length `[Body]` array (`let bodies = [Body(...); n]`), the compiler transparently stores each field in its own contiguous 16-byte-aligned plane (`x[]`, `y[]`, `z[]`, `vx[]`, `vy[]`, `vz[]`). Loops that touch 4 of 6 fields load **zero** wasted bytes per cache line and vectorize cleanly without gather/blend overhead.
 
-2. **Unboxed scalar values.**
-   - `int` → `i64` (8 bytes, register-resident).
-   - `bool` → `i1` (1 bit in IR, single register/flag in machine code).
-   - `string` → `ptr` pointing to a null-terminated UTF-8 constant in read-only static memory (`.rodata`). Identical string literals are **interned** so each distinct literal exists once in the binary.
+3. **16-Byte German/Umbra Prefix-SSO Strings (`str`).**
+   Every string is a 16-byte `{ len_and_prefix4: i64, inline8_or_tagged_ptr: i64 }` value in two registers:
+   - Strings up to **12 bytes** live 100% inline inside those 16 bytes — concatenating `"id_" + tag` (`9 B`) never touches memory or `free`.
+   - Strings longer than 12 bytes keep their **first 4 bytes inline** alongside a 2-bit pointer ownership tag (`STATIC = 00`, `HEAP = 01`, `REGION = 10`), so most `!=` checks finish in a single 64-bit register compare without dereferencing the pointer at all.
 
-3. **Zero heap, O(1) frame teardown.**
-   Nothing allocates behind your back. When a function returns, its entire frame vanishes in a single stack-pointer instruction — no destructors to chase, no reference counts to decrement, no garbage collector to wake up.
-
-### How heap memory will work as Archx grows
-
-Loops and scalars never needed a heap, and future features will keep that discipline. When dynamic collections (`Array`, `Map`, owned `String` builders) land, Archx's memory plan avoids *both* a tracing GC and lifetime-annotation soup:
-
-- **Values by default.** Structs and fixed-size aggregates sit inline on the stack or contiguous inside arrays — never silently boxed behind a pointer like Java or Python objects.
-- **Single-owner RAII for growable buffers.** Heap-backed containers have one clear owner and free their buffer deterministically at the end of the owning scope.
-- **Scoped arenas for phase/request work.** Many programs build a batch of nodes, transform them, emit an answer, and throw the whole batch away (compilers, parsers, web requests, game frames). A scoped arena allocates with a two-instruction pointer bump and frees everything at scope exit in O(1) — faster than `malloc`/`free`, cache-contiguous, and requiring zero per-field lifetime parameters.
-- **Local borrows without viral `'a` annotations.** Passing a collection to a function borrows it for the duration of that call by default, without infecting struct definitions with lifetime generics.
-- **Safety without C's undefined behavior.** Bounds checks stay unless LLVM proves the index is already within `0..len` (which a `for i in 0..arr.len:` header makes trivial for LLVM to prove).
+4. **Hybrid Ownership: Deterministic RAII + Scoped `region:` Arenas.**
+   - **Long-lived owners (`[T]`, `str`, nested `[Struct]`)** follow single-owner value semantics and emit deterministic recursive cleanup on scope fallthrough, overwrite, `return`, `break`, and `continue`.
+   - **Batch/request temporaries (`region:`)** bump a single pointer inside a cached 64 KB slab (2 instructions per allocation) and rewind in O(1) at the end of the `region:` block. Compile-time **escape analysis** prevents dangling region references in outer variables, while `return expr` from inside a `region:` automatically promotes escaping buffers to heap ownership before tearing down the region.
+   - **Verified leak-free**: CI compiles and runs Archx suites under **AddressSanitizer + LeakSanitizer** (`0` leaks, `0` invalid accesses in `ci/logs/asan_lsan.log`).
 
 ---
 
-## 3. Binary size
+## 3. Binary size & speed
 
-Small binaries are not a vanity metric. They mean faster linking, instant startup, tiny container images, less instruction-cache pressure, and nothing running inside your process that you did not ask for.
+Small binaries mean instant startup, minimal instruction-cache footprint, tiny container images, and zero hidden runtime threads.
 
-### Measured numbers (from `ci/out/benchmarks.txt`)
+### Measured numbers (`ci/out/benchmarks.txt`)
 
-On the identical two-loop benchmark (`sum_squares` to 20,000,000 + `count_primes` below 400,000, all compiled at `-O2` on x86-64 Linux):
+Across all three CI benchmark suites (`x86_64-pc-linux-gnu`, `clang 21.1.8 -O2`, `rustc 1.100.0 -O`, best of 7 runs):
 
-| Language | Compiler | Runtime (best of 5) | Binary (raw) | Binary (stripped) |
-|---|---|---:|---:|---:|
-| **C** | `clang 21 -O2` | **87 ms** | 16 KB | **14 KB** |
-| **Rust** | `rustc 1.100 -O` | **87 ms** | 4,388 KB | **330 KB** |
-| **Archx** | `archx` → `clang 21 -O2` | **87 ms** | 16 KB | **14 KB** |
+| Suite | C (`clang -O2`) | Rust (`rustc -O`) | **Archx (`archx -O2`)** | Archx Stripped (vs Rust) |
+|---|---:|---:|---:|---:|
+| **1. Scalar (`primes`)** | **134 ms** | **134 ms** | **134 ms** | **14 KB** (vs 330 KB) |
+| **2. Arrays (`arrays`)** | **58–62 ms** | **64 ms** | **63 ms** | **14 KB** (vs 331 KB) |
+| **3. Composite (`composite`)** | **21 ms** | **23 ms** | **18 ms** | **14 KB** (vs 332 KB) |
 
-All three print the exact same answers (`75517` and `33860`) and finish in **87 ms**. Yet the unstripped Rust executable is **274× larger** than Archx's (and still **23× larger** after `strip`).
+On Suite 3 (`100,000` 6-field `Body` structs × 120 timesteps + `40,000` scratch-buffer & string rounds), **Archx finishes in `18 ms` — beating both C (`21 ms`) and Rust (`23 ms`)** — while producing a **14 KB** stripped executable (**23.7× smaller** than stripped Rust and **274× smaller** than unstripped Rust's 4,390 KB).
 
 ### Why is Archx 14 KB?
 
-An executable's size comes down to what is linked in before `main` even starts:
-
-- **Rust** statically links `libstd`: panic formatting machinery, stack-unwinding tables, symbol demangling for backtraces, thread-local initialization, allocator shims, and debug info. You pay for that machinery even in a 30-line integer loop that never panics.
-- **Go** statically embeds its goroutine scheduler and concurrent garbage collector (~2 MB floor).
-- **Python / Node** either require a multi-tens-of-megabytes runtime preinstalled on the target machine or bundle one into a 40–100 MB archive.
-- **Archx** emits only the functions in your program plus `private unnamed_addr` format strings, and dynamically links the system `libc` that every OS already has in memory. There is no Archx runtime library, no unwinder, and no GC.
-
-As Archx adds a standard library, the rule stays **pay only for what you call**: unused stdlib functions will not be emitted (or will be marked `internal` so LLVM dead-strips them).
+- **Rust** statically links `libstd` (panic formatters, DWARF stack-unwinding tables, symbol demangling, thread-local runtime init).
+- **Go** embeds its goroutine scheduler and concurrent garbage collector (~2 MB floor).
+- **Archx** emits only the functions and runtime helpers your program actually uses (dead-stripped via `private`/`internal` LLVM linkage) and links straight against the system `libc` already mapped in every OS process.
 
 ---
 
 ## 4. Readability
 
-Readability is treated as an engineering constraint, not an aesthetic preference. Code is read ten times more often than it is written; syntax noise slows down bug-hunting just as surely as bad naming.
-
-### Concrete rules in Archx
+Readability is treated as an engineering constraint, not an aesthetic preference:
 
 1. **Indentation *is* block structure.**
-   In brace languages (`C`, `Rust`, `Go`), humans read the indentation while the compiler reads `{ }`. Whenever the two disagree, bugs hide in plain sight (`goto fail;`). In Archx, 4-space indentation is the single source of truth — no closing-brace ladders (`} } }`) taking up vertical space.
+   4-space indentation is the single source of truth — no `{ }` mismatches and no closing-brace ladders.
 
 2. **Words where symbols blur together.**
-   `if x > 0 and not done:` reads at natural speed; `if (x > 0 && !done) {` mixes comparison symbols, logical symbols, unary negation, parentheses, and braces in seven characters. Archx uses `and`, `or`, `not`, `in` for word-shaped connectors and keeps math symbols (`+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`) for math.
+   `if x > 0 and not done:` reads at natural speed. Archx uses `and`, `or`, `not`, `in`, `step`, `region`, `struct`, `func` as clear keywords while keeping arithmetic and comparison operators crisp.
 
 3. **Explicit at boundaries, inferred inside.**
-   Inside a function body, types are obvious from the right-hand side, so Archx infers them:
-   ```archx
-   let total = 0
-   let label = "ready"
-   ```
-   At function boundaries, types are **always written out**:
-   ```archx
-   func count_primes(limit: int) -> int:
-   ```
-   You never have to read a 40-line body to learn what a function accepts or returns, and a type mistake stops at the call site instead of producing a distant inference puzzle.
+   Function and struct signatures always state types (`func simulate(n: int) -> int:`), while local variables infer cleanly (`let bodies = [Body(...); n]`).
 
-4. **One clean way to write each loop.**
-   - Counting over a half-open range: `for i in 0..n:`
-   - Repeating until a condition changes: `while n > 1:`
-   No C-style three-clause `for (int i = 0; i < n; ++i)` header where initialization, condition, and mutation cram onto one line.
+4. **Expressive, safe loops.**
+   - `for i in 0..n:` — half-open range, bounds evaluated once.
+   - `for i in 0..n step 8:` — strided range with positive-step enforcement and bounds-check elision.
+   - `for b in bodies:` — direct element iteration with zero bounds checks.
+   - `while cond:` — condition-driven loop.
 
 ---
 
-## 5. Straightforwardness
+## 5. Straightforwardness & safety
 
-A language can look clean on a slide and still be full of traps when you maintain real code. "Straightforward" in Archx means **local reasoning always works**: looking at ten lines of Archx tells you what those ten lines do and roughly what they cost.
+"Straightforward" means **local reasoning always works** and **bugs fail loudly instead of corrupting memory**:
 
-### No implicit conversions or "truthiness"
+- **Zero C signed-overflow or division UB**: `int` `+`, `-`, `*`, unary `-`, `/`, and `%` check for `i64` overflow, division by zero, and `i64::MIN / -1` (eliding checks automatically when loop bounds or constant divisors prove safety).
+- **Zero out-of-bounds memory corruption**: every `arr[i]` is bounds-safe, with checks proven away at compile time on canonical `for` / `step` / `foreach` / monotonic `while` loops.
+- **No implicit conversions or "truthiness"**: `if`, `while`, `and`, `or`, `not` require `bool`; `x = expr` requires an existing `let` binding of the exact type.
+- **Inspectable compilation (`--emit-ir`)**: at any moment you can run `archx file.archx.lang --emit-ir` (or inspect `ci/out/*.opt.ll`) to see the exact LLVM IR your code lowers to.
 
-In C, `if (x = 0)` compiles; in Python and JavaScript, `""`, `0`, `[]`, and `None` silently coerce to `false`, turning typos and empty data into wrong branches.
-
-In Archx:
-- `if`, `while`, `and`, `or`, and `not` require an actual `bool` — `if count:` is rejected at compile time; write `if count != 0:`.
-- Arithmetic and comparisons never silently widen, narrow, or mix `bool` with `int`.
-- Assignment `x = expr` requires `x` to already exist via `let` and have the exact same type — a typo in a variable name on the left-hand side cannot silently invent a new local variable (Python's classic loop-bug footgun).
-
-### Predictable evaluation, zero hidden work
-
-- **Range bounds run once.** In `for i in start()..finish():`, both `start()` and `finish()` execute once before the loop begins, not on every iteration.
-- **Short-circuiting is guaranteed.** `a and b` never evaluates `b` if `a` is `false`; `a or b` never evaluates `b` if `a` is `true`.
-- **No hidden allocations or copy constructors.** Assigning an `int` or `bool` copies bytes in registers. No operator call can secretly invoke an arbitrary user function or heap allocator.
-- **No preprocessor or text macros.** Every identifier in a file obeys lexical scope.
-
-### Transparent compilation (`--emit-ir`)
-
-Straightforwardness applies to the compiler too. At any point you can ask Archx to show its exact output:
-
-```sh
-archx examples/loops.archx.lang --emit-ir
-```
-
-And you can watch what LLVM `-O2` turns that straightforward source into. For example, in `examples/loops.archx.lang`, the human writes the clearest possible loop:
-
-```archx
-func sum_to(n: int) -> int:
-    let total = 0
-    for i in 1..n + 1:
-        total = total + i
-    return total
-```
-
-And in `ci/out/loops.opt.ll`, LLVM recognizes the induction variable over Archx's clean `for` IR and replaces the **entire loop** with closed-form arithmetic (`n * (n + 1) / 2`) — zero loop iterations at runtime, and when called as `sum_to(10)` in `main`, folds the whole call down to `printf("%lld\n", 55)`.
-
-That is the core bargain of Archx: **you write the straightforward code; the compiler writes the clever machine code.**
+**You write the straightforward code; the compiler writes the clever machine code.**
