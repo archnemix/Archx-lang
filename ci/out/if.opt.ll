@@ -10,14 +10,6 @@ target triple = "x86_64-pc-linux-gnu"
 ; Function Attrs: nofree nounwind
 declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unnamed_addr #0
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define range(i64 -1, 2) i64 @archx_sign(i64 %param.n) local_unnamed_addr #1 {
-entry:
-  %t0.inv = icmp slt i64 %param.n, 1
-  %common.ret.op = select i1 %t0.inv, i64 -1, i64 1
-  ret i64 %common.ret.op
-}
-
 ; Function Attrs: nofree nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
 entry:
@@ -34,4 +26,3 @@ entry:
 declare noundef i32 @puts(ptr noundef readonly captures(none)) local_unnamed_addr #0
 
 attributes #0 = { nofree nounwind }
-attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }

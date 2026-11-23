@@ -8,13 +8,6 @@ target triple = "x86_64-pc-linux-gnu"
 ; Function Attrs: nofree nounwind
 declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unnamed_addr #0
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i64 @archx_add(i64 %param.a, i64 %param.b) local_unnamed_addr #1 {
-entry:
-  %t0 = add i64 %param.b, %param.a
-  ret i64 %t0
-}
-
 ; Function Attrs: nofree nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
 entry:
@@ -23,4 +16,3 @@ entry:
 }
 
 attributes #0 = { nofree nounwind }
-attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }

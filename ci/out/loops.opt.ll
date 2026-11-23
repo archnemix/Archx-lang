@@ -8,31 +8,6 @@ target triple = "x86_64-pc-linux-gnu"
 ; Function Attrs: nofree nounwind
 declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unnamed_addr #0
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i64 @archx_sum_to(i64 %param.n) local_unnamed_addr #1 {
-entry:
-  %t1 = add i64 %param.n, 1
-  %t44 = icmp sgt i64 %t1, 1
-  br i1 %t44, label %for.body.1.preheader, label %for.end.3
-
-for.body.1.preheader:                             ; preds = %entry
-  %0 = shl nuw i64 %param.n, 1
-  %1 = add nsw i64 %param.n, -1
-  %2 = zext nneg i64 %1 to i65
-  %3 = add nsw i64 %param.n, -2
-  %4 = zext i64 %3 to i65
-  %5 = mul i65 %2, %4
-  %6 = lshr i65 %5, 1
-  %7 = trunc nuw i65 %6 to i64
-  %8 = add i64 %0, %7
-  %9 = add i64 %8, -1
-  br label %for.end.3
-
-for.end.3:                                        ; preds = %for.body.1.preheader, %entry
-  %var.total.0.0.lcssa = phi i64 [ 0, %entry ], [ %9, %for.body.1.preheader ]
-  ret i64 %var.total.0.0.lcssa
-}
-
 ; Function Attrs: nofree nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
 for.end.6:
@@ -49,4 +24,3 @@ for.end.6:
 }
 
 attributes #0 = { nofree nounwind }
-attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }

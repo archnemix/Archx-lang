@@ -8,7 +8,7 @@ declare i32 @printf(ptr, ...)
 @.str.0 = private unnamed_addr constant [4 x i8] c"big\00"
 @.str.1 = private unnamed_addr constant [6 x i8] c"small\00"
 
-define i64 @archx_sign(i64 %param.n) nounwind {
+define internal i64 @archx_sign(i64 %param.n) nounwind {
 entry:
   %t0 = icmp sgt i64 %param.n, 0
   br i1 %t0, label %if.then.0, label %if.else.1
@@ -26,7 +26,7 @@ if.merge.2:
 
 define i32 @main() nounwind {
 entry:
-  %bool.result.14 = alloca i1
+  %bool.result.14 = alloca i1, align 1
   %t0 = icmp sgt i64 7, 5
   br i1 %t0, label %if.then.0, label %if.else.1
 
@@ -50,16 +50,16 @@ if.merge.2:
   %t11 = select i1 %t10, ptr @.str.true, ptr @.str.false
   %t12 = call i32 (ptr, ...) @printf(ptr @.fmt.str, ptr %t11)
   %t13 = icmp slt i64 1, 2
-  store i1 false, ptr %bool.result.14
+  store i1 false, ptr %bool.result.14, align 1
   br i1 %t13, label %bool.rhs.3, label %bool.merge.4
 
 bool.rhs.3:
   %t15 = icmp slt i64 2, 3
-  store i1 %t15, ptr %bool.result.14
+  store i1 %t15, ptr %bool.result.14, align 1
   br label %bool.merge.4
 
 bool.merge.4:
-  %t16 = load i1, ptr %bool.result.14
+  %t16 = load i1, ptr %bool.result.14, align 1
   %t17 = select i1 %t16, ptr @.str.true, ptr @.str.false
   %t18 = call i32 (ptr, ...) @printf(ptr @.fmt.str, ptr %t17)
   ret i32 0

@@ -1,58 +1,77 @@
 [1m[92m   Compiling[0m archx v0.1.0 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 1.52s
+[1m[33mwarning[0m[1m: field `0` is never read[0m
+   [1m[94m--> [0msrc/codegen.rs:311:11
+    [1m[94m|[0m
+[1m[94m311[0m [1m[94m|[0m     Const(i64),
+    [1m[94m|[0m     [1m[94m-----[0m [1m[33m^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `StrideVal` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m311[0m [91m- [0m    Const([91mi64[0m),
+[1m[94m311[0m [92m+ [0m    Const([92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx") generated 1 warning
+[1m[33mwarning[0m: `archx` (bin "archx" test) generated 1 warning (1 duplicate)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 5.54s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/f0ebc61308ccc5f1/out/archx-f0ebc61308ccc5f1)
 
-running 35 tests
-test codegen::tests::both_branches_return_ir ... ok
+running 36 tests
 test codegen::tests::break_continue_ir ... ok
-test codegen::tests::dynamic_index_emits_single_unsigned_bounds_check ... ok
-test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
-test codegen::tests::hello_world_ir ... ok
+test codegen::tests::both_branches_return_ir ... ok
 test codegen::tests::for_loop_ir ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::function_call_ir ... ok
+test codegen::tests::dynamic_index_emits_single_unsigned_bounds_check ... ok
+test codegen::tests::hello_world_ir ... ok
 test codegen::tests::if_else_ir ... ok
-test codegen::tests::immutable_let_and_const_folding_skip_alloca_and_mul ... ok
-test codegen::tests::rejects_compile_time_out_of_bounds_and_negative_index ... ok
 test codegen::tests::infinite_loop_does_not_demand_a_return ... ok
-test codegen::tests::rejects_non_bool_if_condition ... ok
+test codegen::tests::rejects_compile_time_out_of_bounds_and_negative_index ... ok
 test codegen::tests::rejects_undefined_variable ... ok
-test codegen::tests::while_loop_ir ... ok
+test codegen::tests::rejects_non_bool_if_condition ... ok
+test codegen::tests::immutable_let_and_const_folding_skip_alloca_and_mul ... ok
 test codegen::tests::short_circuit_ir ... ok
-test lexer::tests::comparison_and_boolean_tokens ... ok
+test codegen::tests::while_loop_ir ... ok
+test codegen::tests::multi_array_for_and_strided_while_emit_zero_check_fast_loops ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
-test lexer::tests::equality_operators ... ok
-test lexer::tests::comments_and_blank_lines_are_ignored ... ok
-test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::indents_and_dedents ... ok
-test lexer::tests::strings_with_both_quote_styles ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::equality_operators ... ok
 test lexer::tests::loop_tokens ... ok
-test parser::tests::parses_for_and_break_continue ... ok
+test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
 test parser::tests::parses_elif_chain ... ok
-test parser::tests::parses_functions_with_params ... ok
-test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_main_and_print ... ok
+test parser::tests::parses_functions_with_params ... ok
 test parser::tests::parses_if_else ... ok
-test tests::default_output_strips_archx_extensions ... ok
+test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::rejects_missing_colon ... ok
 test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
-test parser::tests::rejects_missing_colon ... ok
+test tests::default_output_strips_archx_extensions ... ok
 
-test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
 [1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/6623a22cc58e687a/out/cli-6623a22cc58e687a)
 
 running 9 tests
 test emit_ir_works ... ok
 test break_outside_loop_is_an_error ... ok
-test elif_and_compound_assign_run ... ok
 test functions_run ... ok
 test hello_world_runs ... ok
+test elif_and_compound_assign_run ... ok
 test arrays_run ... ok
+test if_else_runs ... ok
 test loops_run ... ok
 test out_of_bounds_panics_cleanly ... ok
-test if_else_runs ... ok
 
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
 

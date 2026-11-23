@@ -6,7 +6,7 @@ declare i32 @printf(ptr, ...)
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00"
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-define i64 @archx_add(i64 %param.a, i64 %param.b) nounwind {
+define internal i64 @archx_add(i64 %param.a, i64 %param.b) nounwind {
 entry:
   %t0 = add i64 %param.a, %param.b
   ret i64 %t0
