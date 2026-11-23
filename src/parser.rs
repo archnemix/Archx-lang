@@ -245,7 +245,7 @@ impl Parser {
             if self.check(&TokenKind::DotDot) {
                 self.bump();
                 let end = self.parse_expr()?;
-                let step = if self.check(&TokenKind::Step) {
+                let step = if matches!(&self.peek().kind, TokenKind::Ident(k) if k == "step") {
                     self.bump();
                     Some(self.parse_expr()?)
                 } else {

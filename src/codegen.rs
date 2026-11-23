@@ -5521,7 +5521,11 @@ build_sso:
   %rs0 = insertvalue %ArchxStr poison, i64 %rw0, 0
   %rs1 = insertvalue %ArchxStr %rs0, i64 %rw1, 1
   ret %ArchxStr %rs1
-build_long:
+"#,
+            );
+            if self.used_region {
+                out.push_str(
+                    r#"build_long:
   %use_reg = icmp ne ptr %reg, null
   br i1 %use_reg, label %alloc_reg, label %alloc_heap
 alloc_reg:
@@ -5540,7 +5544,23 @@ tag_heap:
 copy_long:
   %dst = phi ptr [ %rp, %alloc_reg ], [ %hp, %tag_heap ]
   %w1_out = phi i64 [ %rtagged, %alloc_reg ], [ %htagged, %tag_heap ]
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst, ptr nonnull align 1 %aptr, i64 %alen, i1 false)
+"#,
+                );
+            } else {
+                out.push_str(
+                    r#"build_long:
+  %hp = call noalias align 16 ptr @malloc(i64 %tot)
+  %hnull = icmp eq ptr %hp, null
+  br i1 %hnull, label %oom, label %copy_long
+copy_long:
+  %dst = phi ptr [ %hp, %build_long ]
+  %hp_i = ptrtoint ptr %hp to i64
+  %w1_out = or i64 %hp_i, 1
+"#,
+                );
+            }
+            out.push_str(
+                r#"  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst, ptr nonnull align 1 %aptr, i64 %alen, i1 false)
   %dst_b = getelementptr inbounds i8, ptr %dst, i64 %alen
   call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b, ptr nonnull align 1 %bptr, i64 %blen, i1 false)
   %pref32 = load i32, ptr %dst, align 16
