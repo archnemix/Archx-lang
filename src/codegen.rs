@@ -2703,12 +2703,10 @@ impl Codegen {
 
                 let vec = self.build_vec_val(&count_str, &cap_str, &data_ptr, out);
                 let arr_ty = Type::Array(Box::new(first_ty));
-                if !use_region {
-                    self.stmt_temps.push(TempDrop {
-                        val: vec.clone(),
-                        ty: arr_ty.clone(),
-                    });
-                }
+                self.stmt_temps.push(TempDrop {
+                    val: vec.clone(),
+                    ty: arr_ty.clone(),
+                });
                 Ok((arr_ty, vec))
             }
 
@@ -2770,12 +2768,10 @@ impl Codegen {
 
                 let vec = self.build_vec_val(&count_val, &cap_val, &data_ptr, out);
                 let arr_ty = Type::Array(Box::new(elem_ty));
-                if !use_region {
-                    self.stmt_temps.push(TempDrop {
-                        val: vec.clone(),
-                        ty: arr_ty.clone(),
-                    });
-                }
+                self.stmt_temps.push(TempDrop {
+                    val: vec.clone(),
+                    ty: arr_ty.clone(),
+                });
                 Ok((arr_ty, vec))
             }
 
@@ -3063,12 +3059,10 @@ impl Codegen {
             out,
             "  {res} = call fastcc %ArchxStr @archx_str_concat(%ArchxStr {lhs_val}, %ArchxStr {rhs_val}, ptr {reg_arg})"
         );
-        if self.region_stack.is_empty() {
-            self.stmt_temps.push(TempDrop {
-                val: res.clone(),
-                ty: Type::Str,
-            });
-        }
+        self.stmt_temps.push(TempDrop {
+            val: res.clone(),
+            ty: Type::Str,
+        });
         res
     }
 
