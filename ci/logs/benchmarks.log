@@ -1,11 +1,11 @@
 == building scalar benchmark (primes) ==
-compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.9cVyUGFwXb/primes_ax`
+compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.RUSH7KBHRq/primes_ax`
 == building array benchmark (arrays) ==
-compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.9cVyUGFwXb/arrays_ax`
+compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.RUSH7KBHRq/arrays_ax`
 == building composite Milestone 5 benchmark (composite) ==
-compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.9cVyUGFwXb/comp_ax`
+compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.RUSH7KBHRq/comp_ax`
 == building Pythonic floating-point N-body benchmark (nbody_float) ==
-compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.9cVyUGFwXb/nbody_ax`
+compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.RUSH7KBHRq/nbody_ax`
 
 == verifying scalar outputs match ==
 75517
@@ -46,9 +46,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         104 (104)        16          14
-  Rust   (rustc -O)          104 (104)      4388         330
-  Archx  (archx -O2)         104 (104)        16          14
+  C      (clang -O2)         118 (118)        16          14
+  Rust   (rustc -O)          118 (118)      4388         330
+  Archx  (archx -O2)         118 (118)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -57,10 +57,10 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        50 (50)        16          14
-  C checked   (slice struct -O2)     49 (49)        16          14
-  Rust        (safe Vec -O)          54 (54)      4389         331
-  Archx       (safe [T] -O2)         50 (51)        16          14
+  C raw ptr   (unchecked -O2)        57 (59)        16          14
+  C checked   (slice struct -O2)     53 (54)        16          14
+  Rust        (safe Vec -O)          56 (57)      4389         331
+  Archx       (safe [T] -O2)         54 (55)        16          14
 
 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 ------------------------------------------------------------------------------
@@ -69,9 +69,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 14248875,421461999
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS + malloc/strcmp -O2)   16 (16)        16          14
-  Rust   (Vec<Body> + String -O)     19 (19)      4390         332
-  Archx  (SoA + region + SSO -O2)    14 (14)        16          14
+  C      (AoS + malloc/strcmp -O2)   22 (22)        16          14
+  Rust   (Vec<Body> + String -O)     25 (25)      4390         332
+  Archx  (SoA + region + SSO -O2)    18 (18)        16          14
 
 4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 ----------------------------------------------------------------------------------------
@@ -80,8 +80,8 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 11232960,3595406
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS Body* -O2 -lm)         56 (56)        16          14
-  Rust   (Vec<Body> -O)              56 (56)      4390         332
-  Archx  (Pythonic class + SoA -O2)  52 (52)        16          14
+  C      (AoS Body* -O2 -lm)         68 (68)        16          14
+  Rust   (Vec<Body> -O)              67 (67)      4390         332
+  Archx  (Pythonic class + SoA -O2)  62 (63)        16          14
 
 written to ci/out/benchmarks.txt
