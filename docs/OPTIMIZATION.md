@@ -13,16 +13,17 @@ That does **not** mean hand-optimizing every expression in the frontend. It mean
 | 3. LLVM middle-end | LLVM | Inlining, SROA, GVN, LICM, loop unrolling, vectorization | `clang -O2` / `-O3` |
 | 4. Backend / runtime | LLVM + **Archx** | Instruction selection, register allocation, allocators, GC/arena runtime | custom allocator, bounds-check elision |
 
-## How memory & IR optimization work today (milestone 4)
+## How memory & IR optimization work today (LLVM-direct lowering)
 
-- **Immutable scalars (`int`, `bool`, `string`)** — parameters and `let` bindings that are never reassigned lower directly to SSA values (`VarStorage::Imm`) with zero `alloca`/`store`/`load` instructions.
-- **Constant folding** — integer arithmetic on constants (`6 * 7` → `42`) is folded in the frontend before IR emission.
-- **Mutable locals** — use entry-block `alloca` slots promoted to registers by LLVM's `mem2reg` / SROA passes at `-O2`.
-- **Non-wrapping `for` counters (`add nsw`)** — when `i` in `for i in a..b:` is not reassigned in the body, `i < b <= i64::MAX` guarantees `i + 1` never signed-overflows, so Archx emits `add nsw i64 %i, 1` without C's undefined behavior.
-- **Arrays (`%ArchxVec = { i64 len, i64 cap, ptr data }`)**:
-  - `[0; n]` and `[false; n]` lower directly to `@calloc` (`noalias` zero-initialized OS pages); `[true; n]` lowers to `@malloc` + fill loop, which LLVM collapses into `@llvm.memset`.
-  - Bounds checks use a single unsigned compare (`icmp ult i64 %idx, %len`) branching to a `cold noreturn nounwind` panic helper — and **Archx elides the check completely at compile time** whenever `0 <= idx < len` is proven (`for i in 0..len(xs):`, `for i in 0..n:` on `[v; n]`, or constant indices on literals).
-  - Non-escaping local 1D arrays emit deterministic `@free` calls at scope exit (including early `return`, `break`, and `continue`) — zero leaks and zero GC pauses.
+Rather than assuming C's undefined-behavior model or copying standard `Vec` lowering, Archx analyzes how `clang -O2` (`IPSCCP → Inliner → SROA → InstCombine → IndVarSimplify → LoopVectorize`) transforms IR and emits invariants LLVM can exploit directly while staying **100% memory- and overflow-safe**:
+
+- **`define internal` linkage on `@archx_*` functions** — unlocks LLVM's interprocedural constant propagation (`IPSCCP`), dead-argument elimination, and single-callsite inlining across the module.
+- **Direct SSA (`VarStorage::Imm`) for ALL immutable bindings — including `[T]` arrays** — variables and arrays that are never reassigned or resized (`push`/`pop`) never touch an `alloca` slot; their heap pointers register directly as SSA `DropTarget::DataPtr` values for scope-exit `@free`.
+- **Explicit natural alignment (`align 8` / `align 1`) + `noalias align 16` allocators** — prevents LLVM's untargeted `LLParser` fallback (`i64:32:64`) from stamping `align 4` onto 64-bit scalar and SIMD loads/stores, enabling `align 16` vector instructions.
+- **Single-instruction `2^47` allocation invariant (`icmp ugt i64 %count, 140737488355328`)** — rejects negative lengths *and* prevents `count * sizeof(T)` integer wrap in one compare, while giving LLVM a `[0, 2^47]` range with `65,535×` headroom below `i64::MAX`.
+- **Range-Guarded Loop Versioning on multi-array `for` loops** — when `for i in 0..len(dst):` also indexes `a[i]` and `b[i]`, Archx checks `(end <= a.len) && (end <= b.len)` **once** in the preheader and branches to a zero-check, single-exit `for.fast` loop so `LoopVectorize` always vectorizes (and `SimplifyCFG` deletes the cold fallback loop completely whenever lengths match after inlining).
+- **Monotonic Stride Versioning on `while idx < bound:` loops** — checks `(idx >= 0) && (bound <= 2^47) && (1 <= step <= 2^47)` once before entering `while.fast`, mathematically proving `0 <= idx < bound` across every `idx += step` iteration with **zero** signed-overflow UB and **zero** in-loop bounds checks (producing the exact same 5-instruction Sieve inner loop as raw unchecked C in `ci/out/bench_arrays.opt.ll`).
+- **Deterministic scope-exit RAII `@free`** — non-escaping local 1D arrays free deterministically on block fallthrough, `return`, `break`, and `continue` with zero GC pauses.
 
 **Before optimization** (`--emit-ir`):
 
@@ -67,15 +68,16 @@ The multiply, alloca, store, and load all disappear. Loops optimize the same way
 2. **String interning + compile-time `len("...")`** — done.
 3. **Short-circuit `and`/`or`** — done.
 4. **Constant folding in the frontend** — done (`6 * 7` folds to `42` before IR is emitted).
-5. **Immutable `let` & parameters → direct SSA** — done (no `alloca`/`store`/`load` for bindings that are never reassigned).
-6. **`nounwind`, `noalias` allocators, `cold noreturn` panic paths, and `add nsw` range induction** — done.
-7. **Compile-time bounds-check elision + 1-instruction `icmp ult` fallback** — done (proven in `ci/out/arrays.opt.ll`, where `dot(a, b)` hoists `b`'s check to the preheader and auto-vectorizes into SIMD `<2 x i64>`).
-8. **Deterministic scope-exit RAII `free` for non-escaping local arrays** — done.
+5. **Immutable `let`, parameters, and immutable `[T]` arrays → direct SSA** — done (no `alloca`/`store`/`load` for bindings that are never reassigned or resized).
+6. **`define internal` module-private linkage on `@archx_*` functions** — done (enabling `IPSCCP`, dead-arg elimination, and aggressive inlining).
+7. **Explicit natural alignment (`align 8` / `align 1`) + `noalias align 16` allocators + `2^47` overflow-safe allocation guard** — done.
+8. **Compile-time bounds-check elision + Range-Guarded `for` Loop Versioning + Monotonic Strided `while` Loop Versioning** — done (proven in `ci/out/bench_arrays.opt.ll`, matching raw unchecked C instruction-for-instruction on both SIMD `vec_step` and Sieve's inner loop while remaining 100% memory-safe).
+9. **Deterministic scope-exit RAII `free` for non-escaping local arrays** — done.
 
 ## What we can optimize next
 
-1. **Strided range loops (`for j in a..b step k`)** — proves `0 <= j < b` monotonically so strided loops like Sieve of Eratosthenes elide their single remaining `icmp ult` bounds check without C's signed-overflow UB.
-2. **`readonly` / `noalias` slice parameter lowering** — unpack non-mutated `%ArchxVec` parameters to `(i64 %len, ptr readonly %data)` on internal `@archx_*` functions so non-inlined cross-function array loops get alias-free SIMD without runtime overlap checks.
+1. **First-class strided range syntax (`for j in a..b step k`)** — ergonomic sugar over the already-elided monotonic strided loop lowering.
+2. **`readonly` unpacked slice parameter ABI** — unpack non-mutated `%ArchxVec` parameters to `(i64 %len, ptr readonly %data)` for large non-inlined functions.
 3. **`-O3` and `-flto` CLI flags (`--release-fast`)** — keep `-O2` as default, expose `-O3` + LTO when requested.
 4. **Scoped bump arenas (`with arena:`)** — O(1) allocation and bulk reset for temporary graphs/strings/arrays.
 
@@ -94,8 +96,8 @@ The multiply, alloca, store, and load all disappear. Loops optimize the same way
 
 Optimization claims must be measured, not guessed:
 
-1. `benchmarks/` holds identical workloads in C (`clang -O2`), Rust (`rustc -O`), and Archx (`archx` → `clang -O2`) — currently a 20M-iteration arithmetic loop and prime counting up to 400,000.
-2. CI runs `bash benchmarks/run.sh 5` on every push, verifies identical stdout across all three, and records best-of-5 wall-clock ms and raw/stripped binary sizes in `ci/out/benchmarks.txt` (currently **87 ms** across C, Rust, and Archx; **14 KB** stripped for Archx and C vs **330 KB** stripped for Rust).
+1. `benchmarks/` holds identical workloads across two suites: scalar loops (`primes.*` in C, Rust, Archx) and array/sieve workloads (`arrays_raw.c`, `arrays_checked.c`, `arrays.rs`, `arrays.archx.lang`).
+2. CI runs `bash benchmarks/run.sh 7` on every push, verifies identical stdout across every implementation, dumps `ci/out/bench_arrays.opt.ll` vs `ci/out/bench_arrays_c_raw.opt.ll`, and records wall-clock ms and binary sizes in `ci/out/benchmarks.txt` (**93 ms** Archx vs **94 ms** C/Rust on scalar; **44 ms** Archx vs **44 ms** unchecked C and **45 ms** Rust on arrays; **14 KB** stripped for Archx and C vs **331 KB** for Rust).
 3. As arrays, strings, structs, and arenas land, matching benchmarks get added to `benchmarks/`.
 4. Only keep a frontend or pass optimization if it wins on the suite without hurting compile speed.
 

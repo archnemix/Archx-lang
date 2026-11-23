@@ -308,7 +308,7 @@ enum UpperBound {
 
 #[derive(Clone)]
 enum StrideVal {
-    Const(i64),
+    Const,
     Var(String),
 }
 
@@ -785,7 +785,7 @@ impl Codegen {
             let _ = writeln!(out, "  {jb_ok} = and i1 {j_ok}, {b_ok}");
 
             let all_ok = match &plan.stride {
-                StrideVal::Const(_) => jb_ok,
+                StrideVal::Const => jb_ok,
                 StrideVal::Var(sname) => {
                     let sv = self.load_var_ssa(sname, out);
                     let sm1 = self.next_tmp();
@@ -2565,7 +2565,7 @@ impl Codegen {
                         if let Some(se) = step_expr {
                             if let Some(c) = eval_const_int(se) {
                                 if (1..=MAX_ARRAY_LEN).contains(&c) {
-                                    *stride_out = Some(StrideVal::Const(c));
+                                    *stride_out = Some(StrideVal::Const);
                                 }
                             } else if let ExprKind::Var(svar) = &se.kind {
                                 if svar != idx_var && !stmts_assign_var(stmts, svar) {

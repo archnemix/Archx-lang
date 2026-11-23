@@ -128,19 +128,19 @@ Archx optimizes at four layers:
 bash benchmarks/run.sh
 ```
 
-Latest GitHub Actions run (`ci/out/benchmarks.txt`):
+Latest GitHub Actions run (`ci/out/benchmarks.txt`, best of 7):
 
-| Suite | Implementation | Best of 5 (mean) | Binary (raw) | Binary (stripped) |
+| Suite | Implementation | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
 |---|---|---:|---:|---:|
-| **Scalar (`primes`)** | C (`clang -O2`) | **124 ms** (124 ms) | 16 KB | **14 KB** |
-| | Rust (`rustc -O`) | **124 ms** (124 ms) | 4,388 KB | **330 KB** |
-| | Archx (`archx -O2`) | **124 ms** (126 ms) | 16 KB | **14 KB** |
-| **Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **86 ms** (87 ms) | 16 KB | **14 KB** |
-| | C checked (slice struct `-O2`) | **86 ms** (86 ms) | 16 KB | **14 KB** |
-| | Rust (safe `Vec` `-O`) | **89 ms** (89 ms) | 4,389 KB | **331 KB** |
-| | Archx (safe `[T]` `-O2`) | **89 ms** (89 ms) | 16 KB | **14 KB** |
+| **Scalar (`primes`)** | C (`clang -O2`) | **94 ms** (94 ms) | 16 KB | **14 KB** |
+| | Rust (`rustc -O`) | **94 ms** (94 ms) | 4,388 KB | **330 KB** |
+| | Archx (`archx -O2`) | **93 ms** (93 ms) | 16 KB | **14 KB** |
+| **Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **44 ms** (47 ms) | 16 KB | **14 KB** |
+| | C checked (slice struct `-O2`) | **45 ms** (46 ms) | 16 KB | **14 KB** |
+| | Rust (safe `Vec` `-O`) | **45 ms** (46 ms) | 4,389 KB | **331 KB** |
+| | Archx (safe `[T]` `-O2`) | **44 ms** (46 ms) | 16 KB | **14 KB** |
 
-Archx matches Rust **to the exact millisecond (89 ms)** on safe bounds-checked array workloads and ties C to the millisecond (**124 ms**) on scalar loops — while keeping a **14 KB** stripped binary. See [`benchmarks/README.md`](benchmarks/README.md) and [`docs/FUNDAMENTALS.md`](docs/FUNDAMENTALS.md) for details.
+By analyzing LLVM's pass pipeline directly (range-guarded loop versioning, monotonic strided `while` versioning, `2^47` allocation invariants, direct SSA for immutable arrays, `internal` linkage, and `align 16` allocators), Archx matches **even raw unchecked C (`44 ms`)** while remaining 100% bounds- and overflow-safe in a **14 KB** stripped binary. See [`benchmarks/README.md`](benchmarks/README.md) and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the IR breakdown.
 
 ## Architecture
 
