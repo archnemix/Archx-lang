@@ -1,13 +1,16 @@
-//! LLVM IR code generation orchestrator, struct layout resolution, and core `Codegen` state.
-//! Coordinates static analyses, statement/loop/expression lowering, RAII ownership, and runtime helpers.
+//! LLVM IR code generation orchestrator, struct/method layout resolution, and core `Codegen` state.
+//! Coordinates static analyses, statement/loop/expression/method/I/O lowering, RAII ownership, and runtime helpers.
 
 mod analysis;
 mod calls;
 mod expr;
+mod io;
 mod loops;
 mod memory;
+mod methods;
 mod ownership;
 mod runtime;
+mod runtime_py;
 mod stmt;
 #[cfg(test)]
 mod tests;
@@ -18,18 +21,18 @@ use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
 
-pub(super) const BUILTINS: [&str; 4] = ["print", "len", "push", "pop"];
-pub(super) const PRIMITIVE_TYPES: [&str; 5] = ["int", "bool", "string", "str", "void"];
+pub(super) const BUILTINS: [&str; 5] = ["print", "input", "len", "push", "pop"];
+pub(super) const PRIMITIVE_TYPES: [&str; 6] = ["int", "float", "bool", "string", "str", "void"];
 pub(super) const MAX_ARRAY_LEN: i64 = 1_i64 << 47;
 pub(super) const MAX_STR_LEN: i64 = i32::MAX as i64;
 pub(super) const MAX_NESTING: usize = 128;
 
 /// Lowers an Archx program to textual LLVM IR:
-/// - Hardened zero-UB arithmetic & checked allocations
+/// - Hardened zero-UB integer & IEEE-754 `double` arithmetic + checked allocations
 /// - Deterministic linear/RAII zero-leak ownership across scopes, temps, & early exits
-/// - `fastcc` internal ABI + first-class `struct` aggregates + transparent local `SoA` splitting
+/// - `fastcc` internal ABI + first-class `class`/`struct` methods + transparent local `SoA` splitting
 /// - 16-byte inline-prefix SSO `%ArchxStr` (`<= 12` bytes in 2 registers, 0 heap allocs)
-/// - Escape-checked `region:` bump-pointer arenas with slab reuse across loop iterations
+/// - Escape-checked `region:` / `with region:` bump-pointer arenas with slab reuse
 pub fn lower(program: &Program) -> Result<String> {
     let mut struct_map: HashMap<String, Vec<Param>> = HashMap::new();
     let mut struct_spans: HashMap<String, Span> = HashMap::new();
@@ -37,7 +40,7 @@ pub fn lower(program: &Program) -> Result<String> {
     for sdef in &program.structs {
         if BUILTINS.contains(&sdef.name.as_str()) || PRIMITIVE_TYPES.contains(&sdef.name.as_str()) {
             return Err(Diagnostic::new(
-                format!("`{}` is a reserved name and cannot be a struct", sdef.name),
+                format!("`{}` is a reserved name and cannot be a class/struct", sdef.name),
                 sdef.span,
             ));
         }
@@ -75,8 +78,86 @@ pub fn lower(program: &Program) -> Result<String> {
     let ordered_structs = topo_sort_structs(&program.structs, &struct_map, &struct_spans)?;
 
     let mut sigs = HashMap::new();
+    let mut methods: HashMap<(String, String), MethodSig> = HashMap::new();
+    let mut mutating_method_names: HashSet<String> = ["append", "pop", "clear"]
+        .into_iter()
+        .map(String::from)
+        .collect();
     let mut any_sig_uses_vec = false;
     let mut any_sig_uses_str = false;
+
+    // First pass over struct methods to register signatures and detect `self` mutators.
+    for sdef in &program.structs {
+        for m in &sdef.methods {
+            let key = (sdef.name.clone(), m.name.clone());
+            if methods.contains_key(&key) {
+                return Err(Diagnostic::new(
+                    format!("method `{}` in `{}` is defined more than once", m.name, sdef.name),
+                    m.span,
+                ));
+            }
+            let mut seen_params = HashSet::new();
+            for param in &m.params {
+                if param.ty == Type::Void {
+                    return Err(Diagnostic::new(
+                        "a parameter cannot have type `void`",
+                        m.span,
+                    ));
+                }
+                validate_type(&param.ty, &struct_map, m.span)?;
+                mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+                if !seen_params.insert(param.name.as_str()) {
+                    return Err(Diagnostic::new(
+                        format!("duplicate parameter `{}`", param.name),
+                        m.span,
+                    ));
+                }
+            }
+            let ret = match &m.ret {
+                Some(Type::Void) | None => None,
+                Some(ty) => {
+                    validate_type(ty, &struct_map, m.span)?;
+                    mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+                    Some(ty.clone())
+                }
+            };
+            let self_by_ptr = method_mutates_self(&m.params, &m.body);
+            if self_by_ptr {
+                mutating_method_names.insert(m.name.clone());
+            }
+            methods.insert(
+                key,
+                MethodSig {
+                    ir_name: mangle_method(&sdef.name, &m.name),
+                    self_by_ptr,
+                    params: m.params[1..].iter().map(|p| p.ty.clone()).collect(),
+                    ret,
+                },
+            );
+        }
+    }
+
+    // Fixed-point propagation if a method calls another mutating method on `self`:
+    loop {
+        let mut changed = false;
+        for sdef in &program.structs {
+            for m in &sdef.methods {
+                let key = (sdef.name.clone(), m.name.clone());
+                let sig = methods.get(&key).unwrap();
+                if !sig.self_by_ptr
+                    && collect_mutated_vars(&m.params, &m.body, &mutating_method_names)
+                        .contains("self")
+                {
+                    methods.get_mut(&key).unwrap().self_by_ptr = true;
+                    mutating_method_names.insert(m.name.clone());
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
 
     for func in &program.funcs {
         if BUILTINS.contains(&func.name.as_str()) || PRIMITIVE_TYPES.contains(&func.name.as_str()) {
@@ -165,6 +246,8 @@ pub fn lower(program: &Program) -> Result<String> {
         strings: StringTable::new(),
         structs: struct_map,
         sigs,
+        methods,
+        mutating_method_names,
         scopes: Vec::new(),
         stmt_temps: Vec::new(),
         mutated_vars: HashSet::new(),
@@ -195,23 +278,55 @@ pub fn lower(program: &Program) -> Result<String> {
         used_memcpy: false,
         used_smul_ovf: false,
         used_array_print: false,
+        used_print_inline: false,
+        used_print_float: false,
         used_str_eq: false,
         used_str_concat: false,
         used_str_print: false,
         used_str_drop: false,
         used_str_clone: false,
         used_str_promote: false,
+        used_str_from_int: false,
+        used_str_from_float: false,
+        used_int_from_str: false,
+        used_float_from_str: false,
+        used_input: false,
+        used_str_repeat: false,
+        used_str_find: false,
+        used_str_starts_ends: false,
+        used_str_strip: false,
+        used_str_case: false,
+        used_str_split_ws: false,
+        used_str_split_sep: false,
+        used_str_replace: false,
+        used_str_byte_at: false,
+        used_pow_f64: false,
+        used_floor_f64: false,
+        used_fabs_f64: false,
+        used_sqrt_f64: false,
+        used_fptosi_sat: false,
         used_bounds_fail: false,
         used_neg_len_fail: false,
         used_pop_empty_fail: false,
         used_div_zero_fail: false,
+        used_neg_exp_fail: false,
+        used_zero_step_fail: false,
+        used_parse_fail: false,
+        used_assert_fail: false,
         used_oom_fail: false,
     };
 
     let mut bodies = String::new();
+    for sdef in &program.structs {
+        for m in &sdef.methods {
+            cg.gen_method(&sdef.name, m, &mut bodies)?;
+        }
+    }
     for func in &program.funcs {
         cg.gen_func(func, &mut bodies)?;
     }
+
+    cg.finalize_runtime_flags();
 
     if cg.used_str_eq
         || cg.used_str_concat
@@ -219,8 +334,26 @@ pub fn lower(program: &Program) -> Result<String> {
         || cg.used_str_drop
         || cg.used_str_clone
         || cg.used_str_promote
+        || cg.used_str_from_int
+        || cg.used_str_from_float
+        || cg.used_int_from_str
+        || cg.used_float_from_str
+        || cg.used_input
+        || cg.used_str_repeat
+        || cg.used_str_find
+        || cg.used_str_starts_ends
+        || cg.used_str_strip
+        || cg.used_str_case
+        || cg.used_str_split_ws
+        || cg.used_str_split_sep
+        || cg.used_str_replace
+        || cg.used_str_byte_at
+        || cg.used_assert_fail
     {
         cg.used_str_type = true;
+    }
+    if cg.used_str_split_ws || cg.used_str_split_sep {
+        cg.used_vec_type = true;
     }
     if cg.used_str_concat {
         cg.used_str_clone = true;
@@ -257,12 +390,19 @@ pub fn lower(program: &Program) -> Result<String> {
     emit_cstr_global(&mut out, "@.fmt.int", "%lld\n");
     emit_cstr_global(&mut out, "@.str.true", "true");
     emit_cstr_global(&mut out, "@.str.false", "false");
+    if cg.used_print_inline || cg.used_array_print {
+        emit_cstr_global(&mut out, "@.fmt.int.elem", "%lld");
+        emit_cstr_global(&mut out, "@.fmt.str.elem", "%s");
+        emit_cstr_global(&mut out, "@.str.none", "None");
+    }
     if cg.used_array_print {
         emit_cstr_global(&mut out, "@.fmt.lbrack", "[");
         emit_cstr_global(&mut out, "@.fmt.sep", ", ");
         emit_cstr_global(&mut out, "@.fmt.rbrack", "]\n");
-        emit_cstr_global(&mut out, "@.fmt.int.elem", "%lld");
-        emit_cstr_global(&mut out, "@.fmt.str.elem", "%s");
+        emit_cstr_global(&mut out, "@.fmt.rbrack.inline", "]");
+    }
+    if cg.used_print_float || cg.used_str_from_float {
+        emit_cstr_global(&mut out, "@.fmt.g15", "%.15g");
     }
     for (i, value) in cg.strings.values.iter().enumerate() {
         // `align 4` guarantees low 2 tag bits == 00 (`STATIC` tag) on all targets.
@@ -273,6 +413,7 @@ pub fn lower(program: &Program) -> Result<String> {
     out.push_str(&bodies);
     out.push_str(&cg.extra_helpers);
     cg.emit_runtime_helpers(&mut out);
+    cg.emit_pythonic_runtime_helpers(&mut out);
 
     Ok(out)
 }
@@ -283,7 +424,7 @@ pub(super) fn validate_type(
     span: Span,
 ) -> Result<()> {
     match ty {
-        Type::Int | Type::Bool | Type::Str | Type::Void => Ok(()),
+        Type::Int | Type::Float | Type::Bool | Type::Str | Type::Void => Ok(()),
         Type::Array(inner) => validate_type(inner, structs, span),
         Type::Struct(name) => {
             if structs.contains_key(name) {
@@ -355,6 +496,14 @@ pub(super) fn topo_sort_structs(
 
 #[derive(Clone)]
 pub(super) struct FuncSig {
+    pub(super) params: Vec<Type>,
+    pub(super) ret: Option<Type>,
+}
+
+#[derive(Clone)]
+pub(super) struct MethodSig {
+    pub(super) ir_name: String,
+    pub(super) self_by_ptr: bool,
     pub(super) params: Vec<Type>,
     pub(super) ret: Option<Type>,
 }
@@ -482,6 +631,8 @@ pub(super) struct Codegen {
     pub(super) strings: StringTable,
     pub(super) structs: HashMap<String, Vec<Param>>,
     pub(super) sigs: HashMap<String, FuncSig>,
+    pub(super) methods: HashMap<(String, String), MethodSig>,
+    pub(super) mutating_method_names: HashSet<String>,
     pub(super) scopes: Vec<Scope>,
     pub(super) stmt_temps: Vec<TempDrop>,
     pub(super) mutated_vars: HashSet<String>,
@@ -512,16 +663,41 @@ pub(super) struct Codegen {
     pub(super) used_memcpy: bool,
     pub(super) used_smul_ovf: bool,
     pub(super) used_array_print: bool,
+    pub(super) used_print_inline: bool,
+    pub(super) used_print_float: bool,
     pub(super) used_str_eq: bool,
     pub(super) used_str_concat: bool,
     pub(super) used_str_print: bool,
     pub(super) used_str_drop: bool,
     pub(super) used_str_clone: bool,
     pub(super) used_str_promote: bool,
+    pub(super) used_str_from_int: bool,
+    pub(super) used_str_from_float: bool,
+    pub(super) used_int_from_str: bool,
+    pub(super) used_float_from_str: bool,
+    pub(super) used_input: bool,
+    pub(super) used_str_repeat: bool,
+    pub(super) used_str_find: bool,
+    pub(super) used_str_starts_ends: bool,
+    pub(super) used_str_strip: bool,
+    pub(super) used_str_case: bool,
+    pub(super) used_str_split_ws: bool,
+    pub(super) used_str_split_sep: bool,
+    pub(super) used_str_replace: bool,
+    pub(super) used_str_byte_at: bool,
+    pub(super) used_pow_f64: bool,
+    pub(super) used_floor_f64: bool,
+    pub(super) used_fabs_f64: bool,
+    pub(super) used_sqrt_f64: bool,
+    pub(super) used_fptosi_sat: bool,
     pub(super) used_bounds_fail: bool,
     pub(super) used_neg_len_fail: bool,
     pub(super) used_pop_empty_fail: bool,
     pub(super) used_div_zero_fail: bool,
+    pub(super) used_neg_exp_fail: bool,
+    pub(super) used_zero_step_fail: bool,
+    pub(super) used_parse_fail: bool,
+    pub(super) used_assert_fail: bool,
     pub(super) used_oom_fail: bool,
 }
 
@@ -529,7 +705,8 @@ impl Codegen {
     pub(super) fn gen_func(&mut self, func: &Func, out: &mut String) -> Result<()> {
         self.scopes = vec![Scope::default()];
         self.stmt_temps.clear();
-        self.mutated_vars = collect_mutated_vars(&func.body);
+        self.mutated_vars =
+            collect_mutated_vars(&func.params, &func.body, &self.mutating_method_names);
         self.returned_vars = collect_returned_vars(&func.body);
         self.loop_stack.clear();
         self.loop_bounds.clear();
@@ -677,6 +854,13 @@ impl Codegen {
         Ok(())
     }
 
+    pub(super) fn active_region_arg(&self) -> String {
+        if !self.region_stack.is_empty() {
+            self.func_region_slot.clone().unwrap()
+        } else {
+            "null".to_string()
+        }
+    }
 
     pub(super) fn lookup_var(&self, name: &str) -> Option<&VarEntry> {
         for scope in self.scopes.iter().rev() {
@@ -741,8 +925,6 @@ impl Codegen {
         );
         self.terminated = true;
     }
-
-    // ---------------- Runtime Helpers & Externs ------------------------------
 }
 
 // ============================================================================
@@ -753,9 +935,18 @@ pub(super) fn mangle(name: &str) -> String {
     format!("@archx_fn_{name}")
 }
 
+pub(super) fn mangle_method(struct_name: &str, method_name: &str) -> String {
+    format!("@archx_method_{}_{struct_name}_{method_name}", struct_name.len())
+}
+
+pub(super) fn format_llvm_double(v: f64) -> String {
+    format!("0x{:016X}", v.to_bits())
+}
+
 pub(super) fn type_mangle_key(ty: &Type) -> String {
     match ty {
         Type::Int => "i".to_string(),
+        Type::Float => "f".to_string(),
         Type::Bool => "b".to_string(),
         Type::Str => "s".to_string(),
         Type::Void => "v".to_string(),
@@ -767,6 +958,7 @@ pub(super) fn type_mangle_key(ty: &Type) -> String {
 pub(super) fn ir_type(ty: &Type) -> String {
     match ty {
         Type::Int => "i64".to_string(),
+        Type::Float => "double".to_string(),
         Type::Bool => "i1".to_string(),
         Type::Str => "%ArchxStr".to_string(),
         Type::Array(_) => "%ArchxVec".to_string(),
@@ -778,7 +970,7 @@ pub(super) fn ir_type(ty: &Type) -> String {
 pub(super) fn ir_align(ty: &Type) -> u32 {
     match ty {
         Type::Bool => 1,
-        Type::Int | Type::Str | Type::Array(_) | Type::Struct(_) => 8,
+        Type::Int | Type::Float | Type::Str | Type::Array(_) | Type::Struct(_) => 8,
         Type::Void => 1,
     }
 }
@@ -792,8 +984,8 @@ pub(super) fn elem_mem_ir_type(ty: &Type) -> String {
 
 pub(super) fn ir_ret_type(ty: Option<&Type>) -> String {
     match ty {
+        Some(Type::Void) | None => "void".to_string(),
         Some(t) => ir_type(t),
-        None => "void".to_string(),
     }
 }
 
@@ -803,7 +995,7 @@ pub(super) fn emit_cstr_global(out: &mut String, name: &str, value: &str) {
 
 pub(super) fn emit_cstr_global_aligned(out: &mut String, name: &str, value: &str, align: u32) {
     let bytes = value.as_bytes();
-    let len = bytes.len() + 1; // trailing NUL
+    let len = bytes.len() + 1;
     let _ = write!(
         out,
         "{name} = private unnamed_addr constant [{len} x i8] c\""
@@ -817,4 +1009,3 @@ pub(super) fn emit_cstr_global_aligned(out: &mut String, name: &str, value: &str
     }
     let _ = writeln!(out, "\\00\", align {align}");
 }
-

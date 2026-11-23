@@ -2,12 +2,15 @@
 
 use crate::diag::Span;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     // Keywords
     Func,
     Struct,
     Region,
+    With,
+    Pass,
+    Assert,
     Let,
     Return,
     If,
@@ -21,11 +24,14 @@ pub enum TokenKind {
     And,
     Or,
     Not,
+    NoneLit,
 
     // Literals
     Ident(String),
     Int(i64),
+    Float(f64),
     Str(String),
+    FStr(Vec<(bool, String)>),
     Bool(bool),
 
     // Punctuation
@@ -42,13 +48,17 @@ pub enum TokenKind {
     Plus,
     Minus,
     Star,
+    StarStar,
     Slash,
+    SlashSlash,
     Percent,
     Eq,
     PlusEq,
     MinusEq,
     StarEq,
+    StarStarEq,
     SlashEq,
+    SlashSlashEq,
     PercentEq,
     EqEq,
     NotEq,
@@ -67,9 +77,12 @@ pub enum TokenKind {
 impl TokenKind {
     pub fn describe(&self) -> String {
         match self {
-            TokenKind::Func => "`func`".to_string(),
-            TokenKind::Struct => "`struct`".to_string(),
+            TokenKind::Func => "`def` / `func`".to_string(),
+            TokenKind::Struct => "`class` / `struct`".to_string(),
             TokenKind::Region => "`region`".to_string(),
+            TokenKind::With => "`with`".to_string(),
+            TokenKind::Pass => "`pass`".to_string(),
+            TokenKind::Assert => "`assert`".to_string(),
             TokenKind::Let => "`let`".to_string(),
             TokenKind::Return => "`return`".to_string(),
             TokenKind::If => "`if`".to_string(),
@@ -83,9 +96,12 @@ impl TokenKind {
             TokenKind::And => "`and`".to_string(),
             TokenKind::Or => "`or`".to_string(),
             TokenKind::Not => "`not`".to_string(),
+            TokenKind::NoneLit => "`None`".to_string(),
             TokenKind::Ident(name) => format!("identifier `{name}`"),
             TokenKind::Int(n) => format!("integer `{n}`"),
+            TokenKind::Float(x) => format!("float `{x}`"),
             TokenKind::Str(_) => "string literal".to_string(),
+            TokenKind::FStr(_) => "f-string literal".to_string(),
             TokenKind::Bool(value) => format!("boolean `{value}`"),
             TokenKind::Colon => "`:`".to_string(),
             TokenKind::Semicolon => "`;`".to_string(),
@@ -100,13 +116,17 @@ impl TokenKind {
             TokenKind::Plus => "`+`".to_string(),
             TokenKind::Minus => "`-`".to_string(),
             TokenKind::Star => "`*`".to_string(),
+            TokenKind::StarStar => "`**`".to_string(),
             TokenKind::Slash => "`/`".to_string(),
+            TokenKind::SlashSlash => "`//`".to_string(),
             TokenKind::Percent => "`%`".to_string(),
             TokenKind::Eq => "`=`".to_string(),
             TokenKind::PlusEq => "`+=`".to_string(),
             TokenKind::MinusEq => "`-=`".to_string(),
             TokenKind::StarEq => "`*=`".to_string(),
+            TokenKind::StarStarEq => "`**=`".to_string(),
             TokenKind::SlashEq => "`/=`".to_string(),
+            TokenKind::SlashSlashEq => "`//=`".to_string(),
             TokenKind::PercentEq => "`%=`".to_string(),
             TokenKind::EqEq => "`==`".to_string(),
             TokenKind::NotEq => "`!=`".to_string(),
@@ -122,7 +142,7 @@ impl TokenKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,

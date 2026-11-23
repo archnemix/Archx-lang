@@ -36,7 +36,31 @@ impl Codegen {
         match &expr.kind {
             ExprKind::Int(value) => Ok((Type::Int, value.to_string())),
 
+            ExprKind::Float(value) => Ok((Type::Float, format_llvm_double(*value))),
+
             ExprKind::Bool(value) => Ok((Type::Bool, value.to_string())),
+
+            ExprKind::NoneLit => Ok((Type::Void, String::new())),
+
+            ExprKind::FString(parts) => self.gen_fstring(parts, out),
+
+            ExprKind::MethodCall {
+                target,
+                method,
+                args,
+            } => self.gen_method_call(target, method, args, expr.span, out),
+
+            ExprKind::CallKw {
+                name,
+                pos_args,
+                kw_args,
+            } => self.gen_call_kw(name, pos_args, kw_args, expr.span, out),
+
+            ExprKind::IfExpr {
+                then_expr,
+                cond,
+                else_expr,
+            } => self.gen_if_expr(then_expr, cond, else_expr, expected, expr.span, out),
 
             ExprKind::Str(value) => {
                 self.used_str_type = true;
@@ -282,6 +306,7 @@ impl Codegen {
                 let use_region = !self.region_stack.is_empty() && !elem_drops;
                 let is_zero_fill = !use_region
                     && ((elem_ty == Type::Int && raw_init == "0")
+                        || (elem_ty == Type::Float && raw_init == "0x0000000000000000")
                         || (elem_ty == Type::Bool && raw_init == "false"));
 
                 let (data_ptr, cap_val) = if is_zero_fill {
@@ -342,6 +367,22 @@ impl Codegen {
                 }
 
                 let (arr_ty, vec_val) = self.eval_expr(target, out)?;
+                if arr_ty == Type::Str {
+                    let (idx_ty, idx_val) = self.eval_expr(index, out)?;
+                    if idx_ty != Type::Int {
+                        return Err(Diagnostic::new(
+                            format!("string index must be `int`, found `{}`", idx_ty.name()),
+                            index.span,
+                        ));
+                    }
+                    self.used_str_byte_at = true;
+                    let ch = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {ch} = call fastcc %ArchxStr @archx_str_byte_at(%ArchxStr {vec_val}, i64 {idx_val})"
+                    );
+                    return Ok((Type::Str, ch));
+                }
                 let Type::Array(elem_ty) = arr_ty else {
                     return Err(Diagnostic::new(
                         format!("cannot index into value of type `{}`", arr_ty.name()),
@@ -386,9 +427,14 @@ impl Codegen {
                 let (ty, val) = self.eval_expr(inner, out)?;
                 match op {
                     UnOp::Neg => {
+                        if ty == Type::Float {
+                            let reg = self.next_tmp();
+                            let _ = writeln!(out, "  {reg} = fneg double {val}");
+                            return Ok((Type::Float, reg));
+                        }
                         if ty != Type::Int {
                             return Err(Diagnostic::new(
-                                "unary `-` requires an `int` operand",
+                                "unary `-` requires an `int` or `float` operand",
                                 expr.span,
                             ));
                         }
@@ -443,6 +489,99 @@ impl Codegen {
         agg
     }
 
+    pub(super) fn gen_if_expr(
+        &mut self,
+        then_expr: &Expr,
+        cond: &Expr,
+        else_expr: &Expr,
+        expected: Option<&Type>,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let mark = self.stmt_temps.len();
+        let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+        if cond_ty != Type::Bool {
+            return Err(Diagnostic::new(
+                format!(
+                    "conditional expression condition must be `bool`, found `{}`",
+                    cond_ty.name()
+                ),
+                cond.span,
+            ));
+        }
+        self.flush_stmt_temps_from(mark, out);
+
+        let then_lbl = self.fresh_label("ifexpr.then");
+        let else_lbl = self.fresh_label("ifexpr.else");
+        let merge_lbl = self.fresh_label("ifexpr.merge");
+
+        self.emit_cond_br(&cond_val, &then_lbl, &else_lbl, out);
+
+        self.start_block(&then_lbl, out);
+        let mark_t = self.stmt_temps.len();
+        let (then_ty, raw_then) = self.eval_expr_typed(then_expr, expected, out)?;
+        if then_ty == Type::Void {
+            return Err(Diagnostic::new(
+                "conditional expression branches must produce a value",
+                then_expr.span,
+            ));
+        }
+        let needs_drop = self.type_needs_drop(&then_ty);
+        let then_owned = if needs_drop {
+            if self.claim_stmt_temp(&raw_then) {
+                raw_then
+            } else {
+                self.emit_clone_value(&then_ty, &raw_then, out)
+            }
+        } else {
+            raw_then
+        };
+        self.flush_stmt_temps_from(mark_t, out);
+        let slot = self.next_slot("ifexpr.res");
+        let ty_ir = ir_type(&then_ty);
+        let align = ir_align(&then_ty);
+        let _ = writeln!(self.allocas, "  {slot} = alloca {ty_ir}, align {align}");
+        let _ = writeln!(out, "  store {ty_ir} {then_owned}, ptr {slot}, align {align}");
+        self.emit_br(&merge_lbl, out);
+
+        self.start_block(&else_lbl, out);
+        let mark_e = self.stmt_temps.len();
+        let (else_ty, raw_else) = self.eval_expr_typed(else_expr, Some(&then_ty), out)?;
+        if else_ty != then_ty {
+            return Err(Diagnostic::new(
+                format!(
+                    "conditional expression branches have incompatible types `{}` and `{}`",
+                    then_ty.name(),
+                    else_ty.name()
+                ),
+                span,
+            ));
+        }
+        let else_owned = if needs_drop {
+            if self.claim_stmt_temp(&raw_else) {
+                raw_else
+            } else {
+                self.emit_clone_value(&then_ty, &raw_else, out)
+            }
+        } else {
+            raw_else
+        };
+        self.flush_stmt_temps_from(mark_e, out);
+        let _ = writeln!(out, "  store {ty_ir} {else_owned}, ptr {slot}, align {align}");
+        self.emit_br(&merge_lbl, out);
+
+        self.start_block(&merge_lbl, out);
+        let res = self.next_tmp();
+        let _ = writeln!(out, "  {res} = load {ty_ir}, ptr {slot}, align {align}");
+        if needs_drop {
+            self.stmt_temps.push(TempDrop {
+                val: res.clone(),
+                ty: then_ty.clone(),
+            });
+        }
+        Ok((then_ty, res))
+    }
+
     pub(super) fn gen_binary(
         &mut self,
         op: BinOp,
@@ -464,11 +603,63 @@ impl Codegen {
                 Ok((Type::Str, res))
             }
 
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
+            BinOp::Add if lhs_ty.is_array() && lhs_ty == rhs_ty => {
+                let Type::Array(elem_ty) = lhs_ty else {
+                    unreachable!()
+                };
+                let res = self.emit_list_concat(&elem_ty, &lhs_val, &rhs_val, out);
+                Ok((Type::Array(elem_ty), res))
+            }
+
+            BinOp::Mul
+                if (lhs_ty == Type::Str && rhs_ty == Type::Int)
+                    || (lhs_ty == Type::Int && rhs_ty == Type::Str) =>
+            {
+                let (sval, nval) = if lhs_ty == Type::Str {
+                    (&lhs_val, &rhs_val)
+                } else {
+                    (&rhs_val, &lhs_val)
+                };
+                self.used_str_repeat = true;
+                let reg_arg = self.active_region_arg();
+                let res = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {res} = call fastcc %ArchxStr @archx_str_repeat(%ArchxStr {sval}, i64 {nval}, ptr {reg_arg})"
+                );
+                self.stmt_temps.push(TempDrop {
+                    val: res.clone(),
+                    ty: Type::Str,
+                });
+                Ok((Type::Str, res))
+            }
+
+            BinOp::In | BinOp::NotIn => {
+                let found = self.gen_in_operator(&lhs_ty, &lhs_val, &rhs_ty, &rhs_val, span, out)?;
+                if op == BinOp::In {
+                    Ok((Type::Bool, found))
+                } else {
+                    let inv = self.next_tmp();
+                    let _ = writeln!(out, "  {inv} = xor i1 {found}, true");
+                    Ok((Type::Bool, inv))
+                }
+            }
+
+            BinOp::Add
+            | BinOp::Sub
+            | BinOp::Mul
+            | BinOp::Div
+            | BinOp::FloorDiv
+            | BinOp::Pow
+            | BinOp::Mod => {
+                if lhs_ty == Type::Float && rhs_ty == Type::Float {
+                    let val = self.emit_float_arith(op, &lhs_val, &rhs_val, out);
+                    return Ok((Type::Float, val));
+                }
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
                     return Err(Diagnostic::new(
                         format!(
-                            "operator `{}` requires `int` operands, found `{}` and `{}`",
+                            "operator `{}` requires matching `int` or `float` operands, found `{}` and `{}`",
                             op.symbol(),
                             lhs_ty.name(),
                             rhs_ty.name()
@@ -493,10 +684,22 @@ impl Codegen {
             }
 
             BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+                if lhs_ty == Type::Float && rhs_ty == Type::Float {
+                    let reg = self.next_tmp();
+                    let pred = match op {
+                        BinOp::Lt => "olt",
+                        BinOp::Gt => "ogt",
+                        BinOp::Le => "ole",
+                        BinOp::Ge => "oge",
+                        _ => unreachable!(),
+                    };
+                    let _ = writeln!(out, "  {reg} = fcmp {pred} double {lhs_val}, {rhs_val}");
+                    return Ok((Type::Bool, reg));
+                }
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
                     return Err(Diagnostic::new(
                         format!(
-                            "operator `{}` requires `int` operands, found `{}` and `{}`",
+                            "operator `{}` requires matching `int` or `float` operands, found `{}` and `{}`",
                             op.symbol(),
                             lhs_ty.name(),
                             rhs_ty.name()
@@ -521,6 +724,194 @@ impl Codegen {
         }
     }
 
+    pub(super) fn gen_in_operator(
+        &mut self,
+        lhs_ty: &Type,
+        lhs_val: &str,
+        rhs_ty: &Type,
+        rhs_val: &str,
+        span: Span,
+        out: &mut String,
+    ) -> Result<String> {
+        if *lhs_ty == Type::Str && *rhs_ty == Type::Str {
+            self.used_str_find = true;
+            let pos = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {pos} = call fastcc i64 @archx_str_find(%ArchxStr {rhs_val}, %ArchxStr {lhs_val})"
+            );
+            let ok = self.next_tmp();
+            let _ = writeln!(out, "  {ok} = icmp sge i64 {pos}, 0");
+            return Ok(ok);
+        }
+        if let Type::Array(elem_ty) = rhs_ty {
+            if lhs_ty != elem_ty.as_ref() {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`in` element type `{}` does not match list element type `{}`",
+                        lhs_ty.name(),
+                        elem_ty.name()
+                    ),
+                    span,
+                ));
+            }
+            let len_v = self.next_tmp();
+            let _ = writeln!(out, "  {len_v} = extractvalue %ArchxVec {rhs_val}, 0");
+            let data_p = self.next_tmp();
+            let _ = writeln!(out, "  {data_p} = extractvalue %ArchxVec {rhs_val}, 2");
+
+            let islot = self.next_slot("in.idx");
+            let rslot = self.next_slot("in.res");
+            let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+            let _ = writeln!(self.allocas, "  {rslot} = alloca i1, align 1");
+            let _ = writeln!(out, "  store i64 0, ptr {islot}, align 8");
+            let _ = writeln!(out, "  store i1 false, ptr {rslot}, align 1");
+
+            let cond_lbl = self.fresh_label("in.cond");
+            let body_lbl = self.fresh_label("in.body");
+            let hit_lbl = self.fresh_label("in.hit");
+            let step_lbl = self.fresh_label("in.step");
+            let end_lbl = self.fresh_label("in.end");
+
+            self.emit_br(&cond_lbl, out);
+            self.start_block(&cond_lbl, out);
+            let cur = self.next_tmp();
+            let _ = writeln!(out, "  {cur} = load i64, ptr {islot}, align 8");
+            let more = self.next_tmp();
+            let _ = writeln!(out, "  {more} = icmp slt i64 {cur}, {len_v}");
+            self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+            self.start_block(&body_lbl, out);
+            let mem_ty = elem_mem_ir_type(elem_ty);
+            let ep = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {ep} = getelementptr inbounds {mem_ty}, ptr {data_p}, i64 {cur}"
+            );
+            let ev = self.emit_elem_load(elem_ty, &ep, out);
+            let eq = self.emit_equality(lhs_ty, lhs_val, elem_ty, &ev, span, out)?;
+            self.emit_cond_br(&eq, &hit_lbl, &step_lbl, out);
+
+            self.start_block(&hit_lbl, out);
+            let _ = writeln!(out, "  store i1 true, ptr {rslot}, align 1");
+            self.emit_br(&end_lbl, out);
+
+            self.start_block(&step_lbl, out);
+            let nxt = self.next_tmp();
+            let _ = writeln!(out, "  {nxt} = add nsw i64 {cur}, 1");
+            let _ = writeln!(out, "  store i64 {nxt}, ptr {islot}, align 8");
+            self.emit_br(&cond_lbl, out);
+
+            self.start_block(&end_lbl, out);
+            let found = self.next_tmp();
+            let _ = writeln!(out, "  {found} = load i1, ptr {rslot}, align 1");
+            return Ok(found);
+        }
+        Err(Diagnostic::new(
+            format!(
+                "`in` requires `str in str` or `elem in list[elem]`, found `{}` and `{}`",
+                lhs_ty.name(),
+                rhs_ty.name()
+            ),
+            span,
+        ))
+    }
+
+    pub(super) fn emit_list_concat(
+        &mut self,
+        elem_ty: &Type,
+        lhs_val: &str,
+        rhs_val: &str,
+        out: &mut String,
+    ) -> String {
+        self.used_vec_type = true;
+        let len_a = self.next_tmp();
+        let _ = writeln!(out, "  {len_a} = extractvalue %ArchxVec {lhs_val}, 0");
+        let ptr_a = self.next_tmp();
+        let _ = writeln!(out, "  {ptr_a} = extractvalue %ArchxVec {lhs_val}, 2");
+        let len_b = self.next_tmp();
+        let _ = writeln!(out, "  {len_b} = extractvalue %ArchxVec {rhs_val}, 0");
+        let ptr_b = self.next_tmp();
+        let _ = writeln!(out, "  {ptr_b} = extractvalue %ArchxVec {rhs_val}, 2");
+
+        let total = self.next_tmp();
+        let _ = writeln!(out, "  {total} = add i64 {len_a}, {len_b}");
+        self.used_oom_fail = true;
+        let bad = self.next_tmp();
+        let _ = writeln!(out, "  {bad} = icmp ugt i64 {total}, {MAX_ARRAY_LEN}");
+        let bad_lbl = self.fresh_label("lcat.oom");
+        let ok_lbl = self.fresh_label("lcat.ok");
+        self.emit_cond_br(&bad, &bad_lbl, &ok_lbl, out);
+        self.start_block(&bad_lbl, out);
+        let _ = writeln!(out, "  call void @archx_oom_fail()");
+        let _ = writeln!(out, "  unreachable");
+        self.terminated = true;
+        self.start_block(&ok_lbl, out);
+
+        let elem_sz = self.emit_elem_sizeof(elem_ty, out);
+        let bytes = self.emit_elem_bytes_val_mul(&total, &elem_sz, out);
+        let dst = self.emit_checked_malloc(&bytes, out);
+        let mem_ty = elem_mem_ir_type(elem_ty);
+        let needs_drop = self.type_needs_drop(elem_ty);
+
+        for (src_ptr, src_len, dst_off) in [
+            (ptr_a, len_a.clone(), "0".to_string()),
+            (ptr_b, len_b, len_a),
+        ] {
+            let islot = self.next_slot("lcat.i");
+            let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+            let _ = writeln!(out, "  store i64 0, ptr {islot}, align 8");
+            let cl = self.fresh_label("lcat.cond");
+            let bl = self.fresh_label("lcat.body");
+            let el = self.fresh_label("lcat.end");
+            self.emit_br(&cl, out);
+            self.start_block(&cl, out);
+            let ci = self.next_tmp();
+            let _ = writeln!(out, "  {ci} = load i64, ptr {islot}, align 8");
+            let mc = self.next_tmp();
+            let _ = writeln!(out, "  {mc} = icmp slt i64 {ci}, {src_len}");
+            self.emit_cond_br(&mc, &bl, &el, out);
+            self.start_block(&bl, out);
+            let sp = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {sp} = getelementptr inbounds {mem_ty}, ptr {src_ptr}, i64 {ci}"
+            );
+            let raw_v = self.emit_elem_load(elem_ty, &sp, out);
+            let v = if needs_drop {
+                self.emit_clone_value(elem_ty, &raw_v, out)
+            } else {
+                raw_v
+            };
+            let di = if dst_off == "0" {
+                ci.clone()
+            } else {
+                let d = self.next_tmp();
+                let _ = writeln!(out, "  {d} = add nuw nsw i64 {dst_off}, {ci}");
+                d
+            };
+            let dp = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {dp} = getelementptr inbounds {mem_ty}, ptr {dst}, i64 {di}"
+            );
+            self.emit_elem_store(elem_ty, &v, &dp, out);
+            let ni = self.next_tmp();
+            let _ = writeln!(out, "  {ni} = add nuw nsw i64 {ci}, 1");
+            let _ = writeln!(out, "  store i64 {ni}, ptr {islot}, align 8");
+            self.emit_br(&cl, out);
+            self.start_block(&el, out);
+        }
+
+        let vec = self.build_vec_val(&total, &total, &dst, out);
+        let arr_ty = Type::Array(Box::new(elem_ty.clone()));
+        self.stmt_temps.push(TempDrop {
+            val: vec.clone(),
+            ty: arr_ty,
+        });
+        vec
+    }
+
     pub(super) fn emit_equality(
         &mut self,
         lhs_ty: &Type,
@@ -542,11 +933,17 @@ impl Codegen {
                 let _ = writeln!(out, "  {reg} = icmp eq i64 {lhs_val}, {rhs_val}");
                 Ok(reg)
             }
+            Type::Float => {
+                let reg = self.next_tmp();
+                let _ = writeln!(out, "  {reg} = fcmp oeq double {lhs_val}, {rhs_val}");
+                Ok(reg)
+            }
             Type::Bool => {
                 let reg = self.next_tmp();
                 let _ = writeln!(out, "  {reg} = icmp eq i1 {lhs_val}, {rhs_val}");
                 Ok(reg)
             }
+            Type::Void => Ok("true".to_string()),
             Type::Str => {
                 self.used_str_eq = true;
                 let reg = self.next_tmp();
@@ -608,6 +1005,48 @@ impl Codegen {
         res
     }
 
+    pub(super) fn emit_float_arith(
+        &mut self,
+        op: BinOp,
+        lhs_val: &str,
+        rhs_val: &str,
+        out: &mut String,
+    ) -> String {
+        match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
+                let instr = match op {
+                    BinOp::Add => "fadd",
+                    BinOp::Sub => "fsub",
+                    BinOp::Mul => "fmul",
+                    BinOp::Div => "fdiv",
+                    BinOp::Mod => "frem",
+                    _ => unreachable!(),
+                };
+                let reg = self.next_tmp();
+                let _ = writeln!(out, "  {reg} = {instr} double {lhs_val}, {rhs_val}");
+                reg
+            }
+            BinOp::FloorDiv => {
+                self.used_floor_f64 = true;
+                let q = self.next_tmp();
+                let _ = writeln!(out, "  {q} = fdiv double {lhs_val}, {rhs_val}");
+                let fl = self.next_tmp();
+                let _ = writeln!(out, "  {fl} = call double @llvm.floor.f64(double {q})");
+                fl
+            }
+            BinOp::Pow => {
+                self.used_pow_f64 = true;
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call double @llvm.pow.f64(double {lhs_val}, double {rhs_val})"
+                );
+                r
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub(super) fn emit_int_arith(&mut self, op: BinOp, lhs_val: &str, rhs_val: &str, out: &mut String) -> String {
         if let (Ok(a), Ok(b)) = (lhs_val.parse::<i64>(), rhs_val.parse::<i64>()) {
             let folded = match op {
@@ -615,12 +1054,131 @@ impl Codegen {
                 BinOp::Sub => Some(a.wrapping_sub(b)),
                 BinOp::Mul => Some(a.wrapping_mul(b)),
                 BinOp::Div if b != 0 => Some(a.wrapping_div(b)),
+                BinOp::FloorDiv if b != 0 => {
+                    let q = a.wrapping_div(b);
+                    let r = a.wrapping_rem(b);
+                    Some(if r != 0 && (a ^ b) < 0 {
+                        q.wrapping_sub(1)
+                    } else {
+                        q
+                    })
+                }
+                BinOp::Pow if (0..=62).contains(&b) => Some(ipow_wrapping(a, b as u64)),
                 BinOp::Mod if b != 0 => Some(a.wrapping_rem(b)),
                 _ => None,
             };
             if let Some(res) = folded {
                 return res.to_string();
             }
+        }
+
+        if op == BinOp::Pow {
+            self.used_neg_exp_fail = true;
+            let neg = self.next_tmp();
+            let _ = writeln!(out, "  {neg} = icmp slt i64 {rhs_val}, 0");
+            let bad_lbl = self.fresh_label("pow.neg");
+            let pre_lbl = self.fresh_label("pow.pre");
+            self.emit_cond_br(&neg, &bad_lbl, &pre_lbl, out);
+
+            self.start_block(&bad_lbl, out);
+            let _ = writeln!(out, "  call void @archx_neg_exp_fail()");
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+
+            self.start_block(&pre_lbl, out);
+            let acc_slot = self.next_slot("pow.acc");
+            let base_slot = self.next_slot("pow.base");
+            let exp_slot = self.next_slot("pow.exp");
+            let _ = writeln!(self.allocas, "  {acc_slot} = alloca i64, align 8");
+            let _ = writeln!(self.allocas, "  {base_slot} = alloca i64, align 8");
+            let _ = writeln!(self.allocas, "  {exp_slot} = alloca i64, align 8");
+            let _ = writeln!(out, "  store i64 1, ptr {acc_slot}, align 8");
+            let _ = writeln!(out, "  store i64 {lhs_val}, ptr {base_slot}, align 8");
+            let _ = writeln!(out, "  store i64 {rhs_val}, ptr {exp_slot}, align 8");
+
+            let cond_lbl = self.fresh_label("pow.cond");
+            let body_lbl = self.fresh_label("pow.body");
+            let done_lbl = self.fresh_label("pow.done");
+            self.emit_br(&cond_lbl, out);
+
+            self.start_block(&cond_lbl, out);
+            let e = self.next_tmp();
+            let _ = writeln!(out, "  {e} = load i64, ptr {exp_slot}, align 8");
+            let gt = self.next_tmp();
+            let _ = writeln!(out, "  {gt} = icmp sgt i64 {e}, 0");
+            self.emit_cond_br(&gt, &body_lbl, &done_lbl, out);
+
+            self.start_block(&body_lbl, out);
+            let b = self.next_tmp();
+            let _ = writeln!(out, "  {b} = load i64, ptr {base_slot}, align 8");
+            let acc = self.next_tmp();
+            let _ = writeln!(out, "  {acc} = load i64, ptr {acc_slot}, align 8");
+            let bit = self.next_tmp();
+            let _ = writeln!(out, "  {bit} = and i64 {e}, 1");
+            let odd = self.next_tmp();
+            let _ = writeln!(out, "  {odd} = icmp ne i64 {bit}, 0");
+            let prod = self.next_tmp();
+            let _ = writeln!(out, "  {prod} = mul i64 {acc}, {b}");
+            let next_acc = self.next_tmp();
+            let _ = writeln!(out, "  {next_acc} = select i1 {odd}, i64 {prod}, i64 {acc}");
+            let _ = writeln!(out, "  store i64 {next_acc}, ptr {acc_slot}, align 8");
+            let b2 = self.next_tmp();
+            let _ = writeln!(out, "  {b2} = mul i64 {b}, {b}");
+            let _ = writeln!(out, "  store i64 {b2}, ptr {base_slot}, align 8");
+            let e2 = self.next_tmp();
+            let _ = writeln!(out, "  {e2} = lshr i64 {e}, 1");
+            let _ = writeln!(out, "  store i64 {e2}, ptr {exp_slot}, align 8");
+            self.emit_br(&cond_lbl, out);
+
+            self.start_block(&done_lbl, out);
+            let res = self.next_tmp();
+            let _ = writeln!(out, "  {res} = load i64, ptr {acc_slot}, align 8");
+            return res;
+        }
+
+        if op == BinOp::FloorDiv {
+            self.used_div_zero_fail = true;
+            let dz = self.next_tmp();
+            let _ = writeln!(out, "  {dz} = icmp eq i64 {rhs_val}, 0");
+            let dz_lbl = self.fresh_label("fdiv.zero");
+            let ok_lbl = self.fresh_label("fdiv.ok");
+            self.emit_cond_br(&dz, &dz_lbl, &ok_lbl, out);
+
+            self.start_block(&dz_lbl, out);
+            let _ = writeln!(out, "  call void @archx_div_zero_fail()");
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+
+            self.start_block(&ok_lbl, out);
+            let is_min = self.next_tmp();
+            let _ = writeln!(out, "  {is_min} = icmp eq i64 {lhs_val}, {}", i64::MIN);
+            let is_neg1 = self.next_tmp();
+            let _ = writeln!(out, "  {is_neg1} = icmp eq i64 {rhs_val}, -1");
+            let ovf = self.next_tmp();
+            let _ = writeln!(out, "  {ovf} = and i1 {is_min}, {is_neg1}");
+            let safe_rhs = self.next_tmp();
+            let _ = writeln!(out, "  {safe_rhs} = select i1 {ovf}, i64 1, i64 {rhs_val}");
+            let raw_q = self.next_tmp();
+            let _ = writeln!(out, "  {raw_q} = sdiv i64 {lhs_val}, {safe_rhs}");
+            let neg_lhs = self.next_tmp();
+            let _ = writeln!(out, "  {neg_lhs} = sub i64 0, {lhs_val}");
+            let q = self.next_tmp();
+            let _ = writeln!(out, "  {q} = select i1 {ovf}, i64 {neg_lhs}, i64 {raw_q}");
+            let rem = self.next_tmp();
+            let _ = writeln!(out, "  {rem} = srem i64 {lhs_val}, {safe_rhs}");
+            let has_rem = self.next_tmp();
+            let _ = writeln!(out, "  {has_rem} = icmp ne i64 {rem}, 0");
+            let xored = self.next_tmp();
+            let _ = writeln!(out, "  {xored} = xor i64 {lhs_val}, {rhs_val}");
+            let diff_sign = self.next_tmp();
+            let _ = writeln!(out, "  {diff_sign} = icmp slt i64 {xored}, 0");
+            let need_adj = self.next_tmp();
+            let _ = writeln!(out, "  {need_adj} = and i1 {has_rem}, {diff_sign}");
+            let adj = self.next_tmp();
+            let _ = writeln!(out, "  {adj} = zext i1 {need_adj} to i64");
+            let res = self.next_tmp();
+            let _ = writeln!(out, "  {res} = sub i64 {q}, {adj}");
+            return res;
         }
 
         if matches!(op, BinOp::Div | BinOp::Mod) {
@@ -745,6 +1303,18 @@ impl Codegen {
         Ok((Type::Bool, result))
     }
 
+}
+
+pub(super) fn ipow_wrapping(mut base: i64, mut exp: u64) -> i64 {
+    let mut acc = 1i64;
+    while exp > 0 {
+        if exp & 1 != 0 {
+            acc = acc.wrapping_mul(base);
+        }
+        base = base.wrapping_mul(base);
+        exp >>= 1;
+    }
+    acc
 }
 
 pub(super) fn pack_sso_str_words(bytes: &[u8]) -> (i64, i64) {

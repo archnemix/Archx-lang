@@ -1,0 +1,38 @@
+# Showcase of 1:1 Pythonic Archx syntax (`def`, `class`, methods, `range`, `enumerate`,
+# `f"..."`, multi-arg `print(sep=..., end=...)`, `float`, `list[T]`, `with region:`, and script mode).
+
+class Stats:
+    count: int
+    total: float
+
+    def add(self, value: float) -> None:
+        self.count += 1
+        self.total += value
+
+    def mean(self) -> float:
+        return self.total / float(self.count) if self.count > 0 else 0.0
+
+def countdown_sum(start: int) -> int:
+    acc = 0
+    for k in range(start, 0, -2):
+        acc += k
+    return acc
+
+stats = Stats(count=0, total=0.0)
+samples: list[float] = []
+for i in range(1, 6):
+    samples.append(float(i) * 1.5)
+
+for idx, val in enumerate(samples, 1):
+    stats.add(val)
+    if idx == len(samples):
+        print(f"sample #{idx} = {val}")
+
+words = "  fast pythonic native archx  ".strip().split()
+print("words:", len(words), words[0].upper(), sep=" | ")
+
+with region:
+    buf = [0] * 1_000
+    for i in range(0, len(buf), 100):
+        buf[i] = i // 10
+    print(f"mean={stats.mean()}, countdown={countdown_sum(10)}, buf900={buf[900]}")

@@ -127,7 +127,15 @@ impl<'a> Lexer<'a> {
                 }
                 b'*' => {
                     self.bump();
-                    if self.peek() == Some(b'=') {
+                    if self.peek() == Some(b'*') {
+                        self.bump();
+                        if self.peek() == Some(b'=') {
+                            self.bump();
+                            tokens.push(Token::new(TokenKind::StarStarEq, span));
+                        } else {
+                            tokens.push(Token::new(TokenKind::StarStar, span));
+                        }
+                    } else if self.peek() == Some(b'=') {
                         self.bump();
                         tokens.push(Token::new(TokenKind::StarEq, span));
                     } else {
@@ -136,7 +144,15 @@ impl<'a> Lexer<'a> {
                 }
                 b'/' => {
                     self.bump();
-                    if self.peek() == Some(b'=') {
+                    if self.peek() == Some(b'/') {
+                        self.bump();
+                        if self.peek() == Some(b'=') {
+                            self.bump();
+                            tokens.push(Token::new(TokenKind::SlashSlashEq, span));
+                        } else {
+                            tokens.push(Token::new(TokenKind::SlashSlash, span));
+                        }
+                    } else if self.peek() == Some(b'=') {
                         self.bump();
                         tokens.push(Token::new(TokenKind::SlashEq, span));
                     } else {
@@ -209,8 +225,16 @@ impl<'a> Lexer<'a> {
                     tokens.push(Token::new(TokenKind::Str(value), span));
                 }
                 b'0'..=b'9' => {
-                    let value = self.lex_number()?;
-                    tokens.push(Token::new(TokenKind::Int(value), span));
+                    let kind = self.lex_number()?;
+                    tokens.push(Token::new(kind, span));
+                }
+                b'f' | b'F'
+                    if matches!(self.src.get(self.pos + 1), Some(b'"') | Some(b'\'')) =>
+                {
+                    self.bump();
+                    let quote = self.peek().unwrap();
+                    let parts = self.lex_fstring(quote, span)?;
+                    tokens.push(Token::new(TokenKind::FStr(parts), span));
                 }
                 c if is_ident_start(c) => {
                     let kind = self.lex_ident();
@@ -349,9 +373,12 @@ impl<'a> Lexer<'a> {
         }
         let text = std::str::from_utf8(&self.src[start..self.pos]).unwrap_or("");
         match text {
-            "func" => TokenKind::Func,
-            "struct" => TokenKind::Struct,
+            "def" | "func" => TokenKind::Func,
+            "class" | "struct" => TokenKind::Struct,
             "region" => TokenKind::Region,
+            "with" => TokenKind::With,
+            "pass" => TokenKind::Pass,
+            "assert" => TokenKind::Assert,
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
             "if" => TokenKind::If,
@@ -365,38 +392,232 @@ impl<'a> Lexer<'a> {
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
-            "true" => TokenKind::Bool(true),
-            "false" => TokenKind::Bool(false),
+            "True" | "true" => TokenKind::Bool(true),
+            "False" | "false" => TokenKind::Bool(false),
+            "None" => TokenKind::NoneLit,
             _ => TokenKind::Ident(text.to_string()),
         }
     }
 
-    fn lex_number(&mut self) -> Result<i64> {
-        let start = self.pos;
+    fn lex_digits_with_underscores(&mut self, buf: &mut String, start_span: Span) -> Result<()> {
+        let mut prev_underscore = false;
+        let mut any_digit = false;
         while let Some(c) = self.peek() {
             if c.is_ascii_digit() {
+                buf.push(c as char);
+                prev_underscore = false;
+                any_digit = true;
+                self.bump();
+            } else if c == b'_' {
+                if !any_digit || prev_underscore {
+                    return Err(Diagnostic::new(
+                        "invalid `_` in numeric literal",
+                        start_span,
+                    ));
+                }
+                prev_underscore = true;
                 self.bump();
             } else {
                 break;
             }
         }
-        let text = std::str::from_utf8(&self.src[start..self.pos]).unwrap_or("");
+        if prev_underscore || !any_digit {
+            return Err(Diagnostic::new("invalid numeric literal", start_span));
+        }
+        Ok(())
+    }
+
+    fn lex_number(&mut self) -> Result<TokenKind> {
+        let start_span = self.span();
+        let mut clean = String::new();
+        self.lex_digits_with_underscores(&mut clean, start_span)?;
+
+        let mut is_float = false;
+        if self.peek() == Some(b'.')
+            && self.src.get(self.pos + 1) != Some(&b'.')
+            && !self
+                .src
+                .get(self.pos + 1)
+                .map_or(false, |&b| is_ident_start(b))
+        {
+            is_float = true;
+            self.bump();
+            clean.push('.');
+            if matches!(self.peek(), Some(c) if c.is_ascii_digit()) {
+                self.lex_digits_with_underscores(&mut clean, start_span)?;
+            } else {
+                clean.push('0');
+            }
+        }
+
+        if matches!(self.peek(), Some(b'e') | Some(b'E')) {
+            is_float = true;
+            let e = self.bump().unwrap() as char;
+            clean.push(e);
+            if matches!(self.peek(), Some(b'+') | Some(b'-')) {
+                clean.push(self.bump().unwrap() as char);
+            }
+            self.lex_digits_with_underscores(&mut clean, start_span)?;
+        }
 
         if let Some(c) = self.peek() {
             if is_ident_start(c) {
                 return Err(Diagnostic::new(
-                    format!("invalid number literal `{text}`"),
-                    Span::new(self.line, self.col),
+                    format!("invalid number literal `{clean}`"),
+                    self.span(),
                 ));
             }
         }
 
-        text.parse::<i64>().map_err(|_| {
-            Diagnostic::new(
-                format!("integer literal `{text}` is too large"),
-                Span::new(self.line, self.col),
-            )
-        })
+        if is_float {
+            let v = clean.parse::<f64>().map_err(|_| {
+                Diagnostic::new(format!("invalid float literal `{clean}`"), start_span)
+            })?;
+            if !v.is_finite() {
+                return Err(Diagnostic::new(
+                    format!("float literal `{clean}` overflows 64-bit float"),
+                    start_span,
+                ));
+            }
+            Ok(TokenKind::Float(v))
+        } else {
+            let v = clean.parse::<i64>().map_err(|_| {
+                Diagnostic::new(
+                    format!("integer literal `{clean}` is too large"),
+                    start_span,
+                )
+            })?;
+            Ok(TokenKind::Int(v))
+        }
+    }
+
+    fn lex_fstring(&mut self, quote: u8, start_span: Span) -> Result<Vec<(bool, String)>> {
+        self.bump(); // opening quote
+        let mut parts = Vec::new();
+        let mut lit = String::new();
+
+        loop {
+            let Some(c) = self.peek() else {
+                return Err(Diagnostic::new("unterminated f-string literal", start_span));
+            };
+            if c == b'\n' {
+                return Err(Diagnostic::new(
+                    "unterminated f-string literal (newline inside f-string)",
+                    start_span,
+                ));
+            }
+            if c == quote {
+                self.bump();
+                if !lit.is_empty() {
+                    parts.push((false, lit));
+                }
+                return Ok(parts);
+            }
+            if c == b'{' {
+                self.bump();
+                if self.peek() == Some(b'{') {
+                    self.bump();
+                    lit.push('{');
+                    continue;
+                }
+                if !lit.is_empty() {
+                    parts.push((false, std::mem::take(&mut lit)));
+                }
+                let expr_span = self.span();
+                let mut expr_src = String::new();
+                let mut depth = 1usize;
+                let mut in_str: Option<u8> = None;
+                while depth > 0 {
+                    let Some(ec) = self.peek() else {
+                        return Err(Diagnostic::new(
+                            "unterminated `{...}` in f-string",
+                            expr_span,
+                        ));
+                    };
+                    if ec == b'\n' {
+                        return Err(Diagnostic::new(
+                            "newline inside f-string `{...}` expression",
+                            expr_span,
+                        ));
+                    }
+                    if let Some(sq) = in_str {
+                        let ch = self.next_char();
+                        expr_src.push(ch);
+                        if ch == '\\' {
+                            if let Some(_) = self.peek() {
+                                expr_src.push(self.next_char());
+                            }
+                        } else if ch as u8 == sq {
+                            in_str = None;
+                        }
+                    } else {
+                        match ec {
+                            b'\'' | b'"' => {
+                                in_str = Some(ec);
+                                expr_src.push(self.next_char());
+                            }
+                            b'{' => {
+                                depth += 1;
+                                expr_src.push(self.next_char());
+                            }
+                            b'}' => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    self.bump();
+                                } else {
+                                    expr_src.push(self.next_char());
+                                }
+                            }
+                            _ => expr_src.push(self.next_char()),
+                        }
+                    }
+                }
+                if expr_src.trim().is_empty() {
+                    return Err(Diagnostic::new(
+                        "f-string: empty expression not allowed",
+                        expr_span,
+                    ));
+                }
+                parts.push((true, expr_src));
+                continue;
+            }
+            if c == b'}' {
+                self.bump();
+                if self.peek() == Some(b'}') {
+                    self.bump();
+                    lit.push('}');
+                    continue;
+                }
+                return Err(Diagnostic::new(
+                    "single `}` is not allowed in f-string (use `}}`)",
+                    self.span(),
+                ));
+            }
+            if c == b'\\' {
+                self.bump();
+                let Some(esc) = self.peek() else {
+                    return Err(Diagnostic::new("unterminated f-string literal", start_span));
+                };
+                self.bump();
+                match esc {
+                    b'n' => lit.push('\n'),
+                    b't' => lit.push('\t'),
+                    b'r' => lit.push('\r'),
+                    b'\\' => lit.push('\\'),
+                    b'\'' => lit.push('\''),
+                    b'"' => lit.push('"'),
+                    b'0' => lit.push('\0'),
+                    _ => {
+                        return Err(Diagnostic::new(
+                            format!("unknown escape sequence `\\{}`", esc as char),
+                            self.span(),
+                        ));
+                    }
+                }
+            } else {
+                lit.push(self.next_char());
+            }
+        }
     }
 
     fn lex_string(&mut self, quote: u8) -> Result<String> {
@@ -586,5 +807,23 @@ mod tests {
         assert!(k.iter().any(|t| *t == TokenKind::PlusEq));
         assert!(k.iter().any(|t| *t == TokenKind::Elif));
         assert!(k.iter().any(|t| *t == TokenKind::MinusEq));
+    }
+
+    #[test]
+    fn pythonic_keywords_floats_underscores_and_fstrings() {
+        let k = kinds(
+            "def f(x: float) -> None:\n    y = 1_000_000 // 3 + 2 ** 4\n    z = 3.14 + 1e-5\n    s = f\"v={x + 1.0} {{ok}}\"\n    assert True and not False\n    pass\n",
+        );
+        assert_eq!(k[0], TokenKind::Func);
+        assert!(k.contains(&TokenKind::NoneLit));
+        assert!(k.contains(&TokenKind::Int(1_000_000)));
+        assert!(k.contains(&TokenKind::SlashSlash));
+        assert!(k.contains(&TokenKind::StarStar));
+        assert!(k.contains(&TokenKind::Float(3.14)));
+        assert!(k.contains(&TokenKind::Assert));
+        assert!(k.contains(&TokenKind::Pass));
+        assert!(k.contains(&TokenKind::Bool(true)));
+        assert!(k.contains(&TokenKind::Bool(false)));
+        assert!(k.iter().any(|t| matches!(t, TokenKind::FStr(parts) if parts.len() == 3)));
     }
 }

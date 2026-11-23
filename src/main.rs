@@ -138,6 +138,8 @@ fn run(args: &[String]) -> Result<i32, String> {
         .arg(&output);
     if cfg!(windows) && clang_uses_msvc_target(&clang) {
         clang_cmd.arg("-llegacy_stdio_definitions");
+    } else if !cfg!(windows) {
+        clang_cmd.arg("-lm");
     }
 
     let clang_res = clang_cmd.status();

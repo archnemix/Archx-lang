@@ -1,5 +1,8 @@
-//! User function calls, positional struct constructors, and builtin intrinsics (`print`, `len`, `push`, `pop`).
+//! Function calls, keyword-argument calls (`print(sep=..., end=...)`, `Point(x=1, y=2)`),
+//! Python type conversions (`int`, `float`, `str`, `bool`), soft math/sequence builtins
+//! (`abs`, `min`, `max`, `sum`, `sqrt`, `ord`, `chr`), and core `len`/`push`/`pop`.
 
+use std::collections::HashSet;
 use std::fmt::Write as _;
 
 use crate::ast::*;
@@ -8,8 +11,6 @@ use crate::diag::{Diagnostic, Result, Span};
 use super::*;
 
 impl Codegen {
-    // ---------------- Calls & struct constructors ----------------------------
-
     pub(super) fn gen_call(
         &mut self,
         name: &str,
@@ -17,17 +18,17 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
-        if name == "print" {
-            return self.gen_builtin_print(args, span, out);
-        }
-        if name == "len" {
-            return self.gen_builtin_len(args, span, out);
-        }
-        if name == "push" {
-            return self.gen_builtin_push(args, span, out);
-        }
-        if name == "pop" {
-            return self.gen_builtin_pop(args, span, out);
+        match name {
+            "print" => return self.gen_builtin_print(args, None, None, span, out),
+            "input" => return self.gen_builtin_input(args, span, out),
+            "len" => return self.gen_builtin_len(args, span, out),
+            "push" => return self.gen_builtin_push(args, span, out),
+            "pop" => return self.gen_builtin_pop(args, span, out),
+            "int" => return self.gen_conv_int(args, span, out),
+            "float" => return self.gen_conv_float(args, span, out),
+            "str" | "string" => return self.gen_conv_str(args, span, out),
+            "bool" => return self.gen_conv_bool(args, span, out),
+            _ => {}
         }
 
         if let Some(fields) = self.structs.get(name).cloned() {
@@ -89,12 +90,187 @@ impl Codegen {
             return Err(Diagnostic::new("`main` cannot be called directly", span));
         }
 
-        let sig = self
-            .sigs
-            .get(name)
-            .cloned()
-            .ok_or_else(|| Diagnostic::new(format!("undefined function `{name}`"), span))?;
+        if let Some(sig) = self.sigs.get(name).cloned() {
+            return self.emit_user_fn_call(name, &sig, args, span, out);
+        }
 
+        // Python soft builtins (shadowable by user `def`):
+        match name {
+            "abs" => return self.gen_builtin_abs(args, span, out),
+            "min" => return self.gen_builtin_minmax(args, true, span, out),
+            "max" => return self.gen_builtin_minmax(args, false, span, out),
+            "sum" => return self.gen_builtin_sum(args, span, out),
+            "sqrt" => return self.gen_builtin_sqrt(args, span, out),
+            "ord" => return self.gen_builtin_ord(args, span, out),
+            "chr" => return self.gen_builtin_chr(args, span, out),
+            _ => {}
+        }
+
+        Err(Diagnostic::new(format!("undefined function `{name}`"), span))
+    }
+
+    pub(super) fn gen_call_kw(
+        &mut self,
+        name: &str,
+        pos_args: &[Expr],
+        kw_args: &[(String, Expr, Span)],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if name == "print" {
+            let mut sep_expr: Option<&Expr> = None;
+            let mut end_expr: Option<&Expr> = None;
+            for (kw, val, kw_span) in kw_args {
+                match kw.as_str() {
+                    "sep" => {
+                        if sep_expr.is_some() {
+                            return Err(Diagnostic::new(
+                                "duplicate keyword argument `sep` in `print()`",
+                                *kw_span,
+                            ));
+                        }
+                        sep_expr = Some(val);
+                    }
+                    "end" => {
+                        if end_expr.is_some() {
+                            return Err(Diagnostic::new(
+                                "duplicate keyword argument `end` in `print()`",
+                                *kw_span,
+                            ));
+                        }
+                        end_expr = Some(val);
+                    }
+                    other => {
+                        return Err(Diagnostic::new(
+                            format!("`print()` got an unexpected keyword argument `{other}`"),
+                            *kw_span,
+                        ));
+                    }
+                }
+            }
+            return self.gen_builtin_print(pos_args, sep_expr, end_expr, span, out);
+        }
+
+        if let Some(fields) = self.structs.get(name).cloned() {
+            let total_supplied = pos_args.len() + kw_args.len();
+            if total_supplied != fields.len() {
+                return Err(Diagnostic::new(
+                    format!(
+                        "class/struct `{name}` expects {} field{}, but {} {} supplied",
+                        fields.len(),
+                        if fields.len() == 1 { "" } else { "s" },
+                        total_supplied,
+                        if total_supplied == 1 { "was" } else { "were" }
+                    ),
+                    span,
+                ));
+            }
+            let mut evaluated: Vec<Option<String>> = vec![None; fields.len()];
+            for (i, arg) in pos_args.iter().enumerate() {
+                let fty = &fields[i].ty;
+                let (aty, raw_val) = self.eval_expr_typed(arg, Some(fty), out)?;
+                if aty != *fty {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "field `{}` of `{name}` expects `{}`, found `{}`",
+                            fields[i].name,
+                            fty.name(),
+                            aty.name()
+                        ),
+                        arg.span,
+                    ));
+                }
+                let fval = if self.type_needs_drop(fty) {
+                    if self.claim_stmt_temp(&raw_val) {
+                        raw_val
+                    } else {
+                        self.emit_clone_value(fty, &raw_val, out)
+                    }
+                } else {
+                    raw_val
+                };
+                evaluated[i] = Some(fval);
+            }
+
+            let mut seen_kw = HashSet::new();
+            for (kw, val_expr, kw_span) in kw_args {
+                if !seen_kw.insert(kw.as_str()) {
+                    return Err(Diagnostic::new(
+                        format!("duplicate keyword argument `{kw}` for `{name}`"),
+                        *kw_span,
+                    ));
+                }
+                let Some(fidx) = fields.iter().position(|f| f.name == *kw) else {
+                    return Err(Diagnostic::new(
+                        format!("`{name}` has no field `{kw}`"),
+                        *kw_span,
+                    ));
+                };
+                if evaluated[fidx].is_some() {
+                    return Err(Diagnostic::new(
+                        format!("`{name}` got multiple values for field `{kw}`"),
+                        *kw_span,
+                    ));
+                }
+                let fty = &fields[fidx].ty;
+                let (aty, raw_val) = self.eval_expr_typed(val_expr, Some(fty), out)?;
+                if aty != *fty {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "field `{kw}` of `{name}` expects `{}`, found `{}`",
+                            fty.name(),
+                            aty.name()
+                        ),
+                        val_expr.span,
+                    ));
+                }
+                let fval = if self.type_needs_drop(fty) {
+                    if self.claim_stmt_temp(&raw_val) {
+                        raw_val
+                    } else {
+                        self.emit_clone_value(fty, &raw_val, out)
+                    }
+                } else {
+                    raw_val
+                };
+                evaluated[fidx] = Some(fval);
+            }
+
+            let mut agg = "poison".to_string();
+            for (i, f) in fields.iter().enumerate() {
+                let fval = evaluated[i].as_ref().unwrap();
+                let next_agg = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {next_agg} = insertvalue %ArchxStruct_{name} {agg}, {} {fval}, {i}",
+                    ir_type(&f.ty)
+                );
+                agg = next_agg;
+            }
+            let sty = Type::Struct(name.to_string());
+            if self.type_needs_drop(&sty) {
+                self.stmt_temps.push(TempDrop {
+                    val: agg.clone(),
+                    ty: sty.clone(),
+                });
+            }
+            return Ok((sty, agg));
+        }
+
+        Err(Diagnostic::new(
+            format!("keyword arguments are supported on `print()` and class/struct constructors, not `{name}()`"),
+            span,
+        ))
+    }
+
+    fn emit_user_fn_call(
+        &mut self,
+        name: &str,
+        sig: &FuncSig,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
         if args.len() != sig.params.len() {
             return Err(Diagnostic::new(
                 format!(
@@ -150,176 +326,534 @@ impl Codegen {
         call.push_str(")\n");
         out.push_str(&call);
 
-        match sig.ret {
+        match &sig.ret {
             Some(ty) => {
-                if self.type_needs_drop(&ty) {
+                if self.type_needs_drop(ty) {
                     self.stmt_temps.push(TempDrop {
                         val: reg.clone(),
                         ty: ty.clone(),
                     });
                 }
-                Ok((ty, reg))
+                Ok((ty.clone(), reg))
             }
             None => Ok((Type::Void, String::new())),
         }
     }
 
-    pub(super) fn gen_builtin_print(
+    // ---------------- Python Type Conversions & Soft Builtins ----------------
+
+    fn gen_conv_int(&mut self, args: &[Expr], span: Span, out: &mut String) -> Result<(Type, String)> {
+        if args.is_empty() {
+            return Ok((Type::Int, "0".to_string()));
+        }
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`int()` takes at most 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        match ty {
+            Type::Int => Ok((Type::Int, val)),
+            Type::Float => {
+                self.used_fptosi_sat = true;
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = call i64 @llvm.fptosi.sat.i64.f64(double {val})");
+                Ok((Type::Int, r))
+            }
+            Type::Bool => {
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = zext i1 {val} to i64");
+                Ok((Type::Int, r))
+            }
+            Type::Str => {
+                self.used_int_from_str = true;
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = call fastcc i64 @archx_int_from_str(%ArchxStr {val})");
+                Ok((Type::Int, r))
+            }
+            other => Err(Diagnostic::new(
+                format!("`int()` cannot convert `{}`", other.name()),
+                args[0].span,
+            )),
+        }
+    }
+
+    fn gen_conv_float(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() {
+            return Ok((Type::Float, format_llvm_double(0.0)));
+        }
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`float()` takes at most 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        match ty {
+            Type::Float => Ok((Type::Float, val)),
+            Type::Int => {
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = sitofp i64 {val} to double");
+                Ok((Type::Float, r))
+            }
+            Type::Bool => {
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = uitofp i1 {val} to double");
+                Ok((Type::Float, r))
+            }
+            Type::Str => {
+                self.used_float_from_str = true;
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc double @archx_float_from_str(%ArchxStr {val})"
+                );
+                Ok((Type::Float, r))
+            }
+            other => Err(Diagnostic::new(
+                format!("`float()` cannot convert `{}`", other.name()),
+                args[0].span,
+            )),
+        }
+    }
+
+    fn gen_conv_bool(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() {
+            return Ok((Type::Bool, "false".to_string()));
+        }
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`bool()` takes at most 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        match ty {
+            Type::Bool => Ok((Type::Bool, val)),
+            Type::Void => Ok((Type::Bool, "false".to_string())),
+            Type::Int => {
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = icmp ne i64 {val}, 0");
+                Ok((Type::Bool, r))
+            }
+            Type::Float => {
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = fcmp une double {val}, 0x0000000000000000");
+                Ok((Type::Bool, r))
+            }
+            Type::Str => {
+                let w0 = self.next_tmp();
+                let _ = writeln!(out, "  {w0} = extractvalue %ArchxStr {val}, 0");
+                let l = self.next_tmp();
+                let _ = writeln!(out, "  {l} = and i64 {w0}, 4294967295");
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = icmp ne i64 {l}, 0");
+                Ok((Type::Bool, r))
+            }
+            Type::Array(_) => {
+                let l = self.next_tmp();
+                let _ = writeln!(out, "  {l} = extractvalue %ArchxVec {val}, 0");
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = icmp sgt i64 {l}, 0");
+                Ok((Type::Bool, r))
+            }
+            other => Err(Diagnostic::new(
+                format!("`bool()` cannot convert `{}`", other.name()),
+                args[0].span,
+            )),
+        }
+    }
+
+    fn gen_builtin_abs(
         &mut self,
         args: &[Expr],
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
         if args.len() != 1 {
-            return Err(Diagnostic::new("`print` takes exactly one argument", span));
+            return Err(Diagnostic::new("`abs()` takes exactly 1 argument", span));
         }
-
-        if let ExprKind::Str(lit) = &args[0].kind {
-            if !lit.as_bytes().contains(&0) {
-                let sym = self.strings.intern(lit);
-                let reg = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {reg} = call i32 (ptr, ...) @printf(ptr @.fmt.str, ptr {sym})"
-                );
-                return Ok((Type::Void, reg));
-            }
-        }
-
         let (ty, val) = self.eval_expr(&args[0], out)?;
         match ty {
-            Type::Str => {
-                self.used_str_print = true;
-                let _ = writeln!(
-                    out,
-                    "  call fastcc void @archx_str_print(%ArchxStr {val}, i1 true)"
-                );
-                Ok((Type::Void, String::new()))
-            }
             Type::Int => {
-                let reg = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {reg} = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 {val})"
-                );
-                Ok((Type::Void, reg))
+                let neg = self.next_tmp();
+                let _ = writeln!(out, "  {neg} = icmp slt i64 {val}, 0");
+                let sub = self.next_tmp();
+                let _ = writeln!(out, "  {sub} = sub i64 0, {val}");
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = select i1 {neg}, i64 {sub}, i64 {val}");
+                Ok((Type::Int, r))
             }
-            Type::Bool => {
-                let selected = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {selected} = select i1 {val}, ptr @.str.true, ptr @.str.false"
-                );
-                let reg = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {reg} = call i32 (ptr, ...) @printf(ptr @.fmt.str, ptr {selected})"
-                );
-                Ok((Type::Void, reg))
+            Type::Float => {
+                self.used_fabs_f64 = true;
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = call double @llvm.fabs.f64(double {val})");
+                Ok((Type::Float, r))
             }
-            Type::Array(elem_ty) => {
-                if !matches!(*elem_ty, Type::Int | Type::Bool | Type::Str) {
-                    return Err(Diagnostic::new(
-                        "`print` supports 1D arrays (`[int]`, `[bool]`, `[string]`); print elements in a loop for structs or nested arrays",
-                        span,
-                    ));
-                }
-                self.used_array_print = true;
-                let open = self.next_tmp();
-                let _ = writeln!(out, "  {open} = call i32 (ptr, ...) @printf(ptr @.fmt.lbrack)");
-
-                let len = self.next_tmp();
-                let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {val}, 0");
-                let data = self.next_tmp();
-                let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {val}, 2");
-
-                let idx_slot = self.next_slot("print.idx");
-                let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
-                let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
-
-                let cond_lbl = self.fresh_label("print.cond");
-                let body_lbl = self.fresh_label("print.body");
-                let sep_lbl = self.fresh_label("print.sep");
-                let elem_lbl = self.fresh_label("print.elem");
-                let end_lbl = self.fresh_label("print.end");
-
-                self.emit_br(&cond_lbl, out);
-                self.start_block(&cond_lbl, out);
-                let pi = self.next_tmp();
-                let _ = writeln!(out, "  {pi} = load i64, ptr {idx_slot}, align 8");
-                let pcmp = self.next_tmp();
-                let _ = writeln!(out, "  {pcmp} = icmp slt i64 {pi}, {len}");
-                self.emit_cond_br(&pcmp, &body_lbl, &end_lbl, out);
-
-                self.start_block(&body_lbl, out);
-                let gt0 = self.next_tmp();
-                let _ = writeln!(out, "  {gt0} = icmp sgt i64 {pi}, 0");
-                self.emit_cond_br(&gt0, &sep_lbl, &elem_lbl, out);
-
-                self.start_block(&sep_lbl, out);
-                let sc = self.next_tmp();
-                let _ = writeln!(out, "  {sc} = call i32 (ptr, ...) @printf(ptr @.fmt.sep)");
-                self.emit_br(&elem_lbl, out);
-
-                self.start_block(&elem_lbl, out);
-                let mem_ty = elem_mem_ir_type(&elem_ty);
-                let ep = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {ep} = getelementptr inbounds {mem_ty}, ptr {data}, i64 {pi}"
-                );
-                let elem_val = self.emit_elem_load(&elem_ty, &ep, out);
-                match *elem_ty {
-                    Type::Int => {
-                        let pc = self.next_tmp();
-                        let _ = writeln!(
-                            out,
-                            "  {pc} = call i32 (ptr, ...) @printf(ptr @.fmt.int.elem, i64 {elem_val})"
-                        );
-                    }
-                    Type::Str => {
-                        self.used_str_print = true;
-                        let _ = writeln!(
-                            out,
-                            "  call fastcc void @archx_str_print(%ArchxStr {elem_val}, i1 false)"
-                        );
-                    }
-                    Type::Bool => {
-                        let sel = self.next_tmp();
-                        let _ = writeln!(
-                            out,
-                            "  {sel} = select i1 {elem_val}, ptr @.str.true, ptr @.str.false"
-                        );
-                        let pc = self.next_tmp();
-                        let _ = writeln!(
-                            out,
-                            "  {pc} = call i32 (ptr, ...) @printf(ptr @.fmt.str.elem, ptr {sel})"
-                        );
-                    }
-                    _ => unreachable!(),
-                }
-                let pnext = self.next_tmp();
-                let _ = writeln!(out, "  {pnext} = add nsw i64 {pi}, 1");
-                let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}, align 8");
-                self.emit_br(&cond_lbl, out);
-
-                self.start_block(&end_lbl, out);
-                let close = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {close} = call i32 (ptr, ...) @printf(ptr @.fmt.rbrack)"
-                );
-                Ok((Type::Void, close))
-            }
-            Type::Struct(sname) => Err(Diagnostic::new(
-                format!(
-                    "`print` does not format struct `{sname}` automatically; print its fields (e.g. `p.x`)"
-                ),
-                span,
+            other => Err(Diagnostic::new(
+                format!("`abs()` expects `int` or `float`, found `{}`", other.name()),
+                args[0].span,
             )),
-            Type::Void => Err(Diagnostic::new("`print` cannot print `void`", span)),
         }
     }
+
+    fn gen_builtin_sqrt(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`sqrt()` takes exactly 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        let fval = match ty {
+            Type::Float => val,
+            Type::Int => {
+                let c = self.next_tmp();
+                let _ = writeln!(out, "  {c} = sitofp i64 {val} to double");
+                c
+            }
+            other => {
+                return Err(Diagnostic::new(
+                    format!("`sqrt()` expects `float` or `int`, found `{}`", other.name()),
+                    args[0].span,
+                ));
+            }
+        };
+        self.used_sqrt_f64 = true;
+        let r = self.next_tmp();
+        let _ = writeln!(out, "  {r} = call double @llvm.sqrt.f64(double {fval})");
+        Ok((Type::Float, r))
+    }
+
+    fn gen_builtin_minmax(
+        &mut self,
+        args: &[Expr],
+        is_min: bool,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let fn_name = if is_min { "min" } else { "max" };
+        if args.is_empty() {
+            return Err(Diagnostic::new(
+                format!("`{fn_name}()` expects at least 1 argument"),
+                span,
+            ));
+        }
+        if args.len() == 1 {
+            let (ty, vec_val) = self.eval_expr(&args[0], out)?;
+            let Type::Array(elem_ty) = ty else {
+                return Err(Diagnostic::new(
+                    format!(
+                        "single-argument `{fn_name}(seq)` requires `list[int]` or `list[float]`"
+                    ),
+                    args[0].span,
+                ));
+            };
+            if !matches!(*elem_ty, Type::Int | Type::Float) {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`{fn_name}()` requires `int` or `float` elements, found `{}`",
+                        elem_ty.name()
+                    ),
+                    args[0].span,
+                ));
+            }
+            self.used_pop_empty_fail = true;
+            let len_v = self.next_tmp();
+            let _ = writeln!(out, "  {len_v} = extractvalue %ArchxVec {vec_val}, 0");
+            let empty = self.next_tmp();
+            let _ = writeln!(out, "  {empty} = icmp sle i64 {len_v}, 0");
+            let bad_lbl = self.fresh_label("mm.empty");
+            let ok_lbl = self.fresh_label("mm.ok");
+            self.emit_cond_br(&empty, &bad_lbl, &ok_lbl, out);
+            self.start_block(&bad_lbl, out);
+            let _ = writeln!(out, "  call void @archx_pop_empty_fail()");
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+
+            self.start_block(&ok_lbl, out);
+            let data_p = self.next_tmp();
+            let _ = writeln!(out, "  {data_p} = extractvalue %ArchxVec {vec_val}, 2");
+            let ty_ir = ir_type(&elem_ty);
+            let first = self.next_tmp();
+            let _ = writeln!(out, "  {first} = load {ty_ir}, ptr {data_p}, align 8");
+            let aslot = self.next_slot("mm.acc");
+            let islot = self.next_slot("mm.idx");
+            let _ = writeln!(self.allocas, "  {aslot} = alloca {ty_ir}, align 8");
+            let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+            let _ = writeln!(out, "  store {ty_ir} {first}, ptr {aslot}, align 8");
+            let _ = writeln!(out, "  store i64 1, ptr {islot}, align 8");
+
+            let cl = self.fresh_label("mm.cond");
+            let bl = self.fresh_label("mm.body");
+            let el = self.fresh_label("mm.end");
+            self.emit_br(&cl, out);
+            self.start_block(&cl, out);
+            let ci = self.next_tmp();
+            let _ = writeln!(out, "  {ci} = load i64, ptr {islot}, align 8");
+            let mc = self.next_tmp();
+            let _ = writeln!(out, "  {mc} = icmp slt i64 {ci}, {len_v}");
+            self.emit_cond_br(&mc, &bl, &el, out);
+
+            self.start_block(&bl, out);
+            let ep = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {ep} = getelementptr inbounds {ty_ir}, ptr {data_p}, i64 {ci}"
+            );
+            let cur = self.next_tmp();
+            let _ = writeln!(out, "  {cur} = load {ty_ir}, ptr {ep}, align 8");
+            let prev = self.next_tmp();
+            let _ = writeln!(out, "  {prev} = load {ty_ir}, ptr {aslot}, align 8");
+            let take = self.next_tmp();
+            if *elem_ty == Type::Int {
+                let pred = if is_min { "slt" } else { "sgt" };
+                let _ = writeln!(out, "  {take} = icmp {pred} i64 {cur}, {prev}");
+            } else {
+                let pred = if is_min { "olt" } else { "ogt" };
+                let _ = writeln!(out, "  {take} = fcmp {pred} double {cur}, {prev}");
+            }
+            let sel = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {sel} = select i1 {take}, {ty_ir} {cur}, {ty_ir} {prev}"
+            );
+            let _ = writeln!(out, "  store {ty_ir} {sel}, ptr {aslot}, align 8");
+            let ni = self.next_tmp();
+            let _ = writeln!(out, "  {ni} = add nuw nsw i64 {ci}, 1");
+            let _ = writeln!(out, "  store i64 {ni}, ptr {islot}, align 8");
+            self.emit_br(&cl, out);
+
+            self.start_block(&el, out);
+            let res = self.next_tmp();
+            let _ = writeln!(out, "  {res} = load {ty_ir}, ptr {aslot}, align 8");
+            return Ok((*elem_ty, res));
+        }
+
+        let (first_ty, mut acc) = self.eval_expr(&args[0], out)?;
+        if !matches!(first_ty, Type::Int | Type::Float) {
+            return Err(Diagnostic::new(
+                format!(
+                    "`{fn_name}()` expects `int` or `float`, found `{}`",
+                    first_ty.name()
+                ),
+                args[0].span,
+            ));
+        }
+        let ty_ir = ir_type(&first_ty);
+        for arg in &args[1..] {
+            let (ty, v) = self.eval_expr(arg, out)?;
+            if ty != first_ty {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`{fn_name}()` arguments must have matching types (`{}` vs `{}`)",
+                        first_ty.name(),
+                        ty.name()
+                    ),
+                    arg.span,
+                ));
+            }
+            let take = self.next_tmp();
+            if first_ty == Type::Int {
+                let pred = if is_min { "slt" } else { "sgt" };
+                let _ = writeln!(out, "  {take} = icmp {pred} i64 {v}, {acc}");
+            } else {
+                let pred = if is_min { "olt" } else { "ogt" };
+                let _ = writeln!(out, "  {take} = fcmp {pred} double {v}, {acc}");
+            }
+            let next_acc = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {next_acc} = select i1 {take}, {ty_ir} {v}, {ty_ir} {acc}"
+            );
+            acc = next_acc;
+        }
+        Ok((first_ty, acc))
+    }
+
+    fn gen_builtin_sum(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() || args.len() > 2 {
+            return Err(Diagnostic::new(
+                "`sum()` expects 1 or 2 arguments (`sum(seq[, start])`)",
+                span,
+            ));
+        }
+        let (seq_ty, vec_val) = self.eval_expr(&args[0], out)?;
+        let Type::Array(elem_ty) = seq_ty else {
+            return Err(Diagnostic::new(
+                format!(
+                    "`sum()` expects `list[int]` or `list[float]`, found `{}`",
+                    seq_ty.name()
+                ),
+                args[0].span,
+            ));
+        };
+        if !matches!(*elem_ty, Type::Int | Type::Float) {
+            return Err(Diagnostic::new(
+                format!(
+                    "`sum()` requires `int` or `float` elements, found `{}`",
+                    elem_ty.name()
+                ),
+                args[0].span,
+            ));
+        }
+        let init_val = if args.len() == 2 {
+            let (sty, sv) = self.eval_expr(&args[1], out)?;
+            if sty != *elem_ty {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`sum()` start value must match element type `{}`, found `{}`",
+                        elem_ty.name(),
+                        sty.name()
+                    ),
+                    args[1].span,
+                ));
+            }
+            sv
+        } else if *elem_ty == Type::Int {
+            "0".to_string()
+        } else {
+            format_llvm_double(0.0)
+        };
+
+        let len_v = self.next_tmp();
+        let _ = writeln!(out, "  {len_v} = extractvalue %ArchxVec {vec_val}, 0");
+        let data_p = self.next_tmp();
+        let _ = writeln!(out, "  {data_p} = extractvalue %ArchxVec {vec_val}, 2");
+        let ty_ir = ir_type(&elem_ty);
+        let aslot = self.next_slot("sum.acc");
+        let islot = self.next_slot("sum.idx");
+        let _ = writeln!(self.allocas, "  {aslot} = alloca {ty_ir}, align 8");
+        let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store {ty_ir} {init_val}, ptr {aslot}, align 8");
+        let _ = writeln!(out, "  store i64 0, ptr {islot}, align 8");
+
+        let cl = self.fresh_label("sum.cond");
+        let bl = self.fresh_label("sum.body");
+        let el = self.fresh_label("sum.end");
+        self.emit_br(&cl, out);
+        self.start_block(&cl, out);
+        let ci = self.next_tmp();
+        let _ = writeln!(out, "  {ci} = load i64, ptr {islot}, align 8");
+        let mc = self.next_tmp();
+        let _ = writeln!(out, "  {mc} = icmp slt i64 {ci}, {len_v}");
+        self.emit_cond_br(&mc, &bl, &el, out);
+
+        self.start_block(&bl, out);
+        let ep = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {ep} = getelementptr inbounds {ty_ir}, ptr {data_p}, i64 {ci}"
+        );
+        let cur = self.next_tmp();
+        let _ = writeln!(out, "  {cur} = load {ty_ir}, ptr {ep}, align 8");
+        let prev = self.next_tmp();
+        let _ = writeln!(out, "  {prev} = load {ty_ir}, ptr {aslot}, align 8");
+        let nxt = self.next_tmp();
+        if *elem_ty == Type::Int {
+            let _ = writeln!(out, "  {nxt} = add i64 {prev}, {cur}");
+        } else {
+            let _ = writeln!(out, "  {nxt} = fadd double {prev}, {cur}");
+        }
+        let _ = writeln!(out, "  store {ty_ir} {nxt}, ptr {aslot}, align 8");
+        let ni = self.next_tmp();
+        let _ = writeln!(out, "  {ni} = add nuw nsw i64 {ci}, 1");
+        let _ = writeln!(out, "  store i64 {ni}, ptr {islot}, align 8");
+        self.emit_br(&cl, out);
+
+        self.start_block(&el, out);
+        let res = self.next_tmp();
+        let _ = writeln!(out, "  {res} = load {ty_ir}, ptr {aslot}, align 8");
+        Ok((*elem_ty, res))
+    }
+
+    fn gen_builtin_ord(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`ord()` takes exactly 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        if ty != Type::Str {
+            return Err(Diagnostic::new(
+                format!("`ord()` expects a 1-character `str`, found `{}`", ty.name()),
+                args[0].span,
+            ));
+        }
+        self.used_parse_fail = true;
+        let w0 = self.next_tmp();
+        let _ = writeln!(out, "  {w0} = extractvalue %ArchxStr {val}, 0");
+        let l = self.next_tmp();
+        let _ = writeln!(out, "  {l} = and i64 {w0}, 4294967295");
+        let ok = self.next_tmp();
+        let _ = writeln!(out, "  {ok} = icmp eq i64 {l}, 1");
+        let ok_lbl = self.fresh_label("ord.ok");
+        let bad_lbl = self.fresh_label("ord.bad");
+        self.emit_cond_br(&ok, &ok_lbl, &bad_lbl, out);
+        self.start_block(&bad_lbl, out);
+        let _ = writeln!(out, "  call void @archx_parse_fail()");
+        let _ = writeln!(out, "  unreachable");
+        self.terminated = true;
+        self.start_block(&ok_lbl, out);
+        let sh = self.next_tmp();
+        let _ = writeln!(out, "  {sh} = lshr i64 {w0}, 32");
+        let ch = self.next_tmp();
+        let _ = writeln!(out, "  {ch} = and i64 {sh}, 255");
+        Ok((Type::Int, ch))
+    }
+
+    fn gen_builtin_chr(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.len() != 1 {
+            return Err(Diagnostic::new("`chr()` takes exactly 1 argument", span));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        if ty != Type::Int {
+            return Err(Diagnostic::new(
+                format!("`chr()` expects `int`, found `{}`", ty.name()),
+                args[0].span,
+            ));
+        }
+        self.used_str_type = true;
+        self.used_parse_fail = true;
+        let bad = self.next_tmp();
+        let _ = writeln!(out, "  {bad} = icmp ugt i64 {val}, 255");
+        let bad_lbl = self.fresh_label("chr.bad");
+        let ok_lbl = self.fresh_label("chr.ok");
+        self.emit_cond_br(&bad, &bad_lbl, &ok_lbl, out);
+        self.start_block(&bad_lbl, out);
+        let _ = writeln!(out, "  call void @archx_parse_fail()");
+        let _ = writeln!(out, "  unreachable");
+        self.terminated = true;
+        self.start_block(&ok_lbl, out);
+        let sh = self.next_tmp();
+        let _ = writeln!(out, "  {sh} = shl nuw i64 {val}, 32");
+        let w0 = self.next_tmp();
+        let _ = writeln!(out, "  {w0} = or i64 {sh}, 1");
+        let s0 = self.next_tmp();
+        let _ = writeln!(out, "  {s0} = insertvalue %ArchxStr poison, i64 {w0}, 0");
+        let s1 = self.next_tmp();
+        let _ = writeln!(out, "  {s1} = insertvalue %ArchxStr {s0}, i64 0, 1");
+        Ok((Type::Str, s1))
+    }
+
+    // ---------------- Core `len` / `push` / `pop` ----------------------------
 
     pub(super) fn gen_builtin_len(
         &mut self,
@@ -365,10 +899,7 @@ impl Codegen {
                 Ok((Type::Int, reg))
             }
             other => Err(Diagnostic::new(
-                format!(
-                    "`len` expects an array or `string`, found `{}`",
-                    other.name()
-                ),
+                format!("`len` expects a `list` or `str`, found `{}`", other.name()),
                 args[0].span,
             )),
         }
@@ -386,50 +917,60 @@ impl Codegen {
                 span,
             ));
         }
+        self.emit_list_push_var(&args[0], &args[1], "push", span, out)
+    }
 
-        let ExprKind::Var(arr_name) = &args[0].kind else {
+    pub(super) fn emit_list_push_var(
+        &mut self,
+        target_expr: &Expr,
+        val_expr: &Expr,
+        op_name: &str,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let ExprKind::Var(arr_name) = &target_expr.kind else {
             return Err(Diagnostic::new(
-                "first argument to `push` must be an array variable",
-                args[0].span,
+                format!("target of `{op_name}` must be a list variable"),
+                target_expr.span,
             ));
         };
 
         let entry = self.lookup_var(arr_name).cloned().ok_or_else(|| {
-            Diagnostic::new(format!("undefined variable `{arr_name}`"), args[0].span)
+            Diagnostic::new(format!("undefined variable `{arr_name}`"), target_expr.span)
         })?;
         if entry.is_param {
             return Err(Diagnostic::new(
                 format!(
-                    "cannot `push` onto borrowed parameter `{arr_name}`; assign to a local array first"
+                    "cannot `{op_name}` onto borrowed parameter `{arr_name}`; assign to a local list first"
                 ),
-                args[0].span,
+                target_expr.span,
             ));
         }
         let Type::Array(elem_ty) = entry.ty.clone() else {
             return Err(Diagnostic::new(
-                format!("`push` expects an array, found `{}`", entry.ty.name()),
-                args[0].span,
+                format!("`{op_name}` expects a `list`, found `{}`", entry.ty.name()),
+                target_expr.span,
             ));
         };
         self.check_region_escape_target(arr_name, &elem_ty, span)?;
 
         let VarStorage::Slot(slot_ptr) = entry.storage else {
             return Err(Diagnostic::new(
-                format!("internal error: pushed array `{arr_name}` lacked a slot"),
+                format!("internal error: pushed list `{arr_name}` lacked a slot"),
                 span,
             ));
         };
 
-        let (val_ty, raw_val) = self.eval_expr_typed(&args[1], Some(&elem_ty), out)?;
+        let (val_ty, raw_val) = self.eval_expr_typed(val_expr, Some(&elem_ty), out)?;
         if val_ty != *elem_ty {
             return Err(Diagnostic::new(
                 format!(
-                    "`push` onto `[{}]` expects `{}`, found `{}`",
+                    "`{op_name}` onto `list[{}]` expects `{}`, found `{}`",
                     elem_ty.name(),
                     elem_ty.name(),
                     val_ty.name()
                 ),
-                args[1].span,
+                val_expr.span,
             ));
         }
         let val = if self.type_needs_drop(&elem_ty) {
@@ -497,6 +1038,7 @@ impl Codegen {
             out,
             "  {new_cap} = select i1 {over_max}, i64 {MAX_ARRAY_LEN}, i64 {cand_cap}"
         );
+
         let elem_sz_val = self.emit_elem_sizeof(&elem_ty, out);
         let bytes = self.emit_elem_bytes_val_mul(&new_cap, &elem_sz_val, out);
 
@@ -506,22 +1048,21 @@ impl Codegen {
 
         self.start_block(&was_reg_lbl, out);
         let old_bytes = self.emit_elem_bytes_val_mul(&len, &elem_sz_val, out);
-        let (reg_new_ptr, reg_new_cap) = if !self.region_stack.is_empty()
-            && !self.type_needs_drop(&elem_ty)
-        {
-            let rslot = self.func_region_slot.clone().unwrap();
-            let rp = self.next_tmp();
-            let _ = writeln!(
-                out,
-                "  {rp} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
-            );
-            let nc = self.next_tmp();
-            let _ = writeln!(out, "  {nc} = sub nsw i64 0, {new_cap}");
-            (rp, nc)
-        } else {
-            let hp = self.emit_checked_malloc(&bytes, out);
-            (hp, new_cap.clone())
-        };
+        let (reg_new_ptr, reg_new_cap) =
+            if !self.region_stack.is_empty() && !self.type_needs_drop(&elem_ty) {
+                let rslot = self.func_region_slot.clone().unwrap();
+                let rp = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {rp} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
+                );
+                let nc = self.next_tmp();
+                let _ = writeln!(out, "  {nc} = sub nsw i64 0, {new_cap}");
+                (rp, nc)
+            } else {
+                let hp = self.emit_checked_malloc(&bytes, out);
+                (hp, new_cap.clone())
+            };
         self.used_memcpy = true;
         let has_old = self.next_tmp();
         let _ = writeln!(out, "  {has_old} = icmp sgt i64 {old_bytes}, 0");
@@ -581,34 +1122,43 @@ impl Codegen {
                 span,
             ));
         }
+        self.emit_list_pop_var(&args[0], "pop", span, out)
+    }
 
-        let ExprKind::Var(arr_name) = &args[0].kind else {
+    pub(super) fn emit_list_pop_var(
+        &mut self,
+        target_expr: &Expr,
+        op_name: &str,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let ExprKind::Var(arr_name) = &target_expr.kind else {
             return Err(Diagnostic::new(
-                "argument to `pop` must be an array variable",
-                args[0].span,
+                format!("target of `{op_name}` must be a list variable"),
+                target_expr.span,
             ));
         };
 
         let entry = self.lookup_var(arr_name).cloned().ok_or_else(|| {
-            Diagnostic::new(format!("undefined variable `{arr_name}`"), args[0].span)
+            Diagnostic::new(format!("undefined variable `{arr_name}`"), target_expr.span)
         })?;
         if entry.is_param {
             return Err(Diagnostic::new(
                 format!(
-                    "cannot `pop` from borrowed parameter `{arr_name}`; assign to a local array first"
+                    "cannot `{op_name}` from borrowed parameter `{arr_name}`; assign to a local list first"
                 ),
-                args[0].span,
+                target_expr.span,
             ));
         }
         let Type::Array(elem_ty) = entry.ty else {
             return Err(Diagnostic::new(
-                format!("`pop` expects an array, found `{}`", entry.ty.name()),
-                args[0].span,
+                format!("`{op_name}` expects a `list`, found `{}`", entry.ty.name()),
+                target_expr.span,
             ));
         };
         let VarStorage::Slot(slot_ptr) = entry.storage else {
             return Err(Diagnostic::new(
-                format!("internal error: popped array `{arr_name}` lacked a slot"),
+                format!("internal error: popped list `{arr_name}` lacked a slot"),
                 span,
             ));
         };
@@ -656,5 +1206,4 @@ impl Codegen {
         }
         Ok((*elem_ty, elem))
     }
-
 }

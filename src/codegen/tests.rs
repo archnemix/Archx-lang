@@ -125,3 +125,35 @@ func main():
         let err = lower_src(src).unwrap_err();
         assert!(err.message.contains("region"));
     }
+
+    #[test]
+    fn pythonic_float_soa_range_methods_and_io_lower_cleanly() {
+        let src = "\
+class Body:
+    x: float
+    vx: float
+
+    def speed(self) -> float:
+        return abs(self.vx)
+
+def step_bodies(n: int) -> float:
+    bodies = [Body(0.0, 1.5)] * n
+    for i in range(n):
+        bodies[i].x += bodies[i].speed()
+    return bodies[0].x
+
+line = input()
+val = step_bodies(16)
+print(f\"{line}:{val}\", end=\"\\n\")
+";
+        let ir = lower_src(src).unwrap();
+        assert!(
+            !ir.contains("%ArchxVec"),
+            "Pythonic `[Body(0.0, 1.5)] * n` with read-only method should use SoA float planes:\n{ir}"
+        );
+        assert!(
+            !ir.contains("@archx_bounds_fail"),
+            "Pythonic `for i in range(n):` over `[Body(...)] * n` must elide bounds checks:\n{ir}"
+        );
+        assert!(ir.contains("@archx_input"));
+    }

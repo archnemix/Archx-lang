@@ -12,6 +12,10 @@ impl Codegen {
             || self.used_pop_empty_fail
             || self.used_oom_fail
             || self.used_div_zero_fail
+            || self.used_neg_exp_fail
+            || self.used_zero_step_fail
+            || self.used_parse_fail
+            || self.used_assert_fail
             || self.used_region
             || self.used_str_concat
             || self.used_str_promote

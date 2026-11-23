@@ -35,6 +35,50 @@ impl Codegen {
         }
 
         match &stmt.kind {
+            StmtKind::Pass => Ok(()),
+
+            StmtKind::Assert { cond, msg } => {
+                let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+                if cond_ty != Type::Bool {
+                    return Err(Diagnostic::new(
+                        format!("`assert` condition must be `bool`, found `{}`", cond_ty.name()),
+                        cond.span,
+                    ));
+                }
+                let ok_lbl = self.fresh_label("assert.ok");
+                let fail_lbl = self.fresh_label("assert.fail");
+                self.emit_cond_br(&cond_val, &ok_lbl, &fail_lbl, out);
+
+                self.start_block(&fail_lbl, out);
+                self.used_assert_fail = true;
+                if let Some(mexpr) = msg {
+                    let (mty, mval) = self.eval_expr(mexpr, out)?;
+                    if mty != Type::Str {
+                        return Err(Diagnostic::new(
+                            format!("`assert` message must be `str`, found `{}`", mty.name()),
+                            mexpr.span,
+                        ));
+                    }
+                    let _ = writeln!(
+                        out,
+                        "  call void @archx_assert_fail(%ArchxStr {mval}, i1 true, i64 {})",
+                        stmt.span.line
+                    );
+                } else {
+                    let _ = writeln!(
+                        out,
+                        "  call void @archx_assert_fail(%ArchxStr zeroinitializer, i1 false, i64 {})",
+                        stmt.span.line
+                    );
+                }
+                let _ = writeln!(out, "  unreachable");
+                self.terminated = true;
+
+                self.start_block(&ok_lbl, out);
+                self.flush_stmt_temps(out);
+                Ok(())
+            }
+
             StmtKind::Let {
                 name,
                 ty: declared_ty,
@@ -46,157 +90,7 @@ impl Codegen {
                         stmt.span,
                     ));
                 }
-
-                if let Some(t) = declared_ty {
-                    if *t == Type::Void {
-                        return Err(Diagnostic::new(
-                            "cannot declare a variable of type `void`",
-                            stmt.span,
-                        ));
-                    }
-                    validate_type(t, &self.structs, stmt.span)?;
-                    if t.is_array() {
-                        self.used_vec_type = true;
-                    }
-                    if *t == Type::Str {
-                        self.used_str_type = true;
-                    }
-                }
-
-                let is_mutated = self.mutated_vars.contains(name);
-
-                if !is_mutated && self.region_stack.is_empty() {
-                    if let Some(soa_storage) = self.try_emit_transparent_soa(
-                        name,
-                        declared_ty.as_ref(),
-                        value,
-                        rest_in_block,
-                        out,
-                    )? {
-                        self.flush_stmt_temps(out);
-                        let sname = match &soa_storage {
-                            VarStorage::Soa { struct_name, .. } => struct_name.clone(),
-                            _ => unreachable!(),
-                        };
-                        self.scopes.last_mut().unwrap().vars.insert(
-                            name.clone(),
-                            VarEntry {
-                                ty: Type::Array(Box::new(Type::Struct(sname))),
-                                storage: soa_storage,
-                                is_param: false,
-                                region_depth: self.region_stack.len(),
-                            },
-                        );
-                        return Ok(());
-                    }
-                }
-
-                let (ty, raw_val) = self.eval_expr_typed(value, declared_ty.as_ref(), out)?;
-                if ty == Type::Void {
-                    return Err(Diagnostic::new(
-                        "cannot store a `void` value in a variable",
-                        stmt.span,
-                    ));
-                }
-                if let Some(expected) = declared_ty {
-                    if *expected != ty {
-                        return Err(Diagnostic::new(
-                            format!(
-                                "type mismatch in `let {name}`: expected `{}`, found `{}`",
-                                expected.name(),
-                                ty.name()
-                            ),
-                            stmt.span,
-                        ));
-                    }
-                }
-
-                if !is_mutated && ty.is_array() {
-                    if let Some(known) = self.infer_known_array_len(value) {
-                        self.scopes
-                            .last_mut()
-                            .unwrap()
-                            .known_lens
-                            .insert(name.clone(), known);
-                    }
-                }
-
-                let needs_drop = self.type_needs_drop(&ty);
-                let val = if needs_drop && !matches!(&value.kind, ExprKind::Str(_)) {
-                    if self.claim_stmt_temp(&raw_val) {
-                        raw_val
-                    } else {
-                        self.emit_clone_value(&ty, &raw_val, out)
-                    }
-                } else {
-                    raw_val
-                };
-                self.flush_stmt_temps(out);
-
-                let is_returned = self.returned_vars.contains(name);
-                let is_1d_pod_array = matches!(
-                    &ty,
-                    Type::Array(elem) if matches!(elem.as_ref(), Type::Int | Type::Bool)
-                );
-                let is_const_safe_str = ty == Type::Str && matches!(&value.kind, ExprKind::Str(_));
-                let is_region_pod_vec = !self.region_stack.is_empty()
-                    && is_1d_pod_array
-                    && matches!(
-                        &value.kind,
-                        ExprKind::ArrayLit(_) | ExprKind::ArrayRepeat { .. }
-                    );
-
-                let storage = if !is_mutated
-                    && (!needs_drop || is_const_safe_str || (is_region_pod_vec && !is_returned))
-                {
-                    VarStorage::Imm(val)
-                } else if !is_mutated
-                    && is_1d_pod_array
-                    && !is_returned
-                    && self.region_stack.is_empty()
-                {
-                    let is_empty_lit =
-                        matches!(&value.kind, ExprKind::ArrayLit(es) if es.is_empty());
-                    if !is_empty_lit {
-                        let data_ptr = self.next_tmp();
-                        let _ = writeln!(out, "  {data_ptr} = extractvalue %ArchxVec {val}, 2");
-                        self.scopes
-                            .last_mut()
-                            .unwrap()
-                            .owned_buffers
-                            .push(DropTarget::DataPtr(data_ptr));
-                    }
-                    VarStorage::Imm(val)
-                } else {
-                    let ptr = self.next_slot(&format!("var.{name}"));
-                    let ty_ir = ir_type(&ty);
-                    let align = ir_align(&ty);
-                    let _ = writeln!(self.allocas, "  {ptr} = alloca {ty_ir}, align {align}");
-                    let _ = writeln!(out, "  store {ty_ir} {val}, ptr {ptr}, align {align}");
-
-                    if needs_drop && !is_region_pod_vec {
-                        self.scopes
-                            .last_mut()
-                            .unwrap()
-                            .owned_buffers
-                            .push(DropTarget::TypedSlot {
-                                ptr: ptr.clone(),
-                                ty: ty.clone(),
-                            });
-                    }
-                    VarStorage::Slot(ptr)
-                };
-
-                self.scopes.last_mut().unwrap().vars.insert(
-                    name.clone(),
-                    VarEntry {
-                        ty,
-                        storage,
-                        is_param: false,
-                        region_depth: self.region_stack.len(),
-                    },
-                );
-                Ok(())
+                self.gen_let_binding(name, declared_ty.as_ref(), value, rest_in_block, stmt.span, out)
             }
 
             StmtKind::Return(value) => {
@@ -335,6 +229,20 @@ impl Codegen {
             }
 
             StmtKind::Assign { target, op, value } => {
+                if op.is_none() {
+                    if let AssignTarget::Var(name) = target {
+                        if self.lookup_var(name).is_none() {
+                            return self.gen_let_binding(
+                                name,
+                                None,
+                                value,
+                                rest_in_block,
+                                stmt.span,
+                                out,
+                            );
+                        }
+                    }
+                }
                 self.gen_assign(target, *op, value, stmt.span, out)?;
                 self.flush_stmt_temps(out);
                 Ok(())
@@ -353,6 +261,22 @@ impl Codegen {
             StmtKind::ForEach { var, iter, body } => {
                 self.gen_foreach(var, iter, body, stmt.span, out)
             }
+
+            StmtKind::ForEnumerate {
+                idx_var,
+                elem_var,
+                iter,
+                start,
+                body,
+            } => self.gen_for_enumerate(
+                idx_var,
+                elem_var,
+                iter,
+                start.as_ref(),
+                body,
+                stmt.span,
+                out,
+            ),
 
             StmtKind::Region { body } => self.gen_region(body, out),
 
@@ -433,6 +357,162 @@ impl Codegen {
                 Ok(())
             }
         }
+    }
+
+    pub(super) fn gen_let_binding(
+        &mut self,
+        name: &str,
+        declared_ty: Option<&Type>,
+        value: &Expr,
+        rest_in_block: &[Stmt],
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        if let Some(t) = declared_ty {
+            if *t == Type::Void {
+                return Err(Diagnostic::new(
+                    "cannot declare a variable of type `void`",
+                    span,
+                ));
+            }
+            validate_type(t, &self.structs, span)?;
+            if t.is_array() {
+                self.used_vec_type = true;
+            }
+            if *t == Type::Str {
+                self.used_str_type = true;
+            }
+        }
+
+        let is_mutated = self.mutated_vars.contains(name);
+
+        if !is_mutated && self.region_stack.is_empty() {
+            if let Some(soa_storage) =
+                self.try_emit_transparent_soa(name, declared_ty, value, rest_in_block, out)?
+            {
+                self.flush_stmt_temps(out);
+                let sname = match &soa_storage {
+                    VarStorage::Soa { struct_name, .. } => struct_name.clone(),
+                    _ => unreachable!(),
+                };
+                self.scopes.last_mut().unwrap().vars.insert(
+                    name.to_string(),
+                    VarEntry {
+                        ty: Type::Array(Box::new(Type::Struct(sname))),
+                        storage: soa_storage,
+                        is_param: false,
+                        region_depth: self.region_stack.len(),
+                    },
+                );
+                return Ok(());
+            }
+        }
+
+        let (ty, raw_val) = self.eval_expr_typed(value, declared_ty, out)?;
+        if ty == Type::Void {
+            return Err(Diagnostic::new(
+                "cannot store a `void` / `None` value in a variable",
+                span,
+            ));
+        }
+        if let Some(expected) = declared_ty {
+            if *expected != ty {
+                return Err(Diagnostic::new(
+                    format!(
+                        "type mismatch in `{name}`: expected `{}`, found `{}`",
+                        expected.name(),
+                        ty.name()
+                    ),
+                    span,
+                ));
+            }
+        }
+
+        if !is_mutated && ty.is_array() {
+            if let Some(known) = self.infer_known_array_len(value) {
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .known_lens
+                    .insert(name.to_string(), known);
+            }
+        }
+
+        let needs_drop = self.type_needs_drop(&ty);
+        let val = if needs_drop && !matches!(&value.kind, ExprKind::Str(_)) {
+            if self.claim_stmt_temp(&raw_val) {
+                raw_val
+            } else {
+                self.emit_clone_value(&ty, &raw_val, out)
+            }
+        } else {
+            raw_val
+        };
+        self.flush_stmt_temps(out);
+
+        let is_returned = self.returned_vars.contains(name);
+        let is_1d_pod_array = matches!(
+            &ty,
+            Type::Array(elem) if matches!(elem.as_ref(), Type::Int | Type::Float | Type::Bool)
+        );
+        let is_const_safe_str = ty == Type::Str && matches!(&value.kind, ExprKind::Str(_));
+        let is_region_pod_vec = !self.region_stack.is_empty()
+            && is_1d_pod_array
+            && matches!(
+                &value.kind,
+                ExprKind::ArrayLit(_) | ExprKind::ArrayRepeat { .. }
+            );
+
+        let storage =
+            if !is_mutated && (!needs_drop || is_const_safe_str || (is_region_pod_vec && !is_returned))
+            {
+                VarStorage::Imm(val)
+            } else if !is_mutated
+                && is_1d_pod_array
+                && !is_returned
+                && self.region_stack.is_empty()
+            {
+                let is_empty_lit = matches!(&value.kind, ExprKind::ArrayLit(es) if es.is_empty());
+                if !is_empty_lit {
+                    let data_ptr = self.next_tmp();
+                    let _ = writeln!(out, "  {data_ptr} = extractvalue %ArchxVec {val}, 2");
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .owned_buffers
+                        .push(DropTarget::DataPtr(data_ptr));
+                }
+                VarStorage::Imm(val)
+            } else {
+                let ptr = self.next_slot(&format!("var.{name}"));
+                let ty_ir = ir_type(&ty);
+                let align = ir_align(&ty);
+                let _ = writeln!(self.allocas, "  {ptr} = alloca {ty_ir}, align {align}");
+                let _ = writeln!(out, "  store {ty_ir} {val}, ptr {ptr}, align {align}");
+
+                if needs_drop && !is_region_pod_vec {
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .owned_buffers
+                        .push(DropTarget::TypedSlot {
+                            ptr: ptr.clone(),
+                            ty: ty.clone(),
+                        });
+                }
+                VarStorage::Slot(ptr)
+            };
+
+        self.scopes.last_mut().unwrap().vars.insert(
+            name.to_string(),
+            VarEntry {
+                ty,
+                storage,
+                is_param: false,
+                region_depth: self.region_stack.len(),
+            },
+        );
+        Ok(())
     }
 
     pub(super) fn gen_region(&mut self, body: &[Stmt], out: &mut String) -> Result<()> {
@@ -544,7 +624,7 @@ impl Codegen {
         if fields.len() < 2
             || !fields
                 .iter()
-                .all(|f| matches!(f.ty, Type::Int | Type::Bool))
+                .all(|f| matches!(f.ty, Type::Int | Type::Float | Type::Bool))
         {
             return Ok(None);
         }
@@ -553,7 +633,7 @@ impl Codegen {
                 return Ok(None);
             }
         }
-        if var_escapes_soa(rest_in_block, var_name) {
+        if var_escapes_soa(rest_in_block, var_name, &self.mutating_method_names) {
             return Ok(None);
         }
 
@@ -611,6 +691,7 @@ impl Codegen {
         for (fty, init_val) in init_vals {
             let elem_size = if fty == Type::Bool { 1 } else { 8 };
             let is_zero = (fty == Type::Int && init_val == "0")
+                || (fty == Type::Float && init_val == "0x0000000000000000")
                 || (fty == Type::Bool && init_val == "false");
             let plane_ptr = if is_zero {
                 self.emit_checked_calloc(&count_val, elem_size, out)
@@ -705,10 +786,28 @@ impl Codegen {
                         let _ = writeln!(out, "  store %ArchxStr {new_val}, ptr {ptr}, align 8");
                         return Ok(());
                     }
+                    if entry.ty == Type::Float {
+                        let old_val = self.next_tmp();
+                        let _ = writeln!(out, "  {old_val} = load double, ptr {ptr}, align 8");
+                        let (rhs_ty, rhs_val) = self.eval_expr(value, out)?;
+                        if rhs_ty != Type::Float {
+                            return Err(Diagnostic::new(
+                                format!(
+                                    "operator `{}=` requires a `float` right-hand side, found `{}`",
+                                    bin_op.symbol(),
+                                    rhs_ty.name()
+                                ),
+                                value.span,
+                            ));
+                        }
+                        let new_val = self.emit_float_arith(bin_op, &old_val, &rhs_val, out);
+                        let _ = writeln!(out, "  store double {new_val}, ptr {ptr}, align 8");
+                        return Ok(());
+                    }
                     if entry.ty != Type::Int {
                         return Err(Diagnostic::new(
                             format!(
-                                "operator `{}=` requires an `int` target, found `{}`",
+                                "operator `{}=` requires an `int` or `float` target, found `{}`",
                                 bin_op.symbol(),
                                 entry.ty.name()
                             ),
@@ -867,10 +966,28 @@ impl Codegen {
                 );
 
                 if let Some(bin_op) = op {
+                    if *elem_ty == Type::Float {
+                        let old_val = self.next_tmp();
+                        let _ = writeln!(out, "  {old_val} = load double, ptr {elem_ptr}, align 8");
+                        let (rhs_ty, rhs_val) = self.eval_expr(value, out)?;
+                        if rhs_ty != Type::Float {
+                            return Err(Diagnostic::new(
+                                format!(
+                                    "operator `{}=` requires a `float` right-hand side, found `{}`",
+                                    bin_op.symbol(),
+                                    rhs_ty.name()
+                                ),
+                                value.span,
+                            ));
+                        }
+                        let new_val = self.emit_float_arith(bin_op, &old_val, &rhs_val, out);
+                        let _ = writeln!(out, "  store double {new_val}, ptr {elem_ptr}, align 8");
+                        return Ok(());
+                    }
                     if *elem_ty != Type::Int {
                         return Err(Diagnostic::new(
                             format!(
-                                "operator `{}=` requires `int` elements, found `{}`",
+                                "operator `{}=` requires `int` or `float` elements, found `{}`",
                                 bin_op.symbol(),
                                 elem_ty.name()
                             ),
@@ -1052,10 +1169,28 @@ impl Codegen {
         out: &mut String,
     ) -> Result<()> {
         if let Some(bin_op) = op {
+            if *fty == Type::Float {
+                let old_val = self.next_tmp();
+                let _ = writeln!(out, "  {old_val} = load double, ptr {fptr}, align 8");
+                let (rhs_ty, rhs_val) = self.eval_expr(value, out)?;
+                if rhs_ty != Type::Float {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "operator `{}=` requires a `float` right-hand side, found `{}`",
+                            bin_op.symbol(),
+                            rhs_ty.name()
+                        ),
+                        value.span,
+                    ));
+                }
+                let new_val = self.emit_float_arith(bin_op, &old_val, &rhs_val, out);
+                let _ = writeln!(out, "  store double {new_val}, ptr {fptr}, align 8");
+                return Ok(());
+            }
             if *fty != Type::Int {
                 return Err(Diagnostic::new(
                     format!(
-                        "operator `{}=` requires an `int` field, found `{}`",
+                        "operator `{}=` requires an `int` or `float` field, found `{}`",
                         bin_op.symbol(),
                         fty.name()
                     ),

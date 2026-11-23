@@ -5,6 +5,7 @@ use crate::diag::Span;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Int,
+    Float,
     Bool,
     Str,
     Void,
@@ -16,10 +17,11 @@ impl Type {
     pub fn name(&self) -> String {
         match self {
             Type::Int => "int".to_string(),
+            Type::Float => "float".to_string(),
             Type::Bool => "bool".to_string(),
-            Type::Str => "string".to_string(),
-            Type::Void => "void".to_string(),
-            Type::Array(elem) => format!("[{}]", elem.name()),
+            Type::Str => "str".to_string(),
+            Type::Void => "None".to_string(),
+            Type::Array(elem) => format!("list[{}]", elem.name()),
             Type::Struct(name) => name.clone(),
         }
     }
@@ -39,6 +41,7 @@ pub struct Program {
 pub struct StructDef {
     pub name: String,
     pub fields: Vec<Param>,
+    pub methods: Vec<Func>,
     pub span: Span,
 }
 
@@ -111,11 +114,29 @@ pub enum StmtKind {
         iter: Expr,
         body: Vec<Stmt>,
     },
+    ForEnumerate {
+        idx_var: String,
+        elem_var: String,
+        iter: Expr,
+        start: Option<Expr>,
+        body: Vec<Stmt>,
+    },
     Region {
         body: Vec<Stmt>,
     },
+    Assert {
+        cond: Expr,
+        msg: Option<Expr>,
+    },
+    Pass,
     Break,
     Continue,
+}
+
+#[derive(Debug, Clone)]
+pub enum FStrPart {
+    Lit(String),
+    Expr(Expr),
 }
 
 #[derive(Debug, Clone)]
@@ -127,8 +148,11 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Int(i64),
+    Float(f64),
     Bool(bool),
+    NoneLit,
     Str(String),
+    FString(Vec<FStrPart>),
     Var(String),
     ArrayLit(Vec<Expr>),
     ArrayRepeat {
@@ -143,9 +167,24 @@ pub enum ExprKind {
         target: Box<Expr>,
         field: String,
     },
+    MethodCall {
+        target: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
     Call {
         name: String,
         args: Vec<Expr>,
+    },
+    CallKw {
+        name: String,
+        pos_args: Vec<Expr>,
+        kw_args: Vec<(String, Expr, Span)>,
+    },
+    IfExpr {
+        then_expr: Box<Expr>,
+        cond: Box<Expr>,
+        else_expr: Box<Expr>,
     },
     Binary {
         op: BinOp,
@@ -164,13 +203,17 @@ pub enum BinOp {
     Sub,
     Mul,
     Div,
+    FloorDiv,
     Mod,
+    Pow,
     Eq,
     Ne,
     Lt,
     Gt,
     Le,
     Ge,
+    In,
+    NotIn,
     And,
     Or,
 }
@@ -182,13 +225,17 @@ impl BinOp {
             BinOp::Sub => "-",
             BinOp::Mul => "*",
             BinOp::Div => "/",
+            BinOp::FloorDiv => "//",
             BinOp::Mod => "%",
+            BinOp::Pow => "**",
             BinOp::Eq => "==",
             BinOp::Ne => "!=",
             BinOp::Lt => "<",
             BinOp::Gt => ">",
             BinOp::Le => "<=",
             BinOp::Ge => ">=",
+            BinOp::In => "in",
+            BinOp::NotIn => "not in",
             BinOp::And => "and",
             BinOp::Or => "or",
         }

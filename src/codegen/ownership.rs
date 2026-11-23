@@ -12,7 +12,7 @@ impl Codegen {
 
     pub(super) fn type_needs_drop(&self, ty: &Type) -> bool {
         match ty {
-            Type::Int | Type::Bool | Type::Void => false,
+            Type::Int | Type::Float | Type::Bool | Type::Void => false,
             Type::Str | Type::Array(_) => true,
             Type::Struct(name) => self
                 .structs

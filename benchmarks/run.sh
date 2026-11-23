@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds and times all three benchmark suites (primes, arrays, composite) across C, Rust, and Archx:
+# Builds and times all four benchmark suites (primes, arrays, composite, nbody_float)
+# across C, Rust, and Archx:
 #
 #   1. Scalar loops (benchmarks/primes.*): arithmetic reduction + trial-division primes
 #   2. Array loops & bounds checking (benchmarks/arrays*):
@@ -7,6 +8,8 @@
 #        - C (checked)      : `IntVec`/`BoolVec` slice struct with `0 <= i < len` checks
 #        - Rust (Vec<T>)    : safe `Vec<i64>` / `Vec<bool>`
 #        - Archx ([T])      : safe `[int]` / `[bool]` with compile-time bounds-check elision
+#   3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
+#   4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 #
 # Usage: bash benchmarks/run.sh [runs]
 
@@ -36,6 +39,11 @@ echo "== building composite Milestone 5 benchmark (composite) =="
 clang -O2 -o "$TMP/comp_c" benchmarks/composite.c || exit 1
 rustc -O -o "$TMP/comp_rs" benchmarks/composite.rs || exit 1
 ./target/release/archx benchmarks/composite.archx.lang -o "$TMP/comp_ax" || exit 1
+
+echo "== building Pythonic floating-point N-body benchmark (nbody_float) =="
+clang -O2 -o "$TMP/nbody_c" benchmarks/nbody_float.c -lm || exit 1
+rustc -O -o "$TMP/nbody_rs" benchmarks/nbody_float.rs || exit 1
+./target/release/archx benchmarks/nbody_float.archx.lang -o "$TMP/nbody_ax" || exit 1
 
 echo
 echo "== verifying scalar outputs match =="
@@ -82,6 +90,20 @@ if ! cmp -s "$TMP/out_cc" "$TMP/out_cr" || ! cmp -s "$TMP/out_cc" "$TMP/out_ca";
   echo "--- archx ---"; cat "$TMP/out_ca"
   exit 1
 fi
+
+echo
+echo "== verifying nbody_float outputs match =="
+"$TMP/nbody_c"  > "$TMP/out_nc" || exit 1
+"$TMP/nbody_rs" > "$TMP/out_nr" || exit 1
+"$TMP/nbody_ax" > "$TMP/out_na" || exit 1
+cat "$TMP/out_nc"
+if ! cmp -s "$TMP/out_nc" "$TMP/out_nr" || ! cmp -s "$TMP/out_nc" "$TMP/out_na"; then
+  echo "MISMATCH in nbody_float benchmark"
+  echo "--- c ---";     cat "$TMP/out_nc"
+  echo "--- rust ---";  cat "$TMP/out_nr"
+  echo "--- archx ---"; cat "$TMP/out_na"
+  exit 1
+fi
 echo "all implementations agree"
 
 time_ms() {
@@ -123,6 +145,11 @@ read -r CC_BEST  CC_MEAN  <<<"$(time_ms "$TMP/comp_c")"
 read -r CR_BEST  CR_MEAN  <<<"$(time_ms "$TMP/comp_rs")"
 read -r CA_BEST  CA_MEAN  <<<"$(time_ms "$TMP/comp_ax")"
 
+echo "== timing nbody_float benchmark: best of $RUNS runs (ms) =="
+read -r NC_BEST  NC_MEAN  <<<"$(time_ms "$TMP/nbody_c")"
+read -r NR_BEST  NR_MEAN  <<<"$(time_ms "$TMP/nbody_rs")"
+read -r NA_BEST  NA_MEAN  <<<"$(time_ms "$TMP/nbody_ax")"
+
 read -r PC_KB  PC_SKB  <<<"$(measure_sizes "$TMP/primes_c")"
 read -r PR_KB  PR_SKB  <<<"$(measure_sizes "$TMP/primes_rs")"
 read -r PA_KB  PA_SKB  <<<"$(measure_sizes "$TMP/primes_ax")"
@@ -136,9 +163,13 @@ read -r CC_KB  CC_SKB  <<<"$(measure_sizes "$TMP/comp_c")"
 read -r CR_KB  CR_SKB  <<<"$(measure_sizes "$TMP/comp_rs")"
 read -r CA_KB  CA_SKB  <<<"$(measure_sizes "$TMP/comp_ax")"
 
+read -r NC_KB  NC_SKB  <<<"$(measure_sizes "$TMP/nbody_c")"
+read -r NR_KB  NR_SKB  <<<"$(measure_sizes "$TMP/nbody_rs")"
+read -r NA_KB  NA_SKB  <<<"$(measure_sizes "$TMP/nbody_ax")"
+
 REPORT=$(cat <<EOF
-Archx vs C vs Rust -- loop & array benchmarks
-=============================================
+Archx vs C vs Rust -- head-to-head benchmarks (v0.6.0)
+======================================================
 
 Toolchain
 ---------
@@ -180,6 +211,17 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   C      (AoS + malloc/strcmp -O2)   ${CC_BEST} (${CC_MEAN})        ${CC_KB}          ${CC_SKB}
   Rust   (Vec<Body> + String -O)     ${CR_BEST} (${CR_MEAN})      ${CR_KB}         ${CR_SKB}
   Archx  (SoA + region + SSO -O2)    ${CA_BEST} (${CA_MEAN})        ${CA_KB}          ${CA_SKB}
+
+4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
+----------------------------------------------------------------------------------------
+  - 100,000 7-field f64 Body objects (56B) x 60 central-field integration steps + .kinetic()
+  - 64-body all-pairs gravitational N-body x 2,000 steps (sqrt + f64 reductions)
+  Output: $(paste -sd ', ' "$TMP/out_nc")
+
+  Language                       Best ms (mean)   Raw KB   Stripped KB
+  C      (AoS Body* -O2 -lm)         ${NC_BEST} (${NC_MEAN})        ${NC_KB}          ${NC_SKB}
+  Rust   (Vec<Body> -O)              ${NR_BEST} (${NR_MEAN})      ${NR_KB}         ${NR_SKB}
+  Archx  (Pythonic class + SoA -O2)  ${NA_BEST} (${NA_MEAN})        ${NA_KB}          ${NA_SKB}
 EOF
 )
 

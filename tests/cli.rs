@@ -2,8 +2,9 @@
 //! across Linux, macOS, and Windows.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 fn archx() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_archx"))
@@ -677,5 +678,197 @@ fn run_flag_default_output_and_str_alias_work() {
         String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
         "[ok]\n"
     );
+}
+
+#[test]
+fn pythonic_syntax_loops_classes_floats_fstrings_and_methods() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "pythonic_v06",
+        "\
+class Counter:
+    val: int
+    step: int
+
+    def inc(self, times: int) -> None:
+        self.val += self.step * times
+
+    def describe(self, tag: str) -> str:
+        return f\"{tag}={self.val}\"
+
+def check_all() -> None:
+    c = Counter(step=3, val=10)
+    c.inc(2)
+    print(c.describe(\"ctr\"))
+
+    rsum = 0
+    for k in range(10, 0, -3):
+        rsum += k
+    neg_step = -2
+    dsum = 0
+    for k in range(6, 0, neg_step):
+        dsum += k
+    print(rsum, dsum)
+
+    xs: list[int] = []
+    xs.append(10)
+    xs.append(20)
+    xs.append(30)
+    popped = xs.pop()
+    ys = xs + [40]
+    esum = 0
+    for idx, v in enumerate(ys, 1):
+        esum += idx * v
+    xs.clear()
+    assert popped == 30 and len(xs) == 0 and 20 in ys and 99 not in ys
+    print(esum)
+
+    s = \"  AbC--DeF  \".strip()
+    assert s.lower() == \"abc--def\" and s.upper() == \"ABC--DEF\"
+    assert s.startswith(\"AbC\") and s.endswith(\"DeF\") and \"--\" in s and \"zz\" not in s
+    parts = \"alpha,beta,gamma\".split(\",\")
+    chars = 0
+    for ch in \"hi!\":
+        chars += ord(ch)
+    print(s.find(\"--\"), s.replace(\"--\", \":\"), parts[1], chars, chr(65) * 3)
+
+    with region:
+        tmp = [1] * 8
+        assert len(tmp) == 8
+        pass
+
+    print(-7 // 2, 2 ** 10, 2.0 ** 3.0, sqrt(2.25))
+    print(int(\"  -42\\n\") + int(float(\" 3.9 \")), sum([1, 2, 3, 4]), min(9, 4, 7), max([2, 8, 5]), abs(-12))
+    print(\"A\", 2.0, None, sep=\"|\", end=\"!\\n\")
+    print()
+
+if __name__ == \"__main__\":
+    check_all()
+    label = \"yes\" if bool(\"x\") and not bool(\"\") else \"no\"
+    print(f\"{{done}} {label}\")
+",
+    );
+
+    assert_eq!(
+        out,
+        "\
+ctr=16
+22 12
+170
+3 AbC:DeF beta 242 AAA
+-4 1024 8.0 1.5
+-39 10 4 8 12
+A|2.0|None!
+
+{done} yes
+"
+    );
+}
+
+#[test]
+fn pythonic_stdin_input_with_prompt_and_piped_lines() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-stdin-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let src = dir.join("stdin_io.archx.lang");
+    fs::write(
+        &src,
+        "\
+name = input(\"Name? \")
+n = int(input())
+nums = input().split()
+total = 0
+for i in range(n):
+    total += int(nums[i])
+scale = float(input())
+long_line = input()
+eof_line = input()
+print(f\"hi {name}: {float(total) * scale} len={len(long_line)} eof={len(eof_line)}\")
+",
+    )
+    .unwrap();
+
+    let exe = exe_path(&dir, "stdin_io");
+    let build = Command::new(archx())
+        .arg(&src)
+        .arg("-o")
+        .arg(&exe)
+        .output()
+        .unwrap();
+    assert!(
+        build.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+
+    let mut child = Command::new(&exe)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    {
+        let mut stdin = child.stdin.take().unwrap();
+        let payload = format!("Alice\r\n3\n10 20 30\n2.5\n{}\n", "x".repeat(120));
+        stdin.write_all(payload.as_bytes()).unwrap();
+    }
+
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "binary stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
+        "Name? hi Alice: 150.0 len=120 eof=0\n"
+    );
+}
+
+#[test]
+fn pythonic_assert_and_zero_step_panic_cleanly() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-pypanic-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    // 1. Failed assertion with message exits 101 and prints message:
+    let src_assert = dir.join("fail_assert.archx.lang");
+    fs::write(&src_assert, "x = 5\nassert x == 9, \"expected nine\"\n").unwrap();
+    let exe_assert = exe_path(&dir, "fail_assert");
+    assert!(Command::new(archx()).arg(&src_assert).arg("-o").arg(&exe_assert).status().unwrap().success());
+    let run_assert = Command::new(&exe_assert).output().unwrap();
+    assert_eq!(run_assert.status.code(), Some(101));
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&run_assert.stdout),
+        String::from_utf8_lossy(&run_assert.stderr)
+    );
+    assert!(combined.contains("AssertionError") && combined.contains("expected nine"), "got: {combined}");
+
+    // 2. Dynamic zero step in `range()` exits 101:
+    let src_step = dir.join("zero_step.archx.lang");
+    fs::write(
+        &src_step,
+        "def bad(s: int):\n    for i in range(0, 10, s):\n        print(i)\nbad(0)\n",
+    )
+    .unwrap();
+    let exe_step = exe_path(&dir, "zero_step");
+    assert!(Command::new(archx()).arg(&src_step).arg("-o").arg(&exe_step).status().unwrap().success());
+    let run_step = Command::new(&exe_step).output().unwrap();
+    assert_eq!(run_step.status.code(), Some(101));
 }
 

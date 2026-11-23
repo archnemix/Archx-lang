@@ -25,7 +25,7 @@ impl Codegen {
     pub(super) fn emit_elem_sizeof(&mut self, elem_ty: &Type, out: &mut String) -> String {
         match elem_ty {
             Type::Bool => "1".to_string(),
-            Type::Int => "8".to_string(),
+            Type::Int | Type::Float => "8".to_string(),
             Type::Str => "16".to_string(),
             Type::Array(_) => "24".to_string(),
             Type::Struct(sname) => {
@@ -194,7 +194,9 @@ impl Codegen {
             );
             return;
         }
-        if *elem_ty == Type::Int && init_val == "0" {
+        if (*elem_ty == Type::Int && init_val == "0")
+            || (*elem_ty == Type::Float && init_val == "0x0000000000000000")
+        {
             self.used_memset = true;
             let bytes = self.next_tmp();
             let _ = writeln!(out, "  {bytes} = shl nuw nsw i64 {count_val}, 3");
@@ -205,6 +207,7 @@ impl Codegen {
             return;
         }
 
+        let sc_ir = ir_type(elem_ty);
         let pos = self.next_tmp();
         let _ = writeln!(out, "  {pos} = icmp sgt i64 {count_val}, 0");
         let pre_lbl = self.fresh_label("fill.pre");
@@ -225,9 +228,9 @@ impl Codegen {
         let ep = self.next_tmp();
         let _ = writeln!(
             out,
-            "  {ep} = getelementptr inbounds i64, ptr {data_ptr}, i64 {fi}"
+            "  {ep} = getelementptr inbounds {sc_ir}, ptr {data_ptr}, i64 {fi}"
         );
-        let _ = writeln!(out, "  store i64 {init_val}, ptr {ep}, align 8");
+        let _ = writeln!(out, "  store {sc_ir} {init_val}, ptr {ep}, align 8");
         let _ = writeln!(out, "  {fnext} = add nuw nsw i64 {fi}, 1");
         let more = self.next_tmp();
         let _ = writeln!(out, "  {more} = icmp slt i64 {fnext}, {count_val}");
@@ -244,7 +247,7 @@ impl Codegen {
         count_val: &str,
         out: &mut String,
     ) {
-        if matches!(elem_ty, Type::Int | Type::Bool) {
+        if matches!(elem_ty, Type::Int | Type::Float | Type::Bool) {
             self.emit_scalar_fill_loop(elem_ty, raw_init, data_ptr, count_val, out);
             return;
         }
@@ -568,7 +571,7 @@ impl Codegen {
             }),
             ExprKind::Call { name, args } if name == "len" && args.len() == 1 => {
                 if let ExprKind::Var(arr_name) = &args[0].kind {
-                    if !stmts_mutate_array_len(body, arr_name) {
+                    if !stmts_mutate_array_len(body, arr_name, &self.mutating_method_names) {
                         return Some(InductionBound {
                             var: iv.to_string(),
                             upper: UpperBound::LenOf(arr_name.clone()),
@@ -676,11 +679,48 @@ impl Codegen {
                     self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
                 }
             }
+            ExprKind::CallKw {
+                pos_args, kw_args, ..
+            } => {
+                for a in pos_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+                for (_, v, _) in kw_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, v, out);
+                }
+            }
+            ExprKind::MethodCall { target, args, .. } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, target, out);
+                for a in args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+            }
+            ExprKind::FString(parts) => {
+                for p in parts {
+                    if let FStrPart::Expr(e) = p {
+                        self.scan_expr_for_iv_arrays(iv, loop_body, e, out);
+                    }
+                }
+            }
+            ExprKind::IfExpr {
+                then_expr,
+                cond,
+                else_expr,
+            } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, then_expr, out);
+                self.scan_expr_for_iv_arrays(iv, loop_body, cond, out);
+                self.scan_expr_for_iv_arrays(iv, loop_body, else_expr, out);
+            }
             ExprKind::ArrayRepeat { value, count } => {
                 self.scan_expr_for_iv_arrays(iv, loop_body, value, out);
                 self.scan_expr_for_iv_arrays(iv, loop_body, count, out);
             }
-            ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Str(_) | ExprKind::Var(_) => {}
+            ExprKind::Int(_)
+            | ExprKind::Float(_)
+            | ExprKind::Bool(_)
+            | ExprKind::NoneLit
+            | ExprKind::Str(_)
+            | ExprKind::Var(_) => {}
         }
     }
 
@@ -707,7 +747,9 @@ impl Codegen {
         let Some(entry) = self.lookup_var(arr_name) else {
             return;
         };
-        if !entry.ty.is_array() || stmts_mutate_array_len(loop_body, arr_name) {
+        if !entry.ty.is_array()
+            || stmts_mutate_array_len(loop_body, arr_name, &self.mutating_method_names)
+        {
             return;
         }
         if !out.contains(arr_name) {
@@ -751,7 +793,9 @@ impl Codegen {
                     return None;
                 };
                 let a_entry = self.lookup_var(aname)?;
-                if !a_entry.ty.is_array() || stmts_mutate_array_len(body, aname) {
+                if !a_entry.ty.is_array()
+                    || stmts_mutate_array_len(body, aname, &self.mutating_method_names)
+                {
                     return None;
                 }
                 (
