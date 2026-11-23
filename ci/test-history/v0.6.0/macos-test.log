@@ -1,0 +1,636 @@
+OS: macos-latest
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo 1.100.0 (3acc79c0c 2026-11-05)
+Apple clang version 21.0.0 (clang-2100.1.1.101)
+Target: arm64-apple-darwin25.6.0
+Thread model: posix
+InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+--- cargo test ---
+[1m[92m   Compiling[0m archx v0.6.0 (/Users/runner/work/Archx-lang/Archx-lang)
+[1m[33mwarning[0m[1m: field `0` is never read[0m
+   [1m[94m--> [0msrc/codegen/loops.rs:178:21
+    [1m[94m|[0m
+[1m[94m178[0m [1m[94m|[0m             Dynamic(String),
+    [1m[94m|[0m             [1m[94m-------[0m [1m[33m^^^^^^[0m
+    [1m[94m|[0m             [1m[94m|[0m
+    [1m[94m|[0m             [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m178[0m [91m- [0m            Dynamic([91mString[0m),
+[1m[94m178[0m [92m+ [0m            Dynamic([92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx" test) generated 1 warning (1 duplicate)
+[1m[33mwarning[0m: `archx` (bin "archx") generated 1 warning
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 10.77s
+[1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/627a0d79eb7a1586/out/archx-627a0d79eb7a1586)
+
+running 32 tests
+test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
+test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
+test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
+test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
+test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test lexer::tests::array_elif_and_compound_assign_tokens ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... FAILED
+test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::equality_operators ... ok
+test lexer::tests::indents_and_dedents ... ok
+test lexer::tests::loop_tokens ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
+test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::strings_with_both_quote_styles ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test parser::tests::parses_booleans_and_comparisons ... ok
+test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_for_and_break_continue ... ok
+test parser::tests::parses_functions_with_params ... ok
+test parser::tests::parses_if_else ... ok
+test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_main_and_print ... ok
+test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_missing_colon ... ok
+test tests::default_output_strips_archx_extensions ... ok
+
+failures:
+
+---- codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly stdout ----
+
+thread 'codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly' (8013) panicked at src/codegen/tests.rs:154:9:
+Pythonic `for i in range(n):` over `[Body(...)] * n` must elide bounds checks:
+; Archx LLVM IR module
+
+%ArchxStr = type { i64, i64 }
+%ArchxStruct_Body = type { double, double }
+
+@.fmt.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00", align 1
+@.fmt.int.elem = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
+@.fmt.str.elem = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@.str.none = private unnamed_addr constant [5 x i8] c"None\00", align 1
+@.fmt.g15 = private unnamed_addr constant [6 x i8] c"%.15g\00", align 1
+
+define internal fastcc double @archx_method_4_Body_speed(%ArchxStruct_Body %arg.self) {
+entry:
+  %t0 = extractvalue %ArchxStruct_Body %arg.self, 1
+  %t1 = call double @llvm.fabs.f64(double %t0)
+  ret double %t1
+}
+
+define internal fastcc double @archx_fn_step_bodies(i64 %arg.n) {
+entry:
+  %for.i.15 = alloca i64, align 8
+  %t0 = icmp ugt i64 %arg.n, 140737488355328
+  br i1 %t0, label %repeat.bad.1, label %repeat.ok.0
+repeat.bad.1:
+  call void @archx_neg_len_fail(i64 %arg.n)
+  unreachable
+repeat.ok.0:
+  %t1 = icmp eq i64 %arg.n, 0
+  %t2 = select i1 %t1, i64 1, i64 %arg.n
+  %t3 = call noalias align 16 ptr @calloc(i64 %t2, i64 8)
+  %t4 = icmp eq ptr %t3, null
+  br i1 %t4, label %calloc.oom.3, label %calloc.ok.2
+calloc.oom.3:
+  call void @archx_oom_fail()
+  unreachable
+calloc.ok.2:
+  %t5 = mul nuw nsw i64 %arg.n, 8
+  %t6 = icmp eq i64 %t5, 0
+  %t7 = select i1 %t6, i64 1, i64 %t5
+  %t8 = call noalias align 16 ptr @malloc(i64 %t7)
+  %t9 = icmp eq ptr %t8, null
+  br i1 %t9, label %alloc.oom.5, label %alloc.ok.4
+alloc.oom.5:
+  call void @archx_oom_fail()
+  unreachable
+alloc.ok.4:
+  %t10 = icmp sgt i64 %arg.n, 0
+  br i1 %t10, label %fill.pre.6, label %fill.end.8
+fill.pre.6:
+  br label %fill.body.7
+fill.body.7:
+  %t11 = phi i64 [ 0, %fill.pre.6 ], [ %t12, %fill.body.7 ]
+  %t13 = getelementptr inbounds double, ptr %t8, i64 %t11
+  store double 0x3FF8000000000000, ptr %t13, align 8
+  %t12 = add nuw nsw i64 %t11, 1
+  %t14 = icmp slt i64 %t12, %arg.n
+  br i1 %t14, label %fill.body.7, label %fill.end.8
+fill.end.8:
+  store i64 0, ptr %for.i.15, align 8
+  br label %for.cond.9
+for.cond.9:
+  %t16 = load i64, ptr %for.i.15, align 8
+  %t17 = icmp slt i64 %t16, %arg.n
+  br i1 %t17, label %for.body.10, label %for.end.12
+for.body.10:
+  %t18 = load i64, ptr %for.i.15, align 8
+  %t19 = getelementptr inbounds double, ptr %t3, i64 %t18
+  %t20 = load double, ptr %t19, align 8
+  %t21 = load i64, ptr %for.i.15, align 8
+  %t22 = getelementptr inbounds double, ptr %t3, i64 %t21
+  %t23 = load double, ptr %t22, align 8
+  %t24 = insertvalue %ArchxStruct_Body poison, double %t23, 0
+  %t25 = getelementptr inbounds double, ptr %t8, i64 %t21
+  %t26 = load double, ptr %t25, align 8
+  %t27 = insertvalue %ArchxStruct_Body %t24, double %t26, 1
+  %t28 = call fastcc double @archx_method_4_Body_speed(%ArchxStruct_Body %t27)
+  %t29 = fadd double %t20, %t28
+  store double %t29, ptr %t19, align 8
+  br label %for.step.11
+for.step.11:
+  %t30 = load i64, ptr %for.i.15, align 8
+  %t31 = add nsw i64 %t30, 1
+  store i64 %t31, ptr %for.i.15, align 8
+  br label %for.cond.9
+for.end.12:
+  %t32 = icmp uge i64 0, %arg.n
+  br i1 %t32, label %idx.oob.14, label %idx.ok.13
+idx.oob.14:
+  call void @archx_bounds_fail(i64 0, i64 %arg.n)
+  unreachable
+idx.ok.13:
+  %t33 = getelementptr inbounds double, ptr %t3, i64 0
+  %t34 = load double, ptr %t33, align 8
+  call void @free(ptr %t8)
+  call void @free(ptr %t3)
+  ret double %t34
+}
+
+define i32 @main() {
+entry:
+  %var.line.1 = alloca %ArchxStr, align 8
+  %t0 = call fastcc %ArchxStr @archx_input(%ArchxStr zeroinitializer, i1 false, ptr null)
+  store %ArchxStr %t0, ptr %var.line.1, align 8
+  %t2 = call fastcc double @archx_fn_step_bodies(i64 16)
+  %t3 = load %ArchxStr, ptr %var.line.1, align 8
+  %t4 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t3, %ArchxStr { i64 249108103169, i64 0 }, ptr null)
+  %t5 = call fastcc %ArchxStr @archx_str_from_float(double %t2, ptr null)
+  %t6 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t4, %ArchxStr %t5, ptr null)
+  call fastcc void @archx_str_print(%ArchxStr %t6, i1 false)
+  call fastcc void @archx_str_print(%ArchxStr { i64 42949672961, i64 0 }, i1 false)
+  call fastcc void @archx_str_drop(%ArchxStr %t6)
+  call fastcc void @archx_str_drop(%ArchxStr %t5)
+  call fastcc void @archx_str_drop(%ArchxStr %t4)
+  %t7 = load %ArchxStr, ptr %var.line.1, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t7)
+  ret i32 0
+}
+
+define private fastcc void @archx_str_drop(%ArchxStr %s) alwaysinline nounwind {
+entry:
+  %w0 = extractvalue %ArchxStr %s, 0
+  %len = and i64 %w0, 4294967295
+  %long = icmp ugt i64 %len, 12
+  br i1 %long, label %chk_tag, label %done
+chk_tag:
+  %w1 = extractvalue %ArchxStr %s, 1
+  %tag = and i64 %w1, 1
+  %owned = icmp ne i64 %tag, 0
+  br i1 %owned, label %do_free, label %done
+do_free:
+  %raw = and i64 %w1, -2
+  %ptr = inttoptr i64 %raw to ptr
+  call void @free(ptr %ptr)
+  br label %done
+done:
+  ret void
+}
+
+define private fastcc %ArchxStr @archx_str_clone(%ArchxStr %s) {
+entry:
+  %w0 = extractvalue %ArchxStr %s, 0
+  %len = and i64 %w0, 4294967295
+  %long = icmp ugt i64 %len, 12
+  br i1 %long, label %chk_tag, label %ret_same
+chk_tag:
+  %w1 = extractvalue %ArchxStr %s, 1
+  %tag = and i64 %w1, 1
+  %owned = icmp ne i64 %tag, 0
+  br i1 %owned, label %dup_heap, label %ret_same
+dup_heap:
+  %src_i = and i64 %w1, -2
+  %src = inttoptr i64 %src_i to ptr
+  %dst = call noalias align 16 ptr @malloc(i64 %len)
+  %isnull = icmp eq ptr %dst, null
+  br i1 %isnull, label %oom, label %copy
+oom:
+  call void @archx_oom_fail()
+  unreachable
+copy:
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst, ptr nonnull align 1 %src, i64 %len, i1 false)
+  %dst_i = ptrtoint ptr %dst to i64
+  %tagged = or i64 %dst_i, 1
+  %out = insertvalue %ArchxStr %s, i64 %tagged, 1
+  ret %ArchxStr %out
+ret_same:
+  ret %ArchxStr %s
+}
+
+@.fmt.pstr.nl = private unnamed_addr constant [6 x i8] c"%.*s\0A\00", align 1
+@.fmt.pstr = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+define private fastcc void @archx_str_print(%ArchxStr %s, i1 %newline) {
+entry:
+  %tmp = alloca [12 x i8], align 4
+  %w0 = extractvalue %ArchxStr %s, 0
+  %w1 = extractvalue %ArchxStr %s, 1
+  %len = and i64 %w0, 4294967295
+  %short = icmp ule i64 %len, 12
+  br i1 %short, label %prep_short, label %prep_long
+prep_short:
+  %p4 = lshr i64 %w0, 32
+  %p4_32 = trunc i64 %p4 to i32
+  store i32 %p4_32, ptr %tmp, align 4
+  %tmp4 = getelementptr inbounds i8, ptr %tmp, i64 4
+  store i64 %w1, ptr %tmp4, align 4
+  br label %emit
+prep_long:
+  %raw = and i64 %w1, -4
+  %lptr = inttoptr i64 %raw to ptr
+  br label %emit
+emit:
+  %data = phi ptr [ %tmp, %prep_short ], [ %lptr, %prep_long ]
+  %pos = icmp ugt i64 %len, 0
+  br i1 %pos, label %chk_nul, label %chk_nl
+chk_nul:
+  %nul = call ptr @memchr(ptr nonnull %data, i32 0, i64 %len)
+  %has_nul = icmp ne ptr %nul, null
+  br i1 %has_nul, label %byte_loop_pre, label %fast_printf
+fast_printf:
+  %len32 = trunc i64 %len to i32
+  %fmt = select i1 %newline, ptr @.fmt.pstr.nl, ptr @.fmt.pstr
+  %np = call i32 (ptr, ...) @printf(ptr %fmt, i32 %len32, ptr nonnull %data)
+  ret void
+byte_loop_pre:
+  br label %byte_loop
+byte_loop:
+  %bi = phi i64 [ 0, %byte_loop_pre ], [ %bnext, %byte_loop ]
+  %bp = getelementptr inbounds i8, ptr %data, i64 %bi
+  %ch8 = load i8, ptr %bp, align 1
+  %ch32 = zext i8 %ch8 to i32
+  %pc = call i32 @putchar(i32 %ch32)
+  %bnext = add nuw nsw i64 %bi, 1
+  %bmore = icmp ult i64 %bnext, %len
+  br i1 %bmore, label %byte_loop, label %chk_nl
+chk_nl:
+  br i1 %newline, label %do_nl, label %done
+do_nl:
+  %nc = call i32 @putchar(i32 10)
+  br label %done
+done:
+  ret void
+}
+
+define private fastcc %ArchxStr @archx_str_concat(%ArchxStr %a, %ArchxStr %b, ptr %reg) alwaysinline {
+entry:
+  %atmp = alloca [12 x i8], align 4
+  %btmp = alloca [12 x i8], align 4
+  %out_sso = alloca [16 x i8], align 8
+  %aw0 = extractvalue %ArchxStr %a, 0
+  %aw1 = extractvalue %ArchxStr %a, 1
+  %bw0 = extractvalue %ArchxStr %b, 0
+  %bw1 = extractvalue %ArchxStr %b, 1
+  %alen = and i64 %aw0, 4294967295
+  %blen = and i64 %bw0, 4294967295
+  %az = icmp eq i64 %alen, 0
+  br i1 %az, label %ret_b, label %chk_bz
+ret_b:
+  %b_in_reg = icmp ne ptr %reg, null
+  br i1 %b_in_reg, label %ret_b_raw, label %ret_b_clone
+ret_b_raw:
+  %bw1_tag = and i64 %bw1, 1
+  %b_owned = icmp ne i64 %bw1_tag, 0
+  br i1 %b_owned, label %ret_b_clone, label %ret_b_direct
+ret_b_direct:
+  ret %ArchxStr %b
+ret_b_clone:
+  %bc = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %b)
+  ret %ArchxStr %bc
+chk_bz:
+  %bz = icmp eq i64 %blen, 0
+  br i1 %bz, label %ret_a, label %calc_tot
+ret_a:
+  %a_in_reg = icmp ne ptr %reg, null
+  br i1 %a_in_reg, label %ret_a_raw, label %ret_a_clone
+ret_a_raw:
+  %aw1_tag = and i64 %aw1, 1
+  %a_owned = icmp ne i64 %aw1_tag, 0
+  br i1 %a_owned, label %ret_a_clone, label %ret_a_direct
+ret_a_direct:
+  ret %ArchxStr %a
+ret_a_clone:
+  %ac = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %a)
+  ret %ArchxStr %ac
+calc_tot:
+  %tot = add nuw nsw i64 %alen, %blen
+  %too_big = icmp sgt i64 %tot, 2147483647
+  br i1 %too_big, label %oom, label %mat_a
+oom:
+  call void @archx_oom_fail()
+  unreachable
+mat_a:
+  %ashort = icmp ule i64 %alen, 12
+  br i1 %ashort, label %mat_a_short, label %mat_a_long
+mat_a_short:
+  %ap4 = lshr i64 %aw0, 32
+  %ap4_32 = trunc i64 %ap4 to i32
+  store i32 %ap4_32, ptr %atmp, align 4
+  %atmp4 = getelementptr inbounds i8, ptr %atmp, i64 4
+  store i64 %aw1, ptr %atmp4, align 4
+  br label %mat_b
+mat_a_long:
+  %araw = and i64 %aw1, -4
+  %alptr = inttoptr i64 %araw to ptr
+  br label %mat_b
+mat_b:
+  %aptr = phi ptr [ %atmp, %mat_a_short ], [ %alptr, %mat_a_long ]
+  %bshort = icmp ule i64 %blen, 12
+  br i1 %bshort, label %mat_b_short, label %mat_b_long
+mat_b_short:
+  %bp4 = lshr i64 %bw0, 32
+  %bp4_32 = trunc i64 %bp4 to i32
+  store i32 %bp4_32, ptr %btmp, align 4
+  %btmp4 = getelementptr inbounds i8, ptr %btmp, i64 4
+  store i64 %bw1, ptr %btmp4, align 4
+  br label %build
+mat_b_long:
+  %braw = and i64 %bw1, -4
+  %blptr = inttoptr i64 %braw to ptr
+  br label %build
+build:
+  %bptr = phi ptr [ %btmp, %mat_b_short ], [ %blptr, %mat_b_long ]
+  %fits_sso = icmp ule i64 %tot, 12
+  br i1 %fits_sso, label %build_sso, label %build_long
+build_sso:
+  store i64 0, ptr %out_sso, align 8
+  %out_sso8 = getelementptr inbounds i8, ptr %out_sso, i64 8
+  store i64 0, ptr %out_sso8, align 8
+  %tot32 = trunc i64 %tot to i32
+  store i32 %tot32, ptr %out_sso, align 8
+  %sso_dst_a = getelementptr inbounds i8, ptr %out_sso, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a, ptr nonnull align 1 %aptr, i64 %alen, i1 false)
+  %sso_dst_b = getelementptr inbounds i8, ptr %sso_dst_a, i64 %alen
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b, ptr nonnull align 1 %bptr, i64 %blen, i1 false)
+  %rw0 = load i64, ptr %out_sso, align 8
+  %rw1 = load i64, ptr %out_sso8, align 8
+  %rs0 = insertvalue %ArchxStr poison, i64 %rw0, 0
+  %rs1 = insertvalue %ArchxStr %rs0, i64 %rw1, 1
+  ret %ArchxStr %rs1
+build_long:
+  %hp = call noalias align 16 ptr @malloc(i64 %tot)
+  %hnull = icmp eq ptr %hp, null
+  br i1 %hnull, label %oom, label %copy_long
+copy_long:
+  %dst = phi ptr [ %hp, %build_long ]
+  %hp_i = ptrtoint ptr %hp to i64
+  %w1_out = or i64 %hp_i, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst, ptr nonnull align 1 %aptr, i64 %alen, i1 false)
+  %dst_b = getelementptr inbounds i8, ptr %dst, i64 %alen
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b, ptr nonnull align 1 %bptr, i64 %blen, i1 false)
+  %pref32 = load i32, ptr %dst, align 16
+  %pref64 = zext i32 %pref32 to i64
+  %pref_sh = shl nuw i64 %pref64, 32
+  %w0_out = or i64 %tot, %pref_sh
+  %ls0 = insertvalue %ArchxStr poison, i64 %w0_out, 0
+  %ls1 = insertvalue %ArchxStr %ls0, i64 %w1_out, 1
+  ret %ArchxStr %ls1
+}
+
+@.err.bounds = private unnamed_addr constant [63 x i8] c"archx runtime panic: index %lld out of bounds for length %lld\0A\00", align 1
+
+define private void @archx_bounds_fail(i64 %idx, i64 %len) cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.bounds, i64 %idx, i64 %len)
+  call void @exit(i32 101)
+  unreachable
+}
+
+@.err.neglen = private unnamed_addr constant [53 x i8] c"archx runtime panic: invalid array/step size (%lld)\0A\00", align 1
+
+define private void @archx_neg_len_fail(i64 %n) cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.neglen, i64 %n)
+  call void @exit(i32 101)
+  unreachable
+}
+
+@.err.oom = private unnamed_addr constant [36 x i8] c"archx runtime panic: out of memory\0A\00", align 1
+
+define private void @archx_oom_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.oom)
+  call void @exit(i32 101)
+  unreachable
+}
+
+declare i32 @printf(ptr nocapture readonly, ...)
+declare noalias ptr @malloc(i64) nounwind allocsize(0)
+declare noalias ptr @calloc(i64, i64) nounwind allocsize(0, 1)
+declare ptr @realloc(ptr, i64) nounwind allocsize(1)
+declare void @free(ptr) nounwind
+declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)
+declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
+declare i32 @putchar(i32)
+declare void @exit(i32) cold noreturn nounwind
+
+define private fastcc %ArchxStr @archx_str_from_slice(ptr %src, i64 %len, ptr %reg) {
+entry:
+  %sso = alloca [16 x i8], align 8
+  %z = icmp sle i64 %len, 0
+  br i1 %z, label %ret_empty, label %chk_big
+ret_empty:
+  ret %ArchxStr zeroinitializer
+chk_big:
+  %big = icmp sgt i64 %len, 2147483647
+  br i1 %big, label %oom, label %chk_sso
+oom:
+  call void @archx_oom_fail()
+  unreachable
+chk_sso:
+  %short = icmp ule i64 %len, 12
+  br i1 %short, label %pack_sso, label %build_long
+pack_sso:
+  store i64 0, ptr %sso, align 8
+  %sso8 = getelementptr inbounds i8, ptr %sso, i64 8
+  store i64 0, ptr %sso8, align 8
+  %len32 = trunc i64 %len to i32
+  store i32 %len32, ptr %sso, align 8
+  %sso4 = getelementptr inbounds i8, ptr %sso, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso4, ptr nonnull align 1 %src, i64 %len, i1 false)
+  %sw0 = load i64, ptr %sso, align 8
+  %sw1 = load i64, ptr %sso8, align 8
+  %ss0 = insertvalue %ArchxStr poison, i64 %sw0, 0
+  %ss1 = insertvalue %ArchxStr %ss0, i64 %sw1, 1
+  ret %ArchxStr %ss1
+build_long:
+  %hp = call noalias align 16 ptr @malloc(i64 %len)
+  %hnull = icmp eq ptr %hp, null
+  br i1 %hnull, label %oom, label %copy_long
+copy_long:
+  %dst = phi ptr [ %hp, %build_long ]
+  %hp_i = ptrtoint ptr %hp to i64
+  %w1_out = or i64 %hp_i, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst, ptr nonnull align 1 %src, i64 %len, i1 false)
+  %pref32 = load i32, ptr %dst, align 16
+  %pref64 = zext i32 %pref32 to i64
+  %pref_sh = shl nuw i64 %pref64, 32
+  %w0_out = or i64 %len, %pref_sh
+  %ls0 = insertvalue %ArchxStr poison, i64 %w0_out, 0
+  %ls1 = insertvalue %ArchxStr %ls0, i64 %w1_out, 1
+  ret %ArchxStr %ls1
+}
+
+
+define private fastcc i64 @archx_fmt_float_buf(double %x, ptr %buf) nounwind {
+entry:
+  %n32 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  %n = sext i32 %n32 to i64
+  %pos = icmp sgt i64 %n, 0
+  br i1 %pos, label %scan, label %ret_orig
+scan:
+  %i = phi i64 [ 0, %entry ], [ %inext, %scan_step ]
+  %cp = getelementptr inbounds i8, ptr %buf, i64 %i
+  %ch = load i8, ptr %cp, align 1
+  %is_dot = icmp eq i8 %ch, 46
+  %is_e = icmp eq i8 %ch, 101
+  %is_E = icmp eq i8 %ch, 69
+  %is_n = icmp eq i8 %ch, 110
+  %is_N = icmp eq i8 %ch, 78
+  %is_i = icmp eq i8 %ch, 105
+  %is_I = icmp eq i8 %ch, 73
+  %o1 = or i1 %is_dot, %is_e
+  %o2 = or i1 %o1, %is_E
+  %o3 = or i1 %o2, %is_n
+  %o4 = or i1 %o3, %is_N
+  %o5 = or i1 %o4, %is_i
+  %special = or i1 %o5, %is_I
+  br i1 %special, label %ret_orig, label %scan_step
+scan_step:
+  %inext = add nuw nsw i64 %i, 1
+  %more = icmp slt i64 %inext, %n
+  br i1 %more, label %scan, label %append_dot0
+append_dot0:
+  %p0 = getelementptr inbounds i8, ptr %buf, i64 %n
+  store i8 46, ptr %p0, align 1
+  %n1 = add nuw nsw i64 %n, 1
+  %p1 = getelementptr inbounds i8, ptr %buf, i64 %n1
+  store i8 48, ptr %p1, align 1
+  %n2 = add nuw nsw i64 %n, 2
+  %p2 = getelementptr inbounds i8, ptr %buf, i64 %n2
+  store i8 0, ptr %p2, align 1
+  ret i64 %n2
+ret_orig:
+  ret i64 %n
+}
+
+
+define private fastcc %ArchxStr @archx_str_from_float(double %x, ptr %reg) {
+entry:
+  %buf = alloca [64 x i8], align 8
+  %len = call fastcc i64 @archx_fmt_float_buf(double %x, ptr %buf)
+  %s = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %buf, i64 %len, ptr %reg)
+  ret %ArchxStr %s
+}
+
+
+define private fastcc %ArchxStr @archx_input(%ArchxStr %prompt, i1 %has_prompt, ptr %reg) {
+entry:
+  %sbuf = alloca [64 x i8], align 8
+  br i1 %has_prompt, label %do_prompt, label %do_flush
+do_prompt:
+  call fastcc void @archx_str_print(%ArchxStr %prompt, i1 false)
+  br label %do_flush
+do_flush:
+  %fl = call i32 @fflush(ptr null)
+  br label %read_loop
+read_loop:
+  %buf = phi ptr [ %sbuf, %do_flush ], [ %buf_next, %store_ch ]
+  %cap = phi i64 [ 64, %do_flush ], [ %cap_next, %store_ch ]
+  %len = phi i64 [ 0, %do_flush ], [ %len_next, %store_ch ]
+  %heap = phi i1 [ false, %do_flush ], [ %heap_next, %store_ch ]
+  %ch = call i32 @getchar()
+  %is_eof = icmp eq i32 %ch, -1
+  %is_nl = icmp eq i32 %ch, 10
+  %stop = or i1 %is_eof, %is_nl
+  br i1 %stop, label %strip_cr, label %chk_cap
+chk_cap:
+  %full = icmp sge i64 %len, %cap
+  br i1 %full, label %grow, label %no_grow
+no_grow:
+  br label %store_ch
+grow:
+  %big = icmp sge i64 %cap, 1073741824
+  br i1 %big, label %oom, label %do_grow
+oom:
+  call void @archx_oom_fail()
+  unreachable
+do_grow:
+  %ncap = shl nuw nsw i64 %cap, 1
+  br i1 %heap, label %grow_realloc, label %grow_malloc
+grow_malloc:
+  %mp = call noalias ptr @malloc(i64 %ncap)
+  %mn = icmp eq ptr %mp, null
+  br i1 %mn, label %oom, label %copy_stack
+copy_stack:
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %mp, ptr nonnull align 8 %sbuf, i64 %len, i1 false)
+  br label %store_ch
+grow_realloc:
+  %rp = call ptr @realloc(ptr %buf, i64 %ncap)
+  %rn = icmp eq ptr %rp, null
+  br i1 %rn, label %oom, label %store_ch
+store_ch:
+  %buf_next = phi ptr [ %buf, %no_grow ], [ %mp, %copy_stack ], [ %rp, %grow_realloc ]
+  %cap_next = phi i64 [ %cap, %no_grow ], [ %ncap, %copy_stack ], [ %ncap, %grow_realloc ]
+  %heap_next = phi i1 [ %heap, %no_grow ], [ true, %copy_stack ], [ true, %grow_realloc ]
+  %ch8 = trunc i32 %ch to i8
+  %wp = getelementptr inbounds i8, ptr %buf_next, i64 %len
+  store i8 %ch8, ptr %wp, align 1
+  %len_next = add nuw nsw i64 %len, 1
+  br label %read_loop
+strip_cr:
+  %has_len = icmp sgt i64 %len, 0
+  br i1 %has_len, label %chk_cr, label %finish
+chk_cr:
+  %lm1 = sub nuw nsw i64 %len, 1
+  %lp = getelementptr inbounds i8, ptr %buf, i64 %lm1
+  %last = load i8, ptr %lp, align 1
+  %is_cr = icmp eq i8 %last, 13
+  %flen = select i1 %is_cr, i64 %lm1, i64 %len
+  br label %finish
+finish:
+  %out_len = phi i64 [ 0, %strip_cr ], [ %flen, %chk_cr ]
+  %res = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %buf, i64 %out_len, ptr %reg)
+  br i1 %heap, label %free_tmp, label %done
+free_tmp:
+  call void @free(ptr %buf)
+  br label %done
+done:
+  ret %ArchxStr %res
+}
+
+declare i32 @sprintf(ptr nocapture writeonly, ptr nocapture readonly, ...) nounwind
+declare i32 @getchar()
+declare i32 @fflush(ptr)
+declare double @llvm.fabs.f64(double) nounwind readnone speculatable
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly
+
+test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[91merror[0m: test failed, to rerun pass `--bin archx`
