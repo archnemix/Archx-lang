@@ -1,87 +1,42 @@
-# Benchmarks
+<!-- Four-suite C vs Rust vs Archx benchmark harness documentation and latest CI results. -->
 
-Three suites, three languages, one optimizer (`LLVM`). Every benchmark compiles at
-opt-level 2 (`clang -O2`, `rustc -O`, and `archx` → `clang -O2`), verifies that
-every implementation prints the **exact same stdout** via `cmp`, and reports the
-best of N runs (with the mean in parentheses) plus raw and stripped binary sizes.
+# Benchmarks (`C` vs `Rust` vs `Archx`)
 
-## The three suites
+Four suites, three languages, one optimizer (`LLVM`). Every benchmark compiles at opt-level 2 (`clang -O2`, `rustc -O`, and `archx` → `clang -O2`), verifies byte-identical stdout via `cmp -s`, and reports best-of-N latency (mean in parentheses) plus raw and stripped binary sizes.
 
-### 1. Scalar loops (`primes.c`, `primes.rs`, `primes.archx.lang`)
+## The four suites
 
-| # | Workload | What it exercises | Expected output |
-|---|----------|-------------------|-----------------|
-| 1 | `sum_squares(20_000_000)` — `(total + i*i) % 1_000_007` | tight scalar loop: checked multiply/add (`nsw` elided), constant `srem` | `75517` |
-| 2 | `count_primes(400_000)` — trial division | nested loop, data-dependent branch, early `break` | `33860` |
+1. **Scalar loops (`primes.c`, `primes.rs`, `primes.archx.lang`)** — `sum_squares(20_000_000)` + trial-division `count_primes(400_000)` (`75517`, `33860`).
+2. **Array loops & bounds checking (`arrays_raw.c`, `arrays_checked.c`, `arrays.rs`, `arrays.archx.lang`)** — 60 rounds of 1M-element vector math + Sieve below 5M (`57243166`, `348513`).
+3. **Structs (SoA vs AoS), Regions & Prefix-SSO Strings (`composite.c`, `composite.rs`, `composite.archx.lang`)** — 100,000 6-field `Body` structs (`48 B`) × 120 timesteps + 40,000 rounds of arena scratch buffers and SSO/heap strings (`14248875`, `421461999`).
+4. **Pythonic Floating-Point N-Body & OOP Methods (`nbody_float.c`, `nbody_float.rs`, `nbody_float.archx.lang`)** — 100,000 7-field `f64` `Body` objects (`56 B`) × 60 central-field integration steps + `.kinetic()` method reduction + 64-body all-pairs gravitational N-body × 2,000 steps (`11232960`, `3595406`). Written in **100% 1:1 Pythonic Archx syntax** (`class Body:`, `def kinetic(self):`, `bodies = [Body(...)] * n`, `for i in range(n):`).
 
-### 2. Array loops & bounds checking (`arrays_raw.c`, `arrays_checked.c`, `arrays.rs`, `arrays.archx.lang`)
-
-| # | Workload | What it exercises | Expected output |
-|---|----------|-------------------|-----------------|
-| 1 | `vec_kernel(1_000_000, 60)` — 60M `dst[i] = a[i]*3 + b[i] + r` | heap allocation, range-guarded bounds-check elision, SIMD auto-vectorization | `57243166` |
-| 2 | `sieve_count(5_000_000)` — Sieve of Eratosthenes | 5 MB `[bool]` byte buffer, `memset`, monotonic strided `while` indexing | `348513` |
-
-### 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (`composite.c`, `composite.rs`, `composite.archx.lang`)
-
-| # | Workload | What it exercises | Expected output |
-|---|----------|-------------------|-----------------|
-| 1 | `particle_sim(100_000, 120)` — 6-field `Body` (`48 B`) full + `step 8` partial update + `foreach` reduction | transparent AoS-to-SoA planarization vs C/Rust `48 B` AoS `struct Body`, strided `step 8`, `for b in bodies:` | `14248875` |
-| 2 | `arena_and_strings(40_000)` — variable-length `[0; sz]` scratch buffer + `9 B` short & `26 B` long string concat/equality | 64 KB `region:` slab reuse vs `malloc`/`free`, 16 B German/Umbra prefix-SSO `str` vs `malloc`/`strcmp` & Rust `String` | `421461999` |
-
-## Running it
+## Running
 
 ```sh
-bash benchmarks/run.sh          # best of 5 runs
-bash benchmarks/run.sh 7        # best of 7 (used in CI)
+bash benchmarks/run.sh       # best of 5 runs
+bash benchmarks/run.sh 7     # best of 7 runs (used in CI)
 ```
 
-Results go to stdout and to `ci/out/benchmarks.txt`, alongside the optimized
-LLVM IR dumps (`ci/out/bench_arrays.opt.ll`, `ci/out/bench_arrays_c_raw.opt.ll`,
-`ci/out/bench_composite.opt.ll`, and `ci/out/bench_composite_c.opt.ll`).
+## Latest CI Measurement (`ci/out/benchmarks.txt`, `clang 21.1.8` / `rustc 1.100.0`)
 
-## Latest CI measurement (`ci/out/benchmarks.txt`)
+| Suite | Implementation | Best of 7 (mean) | Raw KB | Stripped KB |
+|---|---|---:|---:|---:|
+| **1. Scalar (`primes`)** | C (`clang -O2`) | **104 ms** (104 ms) | 16 KB | **14 KB** |
+| | Rust (`rustc -O`) | **104 ms** (104 ms) | 4,388 KB | **330 KB** |
+| | Archx (`archx -O2`) | **104 ms** (104 ms) | 16 KB | **14 KB** |
+| **2. Arrays (`arrays`)** | C raw ptr (unchecked `-O2`) | **50 ms** (50 ms) | 16 KB | **14 KB** |
+| | C checked (slice struct `-O2`) | **49 ms** (49 ms) | 16 KB | **14 KB** |
+| | Rust (safe `Vec` `-O`) | **54 ms** (54 ms) | 4,389 KB | **331 KB** |
+| | Archx (safe `list[T]` `-O2`) | **50 ms** (51 ms) | 16 KB | **14 KB** |
+| **3. Composite (`composite`)** | C (`AoS + malloc/strcmp -O2`) | **16 ms** (16 ms) | 16 KB | **14 KB** |
+| | Rust (`Vec<Body> + String -O`) | **19 ms** (19 ms) | 4,390 KB | **332 KB** |
+| | **Archx (`SoA + region + SSO -O2`)** | **14 ms** (14 ms) | 16 KB | **14 KB** |
+| **4. Pythonic Float N-Body (`nbody_float`)** | C (`AoS Body* -O2 -lm`) | **56 ms** (56 ms) | 16 KB | **14 KB** |
+| | Rust (`Vec<Body> -O`) | **56 ms** (56 ms) | 4,390 KB | **332 KB** |
+| | **Archx (`Pythonic class + SoA -O2`)** | **52 ms** (52 ms) | 16 KB | **14 KB** |
 
-Measured on GitHub Actions (`x86_64-pc-linux-gnu`, `clang 21.1.8`, `rustc 1.100.0`):
+## Why Pythonic Archx Beats Both `-O2` C and `-O` Rust on Suites 3 & 4
 
-### Suite 1 — Scalar loops (`primes`)
-
-| Language | Build | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
-|----------|-------|-----------------:|-------------:|------------------:|
-| C | `clang -O2` | **134 ms** (134 ms) | 16 KB | **14 KB** |
-| Rust | `rustc -O` | **134 ms** (134 ms) | 4,388 KB | **330 KB** |
-| Archx | `archx -O2` | **134 ms** (134 ms) | 16 KB | **14 KB** |
-
-### Suite 2 — Array loops & bounds checking (`arrays`)
-
-| Implementation | Safety | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
-|----------------|--------|:----------------:|-------------:|------------------:|
-| C raw ptr (`clang -O2`) | unchecked (UB on OOB/overflow) | **62 ms** (63 ms) | 16 KB | **14 KB** |
-| C checked (`clang -O2`) | slice struct | **58 ms** (60 ms) | 16 KB | **14 KB** |
-| Rust (`rustc -O`) | safe `Vec<T>` | **64 ms** (72 ms) | 4,389 KB | **331 KB** |
-| Archx (`archx -O2`) | safe `[T]` (0 UB) | **63 ms** (64 ms) | 16 KB | **14 KB** |
-
-### Suite 3 — Structs, Regions & Prefix-SSO Strings (`composite`)
-
-| Implementation | Memory & String Model | Best of 7 (mean) | Binary (raw) | Binary (stripped) |
-|----------------|-----------------------|:----------------:|-------------:|------------------:|
-| C (`clang -O2`) | 48B AoS `struct Body` + `calloc`/`malloc`/`strcmp` | **21 ms** (21 ms) | 16 KB | **14 KB** |
-| Rust (`rustc -O`) | `Vec<Body>` + `Vec<i64>` + `String` | **23 ms** (23 ms) | 4,390 KB | **332 KB** |
-| **Archx (`archx -O2`)** | **Transparent SoA + 64 KB `region:` + 16 B prefix-SSO `str`** | **18 ms** (18 ms) | 16 KB | **14 KB** |
-
-## Why Archx beats C and Rust on Suite 3 (`ci/out/bench_composite.opt.ll` vs `ci/out/bench_composite_c.opt.ll`)
-
-1. **100% cache-line utilization via transparent AoS-to-SoA (`vector.body42`)**:
-   C's `struct Body` (`48 B`) loads `z` and `vz` on every cache line even in the
-   timestep loop that only updates `x, y, vx, vy`, forcing `48 B`-strided loads
-   and `shufflevector` (`blendpd`) blends. Archx lowers `let bodies = [Body(...); n]`
-   into 6 separate `align 16` planes and unrolls 4-wide (`<2 x i64>`) touching
-   only the active planes.
-2. **Single-slab 64 KB `region:` reuse across 40,000 rounds (`fast.i.i`)**:
-   `@archx_region_rewind_root` rewinds `cur` to `head + 16` on each iteration and
-   LLVM promotes `cur`/`end` into loop-carried `phi` registers: `@malloc(65552)`
-   executes **once** on round 0, and rounds `1..39,999` allocate both the scratch
-   slice and 26-byte string in 2 pointer arithmetic instructions (`0` `malloc`/`free`
-   calls vs C's 240,000 allocator calls).
-3. **Register-folded 16 B prefix-SSO strings (`div.ok.13.i`)**:
-   `"id_" + s_rhs` (`9 B <= 12 B`) and `s1 == "id_alpha0"` inline and fold into
-   pure register bitops and `icmp eq` with zero allocations and zero `drop` instructions.
+- **Suite 4 (`ci/out/bench_nbody_float.opt.ll`)**: `[Body(0.0, ...)] * n` transparently lowers the 7-field `56 B` class into 7 `align 16` `double*` SoA planes, allowing LLVM (`vector.body83`) to issue aligned `<2 x double>` SIMD loads/stores across `x, y, z, vx, vy, vz, mass` and inline `bodies[i].kinetic()` with zero bounds checks, whereas C (`Body*`) and Rust (`Vec<Body>`) stride across 56-byte AoS records.
+- **Suite 3 (`ci/out/bench_composite.opt.ll`)**: Transparent SoA planes + single-slab 64 KB `region:` cursor rewind + register-folded 16B prefix-SSO strings eliminate cache-line waste and 240,000 allocator calls.

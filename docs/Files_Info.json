@@ -1,14 +1,14 @@
 {
   "_comment": "Fast-lookup index of every key file in the Archx repository: inputs, outputs, and single responsibility.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "files": {
     "Cargo.toml": {
-      "purpose": "Rust crate manifest for the zero-dependency archx compiler.",
+      "purpose": "Rust crate manifest for the zero-dependency archx compiler (v0.6.0).",
       "inputs": [],
       "outputs": ["target/release/archx"]
     },
     "src/main.rs": {
-      "purpose": "CLI driver: flag parsing, extension/clobber checks, temp .ll handling, cross-platform clang invocation, and --run execution.",
+      "purpose": "CLI driver: flag parsing, extension/clobber checks, temp .ll handling, cross-platform clang invocation (-lm / MSVC), and --run execution.",
       "inputs": ["CLI args", ".archx.lang source file"],
       "outputs": ["Native executable", "--emit-ir LLVM IR stdout", "Process exit code"]
     },
@@ -18,53 +18,63 @@
       "outputs": ["Span", "Diagnostic", "Result<T>"]
     },
     "src/token.rs": {
-      "purpose": "Lexical token enum and human-readable token descriptions.",
+      "purpose": "Lexical token enum (including FStrPart, Float, SlashSlash, StarStar, Assert, Pass, With, NoneLit) and token descriptions.",
       "inputs": ["TokenKind, Span"],
       "outputs": ["Token", "TokenKind::describe()"]
     },
     "src/lexer.rs": {
-      "purpose": "4-space indentation-aware UTF-8 lexer with string escape decoding.",
+      "purpose": "4-space indentation-aware UTF-8 lexer with f-string interpolation, float/underscore numbers, and Python keywords.",
       "inputs": ["source: &str"],
       "outputs": ["Result<Vec<Token>>"]
     },
     "src/ast.rs": {
-      "purpose": "AST definitions for Program, StructDef, Func, Stmt, Expr, AssignTarget, and Type.",
+      "purpose": "AST definitions for Program, StructDef (with methods), Func, Stmt, Expr, CallArg, AssignTarget, and Type.",
       "inputs": ["Parsed nodes and Spans"],
       "outputs": ["ast::Program"]
     },
     "src/parser.rs": {
-      "purpose": "Bounded-depth recursive-descent + iterative-unary parser producing ast::Program.",
+      "purpose": "Bounded-depth parser supporting 1:1 Python syntax (def, class, range, enumerate, with region:, script main) and classic syntax.",
       "inputs": ["Vec<Token>"],
       "outputs": ["Result<Program>"]
     },
     "src/codegen/mod.rs": {
-      "purpose": "LLVM IR module orchestrator, struct cycle/topological layout, Codegen state, function frames, and IR formatting helpers.",
+      "purpose": "LLVM IR module orchestrator, struct/method layout resolution, Codegen state, function frames, and runtime flag finalization.",
       "inputs": ["&ast::Program"],
       "outputs": ["Result<String> (textual LLVM IR)"]
     },
     "src/codegen/analysis.rs": {
-      "purpose": "Pure AST static analyses: SoA escape detection, monotonic while stride verification, mutation/return sets, and constant int folding.",
+      "purpose": "Pure AST static analyses: SoA escape detection, monotonic while stride verification, Pythonic first-binding vs mutation sets, and constant int folding.",
       "inputs": ["&[Stmt]", "&Expr"],
       "outputs": ["bool", "HashSet<String>", "Option<i64>"]
     },
     "src/codegen/stmt.rs": {
-      "purpose": "Statement, region: block, transparent AoS-to-SoA allocation, and assignment lowering.",
+      "purpose": "Statement, Pythonic implicit variable binding, with region:, int/bool/float SoA setup, assert/pass, and assignment lowering.",
       "inputs": ["&Stmt", "rest_in_block: &[Stmt]"],
       "outputs": ["Appended LLVM IR instructions"]
     },
     "src/codegen/loops.rs": {
-      "purpose": "while, for i in a..b, for i in a..b step k, and for x in arr lowering with preheader range guards.",
+      "purpose": "while, range/a..b (positive, negative, and dynamic steps), for x in arr, for ch in s, and enumerate lowering.",
       "inputs": ["Loop AST nodes"],
       "outputs": ["Appended LLVM IR basic blocks"]
     },
     "src/codegen/expr.rs": {
-      "purpose": "Expression lowering: literals, variables, indexing, struct fields, checked i64 ops, short-circuit booleans, and 16B prefix-SSO strings.",
+      "purpose": "Expression lowering: int/float/bool/None/str literals, indexing, fields, // and ** math, inline ternary, in/not in, [v]*n, s*n, and SSO strings.",
       "inputs": ["&Expr", "Option<&Type>"],
       "outputs": ["Result<(Type, String)>"]
     },
     "src/codegen/calls.rs": {
-      "purpose": "User fastcc calls, positional struct constructors, and builtins (print, len, push, pop).",
-      "inputs": ["name: &str", "args: &[Expr]"],
+      "purpose": "User fastcc calls, positional/keyword constructors, int/float/str/bool conversions, and LEGB soft built-ins.",
+      "inputs": ["name: &str", "args: &[CallArg]"],
+      "outputs": ["Result<(Type, String)>"]
+    },
+    "src/codegen/io.rs": {
+      "purpose": "Pythonic console I/O & formatting lowering: print(*args, sep=..., end=...), input([prompt]), str(x), and f-strings.",
+      "inputs": ["I/O & FStr AST nodes"],
+      "outputs": ["Result<(Type, String)>"]
+    },
+    "src/codegen/methods.rs": {
+      "purpose": "class/struct self method definitions & dispatch, list (.append/.pop/.clear), and SSO-aware string methods.",
+      "inputs": ["&Func / receiver &Expr + method"],
       "outputs": ["Result<(Type, String)>"]
     },
     "src/codegen/ownership.rs": {
@@ -78,27 +88,42 @@
       "outputs": ["Checked pointer / bounds-check IR"]
     },
     "src/codegen/runtime.rs": {
-      "purpose": "On-demand LLVM IR runtime helpers (@archx_region_*, @archx_str_*, panic handlers) and libc/LLVM intrinsic declarations.",
+      "purpose": "Core on-demand LLVM IR runtime helpers (@archx_region_*, @archx_str_*, panic handlers) and core declarations.",
       "inputs": ["Codegen used_* flags"],
       "outputs": ["Private LLVM IR helper functions and declares"]
     },
+    "src/codegen/runtime_py.rs": {
+      "purpose": "On-demand Pythonic LLVM IR runtime helpers (@archx_input, float formatting, string conversions/methods, and assertion/step panics).",
+      "inputs": ["Codegen Pythonic used_* flags"],
+      "outputs": ["Private LLVM IR helper functions and declares"]
+    },
     "src/codegen/tests.rs": {
-      "purpose": "Unit tests for LLVM IR codegen, bounds elision, SoA structs, SSO strings, and region escape checking.",
+      "purpose": "Unit tests for LLVM IR codegen, Pythonic float SoA + range bounds elision, SSO strings, and region escape checking.",
       "inputs": ["Archx source snippets"],
       "outputs": ["cargo test --lib pass/fail"]
     },
+    "examples/pythonic.archx.lang": {
+      "purpose": "Runnable showcase of 1:1 Pythonic Archx syntax, methods, f-strings, print(sep=...), float, enumerate, and with region:.",
+      "inputs": [],
+      "outputs": ["ci/out/pythonic.txt"]
+    },
+    "benchmarks/nbody_float.archx.lang": {
+      "purpose": "Suite 4 1:1 Pythonic floating-point N-body & OOP method benchmark beating C -O2 and Rust -O.",
+      "inputs": [],
+      "outputs": ["ci/out/benchmarks.txt"]
+    },
     "tests/cli.rs": {
-      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests.",
+      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests including piped stdin input().",
       "inputs": ["CARGO_BIN_EXE_archx", "Temp .archx.lang programs"],
       "outputs": ["cargo test --test cli pass/fail"]
     },
     "benchmarks/run.sh": {
-      "purpose": "Builds, verifies stdout via cmp, and times C vs Rust vs Archx across primes, arrays, and composite suites.",
+      "purpose": "Builds, verifies stdout via cmp, and times C vs Rust vs Archx across primes, arrays, composite, and nbody_float suites.",
       "inputs": ["benchmarks/*.{c,rs,archx.lang}"],
       "outputs": ["ci/out/benchmarks.txt"]
     },
     ".github/workflows/ci.yml": {
-      "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), ASan+LSan verification, benchmarks, and repo-committed logs/test-history.",
+      "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), ASan+LSan verification, 4-suite benchmarks, and repo-committed logs/test-history.",
       "inputs": ["Git push or workflow_dispatch"],
       "outputs": ["ci/logs/*", "ci/out/*", "ci/test-history/v<VERSION>/*"]
     }
