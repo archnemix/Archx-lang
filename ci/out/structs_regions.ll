@@ -217,101 +217,92 @@ foreach.end.35:
 define internal fastcc %ArchxStr @archx_fn_format_report(%ArchxStr %arg.label, i64 %arg.score) {
 entry:
   %func.region = alloca %ArchxRegion, align 8
-  %for.i.20 = alloca i64, align 8
-  %var.tag.29 = alloca %ArchxStr, align 8
-  %bool.result.34 = alloca i1, align 1
+  %for.i.15 = alloca i64, align 8
+  %var.tag.24 = alloca %ArchxStr, align 8
+  %bool.result.29 = alloca i1, align 1
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
-  %t0 = load ptr, ptr %func.region, align 8
-  %t1 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 1
-  %t2 = load ptr, ptr %t1, align 8
-  %t3 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 3
-  %t4 = load ptr, ptr %t3, align 8
-  %t5 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 64, i64 8)
-  %t6 = extractvalue { i64, i1 } %t5, 0
-  %t7 = extractvalue { i64, i1 } %t5, 1
-  br i1 %t7, label %mul.oom.0, label %mul.ok.1
+  %t0 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 64, i64 8)
+  %t1 = extractvalue { i64, i1 } %t0, 0
+  %t2 = extractvalue { i64, i1 } %t0, 1
+  br i1 %t2, label %mul.oom.0, label %mul.ok.1
 mul.oom.0:
   call void @archx_oom_fail()
   unreachable
 mul.ok.1:
-  %t8 = icmp eq i64 %t6, 0
-  %t9 = select i1 %t8, i64 1, i64 %t6
-  %t10 = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %func.region, i64 %t9)
-  %t11 = sub nsw i64 0, 64
-  %t12 = icmp sgt i64 64, 0
-  br i1 %t12, label %fill.pre.2, label %fill.end.4
+  %t3 = icmp eq i64 %t1, 0
+  %t4 = select i1 %t3, i64 1, i64 %t1
+  %t5 = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %func.region, i64 %t4)
+  %t6 = sub nsw i64 0, 64
+  %t7 = icmp sgt i64 64, 0
+  br i1 %t7, label %fill.pre.2, label %fill.end.4
 fill.pre.2:
   br label %fill.body.3
 fill.body.3:
-  %t13 = phi i64 [ 0, %fill.pre.2 ], [ %t14, %fill.body.3 ]
-  %t15 = getelementptr inbounds i64, ptr %t10, i64 %t13
-  store i64 1, ptr %t15, align 8
-  %t14 = add nuw nsw i64 %t13, 1
-  %t16 = icmp slt i64 %t14, 64
-  br i1 %t16, label %fill.body.3, label %fill.end.4
+  %t8 = phi i64 [ 0, %fill.pre.2 ], [ %t9, %fill.body.3 ]
+  %t10 = getelementptr inbounds i64, ptr %t5, i64 %t8
+  store i64 1, ptr %t10, align 8
+  %t9 = add nuw nsw i64 %t8, 1
+  %t11 = icmp slt i64 %t9, 64
+  br i1 %t11, label %fill.body.3, label %fill.end.4
 fill.end.4:
-  %t17 = insertvalue %ArchxVec poison, i64 64, 0
-  %t18 = insertvalue %ArchxVec %t17, i64 %t11, 1
-  %t19 = insertvalue %ArchxVec %t18, ptr %t10, 2
-  store i64 0, ptr %for.i.20, align 8
+  %t12 = insertvalue %ArchxVec poison, i64 64, 0
+  %t13 = insertvalue %ArchxVec %t12, i64 %t6, 1
+  %t14 = insertvalue %ArchxVec %t13, ptr %t5, 2
+  store i64 0, ptr %for.i.15, align 8
   br label %for.cond.5
 for.cond.5:
-  %t21 = load i64, ptr %for.i.20, align 8
-  %t22 = icmp slt i64 %t21, 64
-  br i1 %t22, label %for.body.6, label %for.end.8
+  %t16 = load i64, ptr %for.i.15, align 8
+  %t17 = icmp slt i64 %t16, 64
+  br i1 %t17, label %for.body.6, label %for.end.8
 for.body.6:
-  %t23 = load i64, ptr %for.i.20, align 8
-  %t24 = extractvalue %ArchxVec %t19, 2
-  %t25 = getelementptr inbounds i64, ptr %t24, i64 %t23
-  store i64 %arg.score, ptr %t25, align 8
+  %t18 = load i64, ptr %for.i.15, align 8
+  %t19 = extractvalue %ArchxVec %t14, 2
+  %t20 = getelementptr inbounds i64, ptr %t19, i64 %t18
+  store i64 %arg.score, ptr %t20, align 8
   br label %for.step.7
 for.step.7:
-  %t26 = load i64, ptr %for.i.20, align 8
-  %t27 = add nsw i64 %t26, 2
-  store i64 %t27, ptr %for.i.20, align 8
+  %t21 = load i64, ptr %for.i.15, align 8
+  %t22 = add nsw i64 %t21, 2
+  store i64 %t22, ptr %for.i.15, align 8
   br label %for.cond.5
 for.end.8:
-  %t28 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr %arg.label, ptr %func.region)
-  store %ArchxStr %t28, ptr %var.tag.29, align 8
-  %t30 = extractvalue %ArchxVec %t19, 2
-  %t31 = getelementptr inbounds i64, ptr %t30, i64 0
-  %t32 = load i64, ptr %t31, align 8
-  %t33 = icmp eq i64 %t32, %arg.score
-  store i1 false, ptr %bool.result.34, align 1
-  br i1 %t33, label %bool.rhs.9, label %bool.merge.10
+  %t23 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr %arg.label, ptr %func.region)
+  store %ArchxStr %t23, ptr %var.tag.24, align 8
+  %t25 = extractvalue %ArchxVec %t14, 2
+  %t26 = getelementptr inbounds i64, ptr %t25, i64 0
+  %t27 = load i64, ptr %t26, align 8
+  %t28 = icmp eq i64 %t27, %arg.score
+  store i1 false, ptr %bool.result.29, align 1
+  br i1 %t28, label %bool.rhs.9, label %bool.merge.10
 bool.rhs.9:
-  %t35 = load %ArchxStr, ptr %var.tag.29, align 8
-  %t36 = extractvalue %ArchxStr %t35, 0
-  %t37 = and i64 %t36, 4294967295
-  %t38 = icmp sgt i64 %t37, 7
-  store i1 %t38, ptr %bool.result.34, align 1
+  %t30 = load %ArchxStr, ptr %var.tag.24, align 8
+  %t31 = extractvalue %ArchxStr %t30, 0
+  %t32 = and i64 %t31, 4294967295
+  %t33 = icmp sgt i64 %t32, 7
+  store i1 %t33, ptr %bool.result.29, align 1
   br label %bool.merge.10
 bool.merge.10:
-  %t39 = load i1, ptr %bool.result.34, align 1
-  br i1 %t39, label %if.then.11, label %if.else.12
+  %t34 = load i1, ptr %bool.result.29, align 1
+  br i1 %t34, label %if.then.11, label %if.else.12
 if.then.11:
-  %t40 = load %ArchxStr, ptr %var.tag.29, align 8
-  %t41 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t40, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region)
-  %t42 = call fastcc %ArchxStr @archx_str_promote(%ArchxStr %t41)
-  %t43 = load %ArchxStr, ptr %var.tag.29, align 8
-  call fastcc void @archx_str_drop(%ArchxStr %t43)
-  %t44 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t45 = load ptr, ptr %t44, align 8
-  call fastcc void @archx_region_release_from(ptr %t45)
-  ret %ArchxStr %t42
+  %t35 = load %ArchxStr, ptr %var.tag.24, align 8
+  %t36 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t35, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region)
+  %t37 = call fastcc %ArchxStr @archx_str_promote(%ArchxStr %t36)
+  %t38 = load %ArchxStr, ptr %var.tag.24, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t38)
+  %t39 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t40 = load ptr, ptr %t39, align 8
+  call fastcc void @archx_region_release_from(ptr %t40)
+  ret %ArchxStr %t37
 if.else.12:
   br label %if.merge.13
 if.merge.13:
-  %t46 = load %ArchxStr, ptr %var.tag.29, align 8
-  call fastcc void @archx_str_drop(%ArchxStr %t46)
-  store ptr %t0, ptr %func.region, align 8
-  %t47 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 1
-  store ptr %t2, ptr %t47, align 8
-  %t48 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 3
-  store ptr %t4, ptr %t48, align 8
-  %t49 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t50 = load ptr, ptr %t49, align 8
-  call fastcc void @archx_region_release_from(ptr %t50)
+  %t41 = load %ArchxStr, ptr %var.tag.24, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t41)
+  call fastcc void @archx_region_rewind_root(ptr %func.region)
+  %t42 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t43 = load ptr, ptr %t42, align 8
+  call fastcc void @archx_region_release_from(ptr %t43)
   ret %ArchxStr { i64 7310026593965965323, i64 28548142444602209 }
 }
 
@@ -380,32 +371,31 @@ finish:
   ret ptr %data
 }
 
-define private fastcc noalias nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %size) alwaysinline {
+define private fastcc void @archx_region_rewind_root(ptr %reg) alwaysinline nounwind {
 entry:
-  %z = icmp sle i64 %size, 0
-  %sz = select i1 %z, i64 16, i64 %size
-  %too_big = icmp sgt i64 %sz, 9223372036854775776
-  br i1 %too_big, label %oom, label %align_ok
-oom:
-  call void @archx_oom_fail()
-  unreachable
-align_ok:
-  %a1 = add nuw nsw i64 %sz, 15
-  %aligned = and i64 %a1, -16
+  %head_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 2
+  %head = load ptr, ptr %head_slot, align 8
+  %empty = icmp eq ptr %head, null
+  br i1 %empty, label %done, label %rewind
+rewind:
+  %cap_ptr = getelementptr inbounds i8, ptr %head, i64 8
+  %cap = load i64, ptr %cap_ptr, align 8
+  %data = getelementptr inbounds i8, ptr %head, i64 16
+  %end = getelementptr inbounds i8, ptr %data, i64 %cap
+  %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
+  %tail_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 3
+  store ptr %data, ptr %reg, align 8
+  store ptr %end, ptr %end_slot, align 8
+  store ptr %head, ptr %tail_slot, align 8
+  br label %done
+done:
+  ret void
+}
+
+define private fastcc noalias nonnull align 16 ptr @archx_region_alloc_fallback(ptr %reg, i64 %aligned) noinline {
+entry:
   %cur_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 0
   %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
-  %cur = load ptr, ptr %cur_slot, align 8
-  %end = load ptr, ptr %end_slot, align 8
-  %cur_i = ptrtoint ptr %cur to i64
-  %end_i = ptrtoint ptr %end to i64
-  %rem = sub i64 %end_i, %cur_i
-  %fits = icmp sge i64 %rem, %aligned
-  br i1 %fits, label %fast, label %check_reuse
-fast:
-  %next = getelementptr inbounds i8, ptr %cur, i64 %aligned
-  store ptr %next, ptr %cur_slot, align 8
-  ret ptr %cur
-check_reuse:
   %tail_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 3
   %tail = load ptr, ptr %tail_slot, align 8
   %has_tail = icmp ne ptr %tail, null
@@ -448,6 +438,36 @@ free_cand:
   br label %slow
 slow:
   %res = call fastcc nonnull align 16 ptr @archx_region_alloc_slow(ptr %reg, i64 %aligned)
+  ret ptr %res
+}
+
+define private fastcc noalias nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %size) alwaysinline {
+entry:
+  %z = icmp sle i64 %size, 0
+  %sz = select i1 %z, i64 16, i64 %size
+  %too_big = icmp sgt i64 %sz, 9223372036854775776
+  br i1 %too_big, label %oom, label %align_ok
+oom:
+  call void @archx_oom_fail()
+  unreachable
+align_ok:
+  %a1 = add nuw nsw i64 %sz, 15
+  %aligned = and i64 %a1, -16
+  %cur_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 0
+  %end_slot = getelementptr inbounds %ArchxRegion, ptr %reg, i32 0, i32 1
+  %cur = load ptr, ptr %cur_slot, align 8
+  %end = load ptr, ptr %end_slot, align 8
+  %cur_i = ptrtoint ptr %cur to i64
+  %end_i = ptrtoint ptr %end to i64
+  %rem = sub i64 %end_i, %cur_i
+  %fits = icmp sge i64 %rem, %aligned
+  br i1 %fits, label %fast, label %fallback
+fast:
+  %next = getelementptr inbounds i8, ptr %cur, i64 %aligned
+  store ptr %next, ptr %cur_slot, align 8
+  ret ptr %cur
+fallback:
+  %res = call fastcc nonnull align 16 ptr @archx_region_alloc_fallback(ptr %reg, i64 %aligned)
   ret ptr %res
 }
 
@@ -586,7 +606,7 @@ done:
   ret void
 }
 
-define private fastcc %ArchxStr @archx_str_concat(%ArchxStr %a, %ArchxStr %b, ptr %reg) {
+define private fastcc %ArchxStr @archx_str_concat(%ArchxStr %a, %ArchxStr %b, ptr %reg) alwaysinline {
 entry:
   %atmp = alloca [12 x i8], align 4
   %btmp = alloca [12 x i8], align 4
@@ -687,7 +707,8 @@ build_long:
 alloc_reg:
   %rp = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %reg, i64 %tot)
   %rp_i = ptrtoint ptr %rp to i64
-  %rtagged = or i64 %rp_i, 2
+  %rp_a = and i64 %rp_i, -4
+  %rtagged = or i64 %rp_a, 2
   br label %copy_long
 alloc_heap:
   %hp = call noalias align 16 ptr @malloc(i64 %tot)
