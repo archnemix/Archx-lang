@@ -7,19 +7,7 @@ Thread model: posix
 InstalledDir: C:\Program Files\LLVM\bin
 --- cargo test ---
 [1m[92m   Compiling[0m archx v0.5.0 (D:\a\Archx-lang\Archx-lang)
-[1m[93mwarning[0m[1m[97m: unused imports: `AssignTarget`, `BinOp`, `ExprKind`, `Expr`, `StmtKind`, `Stmt`, and `UnOp`[0m
-  [1m[96m--> [0msrc\codegen\mod.rs:17:5
-   [1m[96m|[0m
-[1m[96m17[0m [1m[96m|[0m     AssignTarget, BinOp, Expr, ExprKind, Func, Param, Program, Stmt, StmtKind, StructDef, Type,
-   [1m[96m|[0m     [1m[93m^^^^^^^^^^^^[0m  [1m[93m^^^^^[0m  [1m[93m^^^^[0m  [1m[93m^^^^^^^^[0m                        [1m[93m^^^^[0m  [1m[93m^^^^^^^^[0m
-[1m[96m18[0m [1m[96m|[0m     UnOp,
-   [1m[96m|[0m     [1m[93m^^^^[0m
-   [1m[96m|[0m
-   [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-[1m[93mwarning[0m: `archx` (bin "archx" test) generated 1 warning (run `cargo fix --bin "archx" -p archx --tests` to apply 1 suggestion)
-[1m[93mwarning[0m: `archx` (bin "archx") generated 1 warning (1 duplicate)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 15.72s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 16.94s
 [1m[92m     Running[0m unittests src\main.rs (target\debug\build\archx/ee617d710d11baf8\out\archx-ee617d710d11baf8.exe)
 
 running 29 tests
@@ -27,8 +15,8 @@ test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
-test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
@@ -40,16 +28,16 @@ test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_functions_with_params ... ok
-test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_if_else ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
 test parser::tests::parses_main_and_print ... ok
-test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::parses_structs_regions_step_and_foreach ... ok
-test parser::tests::rejects_invalid_assignment_target ... ok
 test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::rejects_invalid_assignment_target ... ok
 test parser::tests::rejects_missing_colon ... ok
 test tests::default_output_strips_archx_extensions ... ok
 
@@ -61,18 +49,18 @@ running 15 tests
 test break_outside_loop_is_an_error ... ok
 test emit_ir_works ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
-test arrays_run ... ok
-test elif_and_compound_assign_run ... ok
 test hello_world_runs ... ok
 test functions_run ... ok
+test arrays_run ... ok
+test elif_and_compound_assign_run ... ok
 test if_else_runs ... ok
 test loops_run ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
 test run_flag_default_output_and_str_alias_work ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
-test out_of_bounds_panics_cleanly ... ok
 test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
+test out_of_bounds_panics_cleanly ... ok
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
 
-test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.46s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.93s
 
