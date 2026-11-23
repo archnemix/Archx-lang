@@ -297,6 +297,59 @@ fn out_of_bounds_panics_cleanly() {
         stdout.contains("index 5 out of bounds for length 3"),
         "stdout was: {stdout}"
     );
+
+    // Also verify versioned multi-array `for` loop still catches short second array
+    // at the exact failing index (`2` for length `2`):
+    let src2 = dir.join("oob_for.archx.lang");
+    fs::write(
+        &src2,
+        "func step(dst: [int], a: [int], b: [int]):\n    for i in 0..len(dst):\n        dst[i] = a[i] + b[i]\n\nfunc main():\n    let dst = [0; 4]\n    let a = [1; 4]\n    let b = [2; 2]\n    step(dst, a, b)\n",
+    )
+    .unwrap();
+    let exe2 = dir.join("oob_for");
+    assert!(
+        Command::new(archx())
+            .arg(&src2)
+            .arg("-o")
+            .arg(&exe2)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    let run2 = Command::new(&exe2).output().unwrap();
+    assert_eq!(run2.status.code(), Some(101));
+    let stdout2 = String::from_utf8_lossy(&run2.stdout);
+    assert!(
+        stdout2.contains("index 2 out of bounds for length 2"),
+        "stdout2 was: {stdout2}"
+    );
+
+    // And verify versioned strided `while` loop still catches negative starting index:
+    let src3 = dir.join("oob_while.archx.lang");
+    fs::write(
+        &src3,
+        "func bad_sieve(limit: int):\n    let flags = [true; limit]\n    let j = -2\n    while j < limit:\n        flags[j] = false\n        j += 3\n\nfunc main():\n    bad_sieve(10)\n",
+    )
+    .unwrap();
+    let exe3 = dir.join("oob_while");
+    assert!(
+        Command::new(archx())
+            .arg(&src3)
+            .arg("-o")
+            .arg(&exe3)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    let run3 = Command::new(&exe3).output().unwrap();
+    assert_eq!(run3.status.code(), Some(101));
+    let stdout3 = String::from_utf8_lossy(&run3.stdout);
+    assert!(
+        stdout3.contains("index -2 out of bounds for length 10"),
+        "stdout3 was: {stdout3}"
+    );
 }
 
 #[test]

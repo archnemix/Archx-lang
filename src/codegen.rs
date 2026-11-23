@@ -7,23 +7,27 @@ use std::fmt::Write as _;
 
 const BUILTINS: [&str; 4] = ["print", "len", "push", "pop"];
 
+/// Upper bound on array element count (`2^47` = 140,737,488,355,328 elements,
+/// covering the 48-bit user virtual address space while guaranteeing
+/// `count * elem_size` and `idx + stride` for `0 <= idx < len` and
+/// `1 <= stride <= 2^47` can never overflow signed 64-bit integers).
+const MAX_ARRAY_LEN: i64 = 1_i64 << 47;
+
 /// Lowers an Archx program to textual LLVM IR.
 ///
-/// The IR is then compiled by clang (LLVM's compiler driver), which runs the
-/// optimizer and emits a native object file. Using text IR keeps the build
-/// dependency-free and makes the output inspectable with `--emit-ir`.
-///
-/// Memory & optimization model (milestone 4):
-/// - Immutable scalar parameters and `let` bindings lower directly to SSA
-///   values with zero `alloca`/`store`/`load` traffic.
-/// - Mutated locals use entry-block `alloca` slots promoted to SSA by `mem2reg`.
-/// - Constant integer arithmetic is folded in the frontend.
-/// - `for i in a..b:` emits `add nsw i64` when `i` is not reassigned, giving
-///   LLVM exact trip counts without C's signed-overflow undefined behavior.
-/// - `[T]` arrays are `{ i64 len, i64 cap, ptr data }` (`%ArchxVec`) with
-///   1-instruction unsigned bounds checks (`icmp ult`), compile-time
-///   bounds-check elision when `0 <= idx < len` is proven, and automatic
-///   scope-exit `free` for non-escaping local scalar arrays.
+/// Direct LLVM-targeted optimizations:
+/// - `internal` linkage on all non-`main` functions, unlocking LLVM's `IPSCCP`,
+///   `DeadArgElim`, `fastcc`, and single-callsite inlining.
+/// - Direct SSA (`VarStorage::Imm`) for all immutable bindings — including
+///   immutable `[T]` arrays — eliminating stack spills and struct loads/stores.
+/// - Explicit natural alignment (`align 8` / `align 1`) on every `alloca`,
+///   `load`, and `store` so untargeted `.ll` never degrades to `align 4` on `i64`.
+/// - Overflow-safe single-instruction allocation guard (`icmp ugt len, 2^47`)
+///   that prevents `len * sizeof(T)` wrap and establishes `[0, 2^47]` range facts.
+/// - Compile-time bounds-check elision + preheader Range-Guarded Loop Versioning
+///   on `for` loops (guaranteeing zero-check single-exit loops for `LoopVectorize`)
+///   + Monotonic Stride Versioning on `while idx < bound:` loops (eliminating
+///   in-loop checks in strided loops like Sieve of Eratosthenes with 0 UB).
 pub fn lower(program: &Program) -> Result<String> {
     let mut sigs = HashMap::new();
     let mut any_sig_uses_vec = false;
@@ -145,13 +149,13 @@ pub fn lower(program: &Program) -> Result<String> {
         out.push_str("declare i32 @strcmp(ptr, ptr)\n");
     }
     if codegen.used_malloc {
-        out.push_str("declare noalias ptr @malloc(i64)\n");
+        out.push_str("declare noalias align 16 ptr @malloc(i64)\n");
     }
     if codegen.used_calloc {
-        out.push_str("declare noalias ptr @calloc(i64, i64)\n");
+        out.push_str("declare noalias align 16 ptr @calloc(i64, i64)\n");
     }
     if codegen.used_realloc {
-        out.push_str("declare ptr @realloc(ptr, i64)\n");
+        out.push_str("declare align 16 ptr @realloc(ptr, i64)\n");
     }
     if codegen.used_free {
         out.push_str("declare void @free(ptr)\n");
@@ -184,7 +188,7 @@ pub fn lower(program: &Program) -> Result<String> {
         emit_cstr_global(
             &mut out,
             "@.fmt.neglen",
-            "archx panic: negative array length %lld\n",
+            "archx panic: invalid array length %lld\n",
         );
     }
     if codegen.used_empty_pop_fail {
@@ -261,10 +265,16 @@ enum KnownLen {
     Var(String),
 }
 
+#[derive(Clone)]
+enum DropTarget {
+    DataPtr(String),
+    VecSlot(String),
+}
+
 struct Scope {
     vars: HashMap<String, VarEntry>,
     known_lens: HashMap<String, KnownLen>,
-    owned_buffers: Vec<String>,
+    owned_buffers: Vec<DropTarget>,
 }
 
 impl Scope {
@@ -280,8 +290,6 @@ impl Scope {
 struct LoopLabels {
     break_label: String,
     continue_label: String,
-    /// Depth of `scopes` outside the loop body; `break`/`continue` drops
-    /// `scopes[scope_depth..]`.
     scope_depth: usize,
 }
 
@@ -296,6 +304,25 @@ enum UpperBound {
     Const(i64),
     Var(String),
     LenOf(String),
+}
+
+#[derive(Clone)]
+enum StrideVal {
+    Const(i64),
+    Var(String),
+}
+
+#[derive(Clone)]
+enum WhileBoundKind {
+    Var(String),
+    LenOf(String),
+}
+
+struct StridedWhilePlan {
+    idx_slot: String,
+    stride: StrideVal,
+    bound: WhileBoundKind,
+    proven_bound: InductionBound,
 }
 
 struct StringTable {
@@ -378,8 +405,9 @@ impl Codegen {
             }
         };
 
+        let linkage = if self.is_main { "" } else { "internal " };
         let mut header = String::new();
-        let _ = write!(header, "define {} {}(", ir_ret, mangle(&func.name));
+        let _ = write!(header, "define {linkage}{ir_ret} {}(", mangle(&func.name));
         for (i, param) in func.params.iter().enumerate() {
             if i > 0 {
                 header.push_str(", ");
@@ -392,9 +420,14 @@ impl Codegen {
         for param in &func.params {
             let storage = if self.mutated_vars.contains(&param.name) {
                 let ty = ir_type(&param.ty);
+                let align = ir_align(&param.ty);
                 let ptr = format!("%param.{}.addr", param.name);
-                let _ = writeln!(self.allocas, "  {ptr} = alloca {ty}");
-                let _ = writeln!(body, "  store {ty} %param.{}, ptr {ptr}", param.name);
+                let _ = writeln!(self.allocas, "  {ptr} = alloca {ty}, align {align}");
+                let _ = writeln!(
+                    body,
+                    "  store {ty} %param.{}, ptr {ptr}, align {align}",
+                    param.name
+                );
                 VarStorage::Slot(ptr)
             } else {
                 VarStorage::Imm(format!("%param.{}", param.name))
@@ -498,8 +531,6 @@ impl Codegen {
 
                 let is_mutated = self.mutated_vars.contains(name);
 
-                // Record compile-time array length facts when neither the
-                // array binding nor its size variable is mutated.
                 if !is_mutated && ty.is_array() {
                     if let Some(known) = self.infer_known_array_len(value) {
                         self.scopes
@@ -510,34 +541,46 @@ impl Codegen {
                     }
                 }
 
-                // Scalars that are never reassigned stay in SSA directly;
-                // mutated variables and arrays live in entry-block allocas.
-                let storage = if !is_mutated && !ty.is_array() {
+                let can_auto_free = if let Type::Array(elem) = &ty {
+                    let is_nonempty_alloc = match &value.kind {
+                        ExprKind::ArrayLit(elems) => !elems.is_empty(),
+                        ExprKind::ArrayRepeat { .. } => true,
+                        _ => false,
+                    };
+                    is_nonempty_alloc
+                        && !elem.is_array()
+                        && !is_mutated_binding_assigned(rest_in_block, name)
+                        && !var_escapes_in_stmts(rest_in_block, name, &self.sigs)
+                } else {
+                    false
+                };
+
+                // Immutable bindings (both scalars and arrays that are never
+                // reassigned or resized via push/pop) stay directly in SSA!
+                let storage = if !is_mutated {
+                    if can_auto_free {
+                        let data_ptr = self.next_tmp();
+                        let _ = writeln!(out, "  {data_ptr} = extractvalue %ArchxVec {val}, 2");
+                        self.scopes
+                            .last_mut()
+                            .unwrap()
+                            .owned_buffers
+                            .push(DropTarget::DataPtr(data_ptr));
+                    }
                     VarStorage::Imm(val)
                 } else {
                     let ptr = self.next_slot(&format!("var.{name}"));
                     let ty_ir = ir_type(&ty);
-                    let _ = writeln!(self.allocas, "  {ptr} = alloca {ty_ir}");
-                    let _ = writeln!(out, "  store {ty_ir} {val}, ptr {ptr}");
+                    let align = ir_align(&ty);
+                    let _ = writeln!(self.allocas, "  {ptr} = alloca {ty_ir}, align {align}");
+                    let _ = writeln!(out, "  store {ty_ir} {val}, ptr {ptr}, align {align}");
 
-                    // Deterministic scope-exit RAII cleanup for non-escaping
-                    // 1D scalar-element arrays allocated right here.
-                    if let Type::Array(elem) = &ty {
-                        let is_fresh_alloc = matches!(
-                            &value.kind,
-                            ExprKind::ArrayLit(_) | ExprKind::ArrayRepeat { .. }
-                        );
-                        if is_fresh_alloc
-                            && !elem.is_array()
-                            && !is_mutated_binding_assigned(rest_in_block, name)
-                            && !var_escapes_in_stmts(rest_in_block, name, &self.sigs)
-                        {
-                            self.scopes
-                                .last_mut()
-                                .unwrap()
-                                .owned_buffers
-                                .push(ptr.clone());
-                        }
+                    if can_auto_free {
+                        self.scopes
+                            .last_mut()
+                            .unwrap()
+                            .owned_buffers
+                            .push(DropTarget::VecSlot(ptr.clone()));
                     }
 
                     VarStorage::Slot(ptr)
@@ -627,144 +670,14 @@ impl Codegen {
                 self.gen_assign(target, *op, value, stmt.span, out)
             }
 
-            StmtKind::While { cond, body } => {
-                let cond_label = self.fresh_label("while.cond");
-                let body_label = self.fresh_label("while.body");
-                let end_label = self.fresh_label("while.end");
-
-                self.emit_br(&cond_label, out);
-
-                self.start_block(&cond_label, out);
-                let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
-                if cond_ty != Type::Bool {
-                    return Err(Diagnostic::new(
-                        "`while` condition must be a `bool`",
-                        cond.span,
-                    ));
-                }
-                self.emit_cond_br(&cond_val, &body_label, &end_label, out);
-
-                self.start_block(&body_label, out);
-                let outer_depth = self.scopes.len();
-                self.push_scope();
-                let breaks_before = self.break_count;
-                self.loop_stack.push(LoopLabels {
-                    break_label: end_label.clone(),
-                    continue_label: cond_label.clone(),
-                    scope_depth: outer_depth,
-                });
-                self.gen_block(body, out)?;
-                self.loop_stack.pop();
-                self.pop_scope_with_drops(out);
-                if !self.terminated {
-                    self.emit_br(&cond_label, out);
-                }
-
-                let always_true = matches!(&cond.kind, ExprKind::Bool(true));
-                let had_break = self.break_count > breaks_before;
-
-                self.start_block(&end_label, out);
-                if always_true && !had_break {
-                    let _ = writeln!(out, "  unreachable");
-                    self.terminated = true;
-                }
-                Ok(())
-            }
+            StmtKind::While { cond, body } => self.gen_while(cond, body, out),
 
             StmtKind::For {
                 var,
                 start,
                 end,
                 body,
-            } => {
-                let (start_ty, start_val) = self.eval_expr(start, out)?;
-                if start_ty != Type::Int {
-                    return Err(Diagnostic::new("`for` start must be an `int`", start.span));
-                }
-                let (end_ty, end_val) = self.eval_expr(end, out)?;
-                if end_ty != Type::Int {
-                    return Err(Diagnostic::new("`for` end must be an `int`", end.span));
-                }
-
-                if self.lookup_var(var).is_some() {
-                    return Err(Diagnostic::new(
-                        format!("loop variable `{var}` is already defined"),
-                        stmt.span,
-                    ));
-                }
-
-                let iv_reassigned = stmts_assign_var(body, var);
-                let proven_bound = if !iv_reassigned {
-                    self.derive_for_bound(var, start, end, body)
-                } else {
-                    None
-                };
-
-                let slot = self.next_slot(&format!("for.{var}"));
-                let _ = writeln!(self.allocas, "  {slot} = alloca i64");
-                let _ = writeln!(out, "  store i64 {start_val}, ptr {slot}");
-
-                let cond_label = self.fresh_label("for.cond");
-                let body_label = self.fresh_label("for.body");
-                let step_label = self.fresh_label("for.step");
-                let end_label = self.fresh_label("for.end");
-
-                self.emit_br(&cond_label, out);
-
-                self.start_block(&cond_label, out);
-                let i = self.next_tmp();
-                let _ = writeln!(out, "  {i} = load i64, ptr {slot}");
-                let cmp = self.next_tmp();
-                let _ = writeln!(out, "  {cmp} = icmp slt i64 {i}, {end_val}");
-                self.emit_cond_br(&cmp, &body_label, &end_label, out);
-
-                self.start_block(&body_label, out);
-                let outer_depth = self.scopes.len();
-                self.push_scope();
-                self.scopes.last_mut().unwrap().vars.insert(
-                    var.clone(),
-                    VarEntry {
-                        ty: Type::Int,
-                        storage: VarStorage::Slot(slot.clone()),
-                        is_param: false,
-                    },
-                );
-                if let Some(bound) = &proven_bound {
-                    self.loop_bounds.push(bound.clone());
-                }
-                self.loop_stack.push(LoopLabels {
-                    break_label: end_label.clone(),
-                    continue_label: step_label.clone(),
-                    scope_depth: outer_depth,
-                });
-                self.gen_block(body, out)?;
-                self.loop_stack.pop();
-                if proven_bound.is_some() {
-                    self.loop_bounds.pop();
-                }
-                self.pop_scope_with_drops(out);
-                if !self.terminated {
-                    self.emit_br(&step_label, out);
-                }
-
-                self.start_block(&step_label, out);
-                let i2 = self.next_tmp();
-                let _ = writeln!(out, "  {i2} = load i64, ptr {slot}");
-                let next = self.next_tmp();
-                // Whenever `var` is not mutated in the body, `i2 < end <= i64::MAX`
-                // guarantees `i2 + 1` cannot signed-overflow, unlocking exact
-                // LLVM ScalarEvolution trip counts and SIMD vectorization.
-                if !iv_reassigned {
-                    let _ = writeln!(out, "  {next} = add nsw i64 {i2}, 1");
-                } else {
-                    let _ = writeln!(out, "  {next} = add i64 {i2}, 1");
-                }
-                let _ = writeln!(out, "  store i64 {next}, ptr {slot}");
-                self.emit_br(&cond_label, out);
-
-                self.start_block(&end_label, out);
-                Ok(())
-            }
+            } => self.gen_for(var, start, end, body, stmt.span, out),
 
             StmtKind::Break => {
                 let (label, depth) = self
@@ -842,6 +755,409 @@ impl Codegen {
         }
     }
 
+    fn gen_while(&mut self, cond: &Expr, body: &[Stmt], out: &mut String) -> Result<()> {
+        if let Some(plan) = self.analyze_strided_while(cond, body) {
+            let fast_cond = self.fresh_label("while.fast.cond");
+            let fast_body = self.fresh_label("while.fast.body");
+            let slow_cond = self.fresh_label("while.cond");
+            let slow_body = self.fresh_label("while.body");
+            let end_label = self.fresh_label("while.end");
+
+            // Preheader guard: `(idx >= 0) && (bound <= 2^47) && (1 <= step <= 2^47)`
+            // proves `0 <= idx < bound` monotonically on every fast iteration!
+            let j0 = self.next_tmp();
+            let _ = writeln!(out, "  {j0} = load i64, ptr {}, align 8", plan.idx_slot);
+            let j_ok = self.next_tmp();
+            let _ = writeln!(out, "  {j_ok} = icmp sge i64 {j0}, 0");
+
+            let bound_val = match &plan.bound {
+                WhileBoundKind::Var(bname) => self.load_var_ssa(bname, out),
+                WhileBoundKind::LenOf(aname) => {
+                    let av = self.load_var_ssa(aname, out);
+                    let lv = self.next_tmp();
+                    let _ = writeln!(out, "  {lv} = extractvalue %ArchxVec {av}, 0");
+                    lv
+                }
+            };
+            let b_ok = self.next_tmp();
+            let _ = writeln!(out, "  {b_ok} = icmp ule i64 {bound_val}, {MAX_ARRAY_LEN}");
+            let jb_ok = self.next_tmp();
+            let _ = writeln!(out, "  {jb_ok} = and i1 {j_ok}, {b_ok}");
+
+            let all_ok = match &plan.stride {
+                StrideVal::Const(_) => jb_ok,
+                StrideVal::Var(sname) => {
+                    let sv = self.load_var_ssa(sname, out);
+                    let sm1 = self.next_tmp();
+                    let _ = writeln!(out, "  {sm1} = sub i64 {sv}, 1");
+                    let s_ok = self.next_tmp();
+                    let _ = writeln!(out, "  {s_ok} = icmp ult i64 {sm1}, {MAX_ARRAY_LEN}");
+                    let comb = self.next_tmp();
+                    let _ = writeln!(out, "  {comb} = and i1 {jb_ok}, {s_ok}");
+                    comb
+                }
+            };
+            self.emit_cond_br(&all_ok, &fast_cond, &slow_cond, out);
+
+            // Fast zero-check strided while loop:
+            self.start_block(&fast_cond, out);
+            let jf = self.next_tmp();
+            let _ = writeln!(out, "  {jf} = load i64, ptr {}, align 8", plan.idx_slot);
+            let cf = self.next_tmp();
+            let _ = writeln!(out, "  {cf} = icmp slt i64 {jf}, {bound_val}");
+            self.emit_cond_br(&cf, &fast_body, &end_label, out);
+
+            self.start_block(&fast_body, out);
+            let outer_depth = self.scopes.len();
+            self.push_scope();
+            self.loop_bounds.push(plan.proven_bound);
+            self.loop_stack.push(LoopLabels {
+                break_label: end_label.clone(),
+                continue_label: fast_cond.clone(),
+                scope_depth: outer_depth,
+            });
+            self.gen_block(body, out)?;
+            self.loop_stack.pop();
+            self.loop_bounds.pop();
+            self.pop_scope_with_drops(out);
+            if !self.terminated {
+                self.emit_br(&fast_cond, out);
+            }
+
+            // Fallback checked while loop (preserves exact wrap/negative panic behavior):
+            self.start_block(&slow_cond, out);
+            let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+            if cond_ty != Type::Bool {
+                return Err(Diagnostic::new(
+                    "`while` condition must be a `bool`",
+                    cond.span,
+                ));
+            }
+            self.emit_cond_br(&cond_val, &slow_body, &end_label, out);
+
+            self.start_block(&slow_body, out);
+            let outer_depth = self.scopes.len();
+            self.push_scope();
+            self.loop_stack.push(LoopLabels {
+                break_label: end_label.clone(),
+                continue_label: slow_cond.clone(),
+                scope_depth: outer_depth,
+            });
+            self.gen_block(body, out)?;
+            self.loop_stack.pop();
+            self.pop_scope_with_drops(out);
+            if !self.terminated {
+                self.emit_br(&slow_cond, out);
+            }
+
+            self.start_block(&end_label, out);
+            return Ok(());
+        }
+
+        let cond_label = self.fresh_label("while.cond");
+        let body_label = self.fresh_label("while.body");
+        let end_label = self.fresh_label("while.end");
+
+        self.emit_br(&cond_label, out);
+
+        self.start_block(&cond_label, out);
+        let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
+        if cond_ty != Type::Bool {
+            return Err(Diagnostic::new(
+                "`while` condition must be a `bool`",
+                cond.span,
+            ));
+        }
+        self.emit_cond_br(&cond_val, &body_label, &end_label, out);
+
+        self.start_block(&body_label, out);
+        let outer_depth = self.scopes.len();
+        self.push_scope();
+        let breaks_before = self.break_count;
+        self.loop_stack.push(LoopLabels {
+            break_label: end_label.clone(),
+            continue_label: cond_label.clone(),
+            scope_depth: outer_depth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&cond_label, out);
+        }
+
+        let always_true = matches!(&cond.kind, ExprKind::Bool(true));
+        let had_break = self.break_count > breaks_before;
+
+        self.start_block(&end_label, out);
+        if always_true && !had_break {
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+        }
+        Ok(())
+    }
+
+    fn gen_for(
+        &mut self,
+        var: &str,
+        start: &Expr,
+        end: &Expr,
+        body: &[Stmt],
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        let (start_ty, start_val) = self.eval_expr(start, out)?;
+        if start_ty != Type::Int {
+            return Err(Diagnostic::new("`for` start must be an `int`", start.span));
+        }
+        let (end_ty, end_val) = self.eval_expr(end, out)?;
+        if end_ty != Type::Int {
+            return Err(Diagnostic::new("`for` end must be an `int`", end.span));
+        }
+
+        if self.lookup_var(var).is_some() {
+            return Err(Diagnostic::new(
+                format!("loop variable `{var}` is already defined"),
+                span,
+            ));
+        }
+
+        let iv_reassigned = stmts_assign_var(body, var);
+        let proven_bound = if !iv_reassigned {
+            self.derive_for_bound(var, start, end, body)
+        } else {
+            None
+        };
+
+        let extra_arrays = if !iv_reassigned
+            && eval_const_int(start).map_or(false, |s| s >= 0)
+            && !stmts_contain_loop(body)
+        {
+            if let Some(b) = &proven_bound {
+                self.loop_bounds.push(b.clone());
+            }
+            let found = self.collect_unchecked_for_arrays(var, body);
+            if proven_bound.is_some() {
+                self.loop_bounds.pop();
+            }
+            found
+        } else {
+            Vec::new()
+        };
+
+        let slot = self.next_slot(&format!("for.{var}"));
+        let _ = writeln!(self.allocas, "  {slot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 {start_val}, ptr {slot}, align 8");
+
+        if !extra_arrays.is_empty() && extra_arrays.len() <= 8 {
+            // Range-Guarded Loop Versioning: check `end <= arr.len` once before
+            // the loop so the hot loop has zero exiting blocks and auto-vectorizes!
+            let mut guard: Option<String> = None;
+            for arr_name in &extra_arrays {
+                let av = self.load_var_ssa(arr_name, out);
+                let alen = self.next_tmp();
+                let _ = writeln!(out, "  {alen} = extractvalue %ArchxVec {av}, 0");
+                let fit = self.next_tmp();
+                let _ = writeln!(out, "  {fit} = icmp ule i64 {end_val}, {alen}");
+                guard = Some(match guard {
+                    None => fit,
+                    Some(prev) => {
+                        let both = self.next_tmp();
+                        let _ = writeln!(out, "  {both} = and i1 {prev}, {fit}");
+                        both
+                    }
+                });
+            }
+
+            let fast_cond = self.fresh_label("for.fast.cond");
+            let fast_body = self.fresh_label("for.fast.body");
+            let fast_step = self.fresh_label("for.fast.step");
+            let slow_cond = self.fresh_label("for.cond");
+            let slow_body = self.fresh_label("for.body");
+            let slow_step = self.fresh_label("for.step");
+            let end_label = self.fresh_label("for.end");
+
+            self.emit_cond_br(&guard.unwrap(), &fast_cond, &slow_cond, out);
+
+            // Fast check-free loop:
+            self.start_block(&fast_cond, out);
+            let fi = self.next_tmp();
+            let _ = writeln!(out, "  {fi} = load i64, ptr {slot}, align 8");
+            let fcmp = self.next_tmp();
+            let _ = writeln!(out, "  {fcmp} = icmp slt i64 {fi}, {end_val}");
+            self.emit_cond_br(&fcmp, &fast_body, &end_label, out);
+
+            self.start_block(&fast_body, out);
+            let outer_depth = self.scopes.len();
+            self.push_scope();
+            self.scopes.last_mut().unwrap().vars.insert(
+                var.to_string(),
+                VarEntry {
+                    ty: Type::Int,
+                    storage: VarStorage::Slot(slot.clone()),
+                    is_param: false,
+                },
+            );
+            let mut pushed_bounds = 0usize;
+            if let Some(b) = &proven_bound {
+                self.loop_bounds.push(b.clone());
+                pushed_bounds += 1;
+            }
+            for arr_name in &extra_arrays {
+                self.loop_bounds.push(InductionBound {
+                    var: var.to_string(),
+                    upper: UpperBound::LenOf(arr_name.clone()),
+                });
+                pushed_bounds += 1;
+            }
+            self.loop_stack.push(LoopLabels {
+                break_label: end_label.clone(),
+                continue_label: fast_step.clone(),
+                scope_depth: outer_depth,
+            });
+            self.gen_block(body, out)?;
+            self.loop_stack.pop();
+            for _ in 0..pushed_bounds {
+                self.loop_bounds.pop();
+            }
+            self.pop_scope_with_drops(out);
+            if !self.terminated {
+                self.emit_br(&fast_step, out);
+            }
+
+            self.start_block(&fast_step, out);
+            let fi2 = self.next_tmp();
+            let _ = writeln!(out, "  {fi2} = load i64, ptr {slot}, align 8");
+            let fnext = self.next_tmp();
+            let _ = writeln!(out, "  {fnext} = add nsw i64 {fi2}, 1");
+            let _ = writeln!(out, "  store i64 {fnext}, ptr {slot}, align 8");
+            self.emit_br(&fast_cond, out);
+
+            // Slow fallback loop (exact step-by-step bounds & break semantics):
+            self.start_block(&slow_cond, out);
+            let si = self.next_tmp();
+            let _ = writeln!(out, "  {si} = load i64, ptr {slot}, align 8");
+            let scmp = self.next_tmp();
+            let _ = writeln!(out, "  {scmp} = icmp slt i64 {si}, {end_val}");
+            self.emit_cond_br(&scmp, &slow_body, &end_label, out);
+
+            self.start_block(&slow_body, out);
+            let outer_depth = self.scopes.len();
+            self.push_scope();
+            self.scopes.last_mut().unwrap().vars.insert(
+                var.to_string(),
+                VarEntry {
+                    ty: Type::Int,
+                    storage: VarStorage::Slot(slot.clone()),
+                    is_param: false,
+                },
+            );
+            if let Some(b) = &proven_bound {
+                self.loop_bounds.push(b.clone());
+            }
+            self.loop_stack.push(LoopLabels {
+                break_label: end_label.clone(),
+                continue_label: slow_step.clone(),
+                scope_depth: outer_depth,
+            });
+            self.gen_block(body, out)?;
+            self.loop_stack.pop();
+            if proven_bound.is_some() {
+                self.loop_bounds.pop();
+            }
+            self.pop_scope_with_drops(out);
+            if !self.terminated {
+                self.emit_br(&slow_step, out);
+            }
+
+            self.start_block(&slow_step, out);
+            let si2 = self.next_tmp();
+            let _ = writeln!(out, "  {si2} = load i64, ptr {slot}, align 8");
+            let snext = self.next_tmp();
+            let _ = writeln!(out, "  {snext} = add nsw i64 {si2}, 1");
+            let _ = writeln!(out, "  store i64 {snext}, ptr {slot}, align 8");
+            self.emit_br(&slow_cond, out);
+
+            self.start_block(&end_label, out);
+            return Ok(());
+        }
+
+        let cond_label = self.fresh_label("for.cond");
+        let body_label = self.fresh_label("for.body");
+        let step_label = self.fresh_label("for.step");
+        let end_label = self.fresh_label("for.end");
+
+        self.emit_br(&cond_label, out);
+
+        self.start_block(&cond_label, out);
+        let i = self.next_tmp();
+        let _ = writeln!(out, "  {i} = load i64, ptr {slot}, align 8");
+        let cmp = self.next_tmp();
+        let _ = writeln!(out, "  {cmp} = icmp slt i64 {i}, {end_val}");
+        self.emit_cond_br(&cmp, &body_label, &end_label, out);
+
+        self.start_block(&body_label, out);
+        let outer_depth = self.scopes.len();
+        self.push_scope();
+        self.scopes.last_mut().unwrap().vars.insert(
+            var.to_string(),
+            VarEntry {
+                ty: Type::Int,
+                storage: VarStorage::Slot(slot.clone()),
+                is_param: false,
+            },
+        );
+        if let Some(bound) = &proven_bound {
+            self.loop_bounds.push(bound.clone());
+        }
+        self.loop_stack.push(LoopLabels {
+            break_label: end_label.clone(),
+            continue_label: step_label.clone(),
+            scope_depth: outer_depth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        if proven_bound.is_some() {
+            self.loop_bounds.pop();
+        }
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&step_label, out);
+        }
+
+        self.start_block(&step_label, out);
+        let i2 = self.next_tmp();
+        let _ = writeln!(out, "  {i2} = load i64, ptr {slot}, align 8");
+        let next = self.next_tmp();
+        if !iv_reassigned {
+            let _ = writeln!(out, "  {next} = add nsw i64 {i2}, 1");
+        } else {
+            let _ = writeln!(out, "  {next} = add i64 {i2}, 1");
+        }
+        let _ = writeln!(out, "  store i64 {next}, ptr {slot}, align 8");
+        self.emit_br(&cond_label, out);
+
+        self.start_block(&end_label, out);
+        Ok(())
+    }
+
+    fn load_var_ssa(&mut self, name: &str, out: &mut String) -> String {
+        let entry = self.lookup_var(name).cloned().expect("var exists");
+        match entry.storage {
+            VarStorage::Imm(val) => val,
+            VarStorage::Slot(ptr) => {
+                let reg = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {reg} = load {}, ptr {ptr}, align {}",
+                    ir_type(&entry.ty),
+                    ir_align(&entry.ty)
+                );
+                reg
+            }
+        }
+    }
+
     fn gen_assign(
         &mut self,
         target: &AssignTarget,
@@ -877,7 +1193,7 @@ impl Codegen {
                         ));
                     }
                     let old_val = self.next_tmp();
-                    let _ = writeln!(out, "  {old_val} = load i64, ptr {ptr}");
+                    let _ = writeln!(out, "  {old_val} = load i64, ptr {ptr}, align 8");
                     let (rhs_ty, rhs_val) = self.eval_expr(value, out)?;
                     if rhs_ty != Type::Int {
                         return Err(Diagnostic::new(
@@ -890,7 +1206,7 @@ impl Codegen {
                         ));
                     }
                     let new_val = self.emit_int_arith(bin_op, &old_val, &rhs_val, out);
-                    let _ = writeln!(out, "  store i64 {new_val}, ptr {ptr}");
+                    let _ = writeln!(out, "  store i64 {new_val}, ptr {ptr}, align 8");
                 } else {
                     let (val_ty, val) = self.eval_expr_typed(value, Some(&entry.ty), out)?;
                     if val_ty != entry.ty {
@@ -904,7 +1220,14 @@ impl Codegen {
                             span,
                         ));
                     }
-                    let _ = writeln!(out, "  store {} {}, ptr {}", ir_type(&entry.ty), val, ptr);
+                    let _ = writeln!(
+                        out,
+                        "  store {} {}, ptr {}, align {}",
+                        ir_type(&entry.ty),
+                        val,
+                        ptr,
+                        ir_align(&entry.ty)
+                    );
                 }
                 Ok(())
             }
@@ -951,7 +1274,7 @@ impl Codegen {
                         ));
                     }
                     let old_val = self.next_tmp();
-                    let _ = writeln!(out, "  {old_val} = load i64, ptr {elem_ptr}");
+                    let _ = writeln!(out, "  {old_val} = load i64, ptr {elem_ptr}, align 8");
                     let (rhs_ty, rhs_val) = self.eval_expr(value, out)?;
                     if rhs_ty != Type::Int {
                         return Err(Diagnostic::new(
@@ -964,7 +1287,7 @@ impl Codegen {
                         ));
                     }
                     let new_val = self.emit_int_arith(bin_op, &old_val, &rhs_val, out);
-                    let _ = writeln!(out, "  store i64 {new_val}, ptr {elem_ptr}");
+                    let _ = writeln!(out, "  store i64 {new_val}, ptr {elem_ptr}, align 8");
                 } else {
                     let (rhs_ty, rhs_val) = self.eval_expr_typed(value, Some(&elem_ty), out)?;
                     if rhs_ty != *elem_ty {
@@ -1013,7 +1336,12 @@ impl Codegen {
                     VarStorage::Imm(val) => Ok((entry.ty, val)),
                     VarStorage::Slot(ptr) => {
                         let reg = self.next_tmp();
-                        let _ = writeln!(out, "  {reg} = load {}, ptr {ptr}", ir_type(&entry.ty));
+                        let _ = writeln!(
+                            out,
+                            "  {reg} = load {}, ptr {ptr}, align {}",
+                            ir_type(&entry.ty),
+                            ir_align(&entry.ty)
+                        );
                         Ok((entry.ty, reg))
                     }
                 }
@@ -1065,7 +1393,10 @@ impl Codegen {
                 let bytes = count * elem_byte_size(&first_ty);
                 self.used_malloc = true;
                 let data_ptr = self.next_tmp();
-                let _ = writeln!(out, "  {data_ptr} = call noalias ptr @malloc(i64 {bytes})");
+                let _ = writeln!(
+                    out,
+                    "  {data_ptr} = call noalias align 16 ptr @malloc(i64 {bytes})"
+                );
 
                 let mem_ty = elem_mem_ir_type(&first_ty);
                 for (i, val) in vals.iter().enumerate() {
@@ -1113,14 +1444,24 @@ impl Codegen {
                             count.span,
                         ));
                     }
+                    Some(n) if n > MAX_ARRAY_LEN => {
+                        return Err(Diagnostic::new(
+                            format!("array repeat count `{n}` exceeds maximum allocation size"),
+                            count.span,
+                        ));
+                    }
                     Some(_) => {}
                     None => {
                         self.used_neg_len_fail = true;
-                        let is_neg = self.next_tmp();
+                        let bad_len = self.next_tmp();
                         let neg_label = self.fresh_label("arr.neg");
                         let ok_label = self.fresh_label("arr.ok");
-                        let _ = writeln!(out, "  {is_neg} = icmp slt i64 {count_val}, 0");
-                        self.emit_cond_br(&is_neg, &neg_label, &ok_label, out);
+                        // Single unsigned compare checks `0 <= count <= 2^47`.
+                        let _ = writeln!(
+                            out,
+                            "  {bad_len} = icmp ugt i64 {count_val}, {MAX_ARRAY_LEN}"
+                        );
+                        self.emit_cond_br(&bad_len, &neg_label, &ok_label, out);
                         self.start_block(&neg_label, out);
                         let _ = writeln!(out, "  call void @archx_neg_len_fail(i64 {count_val})");
                         let _ = writeln!(out, "  unreachable");
@@ -1138,7 +1479,7 @@ impl Codegen {
                     let ptr_reg = self.next_tmp();
                     let _ = writeln!(
                         out,
-                        "  {ptr_reg} = call noalias ptr @calloc(i64 {count_val}, i64 {elem_size})"
+                        "  {ptr_reg} = call noalias align 16 ptr @calloc(i64 {count_val}, i64 {elem_size})"
                     );
                     ptr_reg
                 } else {
@@ -1147,15 +1488,18 @@ impl Codegen {
                         (c * elem_size).to_string()
                     } else {
                         let b = self.next_tmp();
-                        let _ = writeln!(out, "  {b} = mul i64 {count_val}, {elem_size}");
+                        let _ = writeln!(out, "  {b} = mul nuw nsw i64 {count_val}, {elem_size}");
                         b
                     };
                     let ptr_reg = self.next_tmp();
-                    let _ = writeln!(out, "  {ptr_reg} = call noalias ptr @malloc(i64 {bytes})");
+                    let _ = writeln!(
+                        out,
+                        "  {ptr_reg} = call noalias align 16 ptr @malloc(i64 {bytes})"
+                    );
 
                     let idx_slot = self.next_slot("arr.fill");
-                    let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64");
-                    let _ = writeln!(out, "  store i64 0, ptr {idx_slot}");
+                    let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+                    let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
 
                     let cond_label = self.fresh_label("arr.fill.cond");
                     let body_label = self.fresh_label("arr.fill.body");
@@ -1164,7 +1508,7 @@ impl Codegen {
                     self.emit_br(&cond_label, out);
                     self.start_block(&cond_label, out);
                     let fi = self.next_tmp();
-                    let _ = writeln!(out, "  {fi} = load i64, ptr {idx_slot}");
+                    let _ = writeln!(out, "  {fi} = load i64, ptr {idx_slot}, align 8");
                     let fcmp = self.next_tmp();
                     let _ = writeln!(out, "  {fcmp} = icmp slt i64 {fi}, {count_val}");
                     self.emit_cond_br(&fcmp, &body_label, &end_label, out);
@@ -1179,7 +1523,7 @@ impl Codegen {
                     self.emit_elem_store(&elem_ty, &init_val, &fep, out);
                     let fnext = self.next_tmp();
                     let _ = writeln!(out, "  {fnext} = add nsw i64 {fi}, 1");
-                    let _ = writeln!(out, "  store i64 {fnext}, ptr {idx_slot}");
+                    let _ = writeln!(out, "  store i64 {fnext}, ptr {idx_slot}, align 8");
                     self.emit_br(&cond_label, out);
 
                     self.start_block(&end_label, out);
@@ -1399,10 +1743,10 @@ impl Codegen {
         }
 
         let slot = self.next_slot("bool.result");
-        let _ = writeln!(self.allocas, "  {slot} = alloca i1");
+        let _ = writeln!(self.allocas, "  {slot} = alloca i1, align 1");
 
         let initial = if op == BinOp::And { "false" } else { "true" };
-        let _ = writeln!(out, "  store i1 {initial}, ptr {slot}");
+        let _ = writeln!(out, "  store i1 {initial}, ptr {slot}, align 1");
 
         let rhs_label = self.fresh_label("bool.rhs");
         let merge_label = self.fresh_label("bool.merge");
@@ -1425,12 +1769,12 @@ impl Codegen {
                 rhs.span,
             ));
         }
-        let _ = writeln!(out, "  store i1 {rhs_val}, ptr {slot}");
+        let _ = writeln!(out, "  store i1 {rhs_val}, ptr {slot}, align 1");
         self.emit_br(&merge_label, out);
 
         self.start_block(&merge_label, out);
         let result = self.next_tmp();
-        let _ = writeln!(out, "  {result} = load i1, ptr {slot}");
+        let _ = writeln!(out, "  {result} = load i1, ptr {slot}, align 1");
         Ok((Type::Bool, result))
     }
 
@@ -1583,8 +1927,8 @@ impl Codegen {
                 let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {val}, 2");
 
                 let idx_slot = self.next_slot("print.idx");
-                let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64");
-                let _ = writeln!(out, "  store i64 0, ptr {idx_slot}");
+                let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+                let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
 
                 let cond_lbl = self.fresh_label("print.cond");
                 let body_lbl = self.fresh_label("print.body");
@@ -1595,7 +1939,7 @@ impl Codegen {
                 self.emit_br(&cond_lbl, out);
                 self.start_block(&cond_lbl, out);
                 let pi = self.next_tmp();
-                let _ = writeln!(out, "  {pi} = load i64, ptr {idx_slot}");
+                let _ = writeln!(out, "  {pi} = load i64, ptr {idx_slot}, align 8");
                 let pcmp = self.next_tmp();
                 let _ = writeln!(out, "  {pcmp} = icmp slt i64 {pi}, {len}");
                 self.emit_cond_br(&pcmp, &body_lbl, &end_lbl, out);
@@ -1649,7 +1993,7 @@ impl Codegen {
                 }
                 let pnext = self.next_tmp();
                 let _ = writeln!(out, "  {pnext} = add nsw i64 {pi}, 1");
-                let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}");
+                let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}, align 8");
                 self.emit_br(&cond_lbl, out);
 
                 self.start_block(&end_lbl, out);
@@ -1674,10 +2018,8 @@ impl Codegen {
             return Err(Diagnostic::new("`len` takes exactly one argument", span));
         }
 
-        // If `len(xs)` is called on an array with a compile-time constant length,
-        // fold straight to that integer without emitting instructions.
         if let ExprKind::Var(name) = &args[0].kind {
-            if let Some(KnownLen::Const(c)) = self.lookup_known_len(name) {
+            if let Some(&KnownLen::Const(c)) = self.lookup_known_len(name) {
                 if let Some(entry) = self.lookup_var(name) {
                     if entry.ty.is_array() {
                         return Ok((Type::Int, c.to_string()));
@@ -1778,7 +2120,7 @@ impl Codegen {
         self.used_realloc = true;
 
         let vec = self.next_tmp();
-        let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}");
+        let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}, align 8");
         let len = self.next_tmp();
         let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec}, 0");
         let cap = self.next_tmp();
@@ -1803,14 +2145,17 @@ impl Codegen {
         let elem_size = elem_byte_size(&elem_ty);
         let _ = writeln!(out, "  {bytes} = mul i64 {new_cap}, {elem_size}");
         let new_data = self.next_tmp();
-        let _ = writeln!(out, "  {new_data} = call ptr @realloc(ptr {data}, i64 {bytes})");
+        let _ = writeln!(
+            out,
+            "  {new_data} = call align 16 ptr @realloc(ptr {data}, i64 {bytes})"
+        );
         let grown = self.build_vec_val(&len, &new_cap, &new_data, out);
-        let _ = writeln!(out, "  store %ArchxVec {grown}, ptr {slot_ptr}");
+        let _ = writeln!(out, "  store %ArchxVec {grown}, ptr {slot_ptr}, align 8");
         self.emit_br(&write_lbl, out);
 
         self.start_block(&write_lbl, out);
         let vec2 = self.next_tmp();
-        let _ = writeln!(out, "  {vec2} = load %ArchxVec, ptr {slot_ptr}");
+        let _ = writeln!(out, "  {vec2} = load %ArchxVec, ptr {slot_ptr}, align 8");
         let cur_len = self.next_tmp();
         let _ = writeln!(out, "  {cur_len} = extractvalue %ArchxVec {vec2}, 0");
         let cur_cap = self.next_tmp();
@@ -1829,7 +2174,7 @@ impl Codegen {
         let next_len = self.next_tmp();
         let _ = writeln!(out, "  {next_len} = add nsw i64 {cur_len}, 1");
         let updated = self.build_vec_val(&next_len, &cur_cap, &cur_data, out);
-        let _ = writeln!(out, "  store %ArchxVec {updated}, ptr {slot_ptr}");
+        let _ = writeln!(out, "  store %ArchxVec {updated}, ptr {slot_ptr}, align 8");
 
         Ok((Type::Void, String::new()))
     }
@@ -1888,7 +2233,7 @@ impl Codegen {
         self.used_empty_pop_fail = true;
 
         let vec = self.next_tmp();
-        let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}");
+        let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}, align 8");
         let len = self.next_tmp();
         let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec}, 0");
         let cap = self.next_tmp();
@@ -1911,7 +2256,7 @@ impl Codegen {
         let new_len = self.next_tmp();
         let _ = writeln!(out, "  {new_len} = sub nsw i64 {len}, 1");
         let updated = self.build_vec_val(&new_len, &cap, &data, out);
-        let _ = writeln!(out, "  store %ArchxVec {updated}, ptr {slot_ptr}");
+        let _ = writeln!(out, "  store %ArchxVec {updated}, ptr {slot_ptr}, align 8");
 
         let mem_ty = elem_mem_ir_type(&elem_ty);
         let ep = self.next_tmp();
@@ -1923,14 +2268,14 @@ impl Codegen {
         Ok((*elem_ty, res))
     }
 
-    // ---------------- Bounds-check analysis & emission -----------------------
+    // ---------------- Loop & bounds-check analysis ---------------------------
 
     fn infer_known_array_len(&self, value: &Expr) -> Option<KnownLen> {
         match &value.kind {
             ExprKind::ArrayLit(elems) => Some(KnownLen::Const(elems.len() as i64)),
             ExprKind::ArrayRepeat { count, .. } => {
                 if let Some(c) = eval_const_int(count) {
-                    if c >= 0 {
+                    if (0..=MAX_ARRAY_LEN).contains(&c) {
                         return Some(KnownLen::Const(c));
                     }
                 }
@@ -1989,6 +2334,267 @@ impl Codegen {
         }
 
         None
+    }
+
+    fn collect_unchecked_for_arrays(&self, var: &str, body: &[Stmt]) -> Vec<String> {
+        let mut out = Vec::new();
+        self.scan_stmts_for_unchecked_arrays(var, body, body, &mut out);
+        out
+    }
+
+    fn scan_stmts_for_unchecked_arrays(
+        &self,
+        var: &str,
+        loop_body: &[Stmt],
+        stmts: &[Stmt],
+        out: &mut Vec<String>,
+    ) {
+        for stmt in stmts {
+            match &stmt.kind {
+                StmtKind::Let { value, .. } => {
+                    self.scan_expr_for_unchecked_arrays(var, loop_body, value, out);
+                }
+                StmtKind::Assign { target, value, .. } => {
+                    if let AssignTarget::Index { target: t, index } = target {
+                        self.maybe_record_unchecked_array(var, loop_body, t, index, out);
+                        self.scan_expr_for_unchecked_arrays(var, loop_body, t, out);
+                        self.scan_expr_for_unchecked_arrays(var, loop_body, index, out);
+                    }
+                    self.scan_expr_for_unchecked_arrays(var, loop_body, value, out);
+                }
+                StmtKind::Return(Some(e)) | StmtKind::Expr(e) => {
+                    self.scan_expr_for_unchecked_arrays(var, loop_body, e, out);
+                }
+                StmtKind::If {
+                    cond,
+                    then_body,
+                    else_body,
+                } => {
+                    self.scan_expr_for_unchecked_arrays(var, loop_body, cond, out);
+                    self.scan_stmts_for_unchecked_arrays(var, loop_body, then_body, out);
+                    if let Some(eb) = else_body {
+                        self.scan_stmts_for_unchecked_arrays(var, loop_body, eb, out);
+                    }
+                }
+                StmtKind::Return(None)
+                | StmtKind::Break
+                | StmtKind::Continue
+                | StmtKind::While { .. }
+                | StmtKind::For { .. } => {}
+            }
+        }
+    }
+
+    fn scan_expr_for_unchecked_arrays(
+        &self,
+        var: &str,
+        loop_body: &[Stmt],
+        expr: &Expr,
+        out: &mut Vec<String>,
+    ) {
+        match &expr.kind {
+            ExprKind::Index { target, index } => {
+                self.maybe_record_unchecked_array(var, loop_body, target, index, out);
+                self.scan_expr_for_unchecked_arrays(var, loop_body, target, out);
+                self.scan_expr_for_unchecked_arrays(var, loop_body, index, out);
+            }
+            ExprKind::Call { args, .. } | ExprKind::ArrayLit(args) => {
+                for a in args {
+                    self.scan_expr_for_unchecked_arrays(var, loop_body, a, out);
+                }
+            }
+            ExprKind::ArrayRepeat { value, count } => {
+                self.scan_expr_for_unchecked_arrays(var, loop_body, value, out);
+                self.scan_expr_for_unchecked_arrays(var, loop_body, count, out);
+            }
+            ExprKind::Binary { lhs, rhs, .. } => {
+                self.scan_expr_for_unchecked_arrays(var, loop_body, lhs, out);
+                self.scan_expr_for_unchecked_arrays(var, loop_body, rhs, out);
+            }
+            ExprKind::Unary { expr: inner, .. } => {
+                self.scan_expr_for_unchecked_arrays(var, loop_body, inner, out);
+            }
+            ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Str(_) | ExprKind::Var(_) => {}
+        }
+    }
+
+    fn maybe_record_unchecked_array(
+        &self,
+        var: &str,
+        loop_body: &[Stmt],
+        target: &Expr,
+        index: &Expr,
+        out: &mut Vec<String>,
+    ) {
+        if let (ExprKind::Var(arr_name), ExprKind::Var(iv)) = (&target.kind, &index.kind) {
+            if iv == var && !out.contains(arr_name) {
+                if let Some(entry) = self.lookup_var(arr_name) {
+                    if entry.ty.is_array()
+                        && !stmts_mutate_array_len(loop_body, arr_name)
+                        && !self.is_bounds_proven_safe(target, index)
+                    {
+                        out.push(arr_name.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    fn analyze_strided_while(&self, cond: &Expr, body: &[Stmt]) -> Option<StridedWhilePlan> {
+        if stmts_contain_loop(body) {
+            return None;
+        }
+        let ExprKind::Binary {
+            op: BinOp::Lt,
+            lhs,
+            rhs,
+        } = &cond.kind
+        else {
+            return None;
+        };
+        let ExprKind::Var(idx_var) = &lhs.kind else {
+            return None;
+        };
+        let idx_entry = self.lookup_var(idx_var)?;
+        if idx_entry.ty != Type::Int {
+            return None;
+        }
+        let VarStorage::Slot(idx_slot) = &idx_entry.storage else {
+            return None;
+        };
+
+        let stride = self.extract_single_positive_stride(body, idx_var)?;
+
+        match &rhs.kind {
+            ExprKind::Var(bvar) if bvar != idx_var && !stmts_assign_var(body, bvar) => {
+                let b_entry = self.lookup_var(bvar)?;
+                if b_entry.ty != Type::Int {
+                    return None;
+                }
+                // Only worthwhile when `body` actually indexes at least one
+                // array of known length `Var(bvar)` using `idx_var`.
+                let mut candidates = Vec::new();
+                self.scan_stmts_for_unchecked_arrays(idx_var, body, body, &mut candidates);
+                let has_matching = candidates.iter().any(|arr| {
+                    matches!(self.lookup_known_len(arr), Some(KnownLen::Var(n)) if n == bvar)
+                });
+                if !has_matching {
+                    return None;
+                }
+                Some(StridedWhilePlan {
+                    idx_slot: idx_slot.clone(),
+                    stride,
+                    bound: WhileBoundKind::Var(bvar.clone()),
+                    proven_bound: InductionBound {
+                        var: idx_var.clone(),
+                        upper: UpperBound::Var(bvar.clone()),
+                    },
+                })
+            }
+            ExprKind::Call { name, args } if name == "len" && args.len() == 1 => {
+                let ExprKind::Var(arr_name) = &args[0].kind else {
+                    return None;
+                };
+                if arr_name == idx_var || stmts_mutate_array_len(body, arr_name) {
+                    return None;
+                }
+                let arr_entry = self.lookup_var(arr_name)?;
+                if !arr_entry.ty.is_array() {
+                    return None;
+                }
+                let mut candidates = Vec::new();
+                self.scan_stmts_for_unchecked_arrays(idx_var, body, body, &mut candidates);
+                if !candidates.iter().any(|a| a == arr_name) {
+                    return None;
+                }
+                Some(StridedWhilePlan {
+                    idx_slot: idx_slot.clone(),
+                    stride,
+                    bound: WhileBoundKind::LenOf(arr_name.clone()),
+                    proven_bound: InductionBound {
+                        var: idx_var.clone(),
+                        upper: UpperBound::LenOf(arr_name.clone()),
+                    },
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn extract_single_positive_stride(&self, body: &[Stmt], idx_var: &str) -> Option<StrideVal> {
+        let mut found: Option<StrideVal> = None;
+        let mut count = 0usize;
+        self.visit_var_assignments(body, idx_var, &mut count, &mut found);
+        if count == 1 {
+            found
+        } else {
+            None
+        }
+    }
+
+    fn visit_var_assignments(
+        &self,
+        stmts: &[Stmt],
+        idx_var: &str,
+        count: &mut usize,
+        stride_out: &mut Option<StrideVal>,
+    ) {
+        for stmt in stmts {
+            match &stmt.kind {
+                StmtKind::Assign {
+                    target: AssignTarget::Var(name),
+                    op,
+                    value,
+                } if name == idx_var => {
+                    *count += 1;
+                    if *count == 1 {
+                        let step_expr = match op {
+                            Some(BinOp::Add) => Some(value),
+                            None => match &value.kind {
+                                ExprKind::Binary {
+                                    op: BinOp::Add,
+                                    lhs,
+                                    rhs,
+                                } if matches!(&lhs.kind, ExprKind::Var(v) if v == idx_var) => {
+                                    Some(rhs.as_ref())
+                                }
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        if let Some(se) = step_expr {
+                            if let Some(c) = eval_const_int(se) {
+                                if (1..=MAX_ARRAY_LEN).contains(&c) {
+                                    *stride_out = Some(StrideVal::Const(c));
+                                }
+                            } else if let ExprKind::Var(svar) = &se.kind {
+                                if svar != idx_var && !stmts_assign_var(stmts, svar) {
+                                    if let Some(entry) = self.lookup_var(svar) {
+                                        if entry.ty == Type::Int {
+                                            *stride_out = Some(StrideVal::Var(svar.clone()));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                StmtKind::If {
+                    then_body,
+                    else_body,
+                    ..
+                } => {
+                    self.visit_var_assignments(then_body, idx_var, count, stride_out);
+                    if let Some(eb) = else_body {
+                        self.visit_var_assignments(eb, idx_var, count, stride_out);
+                    }
+                }
+                StmtKind::While { body, .. } | StmtKind::For { body, .. } => {
+                    self.visit_var_assignments(body, idx_var, count, stride_out);
+                }
+                _ => {}
+            }
+        }
     }
 
     fn is_bounds_proven_safe(&self, target: &Expr, index: &Expr) -> bool {
@@ -2065,7 +2671,6 @@ impl Codegen {
             return Ok(());
         }
 
-        // Single unsigned compare checks both `idx >= 0` and `idx < len`.
         self.used_bounds_fail = true;
         let len_val = self.next_tmp();
         let _ = writeln!(out, "  {len_val} = extractvalue %ArchxVec {vec_val}, 0");
@@ -2104,45 +2709,54 @@ impl Codegen {
         if *elem_ty == Type::Bool {
             let b = self.next_tmp();
             let _ = writeln!(out, "  {b} = zext i1 {val} to i8");
-            let _ = writeln!(out, "  store i8 {b}, ptr {elem_ptr}");
+            let _ = writeln!(out, "  store i8 {b}, ptr {elem_ptr}, align 1");
         } else {
             let mem_ty = elem_mem_ir_type(elem_ty);
-            let _ = writeln!(out, "  store {mem_ty} {val}, ptr {elem_ptr}");
+            let align = elem_mem_align(elem_ty);
+            let _ = writeln!(out, "  store {mem_ty} {val}, ptr {elem_ptr}, align {align}");
         }
     }
 
     fn emit_elem_load(&mut self, elem_ty: &Type, elem_ptr: &str, out: &mut String) -> String {
         if *elem_ty == Type::Bool {
             let raw = self.next_tmp();
-            let _ = writeln!(out, "  {raw} = load i8, ptr {elem_ptr}");
+            let _ = writeln!(out, "  {raw} = load i8, ptr {elem_ptr}, align 1");
             let b = self.next_tmp();
             let _ = writeln!(out, "  {b} = icmp ne i8 {raw}, 0");
             b
         } else {
             let mem_ty = elem_mem_ir_type(elem_ty);
+            let align = elem_mem_align(elem_ty);
             let reg = self.next_tmp();
-            let _ = writeln!(out, "  {reg} = load {mem_ty}, ptr {elem_ptr}");
+            let _ = writeln!(out, "  {reg} = load {mem_ty}, ptr {elem_ptr}, align {align}");
             reg
         }
     }
 
-    fn emit_free_vec_slot(&mut self, slot_ptr: &str, out: &mut String) {
+    fn emit_drop_target(&mut self, drop: &DropTarget, out: &mut String) {
         self.used_free = true;
-        let vec = self.next_tmp();
-        let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}");
-        let data = self.next_tmp();
-        let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {vec}, 2");
-        let _ = writeln!(out, "  call void @free(ptr {data})");
+        match drop {
+            DropTarget::DataPtr(data_ptr) => {
+                let _ = writeln!(out, "  call void @free(ptr {data_ptr})");
+            }
+            DropTarget::VecSlot(slot_ptr) => {
+                let vec = self.next_tmp();
+                let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}, align 8");
+                let data = self.next_tmp();
+                let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {vec}, 2");
+                let _ = writeln!(out, "  call void @free(ptr {data})");
+            }
+        }
     }
 
     fn emit_drops_from_depth(&mut self, from_depth: usize, out: &mut String) {
-        let slots: Vec<String> = self.scopes[from_depth..]
+        let drops: Vec<DropTarget> = self.scopes[from_depth..]
             .iter()
             .rev()
             .flat_map(|scope| scope.owned_buffers.iter().rev().cloned())
             .collect();
-        for slot in slots {
-            self.emit_free_vec_slot(&slot, out);
+        for d in drops {
+            self.emit_drop_target(&d, out);
         }
     }
 
@@ -2157,7 +2771,7 @@ impl Codegen {
     fn pop_scope_with_drops(&mut self, out: &mut String) {
         if self.scopes.len() > 1 {
             if !self.terminated {
-                let slots: Vec<String> = self
+                let drops: Vec<DropTarget> = self
                     .scopes
                     .last()
                     .unwrap()
@@ -2166,8 +2780,8 @@ impl Codegen {
                     .rev()
                     .cloned()
                     .collect();
-                for slot in slots {
-                    self.emit_free_vec_slot(&slot, out);
+                for d in drops {
+                    self.emit_drop_target(&d, out);
                 }
             }
             self.scopes.pop();
@@ -2245,6 +2859,30 @@ fn eval_const_int(expr: &Expr) -> Option<i64> {
         }
         _ => None,
     }
+}
+
+fn stmts_contain_loop(stmts: &[Stmt]) -> bool {
+    for stmt in stmts {
+        match &stmt.kind {
+            StmtKind::While { .. } | StmtKind::For { .. } => return true,
+            StmtKind::If {
+                then_body,
+                else_body,
+                ..
+            } => {
+                if stmts_contain_loop(then_body) {
+                    return true;
+                }
+                if let Some(eb) = else_body {
+                    if stmts_contain_loop(eb) {
+                        return true;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 fn collect_mutated_vars(stmts: &[Stmt], out: &mut HashSet<String>) {
@@ -2469,9 +3107,10 @@ fn expr_escapes_var(expr: &Expr, var_name: &str, sigs: &HashMap<String, FuncSig>
             }
             if let Some(sig) = sigs.get(name) {
                 let returns_array = sig.ret.as_ref().map_or(false, |t| t.is_array());
-                let takes_nested_array = sig.params.iter().any(|t| {
-                    matches!(t, Type::Array(inner) if inner.is_array())
-                });
+                let takes_nested_array = sig
+                    .params
+                    .iter()
+                    .any(|t| matches!(t, Type::Array(inner) if inner.is_array()));
                 if !returns_array && !takes_nested_array {
                     return args.iter().any(|arg| {
                         if matches!(&arg.kind, ExprKind::Var(v) if v == var_name) {
@@ -2518,6 +3157,14 @@ fn ir_type(ty: &Type) -> &'static str {
     }
 }
 
+fn ir_align(ty: &Type) -> u32 {
+    match ty {
+        Type::Int | Type::Str | Type::Array(_) => 8,
+        Type::Bool => 1,
+        Type::Void => unreachable!("void has no memory alignment"),
+    }
+}
+
 fn ir_ret_type(ty: Option<&Type>) -> &'static str {
     match ty {
         Some(Type::Int) => "i64",
@@ -2534,6 +3181,14 @@ fn elem_mem_ir_type(ty: &Type) -> &'static str {
         Type::Bool => "i8",
         Type::Str => "ptr",
         Type::Array(_) => "%ArchxVec",
+        Type::Void => unreachable!("array of void is rejected earlier"),
+    }
+}
+
+fn elem_mem_align(ty: &Type) -> u32 {
+    match ty {
+        Type::Int | Type::Str | Type::Array(_) => 8,
+        Type::Bool => 1,
         Type::Void => unreachable!("array of void is rejected earlier"),
     }
 }
@@ -2603,7 +3258,7 @@ mod tests {
         let out = ir(
             "func add(a: int, b: int) -> int:\n    return a + b\n\nfunc main():\n    print(add(1, 2))\n",
         );
-        assert!(out.contains("define i64 @archx_add(i64 %param.a, i64 %param.b)"));
+        assert!(out.contains("define internal i64 @archx_add(i64 %param.a, i64 %param.b)"));
         assert!(out.contains("call i64 @archx_add"));
     }
 
@@ -2671,7 +3326,7 @@ mod tests {
         let out = ir(
             "func spin() -> int:\n    while true:\n        print(1)\n\nfunc main():\n    print(1)\n",
         );
-        assert!(out.contains("define i64 @archx_spin()"));
+        assert!(out.contains("define internal i64 @archx_spin()"));
         assert!(out.contains("while.end"));
         assert!(out.contains("unreachable"));
     }
@@ -2708,13 +3363,54 @@ func main():
     print(lit[2] + combine(16))
 ",
         );
-        // Every single array access above (`xs[i]`, `b[i]`, `a[i]`, `lit[2]`)
-        // is proven in-bounds at compile time, so no bounds-check helper is emitted!
         assert!(!out.contains("@archx_bounds_fail"));
-        // `[0; n]` uses zero-page `@calloc` instead of a manual fill loop:
         assert!(out.contains("@calloc"));
-        // Non-escaping local arrays are freed deterministically on scope exit:
         assert!(out.contains("call void @free"));
+    }
+
+    #[test]
+    fn multi_array_for_and_strided_while_emit_zero_check_fast_loops() {
+        let out = ir(
+            "\
+func step(dst: [int], a: [int], b: [int]):
+    for i in 0..len(dst):
+        dst[i] = a[i] + b[i]
+
+func sieve(limit: int) -> int:
+    let is_prime = [true; limit]
+    let p = 2
+    let j = p * p
+    while j < limit:
+        is_prime[j] = false
+        j += p
+    return p
+
+func main():
+    let x = [1, 2]
+    step(x, x, x)
+    print(sieve(20))
+",
+        );
+        assert!(out.contains("for.fast.body"));
+        assert!(out.contains("while.fast.body"));
+        // Verify fast bodies contain zero calls to `@archx_bounds_fail`!
+        let for_fast_section = out
+            .split("for.fast.body")
+            .nth(1)
+            .unwrap()
+            .split("for.cond")
+            .next()
+            .unwrap();
+        assert!(!for_fast_section.contains("@archx_bounds_fail"));
+
+        let while_fast_section = out
+            .split("while.fast.body")
+            .nth(1)
+            .unwrap()
+            .split("while.cond")
+            .next()
+            .unwrap();
+        assert!(!while_fast_section.contains("@archx_bounds_fail"));
     }
 
     #[test]

@@ -104,7 +104,10 @@ jobs:
       - name: Benchmark against C and Rust
         run: |
           set -o pipefail
-          bash benchmarks/run.sh 5 2>&1 | tee ci/logs/benchmarks.log
+          ./target/release/archx benchmarks/arrays.archx.lang --emit-ir > /tmp/bench_arrays.ll
+          clang -O2 -Wno-override-module -S -emit-llvm /tmp/bench_arrays.ll -o ci/out/bench_arrays.opt.ll
+          clang -O2 -S -emit-llvm benchmarks/arrays_raw.c -o ci/out/bench_arrays_c_raw.opt.ll
+          bash benchmarks/run.sh 7 2>&1 | tee ci/logs/benchmarks.log
 
       - name: Save CI output to the repo
         if: always()
