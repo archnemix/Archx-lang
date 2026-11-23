@@ -61,9 +61,19 @@ exit=0
 B
 true
 5
+== emit-ir: structs_regions ==
+exit=0
+== compile: structs_regions ==
+exit=0
+compiled `examples/structs_regions.archx.lang` -> `/tmp/archx-structs_regions`
+== run: structs_regions ==
+exit=0
+3040
+report:milestone5:ok
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
 if.opt.ll exit=0
 loops.opt.ll exit=0
 arrays.opt.ll exit=0
+structs_regions.opt.ll exit=0

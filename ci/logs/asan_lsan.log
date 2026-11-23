@@ -1,0 +1,14 @@
+== ASan + LSan check: examples/arrays.archx.lang ==
+CLEAN: examples/arrays.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: examples/structs_regions.archx.lang ==
+
+=================================================================
+==2850==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 512 byte(s) in 1 object(s) allocated from:
+    #0 0x609ee292a678 in malloc (/tmp/asan_target+0x10e678) (BuildId: 0892d2f7e68d47a4f23e13f989e2bc446a181496)
+    #1 0x609ee297065a in main (/tmp/asan_target+0x15465a) (BuildId: 0892d2f7e68d47a4f23e13f989e2bc446a181496)
+    #2 0x7ae90162a9d7 in __libc_start_main (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a9d7) (BuildId: 86304dcc94791043688c314c38955023b3ccc64a)
+    #3 0x609ee28483a4 in _start (/tmp/asan_target+0x2c3a4) (BuildId: 0892d2f7e68d47a4f23e13f989e2bc446a181496)
+
+SUMMARY: AddressSanitizer: 512 byte(s) leaked in 1 allocation(s).
