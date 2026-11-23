@@ -5,8 +5,8 @@ target triple = "x86_64-pc-linux-gnu"
 
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
-@.fmt.sep = private unnamed_addr constant [3 x i8] c", \00", align 1
 @.fmt.int.elem = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
+@.fmt.sep = private unnamed_addr constant [3 x i8] c", \00", align 1
 @.fmt.pstr.nl = private unnamed_addr constant [6 x i8] c"%.*s\0A\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"]\00", align 1
 @str.3 = private unnamed_addr constant [35 x i8] c"archx runtime panic: out of memory\00", align 1

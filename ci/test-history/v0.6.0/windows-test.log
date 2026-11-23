@@ -7,40 +7,40 @@ Thread model: posix
 InstalledDir: C:\Program Files\LLVM\bin
 --- cargo test ---
 [1m[92m   Compiling[0m archx v0.6.0 (D:\a\Archx-lang\Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 13.24s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 20.64s
 [1m[92m     Running[0m unittests src\main.rs (target\debug\build\archx/f842d52dd9ae05c4\out\archx-f842d52dd9ae05c4.exe)
 
 running 32 tests
 test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
-test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
-test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
-test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::equality_operators ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::loop_tokens ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
 test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
-test parser::tests::parses_for_and_break_continue ... ok
-test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_functions_with_params ... ok
+test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_if_else ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
 test parser::tests::parses_main_and_print ... ok
-test parser::tests::parses_structs_regions_step_and_foreach ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
 test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test parser::tests::rejects_missing_colon ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
 test tests::default_output_strips_archx_extensions ... ok
 
@@ -52,73 +52,23 @@ running 18 tests
 test break_outside_loop_is_an_error ... ok
 test emit_ir_works ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
-test hello_world_runs ... ok
-test elif_and_compound_assign_run ... ok
 test arrays_run ... ok
 test functions_run ... ok
+test hello_world_runs ... ok
+test elif_and_compound_assign_run ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7028\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7028\fail_assert.exe`
 test if_else_runs ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-9732\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-9732\fail_assert.exe`
 test loops_run ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-9732\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-9732\zero_step.exe`
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7028\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7028\zero_step.exe`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
-test out_of_bounds_panics_cleanly ... ok
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
+test out_of_bounds_panics_cleanly ... ok
+test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
 test run_flag_default_output_and_str_alias_work ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
-test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
-test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... FAILED
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
+test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 
-failures:
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.04s
 
----- pythonic_syntax_loops_classes_floats_fstrings_and_methods stdout ----
-
-thread 'pythonic_syntax_loops_classes_floats_fstrings_and_methods' (6672) panicked at tests\cli.rs:53:5:
-compiler stderr: PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
-Stack dump:
-0.	Program arguments: "C:\\Program Files\\LLVM\\bin\\clang.exe" -cc1 -triple x86_64-pc-windows-msvc19.52.37029 -emit-obj -mincremental-linker-compatible -dumpdir C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\archx-pythonic_v06-9732\\pythonic_v06.exe- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name archx-4956-0.ll -mrelocation-model pic -pic-level 2 -mframe-pointer=none -relaxed-aliasing -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -fms-volatile -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -fdebug-compilation-dir=D:\\a\\Archx-lang\\Archx-lang -fcoverage-compilation-dir=D:\\a\\Archx-lang\\Archx-lang -resource-dir "C:\\Program Files\\LLVM\\lib\\clang\\20" -O2 -Wno-override-module -ferror-limit 19 -fno-use-cxa-atexit -fms-extensions -fms-compatibility -fms-compatibility-version=19.52.37029 -fskip-odr-check-in-gmf -fdelayed-template-parsing -vectorize-loops -vectorize-slp -faddrsig -o C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\archx-4956-0-ad5bbf.o -x ir C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\archx-4956-0.ll
-1.	Optimizer
-2.	Running pass "function<eager-inv>(mem2reg,instcombine<max-iterations=1;no-verify-fixpoint>,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-hoist-loads-stores-with-cond-faulting;no-sink-common-insts;speculate-blocks;simplify-cond-branch;no-speculate-unpredictables>)" on module "C:\Users\RUNNER~1\AppData\Local\Temp\archx-4956-0.ll"
-3.	Running pass "instcombine<max-iterations=1;no-verify-fixpoint>" on function "archx_str_split_sep"
-Exception Code: 0xC0000005
- #0 0x00007ff75be45270 (C:\Program Files\LLVM\bin\clang.exe+0x1675270)
- #1 0x00007ff75be2ddb1 (C:\Program Files\LLVM\bin\clang.exe+0x165ddb1)
- #2 0x00007ff75be2abcd (C:\Program Files\LLVM\bin\clang.exe+0x165abcd)
- #3 0x00007ff75be291d1 (C:\Program Files\LLVM\bin\clang.exe+0x16591d1)
- #4 0x00007ff75be28e61 (C:\Program Files\LLVM\bin\clang.exe+0x1658e61)
- #5 0x00007ff75c05b655 (C:\Program Files\LLVM\bin\clang.exe+0x188b655)
- #6 0x00007ff75c05b2b1 (C:\Program Files\LLVM\bin\clang.exe+0x188b2b1)
- #7 0x00007ff75c638d7b (C:\Program Files\LLVM\bin\clang.exe+0x1e68d7b)
- #8 0x00007ff75aec0251 (C:\Program Files\LLVM\bin\clang.exe+0x6f0251)
- #9 0x00007ff75ab5a6df (C:\Program Files\LLVM\bin\clang.exe+0x38a6df)
-#10 0x00007ff75ab5612f (C:\Program Files\LLVM\bin\clang.exe+0x38612f)
-#11 0x00007ff75ab4cbb9 (C:\Program Files\LLVM\bin\clang.exe+0x37cbb9)
-#12 0x00007ff75af1a75f (C:\Program Files\LLVM\bin\clang.exe+0x74a75f)
-#13 0x00007ff75a7f7ed3 (C:\Program Files\LLVM\bin\clang.exe+0x27ed3)
-#14 0x00007ff75a7f7b42 (C:\Program Files\LLVM\bin\clang.exe+0x27b42)
-#15 0x00007ff75a7f4f16 (C:\Program Files\LLVM\bin\clang.exe+0x24f16)
-#16 0x00007ff75a7f1a2d (C:\Program Files\LLVM\bin\clang.exe+0x21a2d)
-#17 0x00007ff75a7f031e (C:\Program Files\LLVM\bin\clang.exe+0x2031e)
-#18 0x00007ff75ac3949a (C:\Program Files\LLVM\bin\clang.exe+0x46949a)
-#19 0x00007ff75ac35ed3 (C:\Program Files\LLVM\bin\clang.exe+0x465ed3)
-#20 0x00007ff75c71d264 (C:\Program Files\LLVM\bin\clang.exe+0x1f4d264)
-#21 0x00007ffad07bdd37 (C:\Windows\System32\KERNEL32.DLL+0x2dd37)
-#22 0x00007ffad289f2bc (C:\Windows\SYSTEM32\ntdll.dll+0x3f2bc)
-clang: error: clang frontend command failed due to signal (use -v to see invocation)
-clang version 20.1.8
-Target: x86_64-pc-windows-msvc
-Thread model: posix
-InstalledDir: C:\Program Files\LLVM\bin
-clang: note: diagnostic msg: Error generating preprocessed source(s) - no preprocessable inputs.
-archx: error: clang failed to compile generated LLVM IR
-
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-
-failures:
-    pythonic_syntax_loops_classes_floats_fstrings_and_methods
-
-test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.86s
-
-[1m[91merror[0m: test failed, to rerun pass `--test cli`

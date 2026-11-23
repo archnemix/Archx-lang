@@ -1,0 +1,3 @@
+sample #5 = 7.5
+words: | 4 | FAST
+mean=4.5, countdown=30, buf900=90

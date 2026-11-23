@@ -7,11 +7,13 @@
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00", align 1
+@.fmt.int.elem = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
+@.fmt.str.elem = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@.str.none = private unnamed_addr constant [5 x i8] c"None\00", align 1
 @.fmt.lbrack = private unnamed_addr constant [2 x i8] c"[\00", align 1
 @.fmt.sep = private unnamed_addr constant [3 x i8] c", \00", align 1
 @.fmt.rbrack = private unnamed_addr constant [3 x i8] c"]\0A\00", align 1
-@.fmt.int.elem = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
-@.fmt.str.elem = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@.fmt.rbrack.inline = private unnamed_addr constant [2 x i8] c"]\00", align 1
 
 define internal fastcc i64 @archx_fn_dot(%ArchxVec %arg.a, %ArchxVec %arg.b) {
 entry:

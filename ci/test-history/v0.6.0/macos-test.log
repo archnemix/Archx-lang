@@ -7,41 +7,41 @@ Thread model: posix
 InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
 --- cargo test ---
 [1m[92m   Compiling[0m archx v0.6.0 (/Users/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 4.67s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 7.39s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/627a0d79eb7a1586/out/archx-627a0d79eb7a1586)
 
 running 32 tests
-test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
-test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
+test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
-test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
 test lexer::tests::equality_operators ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::loop_tokens ... ok
 test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
 test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
 test parser::tests::parses_elif_chain ... ok
-test parser::tests::parses_for_and_break_continue ... ok
-test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_functions_with_params ... ok
-test parser::tests::parses_if_else ... ok
+test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_if_else ... ok
 test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
-test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test parser::tests::rejects_missing_colon ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test tests::default_output_strips_archx_extensions ... ok
 
 test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -52,41 +52,23 @@ running 18 tests
 test break_outside_loop_is_an_error ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
 test emit_ir_works ... ok
+test arrays_run ... ok
 test functions_run ... ok
 test elif_and_compound_assign_run ... ok
-test arrays_run ... ok
 test hello_world_runs ... ok
 test if_else_runs ... ok
 test loops_run ... ok
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1304/fail_assert.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1304/fail_assert`
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1304/zero_step.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1304/zero_step`
-test pythonic_assert_and_zero_step_panic_cleanly ... ok
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1290/fail_assert.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1290/fail_assert`
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
-test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... FAILED
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1290/zero_step.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1290/zero_step`
+test pythonic_assert_and_zero_step_panic_cleanly ... ok
 test out_of_bounds_panics_cleanly ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
+test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
 test run_flag_default_output_and_str_alias_work ... ok
-test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
-test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
+test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
+test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 
-failures:
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s
 
----- pythonic_syntax_loops_classes_floats_fstrings_and_methods stdout ----
-
-thread 'pythonic_syntax_loops_classes_floats_fstrings_and_methods' (7846) panicked at tests/cli.rs:53:5:
-compiler stderr: error: invalid LLVM IR input: PHINode should have one entry for each predecessor of its parent basic block!
-  %start = phi i64 [ 0, %init ], [ %next_start, %pushed ]
-
-1 error generated.
-archx: error: clang failed to compile generated LLVM IR
-
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-
-failures:
-    pythonic_syntax_loops_classes_floats_fstrings_and_methods
-
-test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
-
-[1m[91merror[0m: test failed, to rerun pass `--test cli`

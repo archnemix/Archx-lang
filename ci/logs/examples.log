@@ -70,6 +70,16 @@ compiled `examples/structs_regions.archx.lang` -> `/tmp/archx-structs_regions`
 exit=0
 3040
 report:milestone5:ok
+== emit-ir: pythonic ==
+exit=0
+== compile: pythonic ==
+exit=0
+compiled `examples/pythonic.archx.lang` -> `/tmp/archx-pythonic`
+== run: pythonic ==
+exit=0
+sample #5 = 7.5
+words: | 4 | FAST
+mean=4.5, countdown=30, buf900=90
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
@@ -77,3 +87,4 @@ if.opt.ll exit=0
 loops.opt.ll exit=0
 arrays.opt.ll exit=0
 structs_regions.opt.ll exit=0
+pythonic.opt.ll exit=0
