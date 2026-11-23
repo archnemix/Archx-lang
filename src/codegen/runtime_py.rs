@@ -1345,7 +1345,7 @@ oom:
   call void @archx_oom_fail()
   unreachable
 loop:
-  %start = phi i64 [ 0, %init ], [ %next_start, %pushed ]
+  %start = phi i64 [ 0, %init ], [ %next_start, %pushed ], [ %start, %no_hit ]
   %cur = phi i64 [ 0, %init ], [ %next_start, %pushed ], [ %cur_inc, %no_hit ]
   %vptr = phi ptr [ %iv, %init ], [ %vptr_p, %pushed ], [ %vptr, %no_hit ]
   %vlen = phi i64 [ 0, %init ], [ %vlen_p, %pushed ], [ %vlen, %no_hit ]
