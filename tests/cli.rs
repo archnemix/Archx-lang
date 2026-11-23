@@ -373,3 +373,257 @@ fn break_outside_loop_is_an_error() {
         "stderr was: {err}"
     );
 }
+
+#[test]
+fn cli_enforces_double_extensions_and_prevents_source_clobber() {
+    let dir = std::env::temp_dir().join(format!("archx-ext-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    // Plain `.archx` must be rejected:
+    let bad = dir.join("prog.archx");
+    fs::write(&bad, "func main():\n    print(1)\n").unwrap();
+    let bad_out = Command::new(archx())
+        .arg(&bad)
+        .arg("--emit-ir")
+        .output()
+        .unwrap();
+    assert!(!bad_out.status.success());
+    let bad_err = String::from_utf8_lossy(&bad_out.stderr);
+    assert!(
+        bad_err.contains(".archx.lang") && bad_err.contains(".ax.lg"),
+        "stderr was: {bad_err}"
+    );
+
+    // All 4 valid double extensions must work:
+    for ext in ["archx.lang", "archx.lg", "ax.lang", "ax.lg"] {
+        let p = dir.join(format!("ok.{ext}"));
+        fs::write(&p, "func main():\n    print(7)\n").unwrap();
+        let res = Command::new(archx())
+            .arg(&p)
+            .arg("--emit-ir")
+            .output()
+            .unwrap();
+        assert!(
+            res.status.success(),
+            "extension .{ext} failed: {}",
+            String::from_utf8_lossy(&res.stderr)
+        );
+    }
+
+    // `-o` pointing at input source file must be refused before invoking clang:
+    let src = dir.join("keep.archx.lang");
+    let orig = "func main():\n    print(42)\n";
+    fs::write(&src, orig).unwrap();
+    let clobber = Command::new(archx())
+        .arg(&src)
+        .arg("-o")
+        .arg(&src)
+        .output()
+        .unwrap();
+    assert!(!clobber.status.success());
+    assert!(
+        String::from_utf8_lossy(&clobber.stderr).contains("refusing to overwrite source file")
+    );
+    assert_eq!(fs::read_to_string(&src).unwrap(), orig);
+}
+
+#[test]
+fn safe_division_panics_on_zero_and_handles_int_min_neg_one() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    // 1. i64::MIN / -1 and i64::MIN % -1 must NOT trap with SIGFPE:
+    let out = build_and_run(
+        "int_min_div",
+        "\
+func safe_ops(a: int, b: int) -> int:
+    let q = a / b
+    let r = a % b
+    if q == a and r == 0:
+        return 99
+    return 0
+
+func main():
+    let min_val = -9223372036854775807 - 1
+    print(safe_ops(min_val, -1))
+",
+    );
+    assert_eq!(out, "99\n");
+
+    // 2. Runtime division by zero must cleanly exit 101 with diagnostic:
+    let dir = std::env::temp_dir().join(format!("archx-divz-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("divz.archx.lang");
+    fs::write(
+        &src,
+        "func divide(a: int, b: int) -> int:\n    return a / b\n\nfunc main():\n    print(divide(10, 0))\n",
+    )
+    .unwrap();
+    let exe = dir.join("divz");
+    assert!(
+        Command::new(archx())
+            .arg(&src)
+            .arg("-o")
+            .arg(&exe)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    let run = Command::new(&exe).output().unwrap();
+    assert_eq!(run.status.code(), Some(101));
+    assert!(String::from_utf8_lossy(&run.stdout).contains("division by zero"));
+}
+
+#[test]
+fn strings_sso_heap_concat_equality_and_embedded_nul_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "strings_m5",
+        "\
+func greet(who: string) -> string:
+    let msg = \"Hello, \" + who
+    msg += \"!\"
+    return msg
+
+func main():
+    let short_a = \"archx\"
+    let short_b = \"ar\" + \"chx\"
+    print(short_a == short_b)
+    print(len(short_b))
+
+    let g = greet(\"fast-llvm-world\")
+    print(g)
+    print(len(g))
+    print(g == \"Hello, fast-llvm-world!\")
+    print(g == \"Hello, other-llvm-world!\")
+
+    let words = [\"alpha\", \"beta-gamma-delta\", g]
+    for w in words:
+        print(w)
+
+    let nul_s = \"ab\\0cd\"
+    print(len(nul_s))
+    print(nul_s == \"ab\\0cd\")
+    print(nul_s == \"ab\\0ce\")
+    print(nul_s)
+",
+    );
+    assert_eq!(
+        out,
+        "true\n5\nHello, fast-llvm-world!\n23\ntrue\nfalse\nalpha\nbeta-gamma-delta\nHello, fast-llvm-world!\n5\ntrue\nfalse\nab\0cd\n"
+    );
+}
+
+#[test]
+fn structs_value_semantics_aos_and_transparent_soa_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "structs_m5",
+        "\
+struct Vec2:
+    x: int
+    y: int
+
+struct LabeledVec:
+    tag: string
+    pos: Vec2
+
+func shift(v: Vec2, dx: int, dy: int) -> Vec2:
+    return Vec2(v.x + dx, v.y + dy)
+
+func run_soa(n: int) -> int:
+    let pts = [Vec2(1, 2); n]
+    for i in 0..n:
+        pts[i].x += i * 3
+        pts[i].y += i
+    let sum = 0
+    for p in pts:
+        sum += p.x + p.y
+    return sum
+
+func main():
+    let a = Vec2(10, 20)
+    let b = a
+    b.x += 5
+    print(a.x)
+    print(b.x)
+    let c = shift(b, 1, -4)
+    print(c == Vec2(16, 16))
+
+    let lv = LabeledVec(\"origin-plus-more\", c)
+    print(lv.tag)
+    print(lv.pos.y)
+
+    let arr = [Vec2(1, 1), Vec2(2, 3)]
+    arr[1].x += 10
+    print(arr[1].x + arr[0].y)
+
+    print(run_soa(100))
+",
+    );
+    // run_soa(100): sum_{i=0..99} ((1 + 3i) + (2 + i)) = 100*3 + 4*(99*100/2) = 300 + 19800 = 20100
+    assert_eq!(out, "10\n15\ntrue\norigin-plus-more\n16\n13\n20100\n");
+}
+
+#[test]
+fn regions_step_loops_foreach_and_ownership_churn_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "regions_m5",
+        "\
+func build_summary(rounds: int) -> string:
+    let total = 0
+    for r in 0..rounds:
+        region:
+            let scratch = [1; 256]
+            for i in 0..256 step 4:
+                scratch[i] = r + i
+            for v in scratch:
+                total += v
+            let banner = \"round-\" + \"arena-scratch-string\"
+            if len(banner) == 26:
+                total += 1
+    region:
+        let res = \"ok:\" + \"region-promoted-result\"
+        if total > 0:
+            return res
+    return \"bad\"
+
+func main():
+    let step_sum = 0
+    for k in 1..20 step 3:
+        step_sum += k
+    print(step_sum)
+
+    # Churn reassignments & nested containers to exercise deterministic drops:
+    let acc = \"seed\"
+    let mat = [[1, 2], [3, 4]]
+    for iter in 0..500:
+        acc = \"iteration-long-string-value\"
+        mat = [[iter, iter + 1], [iter + 2, iter + 3]]
+        let _discard = [10, 20, 30, 40]
+    print(len(acc))
+    print(mat[1][1])
+    print(build_summary(200))
+",
+    );
+    // 1 + 4 + 7 + 10 + 13 + 16 + 19 = 70
+    // iter=499 -> mat[1][1] = 502
+    assert_eq!(out, "70\n27\n502\nok:region-promoted-result\n");
+}
+

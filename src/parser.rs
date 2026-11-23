@@ -2,62 +2,71 @@ use crate::ast::*;
 use crate::diag::{Diagnostic, Result, Span};
 use crate::token::{Token, TokenKind};
 
-/// Recursive-descent parser.
-///
-/// Grammar (milestone 4):
-///
-/// ```text
-/// program     := func_def*
-/// func_def    := "func" IDENT "(" params? ")" ("->" type)? ":" NEWLINE INDENT stmt+ DEDENT
-/// params      := param ("," param)*
-/// param       := IDENT ":" type
-/// type        := "int" | "bool" | "string" | "void" | "[" type "]"
-/// stmt        := "let" IDENT (":" type)? "=" expr NEWLINE
-///              | lvalue ("=" | "+=" | "-=" | "*=" | "/=" | "%=") expr NEWLINE
-///              | "return" expr? NEWLINE
-///              | "if" expr ":" NEWLINE INDENT stmt+ DEDENT
-///                ("elif" expr ":" NEWLINE INDENT stmt+ DEDENT)*
-///                ("else" ":" NEWLINE INDENT stmt+ DEDENT)?
-///              | "while" expr ":" NEWLINE INDENT stmt+ DEDENT
-///              | "for" IDENT "in" expr ".." expr ":" NEWLINE INDENT stmt+ DEDENT
-///              | "break" NEWLINE
-///              | "continue" NEWLINE
-///              | expr NEWLINE
-/// lvalue      := IDENT | postfix "[" expr "]"
-/// expr        := or_expr
-/// or_expr     := and_expr ("or" and_expr)*
-/// and_expr    := not_expr ("and" not_expr)*
-/// not_expr    := "not" not_expr | comparison
-/// comparison  := additive (("==" | "!=" | "<" | ">" | "<=" | ">=") additive)*
-/// additive    := multiplicative (("+" | "-") multiplicative)*
-/// multiplicative := unary (("*" | "/" | "%") unary)*
-/// unary       := "-" unary | postfix
-/// postfix     := primary ("[" expr "]")*
-/// primary     := INT | STRING | BOOL | IDENT | IDENT "(" args? ")"
-///              | "[" "]" | "[" expr ";" expr "]" | "[" args ","? "]"
-///              | "(" expr ")"
-/// args        := expr ("," expr)*
-/// ```
+const MAX_NESTING: usize = 256;
+
+/// Recursive-descent parser (milestone 5: structs, regions, strided/foreach loops).
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    depth: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+        Self {
+            tokens,
+            pos: 0,
+            depth: 0,
+        }
     }
 
     pub fn parse_program(&mut self) -> Result<Program> {
+        let mut structs = Vec::new();
         let mut funcs = Vec::new();
         self.skip_newlines();
 
         while !self.check(&TokenKind::Eof) {
-            funcs.push(self.parse_func()?);
+            if self.check(&TokenKind::Struct) {
+                structs.push(self.parse_struct()?);
+            } else {
+                funcs.push(self.parse_func()?);
+            }
             self.skip_newlines();
         }
 
-        Ok(Program { funcs })
+        Ok(Program { structs, funcs })
+    }
+
+    fn parse_struct(&mut self) -> Result<StructDef> {
+        let span = self.peek().span;
+        self.expect(TokenKind::Struct, "`struct`")?;
+        let name = self.expect_ident("a struct name")?;
+        self.expect(TokenKind::Colon, "`:`")?;
+        self.expect(TokenKind::Newline, "a newline after `struct` header")?;
+        self.expect(TokenKind::Indent, "an indented struct body")?;
+
+        let mut fields = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                break;
+            }
+            let field_name = self.expect_ident("a field name")?;
+            self.expect(TokenKind::Colon, "`:`")?;
+            let ty = self.parse_type()?;
+            self.expect(TokenKind::Newline, "a newline after field declaration")?;
+            fields.push(Param {
+                name: field_name,
+                ty,
+            });
+        }
+
+        self.expect(TokenKind::Dedent, "the end of the struct body")?;
+        if fields.is_empty() {
+            return Err(Diagnostic::new("struct must have at least one field", span));
+        }
+
+        Ok(StructDef { name, fields, span })
     }
 
     fn parse_func(&mut self) -> Result<Func> {
@@ -119,6 +128,13 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Result<Type> {
+        self.enter_depth()?;
+        let res = self.parse_type_inner();
+        self.depth -= 1;
+        res
+    }
+
+    fn parse_type_inner(&mut self) -> Result<Type> {
         let token = self.peek().clone();
         match &token.kind {
             TokenKind::LBracket => {
@@ -149,8 +165,13 @@ impl Parser {
                 self.bump();
                 Ok(Type::Void)
             }
+            TokenKind::Ident(name) => {
+                let sname = name.clone();
+                self.bump();
+                Ok(Type::Struct(sname))
+            }
             _ => Err(Diagnostic::new(
-                "expected a type (`int`, `bool`, `string`, `void`, or `[T]`)",
+                "expected a type (`int`, `bool`, `string`, `void`, `[T]`, or struct name)",
                 token.span,
             )),
         }
@@ -220,27 +241,66 @@ impl Parser {
             self.bump();
             let var = self.expect_ident("a loop variable name")?;
             self.expect(TokenKind::In, "`in`")?;
-            let start = self.parse_expr()?;
-            self.expect(TokenKind::DotDot, "`..`")?;
-            let end = self.parse_expr()?;
+            let first = self.parse_expr()?;
+            if self.check(&TokenKind::DotDot) {
+                self.bump();
+                let end = self.parse_expr()?;
+                let step = if self.check(&TokenKind::Step) {
+                    self.bump();
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
+                self.expect(TokenKind::Colon, "`:`")?;
+                self.expect(TokenKind::Newline, "a newline after the `for` header")?;
+                self.expect(TokenKind::Indent, "an indented `for` body")?;
+                let body = self.parse_block_body()?;
+                self.expect(TokenKind::Dedent, "the end of the `for` body")?;
+                if body.is_empty() {
+                    return Err(Diagnostic::new("`for` body cannot be empty", span));
+                }
+                return Ok(Stmt {
+                    kind: StmtKind::For {
+                        var,
+                        start: first,
+                        end,
+                        step,
+                        body,
+                    },
+                    span,
+                });
+            } else {
+                self.expect(TokenKind::Colon, "`:`")?;
+                self.expect(TokenKind::Newline, "a newline after the `for` header")?;
+                self.expect(TokenKind::Indent, "an indented `for` body")?;
+                let body = self.parse_block_body()?;
+                self.expect(TokenKind::Dedent, "the end of the `for` body")?;
+                if body.is_empty() {
+                    return Err(Diagnostic::new("`for` body cannot be empty", span));
+                }
+                return Ok(Stmt {
+                    kind: StmtKind::ForEach {
+                        var,
+                        iter: first,
+                        body,
+                    },
+                    span,
+                });
+            }
+        }
+
+        if self.check(&TokenKind::Region) {
+            self.bump();
             self.expect(TokenKind::Colon, "`:`")?;
-            self.expect(
-                TokenKind::Newline,
-                "a newline after the `for` header",
-            )?;
-            self.expect(TokenKind::Indent, "an indented `for` body")?;
+            self.expect(TokenKind::Newline, "a newline after `region:`")?;
+            self.expect(TokenKind::Indent, "an indented `region` body")?;
             let body = self.parse_block_body()?;
-            self.expect(TokenKind::Dedent, "the end of the `for` body")?;
+            self.expect(TokenKind::Dedent, "the end of the `region` body")?;
             if body.is_empty() {
-                return Err(Diagnostic::new("`for` body cannot be empty", span));
+                return Err(Diagnostic::new("`region` body cannot be empty", span));
             }
             return Ok(Stmt {
-                kind: StmtKind::For {
-                    var,
-                    start,
-                    end,
-                    body,
-                },
+                kind: StmtKind::Region { body },
                 span,
             });
         }
@@ -280,9 +340,10 @@ impl Parser {
             let target = match lhs.kind {
                 ExprKind::Var(name) => AssignTarget::Var(name),
                 ExprKind::Index { target, index } => AssignTarget::Index { target, index },
+                ExprKind::Field { target, field } => AssignTarget::Field { target, field },
                 _ => {
                     return Err(Diagnostic::new(
-                        "left-hand side of assignment must be a variable or array element",
+                        "left-hand side of assignment must be a variable, field, or array element",
                         eq_span,
                     ));
                 }
@@ -303,6 +364,13 @@ impl Parser {
     }
 
     fn parse_if_tail(&mut self, span: Span, keyword: &str) -> Result<Stmt> {
+        self.enter_depth()?;
+        let res = self.parse_if_tail_inner(span, keyword);
+        self.depth -= 1;
+        res
+    }
+
+    fn parse_if_tail_inner(&mut self, span: Span, keyword: &str) -> Result<Stmt> {
         let cond = self.parse_expr()?;
         self.expect(TokenKind::Colon, "`:`")?;
         self.expect(
@@ -360,19 +428,39 @@ impl Parser {
     }
 
     fn parse_block_body(&mut self) -> Result<Vec<Stmt>> {
+        self.enter_depth()?;
         let mut body = Vec::new();
         loop {
             self.skip_newlines();
             if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
                 break;
             }
-            body.push(self.parse_stmt()?);
+            match self.parse_stmt() {
+                Ok(s) => body.push(s),
+                Err(e) => {
+                    self.depth -= 1;
+                    return Err(e);
+                }
+            }
         }
+        self.depth -= 1;
         Ok(body)
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
-        self.parse_or()
+        self.enter_depth()?;
+        let res = self.parse_or();
+        self.depth -= 1;
+        res
+    }
+
+    fn enter_depth(&mut self) -> Result<()> {
+        self.depth += 1;
+        if self.depth > MAX_NESTING {
+            self.depth -= 1;
+            return Err(self.error(format!("maximum nesting depth ({MAX_NESTING}) exceeded")));
+        }
+        Ok(())
     }
 
     fn parse_or(&mut self) -> Result<Expr> {
@@ -427,7 +515,7 @@ impl Parser {
         if self.check(&TokenKind::Not) {
             let span = self.peek().span;
             self.bump();
-            let expr = self.parse_not()?;
+            let expr = self.parse_expr()?;
             return Ok(Expr {
                 kind: ExprKind::Unary {
                     op: UnOp::Not,
@@ -524,7 +612,7 @@ impl Parser {
         if self.check(&TokenKind::Minus) {
             let span = self.peek().span;
             self.bump();
-            let expr = self.parse_unary()?;
+            let expr = self.parse_expr()?;
             return Ok(Expr {
                 kind: ExprKind::Unary {
                     op: UnOp::Neg,
@@ -539,18 +627,33 @@ impl Parser {
 
     fn parse_postfix(&mut self) -> Result<Expr> {
         let mut expr = self.parse_primary()?;
-        while self.check(&TokenKind::LBracket) {
-            let span = self.peek().span;
-            self.bump();
-            let index = self.parse_expr()?;
-            self.expect(TokenKind::RBracket, "`]`")?;
-            expr = Expr {
-                kind: ExprKind::Index {
-                    target: Box::new(expr),
-                    index: Box::new(index),
-                },
-                span,
-            };
+        loop {
+            if self.check(&TokenKind::LBracket) {
+                let span = self.peek().span;
+                self.bump();
+                let index = self.parse_expr()?;
+                self.expect(TokenKind::RBracket, "`]`")?;
+                expr = Expr {
+                    kind: ExprKind::Index {
+                        target: Box::new(expr),
+                        index: Box::new(index),
+                    },
+                    span,
+                };
+            } else if self.check(&TokenKind::Dot) {
+                let span = self.peek().span;
+                self.bump();
+                let field = self.expect_ident("a field name after `.`")?;
+                expr = Expr {
+                    kind: ExprKind::Field {
+                        target: Box::new(expr),
+                        field,
+                    },
+                    span,
+                };
+            } else {
+                break;
+            }
         }
         Ok(expr)
     }
@@ -781,10 +884,32 @@ mod tests {
     #[test]
     fn parses_arrays_indexing_and_compound_assign() {
         let program = parse(
-            "func sum(xs: [int]) -> int:\n    let total = 0\n    for i in 0..len(xs):\n        total += xs[i]\n    return total\n\nfunc main():\n    let empty: [int] = []\n    let buf = [0; 8]\n    buf[0] = 10\n    buf[0] += 5\n    print(sum([1, 2, 3,]))\n",
+            "func sum(xs: [int]) -> int:\n    let total = 0\n    for i in 0..len(xs):
+        total += xs[i]\n    return total\n\nfunc main():\n    let empty: [int] = []\n    let buf = [0; 8]\n    buf[0] = 10\n    buf[0] += 5\n    print(sum([1, 2, 3,]))\n",
         );
         assert_eq!(program.funcs.len(), 2);
         assert_eq!(program.funcs[0].params[0].ty, Type::Array(Box::new(Type::Int)));
+    }
+
+    #[test]
+    fn parses_structs_regions_step_and_foreach() {
+        let program = parse(
+            "struct Point:\n    x: int\n    y: int\n\nfunc main():\n    region:\n        let pts = [Point(1, 2); 4]\n        pts[0].x += 5\n        for i in 0..4 step 2:\n            print(pts[i].x)\n        for p in pts:\n            print(p.y)\n",
+        );
+        assert_eq!(program.structs.len(), 1);
+        assert_eq!(program.structs[0].fields.len(), 2);
+        assert_eq!(program.funcs.len(), 1);
+    }
+
+    #[test]
+    fn rejects_deeply_nested_unary_without_stack_overflow() {
+        let mut src = String::from("func main():\n    let x = ");
+        for _ in 0..300 {
+            src.push('-');
+        }
+        src.push_str("1\n");
+        let tokens = Lexer::new(&src).tokenize().unwrap();
+        assert!(Parser::new(tokens).parse_program().is_err());
     }
 
     #[test]

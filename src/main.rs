@@ -6,11 +6,15 @@ mod parser;
 mod token;
 
 use std::env;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VALID_EXTENSIONS: [&str; 4] = [".archx.lang", ".archx.lg", ".ax.lang", ".ax.lg"];
+static TMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 struct Options {
     input: Option<PathBuf>,
@@ -75,6 +79,14 @@ fn run(args: &[String]) -> Result<i32, String> {
     let input = options
         .input
         .ok_or_else(|| "no input file (try `archx --help`)".to_string())?;
+
+    if !has_valid_archx_extension(&input) {
+        return Err(format!(
+            "invalid source file extension for `{}` (expected `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`)",
+            input.display()
+        ));
+    }
+
     let source = fs::read_to_string(&input)
         .map_err(|error| format!("cannot read `{}`: {error}", input.display()))?;
 
@@ -98,10 +110,13 @@ fn run(args: &[String]) -> Result<i32, String> {
     let output = options
         .output
         .unwrap_or_else(|| default_output(&input));
-    let ir_path = output.with_extension("ll");
 
-    fs::write(&ir_path, &ir)
-        .map_err(|error| format!("cannot write `{}`: {error}", ir_path.display()))?;
+    if paths_refer_to_same_file(&input, &output) {
+        return Err(format!(
+            "refusing to overwrite source file `{}` with `-o`",
+            input.display()
+        ));
+    }
 
     let clang = find_clang().ok_or_else(|| {
         "no `clang` found. Archx emits LLVM IR and uses clang to compile it.\n\
@@ -110,20 +125,23 @@ fn run(args: &[String]) -> Result<i32, String> {
             .to_string()
     })?;
 
-    let status = Command::new(&clang)
+    let ir_path = write_exclusive_temp_ir(&ir)?;
+
+    let clang_res = Command::new(&clang)
         .arg(&ir_path)
         .arg("-O2")
         .arg("-Wno-override-module")
         .arg("-o")
         .arg(&output)
-        .status()
+        .status();
+
+    let _ = fs::remove_file(&ir_path);
+
+    let status = clang_res
         .map_err(|error| format!("failed to run `{}`: {error}", clang.display()))?;
 
     if !status.success() {
-        return Err(format!(
-            "clang failed to compile `{}`",
-            ir_path.display()
-        ));
+        return Err("clang failed to compile generated LLVM IR".to_string());
     }
 
     if options.run {
@@ -141,26 +159,74 @@ fn run(args: &[String]) -> Result<i32, String> {
     Ok(0)
 }
 
+fn has_valid_archx_extension(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    VALID_EXTENSIONS
+        .iter()
+        .any(|ext| name.len() > ext.len() && name.ends_with(ext))
+}
+
+fn paths_refer_to_same_file(a: &Path, b: &Path) -> bool {
+    if a == b {
+        return true;
+    }
+    if let (Ok(ca), Ok(cb)) = (fs::canonicalize(a), fs::canonicalize(b)) {
+        return ca == cb;
+    }
+    false
+}
+
+fn write_exclusive_temp_ir(ir: &str) -> Result<PathBuf, String> {
+    let dir = env::temp_dir();
+    let pid = std::process::id();
+    for attempt in 0..1024u64 {
+        let seq = TMP_COUNTER.fetch_add(1, Ordering::Relaxed) + attempt;
+        let candidate = dir.join(format!("archx-{pid}-{seq}.ll"));
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(mut file) => {
+                if let Err(err) = file.write_all(ir.as_bytes()) {
+                    let _ = fs::remove_file(&candidate);
+                    return Err(format!(
+                        "cannot write temporary IR `{}`: {err}",
+                        candidate.display()
+                    ));
+                }
+                return Ok(candidate);
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(err) => {
+                return Err(format!(
+                    "cannot create temporary IR `{}`: {err}",
+                    candidate.display()
+                ));
+            }
+        }
+    }
+    Err("failed to allocate unique temporary `.ll` file".to_string())
+}
+
 fn default_output(input: &Path) -> PathBuf {
     let file_name = input
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "a.out".to_string());
 
-    let stem = if let Some(stem) = file_name.strip_suffix(".archx.lang") {
-        stem.to_string()
-    } else if let Some(stem) = file_name.strip_suffix(".archx.lg") {
-        stem.to_string()
-    } else if let Some(stem) = file_name.strip_suffix(".ax.lang") {
-        stem.to_string()
-    } else if let Some(stem) = file_name.strip_suffix(".ax.lg") {
-        stem.to_string()
-    } else {
-        Path::new(&file_name)
-            .file_stem()
-            .map(|stem| stem.to_string_lossy().to_string())
-            .unwrap_or_else(|| "a.out".to_string())
-    };
+    let stem = VALID_EXTENSIONS
+        .iter()
+        .find_map(|ext| file_name.strip_suffix(ext))
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            Path::new(&file_name)
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().to_string())
+                .unwrap_or_else(|| "a.out".to_string())
+        });
 
     let mut output = PathBuf::from(stem);
     if cfg!(windows) {
@@ -248,19 +314,12 @@ mod tests {
             path
         };
 
-        assert_eq!(
-            default_output(Path::new("hello.archx.lang")),
-            expected("hello")
-        );
-        assert_eq!(
-            default_output(Path::new("hello.archx.lg")),
-            expected("hello")
-        );
-        assert_eq!(
-            default_output(Path::new("hello.ax.lang")),
-            expected("hello")
-        );
+        assert_eq!(default_output(Path::new("hello.archx.lang")), expected("hello"));
+        assert_eq!(default_output(Path::new("dir/hello.archx.lg")), expected("hello"));
+        assert_eq!(default_output(Path::new("hello.ax.lang")), expected("hello"));
         assert_eq!(default_output(Path::new("hello.ax.lg")), expected("hello"));
-        assert_eq!(default_output(Path::new("hello.txt")), expected("hello"));
+        assert!(has_valid_archx_extension(Path::new("hello.archx.lang")));
+        assert!(!has_valid_archx_extension(Path::new("hello.archx")));
+        assert!(!has_valid_archx_extension(Path::new(".archx.lang")));
     }
 }

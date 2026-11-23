@@ -1,0 +1,41 @@
+# Milestone 5 showcase: value structs, transparent SoA arrays,
+# 16-byte prefix-SSO strings, strided/foreach loops, and `region:` arenas.
+
+struct Body:
+    x: int
+    y: int
+    vx: int
+    vy: int
+
+func advance(n: int, steps: int) -> int:
+    let bodies = [Body(0, 0, 1, 2); n]
+    for i in 0..n:
+        bodies[i].x = i * 2
+        bodies[i].y = i * 3
+
+    for t in 0..steps:
+        for i in 0..n:
+            bodies[i].x += bodies[i].vx
+            bodies[i].y += bodies[i].vy
+        for i in 0..n step 4:
+            bodies[i].vx += 1
+
+    let total = 0
+    for b in bodies:
+        total += b.x + b.y
+    return total
+
+func format_report(label: string, score: int) -> string:
+    region:
+        let scratch = [1; 64]
+        for i in 0..64 step 2:
+            scratch[i] = score
+        let tag = "report:" + label
+        if scratch[0] == score and len(tag) > 7:
+            return tag + ":ok"
+    return "unreachable"
+
+func main():
+    let sim = advance(32, 5)
+    print(sim)
+    print(format_report("milestone5", sim))

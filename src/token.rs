@@ -4,6 +4,8 @@ use crate::diag::Span;
 pub enum TokenKind {
     // Keywords
     Func,
+    Struct,
+    Region,
     Let,
     Return,
     If,
@@ -12,6 +14,7 @@ pub enum TokenKind {
     While,
     For,
     In,
+    Step,
     Break,
     Continue,
     And,
@@ -28,6 +31,7 @@ pub enum TokenKind {
     Colon,
     Semicolon,
     Arrow,
+    Dot,
     DotDot,
     LParen,
     RParen,
@@ -63,6 +67,8 @@ impl TokenKind {
     pub fn describe(&self) -> String {
         match self {
             TokenKind::Func => "`func`".to_string(),
+            TokenKind::Struct => "`struct`".to_string(),
+            TokenKind::Region => "`region`".to_string(),
             TokenKind::Let => "`let`".to_string(),
             TokenKind::Return => "`return`".to_string(),
             TokenKind::If => "`if`".to_string(),
@@ -71,6 +77,7 @@ impl TokenKind {
             TokenKind::While => "`while`".to_string(),
             TokenKind::For => "`for`".to_string(),
             TokenKind::In => "`in`".to_string(),
+            TokenKind::Step => "`step`".to_string(),
             TokenKind::Break => "`break`".to_string(),
             TokenKind::Continue => "`continue`".to_string(),
             TokenKind::And => "`and`".to_string(),
@@ -83,6 +90,7 @@ impl TokenKind {
             TokenKind::Colon => "`:`".to_string(),
             TokenKind::Semicolon => "`;`".to_string(),
             TokenKind::Arrow => "`->`".to_string(),
+            TokenKind::Dot => "`.`".to_string(),
             TokenKind::DotDot => "`..`".to_string(),
             TokenKind::LParen => "`(`".to_string(),
             TokenKind::RParen => "`)`".to_string(),

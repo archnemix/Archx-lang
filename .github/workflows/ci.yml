@@ -60,7 +60,7 @@ jobs:
           set +e
           (
             fail=0
-            for name in hello functions if loops arrays; do
+            for name in hello functions if loops arrays structs_regions; do
               echo "== emit-ir: $name =="
               ./target/release/archx "examples/$name.archx.lang" --emit-ir > "ci/out/$name.ll"
               code=$?
@@ -88,7 +88,7 @@ jobs:
             done
 
             echo "== optimized IR (clang -O2) =="
-            for name in hello functions if loops arrays; do
+            for name in hello functions if loops arrays structs_regions; do
               clang -O2 -Wno-override-module -S -emit-llvm "ci/out/$name.ll" -o "ci/out/$name.opt.ll"
               code=$?
               echo "$name.opt.ll exit=$code"
@@ -101,12 +101,26 @@ jobs:
           cat ci/logs/examples.log
           exit "$status"
 
+      - name: Verify zero memory leaks & memory safety (ASan + LSan)
+        run: |
+          set -euo pipefail
+          for target in examples/arrays.archx.lang examples/structs_regions.archx.lang benchmarks/composite.archx.lang; do
+            echo "== ASan + LSan check: $target =="
+            ./target/release/archx "$target" --emit-ir > /tmp/asan_target.ll
+            clang -O1 -g -fsanitize=address,leak -fno-omit-frame-pointer -Wno-override-module /tmp/asan_target.ll -o /tmp/asan_target
+            ASAN_OPTIONS=detect_leaks=1 /tmp/asan_target > /dev/null
+            echo "CLEAN: $target (0 leaks, 0 invalid accesses)"
+          done 2>&1 | tee ci/logs/asan_lsan.log
+
       - name: Benchmark against C and Rust
         run: |
           set -o pipefail
           ./target/release/archx benchmarks/arrays.archx.lang --emit-ir > /tmp/bench_arrays.ll
           clang -O2 -Wno-override-module -S -emit-llvm /tmp/bench_arrays.ll -o ci/out/bench_arrays.opt.ll
           clang -O2 -S -emit-llvm benchmarks/arrays_raw.c -o ci/out/bench_arrays_c_raw.opt.ll
+          ./target/release/archx benchmarks/composite.archx.lang --emit-ir > /tmp/bench_composite.ll
+          clang -O2 -Wno-override-module -S -emit-llvm /tmp/bench_composite.ll -o ci/out/bench_composite.opt.ll
+          clang -O2 -S -emit-llvm benchmarks/composite.c -o ci/out/bench_composite_c.opt.ll
           bash benchmarks/run.sh 7 2>&1 | tee ci/logs/benchmarks.log
 
       - name: Save CI output to the repo

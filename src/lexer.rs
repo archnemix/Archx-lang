@@ -65,6 +65,12 @@ impl<'a> Lexer<'a> {
                 b'#' => self.skip_comment(),
                 b'(' => {
                     self.bracket_depth += 1;
+                    if self.bracket_depth > 256 {
+                        return Err(Diagnostic::new(
+                            "maximum bracket nesting depth (256) exceeded",
+                            span,
+                        ));
+                    }
                     self.bump();
                     tokens.push(Token::new(TokenKind::LParen, span));
                 }
@@ -75,6 +81,12 @@ impl<'a> Lexer<'a> {
                 }
                 b'[' => {
                     self.bracket_depth += 1;
+                    if self.bracket_depth > 256 {
+                        return Err(Diagnostic::new(
+                            "maximum bracket nesting depth (256) exceeded",
+                            span,
+                        ));
+                    }
                     self.bump();
                     tokens.push(Token::new(TokenKind::LBracket, span));
                 }
@@ -184,10 +196,7 @@ impl<'a> Lexer<'a> {
                         self.bump();
                         tokens.push(Token::new(TokenKind::DotDot, span));
                     } else {
-                        return Err(Diagnostic::new(
-                            "unexpected character `.` (use `..` for a range)",
-                            span,
-                        ));
+                        tokens.push(Token::new(TokenKind::Dot, span));
                     }
                 }
                 b':' => {
@@ -275,6 +284,12 @@ impl<'a> Lexer<'a> {
         let top = *self.indent_stack.last().unwrap();
 
         if indent > top {
+            if self.indent_stack.len() > 256 {
+                return Err(Diagnostic::new(
+                    "maximum block indentation depth (256) exceeded",
+                    span,
+                ));
+            }
             self.indent_stack.push(indent);
             tokens.push(Token::new(TokenKind::Indent, span));
         } else if indent < top {
@@ -334,6 +349,8 @@ impl<'a> Lexer<'a> {
         let text = std::str::from_utf8(&self.src[start..self.pos]).unwrap_or("");
         match text {
             "func" => TokenKind::Func,
+            "struct" => TokenKind::Struct,
+            "region" => TokenKind::Region,
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
             "if" => TokenKind::If,
@@ -342,6 +359,7 @@ impl<'a> Lexer<'a> {
             "while" => TokenKind::While,
             "for" => TokenKind::For,
             "in" => TokenKind::In,
+            "step" => TokenKind::Step,
             "break" => TokenKind::Break,
             "continue" => TokenKind::Continue,
             "and" => TokenKind::And,

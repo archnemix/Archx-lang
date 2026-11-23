@@ -7,6 +7,7 @@ pub enum Type {
     Str,
     Void,
     Array(Box<Type>),
+    Struct(String),
 }
 
 impl Type {
@@ -17,6 +18,7 @@ impl Type {
             Type::Str => "string".to_string(),
             Type::Void => "void".to_string(),
             Type::Array(elem) => format!("[{}]", elem.name()),
+            Type::Struct(name) => name.clone(),
         }
     }
 
@@ -27,7 +29,15 @@ impl Type {
 
 #[derive(Debug, Clone)]
 pub struct Program {
+    pub structs: Vec<StructDef>,
     pub funcs: Vec<Func>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDef {
+    pub name: String,
+    pub fields: Vec<Param>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +68,10 @@ pub enum AssignTarget {
         target: Box<Expr>,
         index: Box<Expr>,
     },
+    Field {
+        target: Box<Expr>,
+        field: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +101,15 @@ pub enum StmtKind {
         var: String,
         start: Expr,
         end: Expr,
+        step: Option<Expr>,
+        body: Vec<Stmt>,
+    },
+    ForEach {
+        var: String,
+        iter: Expr,
+        body: Vec<Stmt>,
+    },
+    Region {
         body: Vec<Stmt>,
     },
     Break,
@@ -113,6 +136,10 @@ pub enum ExprKind {
     Index {
         target: Box<Expr>,
         index: Box<Expr>,
+    },
+    Field {
+        target: Box<Expr>,
+        field: String,
     },
     Call {
         name: String,

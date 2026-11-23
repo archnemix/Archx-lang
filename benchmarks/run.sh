@@ -32,6 +32,11 @@ clang -O2 -o "$TMP/arrays_c_chk" benchmarks/arrays_checked.c || exit 1
 rustc -O -o "$TMP/arrays_rs" benchmarks/arrays.rs || exit 1
 ./target/release/archx benchmarks/arrays.archx.lang -o "$TMP/arrays_ax" || exit 1
 
+echo "== building composite Milestone 5 benchmark (composite) =="
+clang -O2 -o "$TMP/comp_c" benchmarks/composite.c || exit 1
+rustc -O -o "$TMP/comp_rs" benchmarks/composite.rs || exit 1
+./target/release/archx benchmarks/composite.archx.lang -o "$TMP/comp_ax" || exit 1
+
 echo
 echo "== verifying scalar outputs match =="
 "$TMP/primes_c"  > "$TMP/out_pc" || exit 1
@@ -61,6 +66,20 @@ if ! cmp -s "$TMP/out_acr" "$TMP/out_acc" \
   echo "--- c (checked) ---"; cat "$TMP/out_acc"
   echo "--- rust ---";        cat "$TMP/out_ar"
   echo "--- archx ---";       cat "$TMP/out_aa"
+  exit 1
+fi
+
+echo
+echo "== verifying composite outputs match =="
+"$TMP/comp_c"  > "$TMP/out_cc" || exit 1
+"$TMP/comp_rs" > "$TMP/out_cr" || exit 1
+"$TMP/comp_ax" > "$TMP/out_ca" || exit 1
+cat "$TMP/out_cc"
+if ! cmp -s "$TMP/out_cc" "$TMP/out_cr" || ! cmp -s "$TMP/out_cc" "$TMP/out_ca"; then
+  echo "MISMATCH in composite benchmark"
+  echo "--- c ---";     cat "$TMP/out_cc"
+  echo "--- rust ---";  cat "$TMP/out_cr"
+  echo "--- archx ---"; cat "$TMP/out_ca"
   exit 1
 fi
 echo "all implementations agree"
@@ -99,6 +118,11 @@ read -r ACC_BEST ACC_MEAN <<<"$(time_ms "$TMP/arrays_c_chk")"
 read -r AR_BEST  AR_MEAN  <<<"$(time_ms "$TMP/arrays_rs")"
 read -r AA_BEST  AA_MEAN  <<<"$(time_ms "$TMP/arrays_ax")"
 
+echo "== timing composite benchmark: best of $RUNS runs (ms) =="
+read -r CC_BEST  CC_MEAN  <<<"$(time_ms "$TMP/comp_c")"
+read -r CR_BEST  CR_MEAN  <<<"$(time_ms "$TMP/comp_rs")"
+read -r CA_BEST  CA_MEAN  <<<"$(time_ms "$TMP/comp_ax")"
+
 read -r PC_KB  PC_SKB  <<<"$(measure_sizes "$TMP/primes_c")"
 read -r PR_KB  PR_SKB  <<<"$(measure_sizes "$TMP/primes_rs")"
 read -r PA_KB  PA_SKB  <<<"$(measure_sizes "$TMP/primes_ax")"
@@ -107,6 +131,10 @@ read -r ACR_KB ACR_SKB <<<"$(measure_sizes "$TMP/arrays_c_raw")"
 read -r ACC_KB ACC_SKB <<<"$(measure_sizes "$TMP/arrays_c_chk")"
 read -r AR_KB  AR_SKB  <<<"$(measure_sizes "$TMP/arrays_rs")"
 read -r AA_KB  AA_SKB  <<<"$(measure_sizes "$TMP/arrays_ax")"
+
+read -r CC_KB  CC_SKB  <<<"$(measure_sizes "$TMP/comp_c")"
+read -r CR_KB  CR_SKB  <<<"$(measure_sizes "$TMP/comp_rs")"
+read -r CA_KB  CA_SKB  <<<"$(measure_sizes "$TMP/comp_ax")"
 
 REPORT=$(cat <<EOF
 Archx vs C vs Rust -- loop & array benchmarks
@@ -141,6 +169,17 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   C checked   (slice struct -O2)     ${ACC_BEST} (${ACC_MEAN})        ${ACC_KB}          ${ACC_SKB}
   Rust        (safe Vec -O)          ${AR_BEST} (${AR_MEAN})      ${AR_KB}         ${AR_SKB}
   Archx       (safe [T] -O2)         ${AA_BEST} (${AA_MEAN})        ${AA_KB}          ${AA_SKB}
+
+3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
+------------------------------------------------------------------------------
+  - 100,000 6-field Body structs (48B) x 120 timesteps (full + step-8 update)
+  - 40,000 rounds of variable-length scratch buffer + short/long string concat/eq
+  Output: $(paste -sd ', ' "$TMP/out_cc")
+
+  Language                       Best ms (mean)   Raw KB   Stripped KB
+  C      (AoS + malloc/strcmp -O2)   ${CC_BEST} (${CC_MEAN})        ${CC_KB}          ${CC_SKB}
+  Rust   (Vec<Body> + String -O)     ${CR_BEST} (${CR_MEAN})      ${CR_KB}         ${CR_SKB}
+  Archx  (SoA + region + SSO -O2)    ${CA_BEST} (${CA_MEAN})        ${CA_KB}          ${CA_SKB}
 EOF
 )
 

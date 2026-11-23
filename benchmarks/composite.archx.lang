@@ -1,0 +1,74 @@
+# Composite Milestone 5 benchmark — idiomatic safe Archx:
+#   1. particle_sim: 100,000 6-field `Body` structs (automatically split into
+#      6 contiguous `align 16` SoA planes by Archx), 120 timesteps with
+#      full-array integration + strided impulse (`step 8`) + `for b in bodies`.
+#   2. arena_and_strings: 40,000 rounds inside `region:` (O(1) bump arena
+#      reusing a single 64 KB slab with 0 allocator syscalls) + 16-byte
+#      inline-prefix SSO `string` concatenation & equality checks.
+
+struct Body:
+    x: int
+    y: int
+    z: int
+    vx: int
+    vy: int
+    vz: int
+
+func particle_sim(n: int, steps: int) -> int:
+    let bodies = [Body(0, 0, 0, 1, 2, 3); n]
+
+    for i in 0..n:
+        bodies[i].x = i * 3
+        bodies[i].y = i * 5
+        bodies[i].z = i * 7
+        bodies[i].vx = (i % 7) + 1
+        bodies[i].vy = (i % 5) + 1
+        bodies[i].vz = (i % 3) + 1
+
+    for t in 0..steps:
+        let imp = (t % 3) - 1
+        for i in 0..n:
+            bodies[i].x += bodies[i].vx
+            bodies[i].y -= bodies[i].vy
+        for i in 0..n step 8:
+            bodies[i].z += bodies[i].vz + imp
+
+    let acc = 0
+    for b in bodies:
+        acc = (acc + b.x + b.y + b.z) % 1000000007
+    return acc
+
+func arena_and_strings(rounds: int, base_len: int) -> int:
+    let total = 0
+    for r in 0..rounds:
+        region:
+            let sz = base_len + (r % 16)
+            let buf = [0; sz]
+            for k in 0..sz step 4:
+                buf[k] = r + k * 3
+            let probe = (r * 7) % sz
+            let s_acc = buf[0] + buf[probe] + buf[sz - 1]
+
+            let s_rhs = "beta99"
+            if r % 2 == 0:
+                s_rhs = "alpha0"
+            let s1 = "id_" + s_rhs
+
+            let l_rhs = "other_kind_b"
+            if r % 4 == 0:
+                l_rhs = "payload_v2_a"
+            let s2 = "packet_header_" + l_rhs
+
+            if s1 == "id_alpha0":
+                s_acc += 17
+            if s2 == "packet_header_payload_v2_a":
+                s_acc += 43
+            if s2 == "packet_header_never_match!":
+                s_acc += 99
+
+            total = (total + s_acc + len(s1) + len(s2)) % 1000000007
+    return total
+
+func main():
+    print(particle_sim(100000, 120))
+    print(arena_and_strings(40000, 256))
