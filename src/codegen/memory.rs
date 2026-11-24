@@ -674,9 +674,34 @@ impl Codegen {
                 self.scan_expr_for_iv_arrays(iv, loop_body, lhs, out);
                 self.scan_expr_for_iv_arrays(iv, loop_body, rhs, out);
             }
-            ExprKind::Call { args, .. } | ExprKind::ArrayLit(args) => {
+            ExprKind::Call { args, .. }
+            | ExprKind::ArrayLit(args)
+            | ExprKind::SetLit(args) => {
                 for a in args {
                     self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+            }
+            ExprKind::DictLit(entries) => {
+                for (k, v) in entries {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, k, out);
+                    self.scan_expr_for_iv_arrays(iv, loop_body, v, out);
+                }
+            }
+            ExprKind::Slice {
+                target,
+                start,
+                stop,
+                step,
+            } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, target, out);
+                if let Some(s) = start {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, s, out);
+                }
+                if let Some(e) = stop {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, e, out);
+                }
+                if let Some(st) = step {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, st, out);
                 }
             }
             ExprKind::CallKw {

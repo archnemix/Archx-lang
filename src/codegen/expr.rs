@@ -1340,10 +1340,6 @@ impl Codegen {
                 }
                 Ok(acc.unwrap_or_else(|| "true".to_string()))
             }
-            _ => Err(Diagnostic::new(
-                format!("equality is not supported on `{}`", lhs_ty.name()),
-                span,
-            )),
         }
     }
 

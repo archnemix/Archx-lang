@@ -88,6 +88,8 @@ pub fn lower(program: &Program) -> Result<String> {
         .collect();
     let mut any_sig_uses_vec = false;
     let mut any_sig_uses_str = false;
+    let mut any_sig_uses_dict = false;
+    let mut any_sig_uses_any = false;
 
     // First pass over struct methods to register signatures and detect `self` mutators.
     for sdef in &program.structs {
@@ -108,7 +110,13 @@ pub fn lower(program: &Program) -> Result<String> {
                     ));
                 }
                 validate_type(&param.ty, &struct_map, m.span)?;
-                mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+                mark_type_usage(
+                    &param.ty,
+                    &mut any_sig_uses_vec,
+                    &mut any_sig_uses_str,
+                    &mut any_sig_uses_dict,
+                    &mut any_sig_uses_any,
+                );
                 if !seen_params.insert(param.name.as_str()) {
                     return Err(Diagnostic::new(
                         format!("duplicate parameter `{}`", param.name),
@@ -120,7 +128,13 @@ pub fn lower(program: &Program) -> Result<String> {
                 Some(Type::Void) | None => None,
                 Some(ty) => {
                     validate_type(ty, &struct_map, m.span)?;
-                    mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+                    mark_type_usage(
+                        ty,
+                        &mut any_sig_uses_vec,
+                        &mut any_sig_uses_str,
+                        &mut any_sig_uses_dict,
+                        &mut any_sig_uses_any,
+                    );
                     Some(ty.clone())
                 }
             };
