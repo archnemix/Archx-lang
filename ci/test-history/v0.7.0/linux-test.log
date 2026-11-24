@@ -1,5 +1,5 @@
 [1m[92m   Compiling[0m archx v0.7.0 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 3.40s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 3.11s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/68b4306b5a524a67/out/archx-68b4306b5a524a67)
 
 running 34 tests
@@ -7,38 +7,38 @@ test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_an
 test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
-test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
-test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
-test lexer::tests::array_elif_and_compound_assign_tokens ... ok
-test lexer::tests::comments_and_blank_lines_are_ignored ... ok
-test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
-test lexer::tests::comparison_and_boolean_tokens ... ok
-test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
-test lexer::tests::equality_operators ... ok
-test lexer::tests::loop_tokens ... ok
-test lexer::tests::indents_and_dedents ... ok
-test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
-test lexer::tests::strings_with_both_quote_styles ... ok
-test lexer::tests::rejects_bad_unindent ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
+test lexer::tests::array_elif_and_compound_assign_tokens ... ok
+test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::equality_operators ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
+test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::indents_and_dedents ... ok
+test lexer::tests::loop_tokens ... ok
+test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_functions_with_params ... ok
+test parser::tests::parses_if_else ... ok
 test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
-test parser::tests::parses_if_else ... ok
-test parser::tests::parses_functions_with_params ... ok
 test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
 test parser::tests::parses_structs_regions_step_and_foreach ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
-test parser::tests::rejects_missing_colon ... ok
-test tests::default_output_strips_archx_extensions ... ok
 test parser::tests::parses_while_and_assignment ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_missing_colon ... ok
+test tests::default_output_strips_archx_extensions ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 
-test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
 [1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/2f41aa198ea19280/out/cli-2f41aa198ea19280)
 
@@ -47,27 +47,27 @@ test break_outside_loop_is_an_error ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
 test elif_and_compound_assign_run ... ok
 test emit_ir_works ... ok
-compiled `/tmp/archx-v07panic-2610/key_err.archx.lang` -> `/tmp/archx-v07panic-2610/key_err`
 test arrays_run ... ok
+compiled `/tmp/archx-v07panic-2418/key_err.archx.lang` -> `/tmp/archx-v07panic-2418/key_err`
 test functions_run ... ok
 test hello_world_runs ... ok
-compiled `/tmp/archx-v07panic-2610/type_err.archx.lang` -> `/tmp/archx-v07panic-2610/type_err`
+compiled `/tmp/archx-v07panic-2418/type_err.archx.lang` -> `/tmp/archx-v07panic-2418/type_err`
 test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
 test if_else_runs ... ok
 test loops_run ... ok
 test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
-compiled `/tmp/archx-pypanic-2610/fail_assert.archx.lang` -> `/tmp/archx-pypanic-2610/fail_assert`
+compiled `/tmp/archx-pypanic-2418/fail_assert.archx.lang` -> `/tmp/archx-pypanic-2418/fail_assert`
 test out_of_bounds_panics_cleanly ... ok
-compiled `/tmp/archx-pypanic-2610/zero_step.archx.lang` -> `/tmp/archx-pypanic-2610/zero_step`
+compiled `/tmp/archx-pypanic-2418/zero_step.archx.lang` -> `/tmp/archx-pypanic-2418/zero_step`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
+test planar_simd_dict_set_and_slicing_work ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
 test run_flag_default_output_and_str_alias_work ... ok
-test planar_simd_dict_set_and_slicing_work ... ok
 test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 
-test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.46s
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s
 

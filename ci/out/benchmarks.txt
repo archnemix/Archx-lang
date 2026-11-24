@@ -15,9 +15,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 75517,33860
 
   Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         119 (119)        16          14
-  Rust   (rustc -O)          119 (119)      4388         330
-  Archx  (archx -O2)         119 (119)        16          14
+  C      (clang -O2)         104 (104)        16          14
+  Rust   (rustc -O)          104 (104)      4388         330
+  Archx  (archx -O2)         104 (104)        16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -26,10 +26,10 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 57243166,348513
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        59 (63)        16          14
-  C checked   (slice struct -O2)     57 (58)        16          14
-  Rust        (safe Vec -O)          61 (61)      4389         331
-  Archx       (safe [T] -O2)         56 (57)        16          14
+  C raw ptr   (unchecked -O2)        46 (47)        16          14
+  C checked   (slice struct -O2)     45 (46)        16          14
+  Rust        (safe Vec -O)          49 (49)      4389         331
+  Archx       (safe [T] -O2)         47 (47)        16          14
 
 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 ------------------------------------------------------------------------------
@@ -38,9 +38,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 14248875,421461999
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS + malloc/strcmp -O2)   22 (22)        16          14
-  Rust   (Vec<Body> + String -O)     25 (25)      4390         332
-  Archx  (SoA + region + SSO -O2)    18 (18)        16          14
+  C      (AoS + malloc/strcmp -O2)   16 (16)        16          14
+  Rust   (Vec<Body> + String -O)     18 (18)      4390         332
+  Archx  (SoA + region + SSO -O2)    14 (14)        16          14
 
 4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 ----------------------------------------------------------------------------------------
@@ -49,9 +49,9 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 11232960,3595406
 
   Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS Body* -O2 -lm)         67 (68)        16          14
-  Rust   (Vec<Body> -O)              67 (67)      4390         332
-  Archx  (Pythonic class + SoA -O2)  62 (62)        16          14
+  C      (AoS Body* -O2 -lm)         56 (56)        16          14
+  Rust   (Vec<Body> -O)              56 (56)      4390         332
+  Archx  (Pythonic class + SoA -O2)  52 (53)        16          14
 
 5. Planar SIMD Dict & Smart Adaptive Typing (benchmarks/dict_bench.* & dict_dynamic.*)
 --------------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   Output: 12163680,27629691796536
 
   Language                                 Best ms (mean)   Raw KB   Stripped KB
-  C             (AoS open-addressing -O2)      61 (62)        16          14
-  Rust          (std::HashMap -O)              52 (52)      4424         354
-  Archx Static  (Planar SIMD + region -O2)     48 (48)        24          22
-  Archx Dynamic (%ArchxAny dict[any,any] -O2)  87 (87)        24          22
+  C             (AoS open-addressing -O2)      44 (45)        16          14
+  Rust          (std::HashMap -O)              39 (40)      4424         354
+  Archx Static  (Planar SIMD + region -O2)     40 (40)        24          22
+  Archx Dynamic (%ArchxAny dict[any,any] -O2)  72 (72)        24          22
