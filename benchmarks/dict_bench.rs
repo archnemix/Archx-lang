@@ -23,14 +23,13 @@ fn main() {
         for step in 0..8192_i64 {
             let idx = ((step * 73 + r * 19) % 1024) as usize;
             let k = &vocab[idx];
-            let prev = *counts.get(k.as_str()).unwrap();
-            counts.insert(k.clone(), prev + (step % 7) + 1);
+            *counts.get_mut(k.as_str()).unwrap() += (step % 7) + 1;
         }
         for p in 0..2048_i64 {
             let pidx = ((p * 131 + r * 7) % 1024) as usize;
             let pk = &vocab[pidx];
-            if counts.contains_key(pk.as_str()) {
-                str_checksum += counts[pk.as_str()];
+            if let Some(&v) = counts.get(pk.as_str()) {
+                str_checksum += v;
             }
         }
         if !counts.contains_key(miss) {

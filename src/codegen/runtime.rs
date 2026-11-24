@@ -284,7 +284,7 @@ ret_same:
 
         if self.used_str_eq {
             out.push_str(
-                r#"define private fastcc i1 @archx_str_eq(%ArchxStr %a, %ArchxStr %b) nounwind {
+                r#"define private fastcc i1 @archx_str_eq(%ArchxStr %a, %ArchxStr %b) alwaysinline nounwind {
 entry:
   %aw0 = extractvalue %ArchxStr %a, 0
   %bw0 = extractvalue %ArchxStr %b, 0

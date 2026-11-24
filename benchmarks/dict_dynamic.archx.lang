@@ -12,12 +12,11 @@ def run_str_dynamic(vocab: list[str], rounds) -> int:
         for step in range(8192):
             idx = (step * 73 + r * 19) % 1024
             k = vocab[idx]
-            counts[k] = counts[k] + (step % 7) + 1
+            counts[k] += (step % 7) + 1
         for p in range(2048):
             pidx = (p * 131 + r * 7) % 1024
             pk = vocab[pidx]
-            if pk in counts:
-                str_checksum += int(counts[pk])
+            str_checksum += int(counts.get(pk, 0))
         if miss not in counts:
             str_checksum += int(counts.get(miss, 3))
         for k, v in counts.items():
