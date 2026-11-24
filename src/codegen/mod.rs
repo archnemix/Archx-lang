@@ -732,7 +732,7 @@ pub(super) struct Codegen {
     pub(super) sigs: HashMap<String, FuncSig>,
     pub(super) methods: HashMap<(String, String), MethodSig>,
     pub(super) mutating_method_names: HashSet<String>,
-    pub(super) adaptive_hints: AdaptiveHints,
+    adaptive_hints: AdaptiveHints,
     pub(super) scopes: Vec<Scope>,
     pub(super) stmt_temps: Vec<TempDrop>,
     pub(super) mutated_vars: HashSet<String>,

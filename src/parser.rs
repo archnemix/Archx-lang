@@ -302,18 +302,62 @@ impl Parser {
                 self.bump();
                 Ok(Type::Void)
             }
-            TokenKind::Ident(name) if name == "list" && self.peek_at(1).kind == TokenKind::LBracket => {
+            TokenKind::Ident(name) if name == "list" => {
                 self.bump();
-                self.bump();
-                let elem = self.parse_type()?;
-                if elem == Type::Void {
-                    return Err(Diagnostic::new(
-                        "list elements cannot have type `void` / `None`",
-                        token.span,
-                    ));
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    let elem = self.parse_type()?;
+                    if elem == Type::Void {
+                        return Err(Diagnostic::new(
+                            "list elements cannot have type `void` / `None`",
+                            token.span,
+                        ));
+                    }
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    Ok(Type::Array(Box::new(elem)))
+                } else {
+                    Ok(Type::Array(Box::new(Type::Any)))
                 }
-                self.expect(TokenKind::RBracket, "`]`")?;
-                Ok(Type::Array(Box::new(elem)))
+            }
+            TokenKind::Ident(name) if name == "dict" => {
+                self.bump();
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    let k = self.parse_type()?;
+                    self.expect(TokenKind::Comma, "`,` between dict key and value types")?;
+                    let v = self.parse_type()?;
+                    if k == Type::Void || v == Type::Void {
+                        return Err(Diagnostic::new(
+                            "dict key/value types cannot be `void` / `None`",
+                            token.span,
+                        ));
+                    }
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    Ok(Type::Dict(Box::new(k), Box::new(v)))
+                } else {
+                    Ok(Type::Dict(Box::new(Type::Any), Box::new(Type::Any)))
+                }
+            }
+            TokenKind::Ident(name) if name == "set" => {
+                self.bump();
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    let elem = self.parse_type()?;
+                    if elem == Type::Void {
+                        return Err(Diagnostic::new(
+                            "set elements cannot have type `void` / `None`",
+                            token.span,
+                        ));
+                    }
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    Ok(Type::Set(Box::new(elem)))
+                } else {
+                    Ok(Type::Set(Box::new(Type::Any)))
+                }
+            }
+            TokenKind::Ident(name) if name == "any" || name == "Any" => {
+                self.bump();
+                Ok(Type::Any)
             }
             TokenKind::Ident(name) if name == "int" => {
                 self.bump();
@@ -950,6 +994,15 @@ impl Parser {
                     self.bump();
                     self.bump();
                     BinOp::NotIn
+                }
+                TokenKind::Ident(s) if s == "is" && self.peek_at(1).kind == TokenKind::Not => {
+                    self.bump();
+                    self.bump();
+                    BinOp::Ne
+                }
+                TokenKind::Ident(s) if s == "is" => {
+                    self.bump();
+                    BinOp::Eq
                 }
                 _ => break,
             };
