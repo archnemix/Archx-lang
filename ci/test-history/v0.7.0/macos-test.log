@@ -7,199 +7,121 @@ Thread model: posix
 InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
 --- cargo test ---
 [1m[92m   Compiling[0m archx v0.7.0 (/Users/runner/work/Archx-lang/Archx-lang)
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_dict` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:201:22
+[1m[33mwarning[0m[1m: type `codegen::analysis::AdaptiveHints` is more private than the item `codegen::Codegen::adaptive_hints`[0m
+   [1m[94m--> [0msrc/codegen/mod.rs:735:5
     [1m[94m|[0m
-[1m[94m201[0m [1m[94m|[0m                 &mut any_sig_uses_dict,
-    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+[1m[94m735[0m [1m[94m|[0m     pub(super) adaptive_hints: AdaptiveHints,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[33mfield `codegen::Codegen::adaptive_hints` is reachable at visibility `pub(crate)`[0m
     [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
+[1m[92mnote[0m: but type `codegen::analysis::AdaptiveHints` is only usable at visibility `pub(in crate::codegen)`
+   [1m[94m--> [0msrc/codegen/analysis.rs:12:1
     [1m[94m|[0m
-[1m[94m201[0m [91m- [0m                &mut [91many_sig_uses_dict[0m,
-[1m[94m201[0m [92m+ [0m                &mut [92many_sig_uses_vec[0m,
-    [1m[94m|[0m
+[1m[94m 12[0m [1m[94m|[0m pub(super) struct AdaptiveHints {
+    [1m[94m|[0m [1m[92m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(private_interfaces)]` on by default
 
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_any` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:202:22
-    [1m[94m|[0m
-[1m[94m202[0m [1m[94m|[0m                 &mut any_sig_uses_any,
-    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m202[0m [91m- [0m                &mut [91many_sig_uses_any[0m,
-[1m[94m202[0m [92m+ [0m                &mut [92many_sig_uses_str[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_dict` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:220:26
-    [1m[94m|[0m
-[1m[94m220[0m [1m[94m|[0m                     &mut any_sig_uses_dict,
-    [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m220[0m [91m- [0m                    &mut [91many_sig_uses_dict[0m,
-[1m[94m220[0m [92m+ [0m                    &mut [92many_sig_uses_vec[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_any` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:221:26
-    [1m[94m|[0m
-[1m[94m221[0m [1m[94m|[0m                     &mut any_sig_uses_any,
-    [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m221[0m [91m- [0m                    &mut [91many_sig_uses_any[0m,
-[1m[94m221[0m [92m+ [0m                    &mut [92many_sig_uses_str[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_dict` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:260:22
-    [1m[94m|[0m
-[1m[94m260[0m [1m[94m|[0m                 &mut any_sig_uses_dict,
-    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m260[0m [91m- [0m                &mut [91many_sig_uses_dict[0m,
-[1m[94m260[0m [92m+ [0m                &mut [92many_sig_uses_vec[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_any` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:261:22
-    [1m[94m|[0m
-[1m[94m261[0m [1m[94m|[0m                 &mut any_sig_uses_any,
-    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m261[0m [91m- [0m                &mut [91many_sig_uses_any[0m,
-[1m[94m261[0m [92m+ [0m                &mut [92many_sig_uses_str[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_dict` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:296:25
-    [1m[94m|[0m
-[1m[94m296[0m [1m[94m|[0m         used_dict_type: any_sig_uses_dict,
-    [1m[94m|[0m                         [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m296[0m [91m- [0m        used_dict_type: [91many_sig_uses_dict[0m,
-[1m[94m296[0m [92m+ [0m        used_dict_type: [92many_sig_uses_vec[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0425][0m[1m: cannot find value `any_sig_uses_any` in this scope[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:297:24
-    [1m[94m|[0m
-[1m[94m297[0m [1m[94m|[0m         used_any_type: any_sig_uses_any,
-    [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: a local variable with a similar name exists
-    [1m[94m|[0m
-[1m[94m297[0m [91m- [0m        used_any_type: [91many_sig_uses_any[0m,
-[1m[94m297[0m [92m+ [0m        used_any_type: [92many_sig_uses_str[0m,
-    [1m[94m|[0m
-
-[1m[91merror[E0061][0m[1m: this function takes 5 arguments but 3 arguments were supplied[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:111:17
-    [1m[94m|[0m
-[1m[94m111[0m [1m[94m|[0m                 mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
-    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^[0m[1m[94m---------------------------------------------------------[0m [1m[94mtwo arguments of type `&mut bool` and `&mut bool` are missing[0m
-    [1m[94m|[0m
-[1m[92mnote[0m: function defined here
-   [1m[94m--> [0msrc/codegen/mod.rs:503:15
-    [1m[94m|[0m
-[1m[94m503[0m [1m[94m|[0m pub(super) fn mark_type_usage(
-    [1m[94m|[0m               [1m[92m^^^^^^^^^^^^^^^[0m
-[1m[94m...[0m
-[1m[94m507[0m [1m[94m|[0m     used_dict: &mut bool,
-    [1m[94m|[0m     [1m[94m--------------------[0m
-[1m[94m508[0m [1m[94m|[0m     used_any: &mut bool,
-    [1m[94m|[0m     [1m[94m-------------------[0m
-[1m[96mhelp[0m: provide the arguments
-    [1m[94m|[0m
-[1m[94m111[0m [1m[94m| [0m                mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str[92m, /* &mut bool */, /* &mut bool */[0m);
-    [1m[94m|[0m                                                                                        [92m++++++++++++++++++++++++++++++++++[0m
-
-[1m[91merror[E0061][0m[1m: this function takes 5 arguments but 3 arguments were supplied[0m
-   [1m[94m--> [0msrc/codegen/mod.rs:123:21
-    [1m[94m|[0m
-[1m[94m123[0m [1m[94m|[0m                     mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
-    [1m[94m|[0m                     [1m[91m^^^^^^^^^^^^^^^[0m[1m[94m--------------------------------------------------[0m [1m[94mtwo arguments of type `&mut bool` and `&mut bool` are missing[0m
-    [1m[94m|[0m
-[1m[92mnote[0m: function defined here
-   [1m[94m--> [0msrc/codegen/mod.rs:503:15
-    [1m[94m|[0m
-[1m[94m503[0m [1m[94m|[0m pub(super) fn mark_type_usage(
-    [1m[94m|[0m               [1m[92m^^^^^^^^^^^^^^^[0m
-[1m[94m...[0m
-[1m[94m507[0m [1m[94m|[0m     used_dict: &mut bool,
-    [1m[94m|[0m     [1m[94m--------------------[0m
-[1m[94m508[0m [1m[94m|[0m     used_any: &mut bool,
-    [1m[94m|[0m     [1m[94m-------------------[0m
-[1m[96mhelp[0m: provide the arguments
-    [1m[94m|[0m
-[1m[94m123[0m [1m[94m| [0m                    mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str[92m, /* &mut bool */, /* &mut bool */[0m);
-    [1m[94m|[0m                                                                                     [92m++++++++++++++++++++++++++++++++++[0m
-
-[1m[33mwarning[0m[1m: unreachable pattern[0m
-    [1m[94m--> [0msrc/codegen/expr.rs:1343:13
-     [1m[94m|[0m
-[1m[94m1343[0m [1m[94m|[0m             _ => Err(Diagnostic::new(
-     [1m[94m|[0m             [1m[33m^[0m [1m[33mno value can reach this[0m
-     [1m[94m|[0m
-[1m[92mnote[0m: multiple earlier patterns match some of the same values
-    [1m[94m--> [0msrc/codegen/expr.rs:1343:13
-     [1m[94m|[0m
-[1m[94m1270[0m [1m[94m|[0m             Type::Int => {
-     [1m[94m|[0m             [1m[94m---------[0m [1m[94mmatches some of the same values[0m
-[1m[94m...[0m
-[1m[94m1275[0m [1m[94m|[0m             Type::Float => {
-     [1m[94m|[0m             [1m[94m-----------[0m [1m[94mmatches some of the same values[0m
-[1m[94m...[0m
-[1m[94m1280[0m [1m[94m|[0m             Type::Bool => {
-     [1m[94m|[0m             [1m[94m----------[0m [1m[94mmatches some of the same values[0m
-[1m[94m...[0m
-[1m[94m1285[0m [1m[94m|[0m             Type::Void => Ok("true".to_string()),
-     [1m[94m|[0m             [1m[94m----------[0m [1m[94mmatches some of the same values[0m
-[1m[94m...[0m
-[1m[94m1343[0m [1m[94m|[0m             _ => Err(Diagnostic::new(
-     [1m[94m|[0m             [1m[92m^[0m [1m[92m...and 4 other patterns collectively make this unreachable[0m
-     [1m[94m= [0m[1mnote[0m: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
-
-[1m[91merror[E0004][0m[1m: non-exhaustive patterns: `&ast::ExprKind::DictLit(_)`, `&ast::ExprKind::SetLit(_)` and `&ast::ExprKind::Slice { .. }` not covered[0m
-   [1m[94m--> [0msrc/codegen/memory.rs:661:15
-    [1m[94m|[0m
-[1m[94m661[0m [1m[94m|[0m         match &expr.kind {
-    [1m[94m|[0m               [1m[91m^^^^^^^^^^[0m [1m[91mpatterns `&ast::ExprKind::DictLit(_)`, `&ast::ExprKind::SetLit(_)` and `&ast::ExprKind::Slice { .. }` not covered[0m
-    [1m[94m|[0m
-[1m[92mnote[0m: `ast::ExprKind` defined here
-   [1m[94m--> [0msrc/ast.rs:165:10
-    [1m[94m|[0m
-[1m[94m165[0m [1m[94m|[0m pub enum ExprKind {
-    [1m[94m|[0m          [1m[92m^^^^^^^^[0m
-[1m[94m...[0m
-[1m[94m178[0m [1m[94m|[0m     DictLit(Vec<(Expr, Expr)>),
-    [1m[94m|[0m     [1m[94m-------[0m [1m[94mnot covered[0m
-[1m[94m179[0m [1m[94m|[0m     SetLit(Vec<Expr>),
-    [1m[94m|[0m     [1m[94m------[0m [1m[94mnot covered[0m
-[1m[94m...[0m
-[1m[94m184[0m [1m[94m|[0m     Slice {
-    [1m[94m|[0m     [1m[94m-----[0m [1m[94mnot covered[0m
-    [1m[94m= [0m[1mnote[0m: the matched value is of type `&ast::ExprKind`
-[1m[96mhelp[0m: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-    [1m[94m|[0m
-[1m[94m723[0m [92m~ [0m            | ExprKind::Var(_) => {}[92m,[0m
-[1m[94m724[0m [92m+             &ast::ExprKind::DictLit(_) | &ast::ExprKind::SetLit(_) | &ast::ExprKind::Slice { .. } => todo!()[0m
-    [1m[94m|[0m
-
-[1mSome errors have detailed explanations: E0004, E0061, E0425.[0m
-[1mFor more information about an error, try `rustc --explain E0004`.[0m
-[1m[33mwarning[0m: `archx` (bin "archx") generated 1 warning
-[1m[91merror[0m: could not compile `archx` (bin "archx") due to 11 previous errors; 1 warning emitted
-[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
 [1m[33mwarning[0m: `archx` (bin "archx" test) generated 1 warning (1 duplicate)
-[1m[91merror[0m: could not compile `archx` (bin "archx" test) due to 11 previous errors; 1 warning emitted
+[1m[33mwarning[0m: `archx` (bin "archx") generated 1 warning
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 5.48s
+[1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/27b14ff7cb464fed/out/archx-27b14ff7cb464fed)
+
+running 34 tests
+test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
+test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
+test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
+test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
+test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
+test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
+test lexer::tests::array_elif_and_compound_assign_tokens ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::equality_operators ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
+test lexer::tests::indents_and_dedents ... ok
+test lexer::tests::loop_tokens ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
+test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::strings_with_both_quote_styles ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test parser::tests::parses_booleans_and_comparisons ... ok
+test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_for_and_break_continue ... ok
+test parser::tests::parses_functions_with_params ... ok
+test parser::tests::parses_if_else ... ok
+test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_main_and_print ... ok
+test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_missing_colon ... ok
+test tests::default_output_strips_archx_extensions ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/05e2b18121e32261/out/cli-05e2b18121e32261)
+
+running 21 tests
+test break_outside_loop_is_an_error ... ok
+test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... FAILED
+test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
+test elif_and_compound_assign_run ... ok
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1284/key_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1284/key_err`
+test arrays_run ... ok
+test emit_ir_works ... ok
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1284/type_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1284/type_err`
+test functions_run ... ok
+test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
+test hello_world_runs ... ok
+test loops_run ... ok
+test if_else_runs ... ok
+test planar_simd_dict_set_and_slicing_work ... FAILED
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1284/fail_assert.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1284/fail_assert`
+test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
+test out_of_bounds_panics_cleanly ... ok
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1284/zero_step.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1284/zero_step`
+test pythonic_assert_and_zero_step_panic_cleanly ... ok
+test run_flag_default_output_and_str_alias_work ... ok
+test regions_step_loops_foreach_and_ownership_churn_work ... ok
+test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
+test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
+test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
+test structs_value_semantics_aos_and_transparent_soa_work ... ok
+
+failures:
+
+---- adaptive_any_mixed_containers_and_dynamic_rebinding_work stdout ----
+
+thread 'adaptive_any_mixed_containers_and_dynamic_rebinding_work' (7193) panicked at tests/cli.rs:53:5:
+compiler stderr: archx: error: error: expected `:`, found identifier `is`
+  --> 2:12
+   |
+  2 |     if val is None:
+   |            ^
+
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- planar_simd_dict_set_and_slicing_work stdout ----
+
+thread 'planar_simd_dict_set_and_slicing_work' (7772) panicked at tests/cli.rs:53:5:
+compiler stderr: archx: error: error: expected `:`, found `[`
+  --> 1:32
+   |
+  1 | def build_region_dict() -> dict[str, int]:
+   |                                ^
+
+
+
+
+failures:
+    adaptive_any_mixed_containers_and_dynamic_rebinding_work
+    planar_simd_dict_set_and_slicing_work
+
+test result: FAILED. 19 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+[1m[91merror[0m: test failed, to rerun pass `--test cli`
