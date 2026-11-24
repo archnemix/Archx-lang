@@ -1,0 +1,205 @@
+OS: windows-latest
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo 1.100.0 (3acc79c0c 2026-11-05)
+clang version 20.1.8
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+InstalledDir: C:\Program Files\LLVM\bin
+--- cargo test ---
+[1m[92m   Compiling[0m archx v0.7.0 (D:\a\Archx-lang\Archx-lang)
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_dict` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:201:22
+    [1m[96m|[0m
+[1m[96m201[0m [1m[96m|[0m                 &mut any_sig_uses_dict,
+    [1m[96m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m201[0m [91m- [0m                &mut [91many_sig_uses_dict[0m,
+[1m[96m201[0m [92m+ [0m                &mut [92many_sig_uses_vec[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_any` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:202:22
+    [1m[96m|[0m
+[1m[96m202[0m [1m[96m|[0m                 &mut any_sig_uses_any,
+    [1m[96m|[0m                      [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m202[0m [91m- [0m                &mut [91many_sig_uses_any[0m,
+[1m[96m202[0m [92m+ [0m                &mut [92many_sig_uses_str[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_dict` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:220:26
+    [1m[96m|[0m
+[1m[96m220[0m [1m[96m|[0m                     &mut any_sig_uses_dict,
+    [1m[96m|[0m                          [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m220[0m [91m- [0m                    &mut [91many_sig_uses_dict[0m,
+[1m[96m220[0m [92m+ [0m                    &mut [92many_sig_uses_vec[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_any` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:221:26
+    [1m[96m|[0m
+[1m[96m221[0m [1m[96m|[0m                     &mut any_sig_uses_any,
+    [1m[96m|[0m                          [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m221[0m [91m- [0m                    &mut [91many_sig_uses_any[0m,
+[1m[96m221[0m [92m+ [0m                    &mut [92many_sig_uses_str[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_dict` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:260:22
+    [1m[96m|[0m
+[1m[96m260[0m [1m[96m|[0m                 &mut any_sig_uses_dict,
+    [1m[96m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m260[0m [91m- [0m                &mut [91many_sig_uses_dict[0m,
+[1m[96m260[0m [92m+ [0m                &mut [92many_sig_uses_vec[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_any` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:261:22
+    [1m[96m|[0m
+[1m[96m261[0m [1m[96m|[0m                 &mut any_sig_uses_any,
+    [1m[96m|[0m                      [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m261[0m [91m- [0m                &mut [91many_sig_uses_any[0m,
+[1m[96m261[0m [92m+ [0m                &mut [92many_sig_uses_str[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_dict` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:296:25
+    [1m[96m|[0m
+[1m[96m296[0m [1m[96m|[0m         used_dict_type: any_sig_uses_dict,
+    [1m[96m|[0m                         [1m[91m^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m296[0m [91m- [0m        used_dict_type: [91many_sig_uses_dict[0m,
+[1m[96m296[0m [92m+ [0m        used_dict_type: [92many_sig_uses_vec[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find value `any_sig_uses_any` in this scope[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:297:24
+    [1m[96m|[0m
+[1m[96m297[0m [1m[96m|[0m         used_any_type: any_sig_uses_any,
+    [1m[96m|[0m                        [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+    [1m[96m|[0m
+[1m[96mhelp[0m: a local variable with a similar name exists
+    [1m[96m|[0m
+[1m[96m297[0m [91m- [0m        used_any_type: [91many_sig_uses_any[0m,
+[1m[96m297[0m [92m+ [0m        used_any_type: [92many_sig_uses_str[0m,
+    [1m[96m|[0m
+
+[1m[91merror[E0061][0m[1m[97m: this function takes 5 arguments but 3 arguments were supplied[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:111:17
+    [1m[96m|[0m
+[1m[96m111[0m [1m[96m|[0m                 mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+    [1m[96m|[0m                 [1m[91m^^^^^^^^^^^^^^^[0m[1m[96m---------------------------------------------------------[0m [1m[96mtwo arguments of type `&mut bool` and `&mut bool` are missing[0m
+    [1m[96m|[0m
+[1m[92mnote[0m: function defined here
+   [1m[96m--> [0msrc\codegen\mod.rs:503:15
+    [1m[96m|[0m
+[1m[96m503[0m [1m[96m|[0m pub(super) fn mark_type_usage(
+    [1m[96m|[0m               [1m[92m^^^^^^^^^^^^^^^[0m
+[1m[96m...[0m
+[1m[96m507[0m [1m[96m|[0m     used_dict: &mut bool,
+    [1m[96m|[0m     [1m[96m--------------------[0m
+[1m[96m508[0m [1m[96m|[0m     used_any: &mut bool,
+    [1m[96m|[0m     [1m[96m-------------------[0m
+[1m[96mhelp[0m: provide the arguments
+    [1m[96m|[0m
+[1m[96m111[0m [1m[96m| [0m                mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str[92m, /* &mut bool */, /* &mut bool */[0m);
+    [1m[96m|[0m                                                                                        [92m++++++++++++++++++++++++++++++++++[0m
+
+[1m[91merror[E0061][0m[1m[97m: this function takes 5 arguments but 3 arguments were supplied[0m
+   [1m[96m--> [0msrc\codegen\mod.rs:123:21
+    [1m[96m|[0m
+[1m[96m123[0m [1m[96m|[0m                     mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+    [1m[96m|[0m                     [1m[91m^^^^^^^^^^^^^^^[0m[1m[96m--------------------------------------------------[0m [1m[96mtwo arguments of type `&mut bool` and `&mut bool` are missing[0m
+    [1m[96m|[0m
+[1m[92mnote[0m: function defined here
+   [1m[96m--> [0msrc\codegen\mod.rs:503:15
+    [1m[96m|[0m
+[1m[96m503[0m [1m[96m|[0m pub(super) fn mark_type_usage(
+    [1m[96m|[0m               [1m[92m^^^^^^^^^^^^^^^[0m
+[1m[96m...[0m
+[1m[96m507[0m [1m[96m|[0m     used_dict: &mut bool,
+    [1m[96m|[0m     [1m[96m--------------------[0m
+[1m[96m508[0m [1m[96m|[0m     used_any: &mut bool,
+    [1m[96m|[0m     [1m[96m-------------------[0m
+[1m[96mhelp[0m: provide the arguments
+    [1m[96m|[0m
+[1m[96m123[0m [1m[96m| [0m                    mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str[92m, /* &mut bool */, /* &mut bool */[0m);
+    [1m[96m|[0m                                                                                     [92m++++++++++++++++++++++++++++++++++[0m
+
+[1m[93mwarning[0m[1m[97m: unreachable pattern[0m
+    [1m[96m--> [0msrc\codegen\expr.rs:1343:13
+     [1m[96m|[0m
+[1m[96m1343[0m [1m[96m|[0m             _ => Err(Diagnostic::new(
+     [1m[96m|[0m             [1m[93m^[0m [1m[93mno value can reach this[0m
+     [1m[96m|[0m
+[1m[92mnote[0m: multiple earlier patterns match some of the same values
+    [1m[96m--> [0msrc\codegen\expr.rs:1343:13
+     [1m[96m|[0m
+[1m[96m1270[0m [1m[96m|[0m             Type::Int => {
+     [1m[96m|[0m             [1m[96m---------[0m [1m[96mmatches some of the same values[0m
+[1m[96m...[0m
+[1m[96m1275[0m [1m[96m|[0m             Type::Float => {
+     [1m[96m|[0m             [1m[96m-----------[0m [1m[96mmatches some of the same values[0m
+[1m[96m...[0m
+[1m[96m1280[0m [1m[96m|[0m             Type::Bool => {
+     [1m[96m|[0m             [1m[96m----------[0m [1m[96mmatches some of the same values[0m
+[1m[96m...[0m
+[1m[96m1285[0m [1m[96m|[0m             Type::Void => Ok("true".to_string()),
+     [1m[96m|[0m             [1m[96m----------[0m [1m[96mmatches some of the same values[0m
+[1m[96m...[0m
+[1m[96m1343[0m [1m[96m|[0m             _ => Err(Diagnostic::new(
+     [1m[96m|[0m             [1m[92m^[0m [1m[92m...and 4 other patterns collectively make this unreachable[0m
+     [1m[96m= [0m[1m[97mnote[0m: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+[1m[91merror[E0004][0m[1m[97m: non-exhaustive patterns: `&ast::ExprKind::DictLit(_)`, `&ast::ExprKind::SetLit(_)` and `&ast::ExprKind::Slice { .. }` not covered[0m
+   [1m[96m--> [0msrc\codegen\memory.rs:661:15
+    [1m[96m|[0m
+[1m[96m661[0m [1m[96m|[0m         match &expr.kind {
+    [1m[96m|[0m               [1m[91m^^^^^^^^^^[0m [1m[91mpatterns `&ast::ExprKind::DictLit(_)`, `&ast::ExprKind::SetLit(_)` and `&ast::ExprKind::Slice { .. }` not covered[0m
+    [1m[96m|[0m
+[1m[92mnote[0m: `ast::ExprKind` defined here
+   [1m[96m--> [0msrc\ast.rs:165:10
+    [1m[96m|[0m
+[1m[96m165[0m [1m[96m|[0m pub enum ExprKind {
+    [1m[96m|[0m          [1m[92m^^^^^^^^[0m
+[1m[96m...[0m
+[1m[96m178[0m [1m[96m|[0m     DictLit(Vec<(Expr, Expr)>),
+    [1m[96m|[0m     [1m[96m-------[0m [1m[96mnot covered[0m
+[1m[96m179[0m [1m[96m|[0m     SetLit(Vec<Expr>),
+    [1m[96m|[0m     [1m[96m------[0m [1m[96mnot covered[0m
+[1m[96m...[0m
+[1m[96m184[0m [1m[96m|[0m     Slice {
+    [1m[96m|[0m     [1m[96m-----[0m [1m[96mnot covered[0m
+    [1m[96m= [0m[1m[97mnote[0m: the matched value is of type `&ast::ExprKind`
+[1m[96mhelp[0m: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+    [1m[96m|[0m
+[1m[96m723[0m [92m~ [0m            | ExprKind::Var(_) => {}[92m,[0m
+[1m[96m724[0m [92m+             &ast::ExprKind::DictLit(_) | &ast::ExprKind::SetLit(_) | &ast::ExprKind::Slice { .. } => todo!()[0m
+    [1m[96m|[0m
+
+[1m[97mSome errors have detailed explanations: E0004, E0061, E0425.[0m
+[1m[97mFor more information about an error, try `rustc --explain E0004`.[0m
+[1m[93mwarning[0m: `archx` (bin "archx") generated 1 warning
+[1m[91merror[0m: could not compile `archx` (bin "archx") due to 11 previous errors; 1 warning emitted
+[1m[93mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[93mwarning[0m: `archx` (bin "archx" test) generated 1 warning (1 duplicate)
+[1m[91merror[0m: could not compile `archx` (bin "archx" test) due to 11 previous errors; 1 warning emitted
