@@ -103,6 +103,11 @@ impl Codegen {
             "sqrt" => return self.gen_builtin_sqrt(args, span, out),
             "ord" => return self.gen_builtin_ord(args, span, out),
             "chr" => return self.gen_builtin_chr(args, span, out),
+            "type" => return self.gen_builtin_type(args, span, out),
+            "isinstance" => return self.gen_builtin_isinstance(args, span, out),
+            "dict" => return self.gen_builtin_dict_ctor(args, span, out),
+            "set" => return self.gen_builtin_set_ctor(args, span, out),
+            "list" => return self.gen_builtin_list_ctor(args, span, out),
             _ => {}
         }
 
@@ -286,8 +291,17 @@ impl Codegen {
 
         let mut arg_vals = Vec::new();
         for (i, arg) in args.iter().enumerate() {
+            if sig.params[i] == Type::Any {
+                let aval = self.eval_expr_as_any(arg, out)?;
+                arg_vals.push((Type::Any, aval));
+                continue;
+            }
             let (ty, val) = self.eval_expr_typed(arg, Some(&sig.params[i]), out)?;
-            if ty != sig.params[i] {
+            let final_val = if ty == sig.params[i] {
+                val
+            } else if ty == Type::Any {
+                self.emit_unbox_any(&sig.params[i], &val, arg.span, out)?
+            } else {
                 return Err(Diagnostic::new(
                     format!(
                         "argument {} of `{name}` expects `{}`, found `{}`",
@@ -297,8 +311,8 @@ impl Codegen {
                     ),
                     arg.span,
                 ));
-            }
-            arg_vals.push((ty, val));
+            };
+            arg_vals.push((sig.params[i].clone(), final_val));
         }
 
         if sig.ret.is_none() {
@@ -369,6 +383,10 @@ impl Codegen {
                 let _ = writeln!(out, "  {r} = call fastcc i64 @archx_int_from_str(%ArchxStr {val})");
                 Ok((Type::Int, r))
             }
+            Type::Any => {
+                let u = self.emit_unbox_any(&Type::Int, &val, args[0].span, out)?;
+                Ok((Type::Int, u))
+            }
             other => Err(Diagnostic::new(
                 format!("`int()` cannot convert `{}`", other.name()),
                 args[0].span,
@@ -409,6 +427,10 @@ impl Codegen {
                     "  {r} = call fastcc double @archx_float_from_str(%ArchxStr {val})"
                 );
                 Ok((Type::Float, r))
+            }
+            Type::Any => {
+                let u = self.emit_unbox_any(&Type::Float, &val, args[0].span, out)?;
+                Ok((Type::Float, u))
             }
             other => Err(Diagnostic::new(
                 format!("`float()` cannot convert `{}`", other.name()),
@@ -457,6 +479,19 @@ impl Codegen {
                 let _ = writeln!(out, "  {l} = extractvalue %ArchxVec {val}, 0");
                 let r = self.next_tmp();
                 let _ = writeln!(out, "  {r} = icmp sgt i64 {l}, 0");
+                Ok((Type::Bool, r))
+            }
+            Type::Dict(_, _) | Type::Set(_) => {
+                let l = self.emit_dict_len(&val, out);
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = icmp sgt i64 {l}, 0");
+                Ok((Type::Bool, r))
+            }
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = call fastcc i1 @archx_any_truthy(%ArchxAny {val})");
                 Ok((Type::Bool, r))
             }
             other => Err(Diagnostic::new(
@@ -898,8 +933,22 @@ impl Codegen {
                 let _ = writeln!(out, "  {reg} = and i64 {w0}, 4294967295");
                 Ok((Type::Int, reg))
             }
+            Type::Dict(_, _) | Type::Set(_) => {
+                let reg = self.emit_dict_len(&val, out);
+                Ok((Type::Int, reg))
+            }
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let reg = self.next_tmp();
+                let _ = writeln!(out, "  {reg} = call fastcc i64 @archx_any_len(%ArchxAny {val})");
+                Ok((Type::Int, reg))
+            }
             other => Err(Diagnostic::new(
-                format!("`len` expects a `list` or `str`, found `{}`", other.name()),
+                format!(
+                    "`len` expects a `list`, `dict`, `set`, or `str`, found `{}`",
+                    other.name()
+                ),
                 args[0].span,
             )),
         }
@@ -961,27 +1010,7 @@ impl Codegen {
             ));
         };
 
-        let (val_ty, raw_val) = self.eval_expr_typed(val_expr, Some(&elem_ty), out)?;
-        if val_ty != *elem_ty {
-            return Err(Diagnostic::new(
-                format!(
-                    "`{op_name}` onto `list[{}]` expects `{}`, found `{}`",
-                    elem_ty.name(),
-                    elem_ty.name(),
-                    val_ty.name()
-                ),
-                val_expr.span,
-            ));
-        }
-        let val = if self.type_needs_drop(&elem_ty) {
-            if self.claim_stmt_temp(&raw_val) {
-                raw_val
-            } else {
-                self.emit_clone_value(&elem_ty, &raw_val, out)
-            }
-        } else {
-            raw_val
-        };
+        let val = self.eval_owned_for_slot(&elem_ty, val_expr, out)?;
 
         let vec = self.next_tmp();
         let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}, align 8");
@@ -1205,5 +1234,172 @@ impl Codegen {
             });
         }
         Ok((*elem_ty, elem))
+    }
+
+    fn gen_builtin_dict_ctor(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() {
+            return self.eval_dict_lit(&[], None, span, out);
+        }
+        if args.len() == 1 {
+            let (ty, val) = self.eval_expr(&args[0], out)?;
+            if let Type::Dict(_, _) = &ty {
+                let c = if self.claim_stmt_temp(&val) {
+                    val
+                } else {
+                    self.emit_clone_value(&ty, &val, out)
+                };
+                self.stmt_temps.push(TempDrop {
+                    val: c.clone(),
+                    ty: ty.clone(),
+                });
+                return Ok((ty, c));
+            }
+        }
+        Err(Diagnostic::new(
+            "`dict()` expects 0 arguments or an existing `dict`",
+            span,
+        ))
+    }
+
+    fn gen_builtin_set_ctor(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() {
+            let s = self.emit_new_empty_dict_or_set(&Type::Any, None, out);
+            let res_ty = Type::Set(Box::new(Type::Any));
+            self.stmt_temps.push(TempDrop {
+                val: s.clone(),
+                ty: res_ty.clone(),
+            });
+            return Ok((res_ty, s));
+        }
+        if args.len() != 1 {
+            return Err(Diagnostic::new(
+                format!("`set()` expects at most 1 argument, found {}", args.len()),
+                span,
+            ));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        match ty {
+            Type::Set(_) => {
+                let c = if self.claim_stmt_temp(&val) {
+                    val
+                } else {
+                    self.emit_clone_value(&ty, &val, out)
+                };
+                self.stmt_temps.push(TempDrop {
+                    val: c.clone(),
+                    ty: ty.clone(),
+                });
+                Ok((ty, c))
+            }
+            Type::Array(elem_ty) => {
+                if !elem_ty.is_hashable_key() {
+                    return Err(Diagnostic::new(
+                        format!("`set()` elements of type `{}` are not hashable", elem_ty.name()),
+                        args[0].span,
+                    ));
+                }
+                let s = self.emit_new_empty_dict_or_set(&elem_ty, None, out);
+                let fam = Self::dict_family_suffix(&elem_ty);
+                let kstore = Self::dict_key_storage_ir(&elem_ty);
+                let len = self.next_tmp();
+                let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {val}, 0");
+                let data = self.next_tmp();
+                let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {val}, 2");
+                let i_slot = self.next_slot("setctor.i");
+                let _ = writeln!(self.allocas, "  {i_slot} = alloca i64, align 8");
+                let _ = writeln!(out, "  store i64 0, ptr {i_slot}, align 8");
+                let cond_lbl = self.fresh_label("setctor.cond");
+                let body_lbl = self.fresh_label("setctor.body");
+                let done_lbl = self.fresh_label("setctor.done");
+                self.emit_br(&cond_lbl, out);
+
+                self.start_block(&cond_lbl, out);
+                let i = self.next_tmp();
+                let _ = writeln!(out, "  {i} = load i64, ptr {i_slot}, align 8");
+                let more = self.next_tmp();
+                let _ = writeln!(out, "  {more} = icmp slt i64 {i}, {len}");
+                self.emit_cond_br(&more, &body_lbl, &done_lbl, out);
+
+                self.start_block(&body_lbl, out);
+                let mem_ty = elem_mem_ir_type(&elem_ty);
+                let ep = self.next_tmp();
+                let _ = writeln!(out, "  {ep} = getelementptr inbounds {mem_ty}, ptr {data}, i64 {i}");
+                let ev = self.emit_elem_load(&elem_ty, &ep, out);
+                let karg = if *elem_ty == Type::Bool {
+                    let z = self.next_tmp();
+                    let _ = writeln!(out, "  {z} = zext i1 {ev} to i64");
+                    z
+                } else {
+                    ev
+                };
+                let up = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {up} = call fastcc {{ i64, i1 }} @archx_dict_upsert_{fam}(i64 {s}, {kstore} {karg})"
+                );
+                let inext = self.next_tmp();
+                let _ = writeln!(out, "  {inext} = add nuw nsw i64 {i}, 1");
+                let _ = writeln!(out, "  store i64 {inext}, ptr {i_slot}, align 8");
+                self.emit_br(&cond_lbl, out);
+
+                self.start_block(&done_lbl, out);
+                let res_ty = Type::Set(elem_ty);
+                self.stmt_temps.push(TempDrop {
+                    val: s.clone(),
+                    ty: res_ty.clone(),
+                });
+                Ok((res_ty, s))
+            }
+            other => Err(Diagnostic::new(
+                format!("`set()` expects a `list` or `set`, found `{}`", other.name()),
+                args[0].span,
+            )),
+        }
+    }
+
+    fn gen_builtin_list_ctor(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() {
+            return self.eval_array_lit(&[], None, span, out);
+        }
+        if args.len() == 1 {
+            let (ty, val) = self.eval_expr(&args[0], out)?;
+            match ty {
+                Type::Array(_) => {
+                    let c = if self.claim_stmt_temp(&val) {
+                        val
+                    } else {
+                        self.emit_clone_value(&ty, &val, out)
+                    };
+                    self.stmt_temps.push(TempDrop {
+                        val: c.clone(),
+                        ty: ty.clone(),
+                    });
+                    return Ok((ty, c));
+                }
+                Type::Set(elem_ty) | Type::Dict(elem_ty, _) => {
+                    return self.gen_dict_method(&elem_ty, &Type::Int, &val, "keys", &[], span, out);
+                }
+                _ => {}
+            }
+        }
+        Err(Diagnostic::new(
+            "`list()` expects 0 arguments or a `list`/`set`/`dict`",
+            span,
+        ))
     }
 }

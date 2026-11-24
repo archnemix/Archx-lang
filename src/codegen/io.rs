@@ -84,6 +84,23 @@ impl Codegen {
                     self.emit_print_array(&elem_ty, &val, true, span, out)?;
                     return Ok((Type::Void, String::new()));
                 }
+                Type::Dict(k_ty, v_ty) => {
+                    self.emit_print_dict_or_set(&k_ty, Some(&v_ty), &val, true, span, out)?;
+                    return Ok((Type::Void, String::new()));
+                }
+                Type::Set(elem_ty) => {
+                    self.emit_print_dict_or_set(&elem_ty, None, &val, true, span, out)?;
+                    return Ok((Type::Void, String::new()));
+                }
+                Type::Any => {
+                    self.mark_runtime_type(&Type::Any);
+                    self.used_any_rt = true;
+                    let _ = writeln!(
+                        out,
+                        "  call fastcc void @archx_any_print(%ArchxAny {val}, i1 true)"
+                    );
+                    return Ok((Type::Void, String::new()));
+                }
                 Type::Struct(sname) => {
                     return Err(Diagnostic::new(
                         format!(
@@ -211,6 +228,20 @@ impl Codegen {
             Type::Array(elem_ty) => {
                 self.emit_print_array(elem_ty, val, false, span, out)?;
             }
+            Type::Dict(k_ty, v_ty) => {
+                self.emit_print_dict_or_set(k_ty, Some(v_ty), val, false, span, out)?;
+            }
+            Type::Set(elem_ty) => {
+                self.emit_print_dict_or_set(elem_ty, None, val, false, span, out)?;
+            }
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let _ = writeln!(
+                    out,
+                    "  call fastcc void @archx_any_print(%ArchxAny {val}, i1 false)"
+                );
+            }
             Type::Struct(sname) => {
                 return Err(Diagnostic::new(
                     format!(
@@ -231,13 +262,14 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<()> {
-        if !matches!(elem_ty, Type::Int | Type::Float | Type::Bool | Type::Str) {
+        if matches!(elem_ty, Type::Struct(_)) {
             return Err(Diagnostic::new(
-                "`print` supports 1D lists (`list[int]`, `list[float]`, `list[bool]`, `list[str]`); print elements in a loop for structs or nested lists",
+                "`print` does not format lists of structs automatically; print fields in a loop",
                 span,
             ));
         }
         self.used_array_print = true;
+        self.used_print_inline = true;
         let open = self.next_tmp();
         let _ = writeln!(out, "  {open} = call i32 (ptr, ...) @printf(ptr @.fmt.lbrack)");
 
@@ -282,42 +314,7 @@ impl Codegen {
             "  {ep} = getelementptr inbounds {mem_ty}, ptr {data}, i64 {pi}"
         );
         let elem_val = self.emit_elem_load(elem_ty, &ep, out);
-        match elem_ty {
-            Type::Int => {
-                let pc = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {pc} = call i32 (ptr, ...) @printf(ptr @.fmt.int.elem, i64 {elem_val})"
-                );
-            }
-            Type::Float => {
-                self.used_print_float = true;
-                let _ = writeln!(
-                    out,
-                    "  call fastcc void @archx_print_float(double {elem_val}, i1 false)"
-                );
-            }
-            Type::Str => {
-                self.used_str_print = true;
-                let _ = writeln!(
-                    out,
-                    "  call fastcc void @archx_str_print(%ArchxStr {elem_val}, i1 false)"
-                );
-            }
-            Type::Bool => {
-                let sel = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {sel} = select i1 {elem_val}, ptr @.str.true, ptr @.str.false"
-                );
-                let pc = self.next_tmp();
-                let _ = writeln!(
-                    out,
-                    "  {pc} = call i32 (ptr, ...) @printf(ptr @.fmt.str.elem, ptr {sel})"
-                );
-            }
-            _ => unreachable!(),
-        }
+        self.emit_print_inline_val(elem_ty, &elem_val, span, out)?;
         let pnext = self.next_tmp();
         let _ = writeln!(out, "  {pnext} = add nsw i64 {pi}, 1");
         let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}, align 8");
@@ -331,6 +328,113 @@ impl Codegen {
             "@.fmt.rbrack.inline"
         };
         let _ = writeln!(out, "  {close} = call i32 (ptr, ...) @printf(ptr {close_fmt})");
+        Ok(())
+    }
+
+    fn emit_print_dict_or_set(
+        &mut self,
+        k_ty: &Type,
+        v_ty: Option<&Type>,
+        d_val: &str,
+        newline: bool,
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        if let Some(Type::Struct(sname)) = v_ty {
+            return Err(Diagnostic::new(
+                format!("`print` does not format dict values of struct `{sname}` automatically"),
+                span,
+            ));
+        }
+        self.used_array_print = true;
+        self.used_print_inline = true;
+        self.used_dict_type = true;
+
+        let open = self.next_tmp();
+        let _ = writeln!(out, "  {open} = call i32 (ptr, ...) @printf(ptr @.fmt.lbrace)");
+        let len = self.emit_dict_len(d_val, out);
+        let non_empty = self.next_tmp();
+        let _ = writeln!(out, "  {non_empty} = icmp sgt i64 {len}, 0");
+
+        let init_lbl = self.fresh_label("pdict.init");
+        let cond_lbl = self.fresh_label("pdict.cond");
+        let body_lbl = self.fresh_label("pdict.body");
+        let sep_lbl = self.fresh_label("pdict.sep");
+        let item_lbl = self.fresh_label("pdict.item");
+        let end_lbl = self.fresh_label("pdict.end");
+        self.emit_cond_br(&non_empty, &init_lbl, &end_lbl, out);
+
+        let idx_slot = self.next_slot("pdict.idx");
+        let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+
+        self.start_block(&init_lbl, out);
+        let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&cond_lbl, out);
+        let pi = self.next_tmp();
+        let _ = writeln!(out, "  {pi} = load i64, ptr {idx_slot}, align 8");
+        let more = self.next_tmp();
+        let _ = writeln!(out, "  {more} = icmp slt i64 {pi}, {len}");
+        self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+        self.start_block(&body_lbl, out);
+        let gt0 = self.next_tmp();
+        let _ = writeln!(out, "  {gt0} = icmp sgt i64 {pi}, 0");
+        self.emit_cond_br(&gt0, &sep_lbl, &item_lbl, out);
+
+        self.start_block(&sep_lbl, out);
+        let sc = self.next_tmp();
+        let _ = writeln!(out, "  {sc} = call i32 (ptr, ...) @printf(ptr @.fmt.sep)");
+        self.emit_br(&item_lbl, out);
+
+        self.start_block(&item_lbl, out);
+        let raw = self.next_tmp();
+        let _ = writeln!(out, "  {raw} = and i64 {d_val}, -4");
+        let hdr = self.next_tmp();
+        let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+        let kg = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 5"
+        );
+        let kp = self.next_tmp();
+        let _ = writeln!(out, "  {kp} = load ptr, ptr {kg}, align 8");
+        let kstore = Self::dict_key_storage_ir(k_ty);
+        let kep = self.next_tmp();
+        let _ = writeln!(out, "  {kep} = getelementptr inbounds {kstore}, ptr {kp}, i64 {pi}");
+        let kv = self.emit_load_dict_key(k_ty, &kep, out);
+        self.emit_print_inline_val(k_ty, &kv, span, out)?;
+
+        if let Some(vt) = v_ty {
+            let col = self.next_tmp();
+            let _ = writeln!(out, "  {col} = call i32 (ptr, ...) @printf(ptr @.fmt.colon)");
+            let vg = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {vg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 6"
+            );
+            let vp = self.next_tmp();
+            let _ = writeln!(out, "  {vp} = load ptr, ptr {vg}, align 8");
+            let vmem = elem_mem_ir_type(vt);
+            let vep = self.next_tmp();
+            let _ = writeln!(out, "  {vep} = getelementptr inbounds {vmem}, ptr {vp}, i64 {pi}");
+            let vv = self.emit_elem_load(vt, &vep, out);
+            self.emit_print_inline_val(vt, &vv, span, out)?;
+        }
+
+        let pnext = self.next_tmp();
+        let _ = writeln!(out, "  {pnext} = add nuw nsw i64 {pi}, 1");
+        let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&end_lbl, out);
+        let cl = self.next_tmp();
+        let _ = writeln!(out, "  {cl} = call i32 (ptr, ...) @printf(ptr @.fmt.rbrace)");
+        if newline {
+            let nl = self.next_tmp();
+            let _ = writeln!(out, "  {nl} = call i32 (ptr, ...) @printf(ptr @.fmt.nl)");
+        }
         Ok(())
     }
 
@@ -448,6 +552,21 @@ impl Codegen {
             Type::Void => {
                 let (nw0, nw1) = pack_sso_str_words(b"None");
                 Ok(format!("{{ i64 {nw0}, i64 {nw1} }}"))
+            }
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let reg_arg = self.active_region_arg();
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_any_to_str(%ArchxAny {val}, ptr {reg_arg})"
+                );
+                self.stmt_temps.push(TempDrop {
+                    val: r.clone(),
+                    ty: Type::Str,
+                });
+                Ok(r)
             }
             other => Err(Diagnostic::new(
                 format!("cannot convert `{}` to `str`", other.name()),

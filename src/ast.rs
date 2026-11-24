@@ -9,7 +9,10 @@ pub enum Type {
     Bool,
     Str,
     Void,
+    Any,
     Array(Box<Type>),
+    Dict(Box<Type>, Box<Type>),
+    Set(Box<Type>),
     Struct(String),
 }
 
@@ -21,13 +24,20 @@ impl Type {
             Type::Bool => "bool".to_string(),
             Type::Str => "str".to_string(),
             Type::Void => "None".to_string(),
+            Type::Any => "any".to_string(),
             Type::Array(elem) => format!("list[{}]", elem.name()),
+            Type::Dict(k, v) => format!("dict[{}, {}]", k.name(), v.name()),
+            Type::Set(elem) => format!("set[{}]", elem.name()),
             Type::Struct(name) => name.clone(),
         }
     }
 
     pub fn is_array(&self) -> bool {
         matches!(self, Type::Array(_))
+    }
+
+    pub fn is_hashable_key(&self) -> bool {
+        matches!(self, Type::Int | Type::Bool | Type::Str | Type::Any)
     }
 }
 
@@ -121,6 +131,12 @@ pub enum StmtKind {
         start: Option<Expr>,
         body: Vec<Stmt>,
     },
+    ForDictItems {
+        key_var: String,
+        val_var: String,
+        dict: Expr,
+        body: Vec<Stmt>,
+    },
     Region {
         body: Vec<Stmt>,
     },
@@ -159,9 +175,17 @@ pub enum ExprKind {
         value: Box<Expr>,
         count: Box<Expr>,
     },
+    DictLit(Vec<(Expr, Expr)>),
+    SetLit(Vec<Expr>),
     Index {
         target: Box<Expr>,
         index: Box<Expr>,
+    },
+    Slice {
+        target: Box<Expr>,
+        start: Option<Box<Expr>>,
+        stop: Option<Box<Expr>>,
+        step: Option<Box<Expr>>,
     },
     Field {
         target: Box<Expr>,

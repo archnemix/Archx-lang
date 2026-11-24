@@ -2,7 +2,9 @@
 //! Coordinates static analyses, statement/loop/expression/method/I/O lowering, RAII ownership, and runtime helpers.
 
 mod analysis;
+mod any;
 mod calls;
+mod collections;
 mod expr;
 mod io;
 mod loops;
@@ -10,6 +12,7 @@ mod memory;
 mod methods;
 mod ownership;
 mod runtime;
+mod runtime_hash_any;
 mod runtime_py;
 mod stmt;
 #[cfg(test)]
@@ -191,7 +194,13 @@ pub fn lower(program: &Program) -> Result<String> {
                 ));
             }
             validate_type(&param.ty, &struct_map, func.span)?;
-            mark_type_usage(&param.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+            mark_type_usage(
+                &param.ty,
+                &mut any_sig_uses_vec,
+                &mut any_sig_uses_str,
+                &mut any_sig_uses_dict,
+                &mut any_sig_uses_any,
+            );
             if !seen_params.insert(param.name.as_str()) {
                 return Err(Diagnostic::new(
                     format!("duplicate parameter `{}`", param.name),
@@ -204,7 +213,13 @@ pub fn lower(program: &Program) -> Result<String> {
             Some(Type::Void) | None => None,
             Some(ty) => {
                 validate_type(ty, &struct_map, func.span)?;
-                mark_type_usage(ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+                mark_type_usage(
+                    ty,
+                    &mut any_sig_uses_vec,
+                    &mut any_sig_uses_str,
+                    &mut any_sig_uses_dict,
+                    &mut any_sig_uses_any,
+                );
                 Some(ty.clone())
             }
         };
@@ -238,7 +253,13 @@ pub fn lower(program: &Program) -> Result<String> {
 
     for fields in struct_map.values() {
         for f in fields {
-            mark_type_usage(&f.ty, &mut any_sig_uses_vec, &mut any_sig_uses_str);
+            mark_type_usage(
+                &f.ty,
+                &mut any_sig_uses_vec,
+                &mut any_sig_uses_str,
+                &mut any_sig_uses_dict,
+                &mut any_sig_uses_any,
+            );
         }
     }
 
@@ -248,6 +269,7 @@ pub fn lower(program: &Program) -> Result<String> {
         sigs,
         methods,
         mutating_method_names,
+        adaptive_hints: AdaptiveHints::default(),
         scopes: Vec::new(),
         stmt_temps: Vec::new(),
         mutated_vars: HashSet::new(),
@@ -267,8 +289,17 @@ pub fn lower(program: &Program) -> Result<String> {
         extra_helpers: String::new(),
         emitted_vec_drops: HashSet::new(),
         emitted_vec_clones: HashSet::new(),
+        emitted_dict_drops: HashSet::new(),
+        emitted_dict_clones: HashSet::new(),
         used_vec_type: any_sig_uses_vec,
         used_str_type: any_sig_uses_str,
+        used_dict_type: any_sig_uses_dict,
+        used_any_type: any_sig_uses_any,
+        used_dict_rt: false,
+        used_any_rt: false,
+        used_slice_rt: false,
+        used_key_fail: false,
+        used_type_fail: false,
         used_region: false,
         used_malloc: false,
         used_calloc: false,
@@ -326,6 +357,7 @@ pub fn lower(program: &Program) -> Result<String> {
         cg.gen_func(func, &mut bodies)?;
     }
 
+    cg.finalize_hash_any_runtime_flags();
     cg.finalize_runtime_flags();
 
     if cg.used_str_eq
@@ -368,6 +400,12 @@ pub fn lower(program: &Program) -> Result<String> {
     if cg.used_str_type {
         out.push_str("%ArchxStr = type { i64, i64 }\n");
     }
+    if cg.used_dict_type {
+        out.push_str("%ArchxDictHdr = type { i64, i64, i64, ptr, ptr, ptr, ptr, i64 }\n");
+    }
+    if cg.used_any_type {
+        out.push_str("%ArchxAny = type { i64, i64, i64 }\n");
+    }
     if cg.used_region {
         out.push_str("%ArchxRegion = type { ptr, ptr, ptr, ptr }\n");
     }
@@ -382,7 +420,13 @@ pub fn lower(program: &Program) -> Result<String> {
         }
         out.push_str(" }\n");
     }
-    if cg.used_vec_type || cg.used_str_type || cg.used_region || !ordered_structs.is_empty() {
+    if cg.used_vec_type
+        || cg.used_str_type
+        || cg.used_dict_type
+        || cg.used_any_type
+        || cg.used_region
+        || !ordered_structs.is_empty()
+    {
         out.push('\n');
     }
 
@@ -414,6 +458,7 @@ pub fn lower(program: &Program) -> Result<String> {
     out.push_str(&cg.extra_helpers);
     cg.emit_runtime_helpers(&mut out);
     cg.emit_pythonic_runtime_helpers(&mut out);
+    cg.emit_hash_any_runtime_helpers(&mut out);
 
     Ok(out)
 }
@@ -424,8 +469,27 @@ pub(super) fn validate_type(
     span: Span,
 ) -> Result<()> {
     match ty {
-        Type::Int | Type::Float | Type::Bool | Type::Str | Type::Void => Ok(()),
+        Type::Int | Type::Float | Type::Bool | Type::Str | Type::Any | Type::Void => Ok(()),
         Type::Array(inner) => validate_type(inner, structs, span),
+        Type::Dict(k, v) => {
+            if !k.is_hashable_key() {
+                return Err(Diagnostic::new(
+                    format!("dict key type `{}` is not hashable", k.name()),
+                    span,
+                ));
+            }
+            validate_type(k, structs, span)?;
+            validate_type(v, structs, span)
+        }
+        Type::Set(inner) => {
+            if !inner.is_hashable_key() {
+                return Err(Diagnostic::new(
+                    format!("set element type `{}` is not hashable", inner.name()),
+                    span,
+                ));
+            }
+            validate_type(inner, structs, span)
+        }
         Type::Struct(name) => {
             if structs.contains_key(name) {
                 Ok(())
@@ -436,11 +500,32 @@ pub(super) fn validate_type(
     }
 }
 
-pub(super) fn mark_type_usage(ty: &Type, used_vec: &mut bool, used_str: &mut bool) {
+pub(super) fn mark_type_usage(
+    ty: &Type,
+    used_vec: &mut bool,
+    used_str: &mut bool,
+    used_dict: &mut bool,
+    used_any: &mut bool,
+) {
     match ty {
         Type::Array(inner) => {
             *used_vec = true;
-            mark_type_usage(inner, used_vec, used_str);
+            mark_type_usage(inner, used_vec, used_str, used_dict, used_any);
+        }
+        Type::Dict(k, v) => {
+            *used_dict = true;
+            mark_type_usage(k, used_vec, used_str, used_dict, used_any);
+            mark_type_usage(v, used_vec, used_str, used_dict, used_any);
+        }
+        Type::Set(inner) => {
+            *used_dict = true;
+            mark_type_usage(inner, used_vec, used_str, used_dict, used_any);
+        }
+        Type::Any => {
+            *used_any = true;
+            *used_str = true;
+            *used_vec = true;
+            *used_dict = true;
         }
         Type::Str => *used_str = true,
         _ => {}
@@ -633,6 +718,7 @@ pub(super) struct Codegen {
     pub(super) sigs: HashMap<String, FuncSig>,
     pub(super) methods: HashMap<(String, String), MethodSig>,
     pub(super) mutating_method_names: HashSet<String>,
+    pub(super) adaptive_hints: AdaptiveHints,
     pub(super) scopes: Vec<Scope>,
     pub(super) stmt_temps: Vec<TempDrop>,
     pub(super) mutated_vars: HashSet<String>,
@@ -652,8 +738,17 @@ pub(super) struct Codegen {
     pub(super) extra_helpers: String,
     pub(super) emitted_vec_drops: HashSet<String>,
     pub(super) emitted_vec_clones: HashSet<String>,
+    pub(super) emitted_dict_drops: HashSet<String>,
+    pub(super) emitted_dict_clones: HashSet<String>,
     pub(super) used_vec_type: bool,
     pub(super) used_str_type: bool,
+    pub(super) used_dict_type: bool,
+    pub(super) used_any_type: bool,
+    pub(super) used_dict_rt: bool,
+    pub(super) used_any_rt: bool,
+    pub(super) used_slice_rt: bool,
+    pub(super) used_key_fail: bool,
+    pub(super) used_type_fail: bool,
     pub(super) used_region: bool,
     pub(super) used_malloc: bool,
     pub(super) used_calloc: bool,
@@ -702,11 +797,27 @@ pub(super) struct Codegen {
 }
 
 impl Codegen {
+    pub(super) fn mark_runtime_type(&mut self, ty: &Type) {
+        mark_type_usage(
+            ty,
+            &mut self.used_vec_type,
+            &mut self.used_str_type,
+            &mut self.used_dict_type,
+            &mut self.used_any_type,
+        );
+    }
+
     pub(super) fn gen_func(&mut self, func: &Func, out: &mut String) -> Result<()> {
         self.scopes = vec![Scope::default()];
         self.stmt_temps.clear();
-        self.mutated_vars =
+        self.adaptive_hints =
+            compute_adaptive_hints(&func.params, &func.body, &self.structs, &self.sigs);
+        let mut mutated =
             collect_mutated_vars(&func.params, &func.body, &self.mutating_method_names);
+        for dvar in &self.adaptive_hints.dynamic_vars {
+            mutated.insert(dvar.clone());
+        }
+        self.mutated_vars = mutated;
         self.returned_vars = collect_returned_vars(&func.body);
         self.loop_stack.clear();
         self.loop_bounds.clear();
@@ -806,6 +917,10 @@ impl Codegen {
             } else if self.current_ret.is_none() {
                 self.emit_func_exit_cleanup(None, &mut body);
                 body.push_str("  ret void\n");
+            } else if self.current_ret == Some(Type::Any) {
+                self.used_any_type = true;
+                self.emit_func_exit_cleanup(None, &mut body);
+                body.push_str("  ret %ArchxAny zeroinitializer\n");
             } else {
                 return Err(Diagnostic::new(
                     format!(
@@ -949,18 +1064,22 @@ pub(super) fn type_mangle_key(ty: &Type) -> String {
         Type::Float => "f".to_string(),
         Type::Bool => "b".to_string(),
         Type::Str => "s".to_string(),
+        Type::Any => "y".to_string(),
         Type::Void => "v".to_string(),
         Type::Struct(name) => format!("S{}_{name}", name.len()),
         Type::Array(inner) => format!("A_{}", type_mangle_key(inner)),
+        Type::Dict(k, v) => format!("D_{}_{}", type_mangle_key(k), type_mangle_key(v)),
+        Type::Set(inner) => format!("E_{}", type_mangle_key(inner)),
     }
 }
 
 pub(super) fn ir_type(ty: &Type) -> String {
     match ty {
-        Type::Int => "i64".to_string(),
+        Type::Int | Type::Dict(_, _) | Type::Set(_) => "i64".to_string(),
         Type::Float => "double".to_string(),
         Type::Bool => "i1".to_string(),
         Type::Str => "%ArchxStr".to_string(),
+        Type::Any => "%ArchxAny".to_string(),
         Type::Array(_) => "%ArchxVec".to_string(),
         Type::Struct(name) => format!("%ArchxStruct_{name}"),
         Type::Void => "void".to_string(),
@@ -970,7 +1089,14 @@ pub(super) fn ir_type(ty: &Type) -> String {
 pub(super) fn ir_align(ty: &Type) -> u32 {
     match ty {
         Type::Bool => 1,
-        Type::Int | Type::Float | Type::Str | Type::Array(_) | Type::Struct(_) => 8,
+        Type::Int
+        | Type::Float
+        | Type::Str
+        | Type::Any
+        | Type::Array(_)
+        | Type::Dict(_, _)
+        | Type::Set(_)
+        | Type::Struct(_) => 8,
         Type::Void => 1,
     }
 }

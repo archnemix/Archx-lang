@@ -96,6 +96,22 @@ impl<'a> Lexer<'a> {
                     self.bump();
                     tokens.push(Token::new(TokenKind::RBracket, span));
                 }
+                b'{' => {
+                    self.bracket_depth += 1;
+                    if self.bracket_depth > 256 {
+                        return Err(Diagnostic::new(
+                            "maximum bracket nesting depth (256) exceeded",
+                            span,
+                        ));
+                    }
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::LBrace, span));
+                }
+                b'}' => {
+                    self.bracket_depth = self.bracket_depth.saturating_sub(1);
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::RBrace, span));
+                }
                 b';' => {
                     self.bump();
                     tokens.push(Token::new(TokenKind::Semicolon, span));

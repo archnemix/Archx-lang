@@ -159,3 +159,51 @@ print(f\"{line}:{val}\", end=\"\\n\")
         );
         assert!(ir.contains("@archx_input"));
     }
+
+    #[test]
+    fn adaptive_engine_specializes_static_dict_without_any_overhead() {
+        let src = "\
+counts = {}
+counts[\"archx\"] = 10
+counts[\"llvm\"] = 20
+counts[\"archx\"] += 5
+seen = {1, 2, 3}
+seen.add(4)
+xs = [10, 20, 30, 40, 50]
+sub = xs[1:4]
+print(counts[\"archx\"], len(seen), sub[-1])
+";
+        let ir = lower_src(src).unwrap();
+        assert!(
+            ir.contains("@archx_dict_upsert_str"),
+            "homogeneous str->int dict must specialize to Planar SIMD str SwissTable:\n{ir}"
+        );
+        assert!(
+            !ir.contains("%ArchxAny"),
+            "statically specialized dict/set/slice code must emit zero %ArchxAny overhead:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn adaptive_engine_promotes_mixed_literals_and_rebinding_to_any() {
+        let src = "\
+def inspect_val(x):
+    if isinstance(x, int):
+        return x + 1
+    return x
+
+hello = {\"data\": [\"Archx\", 18, \"legal\"], \"age\": 18}
+name = \"Abdullah\"
+name = 18
+print(hello[\"data\"][0], hello[\"age\"], name, type(name), inspect_val(name))
+";
+        let ir = lower_src(src).unwrap();
+        assert!(
+            ir.contains("@archx_dict_upsert_str"),
+            "`hello` has homogeneous `str` keys so keys stay specialized `dict[str, any]`:\n{ir}"
+        );
+        assert!(
+            ir.contains("%ArchxAny"),
+            "mixed-value dict + type-rebound `name` + untyped `def` must lower via %ArchxAny:\n{ir}"
+        );
+    }

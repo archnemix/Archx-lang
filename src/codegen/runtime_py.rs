@@ -16,6 +16,8 @@ impl Codegen {
             || self.used_str_split_ws
             || self.used_str_split_sep
             || self.used_str_replace
+            || self.used_slice_rt
+            || self.used_any_rt
     }
 
     pub(super) fn finalize_runtime_flags(&mut self) {

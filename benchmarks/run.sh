@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Builds and times all four benchmark suites (primes, arrays, composite, nbody_float)
-# across C, Rust, and Archx:
+# Builds and times all five benchmark suites (primes, arrays, composite, nbody_float, dict_bench)
+# across C, Rust, and Archx (both Static/Specialized Tier-1 and Dynamic %ArchxAny Tier-2):
 #
 #   1. Scalar loops (benchmarks/primes.*): arithmetic reduction + trial-division primes
-#   2. Array loops & bounds checking (benchmarks/arrays*):
-#        - C (raw ptr)      : unchecked `long *` / `bool *`
-#        - C (checked)      : `IntVec`/`BoolVec` slice struct with `0 <= i < len` checks
-#        - Rust (Vec<T>)    : safe `Vec<i64>` / `Vec<bool>`
-#        - Archx ([T])      : safe `[int]` / `[bool]` with compile-time bounds-check elision
+#   2. Array loops & bounds checking (benchmarks/arrays*)
 #   3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 #   4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
+#   5. Planar SIMD Dict vs C AoS vs Rust HashMap + Adaptive Static vs Dynamic (benchmarks/dict_*)
 #
 # Usage: bash benchmarks/run.sh [runs]
 
@@ -44,6 +41,12 @@ echo "== building Pythonic floating-point N-body benchmark (nbody_float) =="
 clang -O2 -o "$TMP/nbody_c" benchmarks/nbody_float.c -lm || exit 1
 rustc -O -o "$TMP/nbody_rs" benchmarks/nbody_float.rs || exit 1
 ./target/release/archx benchmarks/nbody_float.archx.lang -o "$TMP/nbody_ax" || exit 1
+
+echo "== building Planar SIMD dict + Adaptive Static vs Dynamic benchmark (dict_bench) =="
+clang -O2 -o "$TMP/dict_c" benchmarks/dict_bench.c || exit 1
+rustc -O -o "$TMP/dict_rs" benchmarks/dict_bench.rs || exit 1
+./target/release/archx benchmarks/dict_bench.archx.lang -o "$TMP/dict_ax" || exit 1
+./target/release/archx benchmarks/dict_dynamic.archx.lang -o "$TMP/dict_ax_dyn" || exit 1
 
 echo
 echo "== verifying scalar outputs match =="
@@ -104,6 +107,24 @@ if ! cmp -s "$TMP/out_nc" "$TMP/out_nr" || ! cmp -s "$TMP/out_nc" "$TMP/out_na";
   echo "--- archx ---"; cat "$TMP/out_na"
   exit 1
 fi
+
+echo
+echo "== verifying dict_bench outputs match (C, Rust, Archx Static, Archx Dynamic) =="
+"$TMP/dict_c"      > "$TMP/out_dc"  || exit 1
+"$TMP/dict_rs"     > "$TMP/out_dr"  || exit 1
+"$TMP/dict_ax"     > "$TMP/out_da"  || exit 1
+"$TMP/dict_ax_dyn" > "$TMP/out_dad" || exit 1
+cat "$TMP/out_dc"
+if ! cmp -s "$TMP/out_dc" "$TMP/out_dr" \
+   || ! cmp -s "$TMP/out_dc" "$TMP/out_da" \
+   || ! cmp -s "$TMP/out_dc" "$TMP/out_dad"; then
+  echo "MISMATCH in dict_bench benchmark"
+  echo "--- c ---";             cat "$TMP/out_dc"
+  echo "--- rust ---";          cat "$TMP/out_dr"
+  echo "--- archx static ---";  cat "$TMP/out_da"
+  echo "--- archx dynamic ---"; cat "$TMP/out_dad"
+  exit 1
+fi
 echo "all implementations agree"
 
 time_ms() {
@@ -150,6 +171,12 @@ read -r NC_BEST  NC_MEAN  <<<"$(time_ms "$TMP/nbody_c")"
 read -r NR_BEST  NR_MEAN  <<<"$(time_ms "$TMP/nbody_rs")"
 read -r NA_BEST  NA_MEAN  <<<"$(time_ms "$TMP/nbody_ax")"
 
+echo "== timing dict_bench benchmark: best of $RUNS runs (ms) =="
+read -r DC_BEST  DC_MEAN  <<<"$(time_ms "$TMP/dict_c")"
+read -r DR_BEST  DR_MEAN  <<<"$(time_ms "$TMP/dict_rs")"
+read -r DA_BEST  DA_MEAN  <<<"$(time_ms "$TMP/dict_ax")"
+read -r DAD_BEST DAD_MEAN <<<"$(time_ms "$TMP/dict_ax_dyn")"
+
 read -r PC_KB  PC_SKB  <<<"$(measure_sizes "$TMP/primes_c")"
 read -r PR_KB  PR_SKB  <<<"$(measure_sizes "$TMP/primes_rs")"
 read -r PA_KB  PA_SKB  <<<"$(measure_sizes "$TMP/primes_ax")"
@@ -167,8 +194,13 @@ read -r NC_KB  NC_SKB  <<<"$(measure_sizes "$TMP/nbody_c")"
 read -r NR_KB  NR_SKB  <<<"$(measure_sizes "$TMP/nbody_rs")"
 read -r NA_KB  NA_SKB  <<<"$(measure_sizes "$TMP/nbody_ax")"
 
+read -r DC_KB  DC_SKB  <<<"$(measure_sizes "$TMP/dict_c")"
+read -r DR_KB  DR_SKB  <<<"$(measure_sizes "$TMP/dict_rs")"
+read -r DA_KB  DA_SKB  <<<"$(measure_sizes "$TMP/dict_ax")"
+read -r DAD_KB DAD_SKB <<<"$(measure_sizes "$TMP/dict_ax_dyn")"
+
 REPORT=$(cat <<EOF
-Archx vs C vs Rust -- head-to-head benchmarks (v0.6.0)
+Archx vs C vs Rust -- head-to-head benchmarks (v0.7.0)
 ======================================================
 
 Toolchain
@@ -222,6 +254,18 @@ optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
   C      (AoS Body* -O2 -lm)         ${NC_BEST} (${NC_MEAN})        ${NC_KB}          ${NC_SKB}
   Rust   (Vec<Body> -O)              ${NR_BEST} (${NR_MEAN})      ${NR_KB}         ${NR_SKB}
   Archx  (Pythonic class + SoA -O2)  ${NA_BEST} (${NA_MEAN})        ${NA_KB}          ${NA_SKB}
+
+5. Planar SIMD Dict & Smart Adaptive Typing (benchmarks/dict_bench.* & dict_dynamic.*)
+--------------------------------------------------------------------------------------
+  - 120 rounds x 1,024-key str->i64 frequency counts (8,192 updates + 2,048 lookups + items)
+  - 32,768-key i64->i64 SwissTable + 8,192 .pop() tombstones + 8,192 inserts + 40 .items() scans
+  Output: $(paste -sd ', ' "$TMP/out_dc")
+
+  Language                                 Best ms (mean)   Raw KB   Stripped KB
+  C             (AoS open-addressing -O2)      ${DC_BEST} (${DC_MEAN})        ${DC_KB}          ${DC_SKB}
+  Rust          (std::HashMap -O)              ${DR_BEST} (${DR_MEAN})      ${DR_KB}         ${DR_SKB}
+  Archx Static  (Planar SIMD + region -O2)     ${DA_BEST} (${DA_MEAN})        ${DA_KB}          ${DA_SKB}
+  Archx Dynamic (%ArchxAny dict[any,any] -O2)  ${DAD_BEST} (${DAD_MEAN})        ${DAD_KB}          ${DAD_SKB}
 EOF
 )
 

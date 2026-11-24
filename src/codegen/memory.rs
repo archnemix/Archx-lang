@@ -25,9 +25,9 @@ impl Codegen {
     pub(super) fn emit_elem_sizeof(&mut self, elem_ty: &Type, out: &mut String) -> String {
         match elem_ty {
             Type::Bool => "1".to_string(),
-            Type::Int | Type::Float => "8".to_string(),
+            Type::Int | Type::Float | Type::Dict(_, _) | Type::Set(_) => "8".to_string(),
             Type::Str => "16".to_string(),
-            Type::Array(_) => "24".to_string(),
+            Type::Array(_) | Type::Any => "24".to_string(),
             Type::Struct(sname) => {
                 let gp = self.next_tmp();
                 let _ = writeln!(

@@ -13,7 +13,7 @@ impl Codegen {
     pub(super) fn type_needs_drop(&self, ty: &Type) -> bool {
         match ty {
             Type::Int | Type::Float | Type::Bool | Type::Void => false,
-            Type::Str | Type::Array(_) => true,
+            Type::Str | Type::Any | Type::Array(_) | Type::Dict(_, _) | Type::Set(_) => true,
             Type::Struct(name) => self
                 .structs
                 .get(name)
@@ -56,6 +56,22 @@ impl Codegen {
                 }
                 self.used_str_drop = true;
                 let _ = writeln!(out, "  call fastcc void @archx_str_drop(%ArchxStr {val})");
+            }
+            Type::Any => {
+                if val == "zeroinitializer" {
+                    return;
+                }
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let _ = writeln!(out, "  call fastcc void @archx_any_drop(%ArchxAny {val})");
+            }
+            Type::Dict(k, v) => {
+                let fn_sym = self.ensure_dict_drop_helper(k, Some(v));
+                let _ = writeln!(out, "  call fastcc void {fn_sym}(i64 {val})");
+            }
+            Type::Set(inner) => {
+                let fn_sym = self.ensure_dict_drop_helper(inner, None);
+                let _ = writeln!(out, "  call fastcc void {fn_sym}(i64 {val})");
             }
             Type::Array(elem_ty) => {
                 if !self.type_needs_drop(elem_ty) {
@@ -163,6 +179,11 @@ impl Codegen {
                     "  {res} = call fastcc %ArchxStr @archx_str_promote(%ArchxStr {val})"
                 );
                 res
+            }
+            Type::Any | Type::Dict(_, _) | Type::Set(_) => {
+                let cloned = self.emit_clone_value(ty, val, out);
+                self.emit_drop_value(ty, val, out);
+                cloned
             }
             Type::Array(elem_ty) => {
                 if !self.type_needs_drop(elem_ty) {

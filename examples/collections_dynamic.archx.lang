@@ -1,0 +1,62 @@
+# Archx v0.7.0 Showcase: Planar SIMD Dict/Set, Slicing & Smart Adaptive Typing
+#
+# Demonstrates how a single Archx program seamlessly mixes:
+#   - Tier 1 (Zero-Tag C/SIMD Speed): Planar SIMD `dict[str, int]`, `set[int]`,
+#     `with region:` arena dictionaries, and Pythonic list/string slicing.
+#   - Tier 2 (Smart Adaptive `%ArchxAny`): mixed-type Python dicts/lists,
+#     dynamic variable rebinding (`str` -> `int` -> `list`), untyped `def`,
+#     and `type()` / `isinstance()` runtime introspection -- with zero GC.
+
+def summarize_tag(val):
+    if val is None:
+        return "empty"
+    elif isinstance(val, int):
+        return f"int({val})"
+    elif isinstance(val, str):
+        return f"str({val})"
+    elif isinstance(val, list):
+        return f"list(len={len(val)})"
+    return type(val)
+
+def count_words_in_region(words: list[str]) -> int:
+    with region:
+        freq = {}
+        for w in words:
+            if w in freq:
+                freq[w] += 1
+            else:
+                freq[w] = 1
+        total = 0
+        for k, v in freq.items():
+            if len(k) > 2:
+                total += v * 10
+        return total
+
+# 1. Planar SIMD dict & set (automatically specialized to Tier-1 native planes):
+words = ["archx", "simd", "archx", "llvm", "python", "archx", "simd"]
+print("region score:", count_words_in_region(words))
+
+unique_ids = set([42, 7, 42, 19, 7, 99])
+unique_ids.add(105)
+unique_ids.discard(7)
+print("unique count:", len(unique_ids), "has 42:", 42 in unique_ids)
+
+# 2. Pythonic slicing & negative indexing:
+nums = [10, 20, 30, 40, 50, 60]
+print("middle slice:", nums[1:5])
+print("reversed step:", nums[::-2])
+banner = "Archx-v0.7.0"
+print("prefix:", banner[:5], "version:", banner[-6:])
+
+# 3. Smart Adaptive mixed-type dict/list & dynamic variable rebinding:
+hello = {"data": ["Archx", 18, "legal"], "age": 18}
+hello["data"].append("native")
+hello["age"] += 2
+print("payload:", hello["data"][0], "items:", len(hello["data"]), "age:", hello["age"])
+
+name = "Abdullah"
+print("before rebind:", summarize_tag(name))
+name = 18
+print("after rebind:", summarize_tag(name + 7))
+name = ["tier1", "tier2", 7]
+print("rebound list:", summarize_tag(name), "last:", name[-1])

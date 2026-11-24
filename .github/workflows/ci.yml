@@ -60,7 +60,7 @@ jobs:
           set +e
           (
             fail=0
-            for name in hello functions if loops arrays structs_regions pythonic; do
+            for name in hello functions if loops arrays structs_regions pythonic collections_dynamic; do
               echo "== emit-ir: $name =="
               ./target/release/archx "examples/$name.archx.lang" --emit-ir > "ci/out/$name.ll"
               code=$?
@@ -88,7 +88,7 @@ jobs:
             done
 
             echo "== optimized IR (clang -O2) =="
-            for name in hello functions if loops arrays structs_regions pythonic; do
+            for name in hello functions if loops arrays structs_regions pythonic collections_dynamic; do
               clang -O2 -Wno-override-module -S -emit-llvm "ci/out/$name.ll" -o "ci/out/$name.opt.ll"
               code=$?
               echo "$name.opt.ll exit=$code"
@@ -104,7 +104,7 @@ jobs:
       - name: Verify zero memory leaks & memory safety (ASan + LSan)
         run: |
           set -euo pipefail
-          for target in examples/arrays.archx.lang examples/structs_regions.archx.lang examples/pythonic.archx.lang benchmarks/composite.archx.lang benchmarks/nbody_float.archx.lang; do
+          for target in examples/arrays.archx.lang examples/structs_regions.archx.lang examples/pythonic.archx.lang examples/collections_dynamic.archx.lang benchmarks/composite.archx.lang benchmarks/nbody_float.archx.lang benchmarks/dict_bench.archx.lang benchmarks/dict_dynamic.archx.lang; do
             echo "== ASan + LSan check: $target =="
             ./target/release/archx "$target" --emit-ir > /tmp/asan_target.ll
             clang -O1 -g -fsanitize=address,leak -fno-omit-frame-pointer -Wno-override-module /tmp/asan_target.ll -lm -o /tmp/asan_target
@@ -124,6 +124,9 @@ jobs:
           ./target/release/archx benchmarks/nbody_float.archx.lang --emit-ir > /tmp/bench_nbody_float.ll
           clang -O2 -Wno-override-module -S -emit-llvm /tmp/bench_nbody_float.ll -o ci/out/bench_nbody_float.opt.ll
           clang -O2 -S -emit-llvm benchmarks/nbody_float.c -o ci/out/bench_nbody_float_c.opt.ll
+          ./target/release/archx benchmarks/dict_bench.archx.lang --emit-ir > /tmp/bench_dict.ll
+          clang -O2 -Wno-override-module -S -emit-llvm /tmp/bench_dict.ll -o ci/out/bench_dict.opt.ll
+          clang -O2 -S -emit-llvm benchmarks/dict_bench.c -o ci/out/bench_dict_c.opt.ll
           bash benchmarks/run.sh 7 2>&1 | tee ci/logs/benchmarks.log
 
       - name: Stage Linux CI outputs

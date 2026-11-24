@@ -25,8 +25,14 @@ impl Codegen {
 
         self.scopes = vec![Scope::default()];
         self.stmt_temps.clear();
-        self.mutated_vars =
+        self.adaptive_hints =
+            compute_adaptive_hints(&func.params, &func.body, &self.structs, &self.sigs);
+        let mut mutated =
             collect_mutated_vars(&func.params, &func.body, &self.mutating_method_names);
+        for dvar in &self.adaptive_hints.dynamic_vars {
+            mutated.insert(dvar.clone());
+        }
+        self.mutated_vars = mutated;
         self.returned_vars = collect_returned_vars(&func.body);
         self.loop_stack.clear();
         self.loop_bounds.clear();
@@ -123,6 +129,10 @@ impl Codegen {
             if self.current_ret.is_none() {
                 self.emit_func_exit_cleanup(None, &mut body);
                 body.push_str("  ret void\n");
+            } else if self.current_ret == Some(Type::Any) {
+                self.mark_runtime_type(&Type::Any);
+                self.emit_func_exit_cleanup(None, &mut body);
+                body.push_str("  ret %ArchxAny zeroinitializer\n");
             } else {
                 return Err(Diagnostic::new(
                     format!(
@@ -259,6 +269,13 @@ impl Codegen {
         let (target_ty, target_val) = self.eval_expr(target, out)?;
         match &target_ty {
             Type::Str => self.gen_str_method(&target_val, method, args, span, out),
+            Type::Dict(k_ty, v_ty) => {
+                self.gen_dict_method(k_ty, v_ty, &target_val, method, args, span, out)
+            }
+            Type::Set(elem_ty) => {
+                self.gen_set_method(elem_ty, &target_val, method, args, span, out)
+            }
+            Type::Any => self.gen_any_method(&target_val, method, args, span, out),
             Type::Struct(sname) => {
                 let sig = self
                     .methods
@@ -316,8 +333,17 @@ impl Codegen {
 
         let mut arg_vals = Vec::with_capacity(args.len());
         for (i, arg) in args.iter().enumerate() {
+            if sig.params[i] == Type::Any {
+                let aval = self.eval_expr_as_any(arg, out)?;
+                arg_vals.push((Type::Any, aval));
+                continue;
+            }
             let (ty, val) = self.eval_expr_typed(arg, Some(&sig.params[i]), out)?;
-            if ty != sig.params[i] {
+            let coerced = if ty == sig.params[i] {
+                val
+            } else if ty == Type::Any {
+                self.emit_unbox_any(&sig.params[i], &val, arg.span, out)?
+            } else {
                 return Err(Diagnostic::new(
                     format!(
                         "method argument {} expects `{}`, found `{}`",
@@ -327,8 +353,8 @@ impl Codegen {
                     ),
                     arg.span,
                 ));
-            }
-            arg_vals.push((ty, val));
+            };
+            arg_vals.push((sig.params[i].clone(), coerced));
         }
 
         let self_prefix = if sig.self_by_ptr {
@@ -601,6 +627,201 @@ impl Codegen {
             }
             other => Err(Diagnostic::new(
                 format!("`str` has no method `{other}`"),
+                span,
+            )),
+        }
+    }
+
+    pub(super) fn gen_any_method(
+        &mut self,
+        any_val: &str,
+        method: &str,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        self.mark_runtime_type(&Type::Any);
+        self.used_any_rt = true;
+        let tag = self.next_tmp();
+        let _ = writeln!(out, "  {tag} = extractvalue %ArchxAny {any_val}, 0");
+        let w1 = self.next_tmp();
+        let _ = writeln!(out, "  {w1} = extractvalue %ArchxAny {any_val}, 1");
+
+        match method {
+            "append" => {
+                if args.len() != 1 {
+                    return Err(Diagnostic::new(
+                        "`list.append()` takes exactly 1 argument",
+                        span,
+                    ));
+                }
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 5");
+                self.emit_type_guard(&ok, "`.append()` requires a `list` value", out);
+                let item = self.eval_owned_for_slot(&Type::Any, &args[0], out)?;
+                let raw = self.next_tmp();
+                let _ = writeln!(out, "  {raw} = and i64 {w1}, -4");
+                let cell = self.next_tmp();
+                let _ = writeln!(out, "  {cell} = inttoptr i64 {raw} to ptr");
+                let vec = self.next_tmp();
+                let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {cell}, align 8");
+                let len = self.next_tmp();
+                let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec}, 0");
+                let cap = self.next_tmp();
+                let _ = writeln!(out, "  {cap} = extractvalue %ArchxVec {vec}, 1");
+                let data = self.next_tmp();
+                let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {vec}, 2");
+
+                let is_reg = self.next_tmp();
+                let _ = writeln!(out, "  {is_reg} = icmp slt i64 {cap}, 0");
+                let neg_c = self.next_tmp();
+                let _ = writeln!(out, "  {neg_c} = sub nsw i64 0, {cap}");
+                let eff_cap = self.next_tmp();
+                let _ = writeln!(out, "  {eff_cap} = select i1 {is_reg}, i64 {neg_c}, i64 {cap}");
+                let full = self.next_tmp();
+                let _ = writeln!(out, "  {full} = icmp sge i64 {len}, {eff_cap}");
+                let grow_lbl = self.fresh_label("aapp.grow");
+                let store_lbl = self.fresh_label("aapp.store");
+                let keep_lbl = self.fresh_label("aapp.keep");
+                self.emit_cond_br(&full, &grow_lbl, &keep_lbl, out);
+
+                self.start_block(&keep_lbl, out);
+                self.emit_br(&store_lbl, out);
+
+                self.start_block(&grow_lbl, out);
+                let z = self.next_tmp();
+                let _ = writeln!(out, "  {z} = icmp eq i64 {eff_cap}, 0");
+                let dbl = self.next_tmp();
+                let _ = writeln!(out, "  {dbl} = shl i64 {eff_cap}, 1");
+                let ncap = self.next_tmp();
+                let _ = writeln!(out, "  {ncap} = select i1 {z}, i64 4, i64 {dbl}");
+                let nbytes = self.emit_elem_bytes_mul(&ncap, 24, out);
+                let ndata = self.emit_checked_malloc(&nbytes, out);
+                let has_old = self.next_tmp();
+                let _ = writeln!(out, "  {has_old} = icmp sgt i64 {len}, 0");
+                let cp_lbl = self.fresh_label("aapp.cp");
+                let fr_lbl = self.fresh_label("aapp.fr");
+                let gr_done = self.fresh_label("aapp.gdone");
+                self.emit_cond_br(&has_old, &cp_lbl, &fr_lbl, out);
+                self.start_block(&cp_lbl, out);
+                let obytes = self.next_tmp();
+                let _ = writeln!(out, "  {obytes} = mul i64 {len}, 24");
+                self.used_memcpy = true;
+                let _ = writeln!(
+                    out,
+                    "  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 {ndata}, ptr nonnull align 8 {data}, i64 {obytes}, i1 false)"
+                );
+                self.emit_br(&fr_lbl, out);
+                self.start_block(&fr_lbl, out);
+                let was_heap = self.next_tmp();
+                let _ = writeln!(out, "  {was_heap} = icmp sgt i64 {cap}, 0");
+                let do_fr = self.fresh_label("aapp.dofr");
+                self.emit_cond_br(&was_heap, &do_fr, &gr_done, out);
+                self.start_block(&do_fr, out);
+                self.used_free = true;
+                let _ = writeln!(out, "  call void @free(ptr {data})");
+                self.emit_br(&gr_done, out);
+                self.start_block(&gr_done, out);
+                self.emit_br(&store_lbl, out);
+
+                self.start_block(&store_lbl, out);
+                let d_phi = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {d_phi} = phi ptr [ {data}, %{keep_lbl} ], [ {ndata}, %{gr_done} ]"
+                );
+                let c_phi = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {c_phi} = phi i64 [ {cap}, %{keep_lbl} ], [ {ncap}, %{gr_done} ]"
+                );
+                let ep = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {ep} = getelementptr inbounds %ArchxAny, ptr {d_phi}, i64 {len}"
+                );
+                let _ = writeln!(out, "  store %ArchxAny {item}, ptr {ep}, align 8");
+                let nlen = self.next_tmp();
+                let _ = writeln!(out, "  {nlen} = add nuw nsw i64 {len}, 1");
+                let nvec = self.build_vec_val(&nlen, &c_phi, &d_phi, out);
+                let _ = writeln!(out, "  store %ArchxVec {nvec}, ptr {cell}, align 8");
+                Ok((Type::Void, String::new()))
+            }
+            "get" | "keys" | "values" => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 6");
+                self.emit_type_guard(&ok, "dict method called on non-dict dynamic value", out);
+                self.gen_dict_method(&Type::Any, &Type::Any, &w1, method, args, span, out)
+            }
+            "pop" if !args.is_empty() => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 6");
+                self.emit_type_guard(&ok, "`dict.pop(k)` requires a `dict` value", out);
+                self.gen_dict_method(&Type::Any, &Type::Any, &w1, "pop", args, span, out)
+            }
+            "pop" => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 5");
+                self.emit_type_guard(&ok, "`list.pop()` requires a `list` value", out);
+                self.used_pop_empty_fail = true;
+                let raw = self.next_tmp();
+                let _ = writeln!(out, "  {raw} = and i64 {w1}, -4");
+                let cell = self.next_tmp();
+                let _ = writeln!(out, "  {cell} = inttoptr i64 {raw} to ptr");
+                let vec = self.next_tmp();
+                let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {cell}, align 8");
+                let len = self.next_tmp();
+                let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec}, 0");
+                let empty = self.next_tmp();
+                let _ = writeln!(out, "  {empty} = icmp sle i64 {len}, 0");
+                let fail_lbl = self.fresh_label("apop.empty");
+                let ok_lbl = self.fresh_label("apop.ok");
+                self.emit_cond_br(&empty, &fail_lbl, &ok_lbl, out);
+                self.start_block(&fail_lbl, out);
+                let _ = writeln!(out, "  call void @archx_pop_empty_fail()");
+                let _ = writeln!(out, "  unreachable");
+                self.start_block(&ok_lbl, out);
+                let nlen = self.next_tmp();
+                let _ = writeln!(out, "  {nlen} = sub nsw i64 {len}, 1");
+                let data = self.next_tmp();
+                let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {vec}, 2");
+                let ep = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {ep} = getelementptr inbounds %ArchxAny, ptr {data}, i64 {nlen}"
+                );
+                let ev = self.next_tmp();
+                let _ = writeln!(out, "  {ev} = load %ArchxAny, ptr {ep}, align 8");
+                let vec2 = self.next_tmp();
+                let _ = writeln!(out, "  {vec2} = insertvalue %ArchxVec {vec}, i64 {nlen}, 0");
+                let _ = writeln!(out, "  store %ArchxVec {vec2}, ptr {cell}, align 8");
+                self.stmt_temps.push(TempDrop {
+                    val: ev.clone(),
+                    ty: Type::Any,
+                });
+                Ok((Type::Any, ev))
+            }
+            "add" | "remove" | "discard" => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 7");
+                self.emit_type_guard(&ok, "set method called on non-set dynamic value", out);
+                self.gen_set_method(&Type::Any, &w1, method, args, span, out)
+            }
+            "strip" | "upper" | "lower" | "startswith" | "endswith" | "find" | "replace"
+            | "split" => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 4");
+                self.emit_type_guard(&ok, "string method called on non-str dynamic value", out);
+                let w2 = self.next_tmp();
+                let _ = writeln!(out, "  {w2} = extractvalue %ArchxAny {any_val}, 2");
+                let s0 = self.next_tmp();
+                let _ = writeln!(out, "  {s0} = insertvalue %ArchxStr poison, i64 {w1}, 0");
+                let s1 = self.next_tmp();
+                let _ = writeln!(out, "  {s1} = insertvalue %ArchxStr {s0}, i64 {w2}, 1");
+                self.gen_str_method(&s1, method, args, span, out)
+            }
+            other => Err(Diagnostic::new(
+                format!("dynamic `any` value has no supported method `{other}`"),
                 span,
             )),
         }

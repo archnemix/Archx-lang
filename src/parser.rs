@@ -164,8 +164,12 @@ impl Parser {
                 break;
             }
             let param_name = self.expect_ident("a parameter name")?;
-            self.expect(TokenKind::Colon, "`:`")?;
-            let ty = self.parse_type()?;
+            let ty = if self.check(&TokenKind::Colon) {
+                self.bump();
+                self.parse_type()?
+            } else {
+                Type::Any
+            };
             params.push(Param {
                 name: param_name,
                 ty,
@@ -174,7 +178,8 @@ impl Parser {
 
         self.expect(TokenKind::RParen, "`)`")?;
 
-        let ret = if self.check(&TokenKind::Arrow) {
+        let explicit_arrow = self.check(&TokenKind::Arrow);
+        let mut ret = if explicit_arrow {
             self.bump();
             Some(self.parse_type()?)
         } else {
@@ -188,6 +193,9 @@ impl Parser {
         self.expect(TokenKind::Dedent, "the end of the method body")?;
         if body.is_empty() {
             return Err(Diagnostic::new("method body cannot be empty", span));
+        }
+        if !explicit_arrow && stmts_have_value_return(&body) {
+            ret = Some(Type::Any);
         }
 
         Ok(Func {
@@ -213,8 +221,12 @@ impl Parser {
                     break;
                 }
                 let param_name = self.expect_ident("a parameter name")?;
-                self.expect(TokenKind::Colon, "`:`")?;
-                let ty = self.parse_type()?;
+                let ty = if self.check(&TokenKind::Colon) {
+                    self.bump();
+                    self.parse_type()?
+                } else {
+                    Type::Any
+                };
                 params.push(Param {
                     name: param_name,
                     ty,
@@ -230,7 +242,8 @@ impl Parser {
 
         self.expect(TokenKind::RParen, "`)`")?;
 
-        let ret = if self.check(&TokenKind::Arrow) {
+        let explicit_arrow = self.check(&TokenKind::Arrow);
+        let mut ret = if explicit_arrow {
             self.bump();
             Some(self.parse_type()?)
         } else {
@@ -249,6 +262,9 @@ impl Parser {
 
         if body.is_empty() {
             return Err(Diagnostic::new("function body cannot be empty", span));
+        }
+        if !explicit_arrow && name != "main" && stmts_have_value_return(&body) {
+            ret = Some(Type::Any);
         }
 
         Ok(Func {
@@ -445,7 +461,15 @@ impl Parser {
                 let elem_var = self.expect_ident("a second loop variable name")?;
                 self.expect(TokenKind::In, "`in`")?;
                 let iter_expr = self.parse_expr()?;
-                let (iter, start) = match iter_expr.kind {
+                self.expect(TokenKind::Colon, "`:`")?;
+                self.expect(TokenKind::Newline, "a newline after the `for` header")?;
+                self.expect(TokenKind::Indent, "an indented `for` body")?;
+                let body = self.parse_block_body()?;
+                self.expect(TokenKind::Dedent, "the end of the `for` body")?;
+                if body.is_empty() {
+                    return Err(Diagnostic::new("`for` body cannot be empty", span));
+                }
+                return match iter_expr.kind {
                     ExprKind::Call { name, mut args } if name == "enumerate" => {
                         if args.is_empty() || args.len() > 2 {
                             return Err(Diagnostic::new(
@@ -459,33 +483,43 @@ impl Parser {
                             None
                         };
                         let iter = args.remove(0);
-                        (iter, start)
+                        Ok(Stmt {
+                            kind: StmtKind::ForEnumerate {
+                                idx_var: var,
+                                elem_var,
+                                iter,
+                                start,
+                                body,
+                            },
+                            span,
+                        })
                     }
-                    _ => {
-                        return Err(Diagnostic::new(
-                            "two-variable `for i, x in ...:` requires `enumerate(seq)`",
-                            iter_expr.span,
-                        ));
-                    }
+                    ExprKind::MethodCall {
+                        target,
+                        method,
+                        args,
+                    } if method == "items" && args.is_empty() => Ok(Stmt {
+                        kind: StmtKind::ForDictItems {
+                            key_var: var,
+                            val_var: elem_var,
+                            dict: *target,
+                            body,
+                        },
+                        span,
+                    }),
+                    other => Ok(Stmt {
+                        kind: StmtKind::ForDictItems {
+                            key_var: var,
+                            val_var: elem_var,
+                            dict: Expr {
+                                kind: other,
+                                span: iter_expr.span,
+                            },
+                            body,
+                        },
+                        span,
+                    }),
                 };
-                self.expect(TokenKind::Colon, "`:`")?;
-                self.expect(TokenKind::Newline, "a newline after the `for` header")?;
-                self.expect(TokenKind::Indent, "an indented `for` body")?;
-                let body = self.parse_block_body()?;
-                self.expect(TokenKind::Dedent, "the end of the `for` body")?;
-                if body.is_empty() {
-                    return Err(Diagnostic::new("`for` body cannot be empty", span));
-                }
-                return Ok(Stmt {
-                    kind: StmtKind::ForEnumerate {
-                        idx_var: var,
-                        elem_var,
-                        iter,
-                        start,
-                        body,
-                    },
-                    span,
-                });
             }
 
             self.expect(TokenKind::In, "`in`")?;
@@ -1072,15 +1106,75 @@ impl Parser {
             if self.check(&TokenKind::LBracket) {
                 let span = self.peek().span;
                 self.bump();
-                let index = self.parse_expr()?;
-                self.expect(TokenKind::RBracket, "`]`")?;
-                expr = Expr {
-                    kind: ExprKind::Index {
-                        target: Box::new(expr),
-                        index: Box::new(index),
-                    },
-                    span,
-                };
+                if self.check(&TokenKind::Colon) {
+                    self.bump();
+                    let stop = if !self.check(&TokenKind::Colon) && !self.check(&TokenKind::RBracket)
+                    {
+                        Some(Box::new(self.parse_expr()?))
+                    } else {
+                        None
+                    };
+                    let step = if self.check(&TokenKind::Colon) {
+                        self.bump();
+                        if !self.check(&TokenKind::RBracket) {
+                            Some(Box::new(self.parse_expr()?))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    expr = Expr {
+                        kind: ExprKind::Slice {
+                            target: Box::new(expr),
+                            start: None,
+                            stop,
+                            step,
+                        },
+                        span,
+                    };
+                } else {
+                    let first = self.parse_expr()?;
+                    if self.check(&TokenKind::Colon) {
+                        self.bump();
+                        let stop =
+                            if !self.check(&TokenKind::Colon) && !self.check(&TokenKind::RBracket) {
+                                Some(Box::new(self.parse_expr()?))
+                            } else {
+                                None
+                            };
+                        let step = if self.check(&TokenKind::Colon) {
+                            self.bump();
+                            if !self.check(&TokenKind::RBracket) {
+                                Some(Box::new(self.parse_expr()?))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                        self.expect(TokenKind::RBracket, "`]`")?;
+                        expr = Expr {
+                            kind: ExprKind::Slice {
+                                target: Box::new(expr),
+                                start: Some(Box::new(first)),
+                                stop,
+                                step,
+                            },
+                            span,
+                        };
+                    } else {
+                        self.expect(TokenKind::RBracket, "`]`")?;
+                        expr = Expr {
+                            kind: ExprKind::Index {
+                                target: Box::new(expr),
+                                index: Box::new(first),
+                            },
+                            span,
+                        };
+                    }
+                }
             } else if self.check(&TokenKind::Dot) {
                 let span = self.peek().span;
                 self.bump();
@@ -1301,6 +1395,64 @@ impl Parser {
                     span,
                 })
             }
+            TokenKind::LBrace => {
+                self.bump();
+                if self.check(&TokenKind::RBrace) {
+                    self.bump();
+                    return Ok(Expr {
+                        kind: ExprKind::DictLit(Vec::new()),
+                        span,
+                    });
+                }
+                let first = self.parse_expr()?;
+                if self.check(&TokenKind::Colon) {
+                    self.bump();
+                    let first_val = self.parse_expr()?;
+                    let mut pairs = vec![(first, first_val)];
+                    while self.check(&TokenKind::Comma) {
+                        self.bump();
+                        if self.check(&TokenKind::RBrace) {
+                            break;
+                        }
+                        let k = self.parse_expr()?;
+                        if !self.check(&TokenKind::Colon) {
+                            return Err(Diagnostic::new(
+                                "expected `:` after dictionary key (mixing `k: v` and bare values in `{...}` is invalid)",
+                                self.peek().span,
+                            ));
+                        }
+                        self.bump();
+                        let v = self.parse_expr()?;
+                        pairs.push((k, v));
+                    }
+                    self.expect(TokenKind::RBrace, "`}`")?;
+                    Ok(Expr {
+                        kind: ExprKind::DictLit(pairs),
+                        span,
+                    })
+                } else {
+                    let mut elems = vec![first];
+                    while self.check(&TokenKind::Comma) {
+                        self.bump();
+                        if self.check(&TokenKind::RBrace) {
+                            break;
+                        }
+                        let e = self.parse_expr()?;
+                        if self.check(&TokenKind::Colon) {
+                            return Err(Diagnostic::new(
+                                "unexpected `:` inside set literal `{...}`",
+                                self.peek().span,
+                            ));
+                        }
+                        elems.push(e);
+                    }
+                    self.expect(TokenKind::RBrace, "`}`")?;
+                    Ok(Expr {
+                        kind: ExprKind::SetLit(elems),
+                        span,
+                    })
+                }
+            }
             TokenKind::LParen => {
                 self.bump();
                 let expr = self.parse_expr()?;
@@ -1435,10 +1587,48 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 }
                 rewrite_main_calls_in_stmts(body);
             }
+            StmtKind::ForDictItems { dict, body, .. } => {
+                rewrite_main_calls_in_expr(dict);
+                rewrite_main_calls_in_stmts(body);
+            }
             StmtKind::Region { body } => rewrite_main_calls_in_stmts(body),
             StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
         }
     }
+}
+
+fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
+    for s in stmts {
+        match &s.kind {
+            StmtKind::Return(Some(_)) => return true,
+            StmtKind::If {
+                then_body,
+                else_body,
+                ..
+            } => {
+                if stmts_have_value_return(then_body) {
+                    return true;
+                }
+                if let Some(eb) = else_body {
+                    if stmts_have_value_return(eb) {
+                        return true;
+                    }
+                }
+            }
+            StmtKind::While { body, .. }
+            | StmtKind::For { body, .. }
+            | StmtKind::ForEach { body, .. }
+            | StmtKind::ForEnumerate { body, .. }
+            | StmtKind::ForDictItems { body, .. }
+            | StmtKind::Region { body } => {
+                if stmts_have_value_return(body) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 fn rewrite_main_calls_in_expr(expr: &mut Expr) {
@@ -1488,9 +1678,15 @@ fn rewrite_main_calls_in_expr(expr: &mut Expr) {
             rewrite_main_calls_in_expr(cond);
             rewrite_main_calls_in_expr(else_expr);
         }
-        ExprKind::ArrayLit(es) => {
+        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => {
             for e in es {
                 rewrite_main_calls_in_expr(e);
+            }
+        }
+        ExprKind::DictLit(pairs) => {
+            for (k, v) in pairs {
+                rewrite_main_calls_in_expr(k);
+                rewrite_main_calls_in_expr(v);
             }
         }
         ExprKind::ArrayRepeat { value, count } => {
@@ -1500,6 +1696,23 @@ fn rewrite_main_calls_in_expr(expr: &mut Expr) {
         ExprKind::Index { target, index } => {
             rewrite_main_calls_in_expr(target);
             rewrite_main_calls_in_expr(index);
+        }
+        ExprKind::Slice {
+            target,
+            start,
+            stop,
+            step,
+        } => {
+            rewrite_main_calls_in_expr(target);
+            if let Some(s) = start {
+                rewrite_main_calls_in_expr(s);
+            }
+            if let Some(e) = stop {
+                rewrite_main_calls_in_expr(e);
+            }
+            if let Some(st) = step {
+                rewrite_main_calls_in_expr(st);
+            }
         }
         ExprKind::Field { target, .. } | ExprKind::Unary { expr: target, .. } => {
             rewrite_main_calls_in_expr(target)

@@ -11,6 +11,195 @@ use super::*;
 impl Codegen {
     // ---------------- Expressions --------------------------------------------
 
+    pub(super) fn eval_str_lit(&mut self, value: &str) -> (Type, String) {
+        self.used_str_type = true;
+        let bytes = value.as_bytes();
+        let (w0, w1) = pack_sso_str_words(bytes);
+        (Type::Str, format!("{{ i64 {w0}, i64 {w1} }}"))
+    }
+
+    pub(super) fn eval_array_lit(
+        &mut self,
+        elems: &[Expr],
+        expected: Option<&Type>,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        self.used_vec_type = true;
+        if elems.is_empty() {
+            if expected == Some(&Type::Any) {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let vec = self.build_vec_val("0", "0", "null", out);
+                let cell = self.emit_wrap_any_vec_cell(&vec, out);
+                self.stmt_temps.push(TempDrop {
+                    val: cell.clone(),
+                    ty: Type::Any,
+                });
+                return Ok((Type::Any, cell));
+            }
+            let elem_ty = match expected {
+                Some(Type::Array(inner)) => (**inner).clone(),
+                _ => Type::Any,
+            };
+            self.mark_runtime_type(&elem_ty);
+            let vec = self.build_vec_val("0", "0", "null", out);
+            return Ok((Type::Array(Box::new(elem_ty)), vec));
+        }
+
+        // Strict static expected `[T]` where `T != any`:
+        if let Some(Type::Array(exp_inner)) = expected {
+            if **exp_inner != Type::Any {
+                let target_t = (**exp_inner).clone();
+                let elem_drops = self.type_needs_drop(&target_t);
+                let mut vals = Vec::with_capacity(elems.len());
+                for item in elems {
+                    let (ty, raw_v) = self.eval_expr_typed(item, Some(&target_t), out)?;
+                    let coerced = if ty == target_t {
+                        raw_v
+                    } else if ty == Type::Any {
+                        self.emit_unbox_any(&target_t, &raw_v, item.span, out)?
+                    } else {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "array element type mismatch: expected `{}`, found `{}`",
+                                target_t.name(),
+                                ty.name()
+                            ),
+                            item.span,
+                        ));
+                    };
+                    let owned_v = if elem_drops {
+                        if self.claim_stmt_temp(&coerced) {
+                            coerced
+                        } else {
+                            self.emit_clone_value(&target_t, &coerced, out)
+                        }
+                    } else {
+                        coerced
+                    };
+                    vals.push(owned_v);
+                }
+                return Ok(self.finish_array_lit_from_vals(target_t, vals, out));
+            }
+        }
+
+        // Adaptive evaluation: Tier-1 homogeneous `[T]` when all elements match,
+        // automatic fallback to Tier-2 `list[any]` on mixed types (`["Archx", 18, "legal"]`) or `expected == any`!
+        let mut raw_items = Vec::with_capacity(elems.len());
+        for item in elems {
+            if matches!(&item.kind, ExprKind::NoneLit) {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                raw_items.push((Type::Any, "zeroinitializer".to_string(), item.span));
+            } else {
+                let hint = if expected == Some(&Type::Any) {
+                    Some(&Type::Any)
+                } else {
+                    None
+                };
+                let (ty, val) = self.eval_expr_typed(item, hint, out)?;
+                if ty == Type::Void {
+                    return Err(Diagnostic::new(
+                        "array elements cannot have type `void`",
+                        item.span,
+                    ));
+                }
+                raw_items.push((ty, val, item.span));
+            }
+        }
+
+        let force_any = expected == Some(&Type::Any)
+            || matches!(expected, Some(Type::Array(inner)) if **inner == Type::Any);
+        let first_t = &raw_items[0].0;
+        let all_same = !force_any
+            && *first_t != Type::Any
+            && raw_items.iter().all(|(t, _, _)| t == first_t);
+
+        if all_same {
+            let elem_t = first_t.clone();
+            let elem_drops = self.type_needs_drop(&elem_t);
+            let mut vals = Vec::with_capacity(raw_items.len());
+            for (_, v, _) in raw_items {
+                let owned = if elem_drops {
+                    if self.claim_stmt_temp(&v) {
+                        v
+                    } else {
+                        self.emit_clone_value(&elem_t, &v, out)
+                    }
+                } else {
+                    v
+                };
+                vals.push(owned);
+            }
+            return Ok(self.finish_array_lit_from_vals(elem_t, vals, out));
+        }
+
+        let _ = span;
+        self.mark_runtime_type(&Type::Any);
+        self.used_any_rt = true;
+        let mut any_vals = Vec::with_capacity(raw_items.len());
+        for (ty, v, ispan) in raw_items {
+            any_vals.push(self.emit_box_any_owned(&ty, &v, ispan, out)?);
+        }
+        let (_, vec) = self.finish_array_lit_from_vals(Type::Any, any_vals, out);
+        if expected == Some(&Type::Any) {
+            let _ = self.claim_stmt_temp(&vec);
+            let cell = self.emit_wrap_any_vec_cell(&vec, out);
+            self.stmt_temps.push(TempDrop {
+                val: cell.clone(),
+                ty: Type::Any,
+            });
+            return Ok((Type::Any, cell));
+        }
+        Ok((Type::Array(Box::new(Type::Any)), vec))
+    }
+
+    fn finish_array_lit_from_vals(
+        &mut self,
+        elem_ty: Type,
+        vals: Vec<String>,
+        out: &mut String,
+    ) -> (Type, String) {
+        self.mark_runtime_type(&elem_ty);
+        let elem_drops = self.type_needs_drop(&elem_ty);
+        let count = vals.len() as i64;
+        let count_str = count.to_string();
+        let bytes = self.emit_type_bytes_const_mul(&elem_ty, count, out);
+
+        let use_region = !self.region_stack.is_empty() && !elem_drops;
+        let (data_ptr, cap_str) = if use_region {
+            let rslot = self.func_region_slot.clone().unwrap();
+            let p = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {p} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
+            );
+            (p, format!("-{count}"))
+        } else {
+            let p = self.emit_checked_malloc(&bytes, out);
+            (p, count_str.clone())
+        };
+
+        let mem_ty = elem_mem_ir_type(&elem_ty);
+        for (i, val) in vals.iter().enumerate() {
+            let ep = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {ep} = getelementptr inbounds {mem_ty}, ptr {data_ptr}, i64 {i}"
+            );
+            self.emit_elem_store(&elem_ty, val, &ep, out);
+        }
+
+        let vec = self.build_vec_val(&count_str, &cap_str, &data_ptr, out);
+        let arr_ty = Type::Array(Box::new(elem_ty));
+        self.stmt_temps.push(TempDrop {
+            val: vec.clone(),
+            ty: arr_ty.clone(),
+        });
+        (arr_ty, vec)
+    }
+
     pub(super) fn eval_expr(&mut self, expr: &Expr, out: &mut String) -> Result<(Type, String)> {
         self.eval_expr_typed(expr, None, out)
     }
@@ -61,6 +250,24 @@ impl Codegen {
                 cond,
                 else_expr,
             } => self.gen_if_expr(then_expr, cond, else_expr, expected, expr.span, out),
+
+            ExprKind::DictLit(pairs) => self.eval_dict_lit(pairs, expected, expr.span, out),
+
+            ExprKind::SetLit(elems) => self.eval_set_lit(elems, expected, expr.span, out),
+
+            ExprKind::Slice {
+                target,
+                start,
+                stop,
+                step,
+            } => self.eval_slice_expr(
+                target,
+                start.as_deref(),
+                stop.as_deref(),
+                step.as_deref(),
+                expr.span,
+                out,
+            ),
 
             ExprKind::Str(value) => {
                 self.used_str_type = true;
@@ -178,103 +385,7 @@ impl Codegen {
                 Ok((fty, extracted))
             }
 
-            ExprKind::ArrayLit(elems) => {
-                self.used_vec_type = true;
-                if elems.is_empty() {
-                    let Some(Type::Array(elem_ty)) = expected else {
-                        return Err(Diagnostic::new(
-                            "cannot infer element type of empty array `[]`; add a type annotation like `let xs: [int] = []`",
-                            expr.span,
-                        ));
-                    };
-                    let vec = self.build_vec_val("0", "0", "null", out);
-                    return Ok((Type::Array(elem_ty.clone()), vec));
-                }
-
-                let elem_hint = match expected {
-                    Some(Type::Array(inner)) => Some(inner.as_ref()),
-                    _ => None,
-                };
-
-                let (first_ty, raw_first) = self.eval_expr_typed(&elems[0], elem_hint, out)?;
-                if first_ty == Type::Void {
-                    return Err(Diagnostic::new(
-                        "array elements cannot have type `void`",
-                        elems[0].span,
-                    ));
-                }
-                let elem_drops = self.type_needs_drop(&first_ty);
-                let first_owned = if elem_drops {
-                    if self.claim_stmt_temp(&raw_first) {
-                        raw_first
-                    } else {
-                        self.emit_clone_value(&first_ty, &raw_first, out)
-                    }
-                } else {
-                    raw_first
-                };
-
-                let mut vals = vec![first_owned];
-                for item in &elems[1..] {
-                    let (ty, raw_v) = self.eval_expr_typed(item, Some(&first_ty), out)?;
-                    if ty != first_ty {
-                        return Err(Diagnostic::new(
-                            format!(
-                                "array element type mismatch: expected `{}`, found `{}`",
-                                first_ty.name(),
-                                ty.name()
-                            ),
-                            item.span,
-                        ));
-                    }
-                    let owned_v = if elem_drops {
-                        if self.claim_stmt_temp(&raw_v) {
-                            raw_v
-                        } else {
-                            self.emit_clone_value(&first_ty, &raw_v, out)
-                        }
-                    } else {
-                        raw_v
-                    };
-                    vals.push(owned_v);
-                }
-
-                let count = vals.len() as i64;
-                let count_str = count.to_string();
-                let bytes = self.emit_type_bytes_const_mul(&first_ty, count, out);
-
-                let use_region = !self.region_stack.is_empty() && !elem_drops;
-                let (data_ptr, cap_str) = if use_region {
-                    let rslot = self.func_region_slot.clone().unwrap();
-                    let p = self.next_tmp();
-                    let _ = writeln!(
-                        out,
-                        "  {p} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
-                    );
-                    (p, format!("-{count}"))
-                } else {
-                    let p = self.emit_checked_malloc(&bytes, out);
-                    (p, count_str.clone())
-                };
-
-                let mem_ty = elem_mem_ir_type(&first_ty);
-                for (i, val) in vals.iter().enumerate() {
-                    let ep = self.next_tmp();
-                    let _ = writeln!(
-                        out,
-                        "  {ep} = getelementptr inbounds {mem_ty}, ptr {data_ptr}, i64 {i}"
-                    );
-                    self.emit_elem_store(&first_ty, val, &ep, out);
-                }
-
-                let vec = self.build_vec_val(&count_str, &cap_str, &data_ptr, out);
-                let arr_ty = Type::Array(Box::new(first_ty));
-                self.stmt_temps.push(TempDrop {
-                    val: vec.clone(),
-                    ty: arr_ty.clone(),
-                });
-                Ok((arr_ty, vec))
-            }
+            ExprKind::ArrayLit(elems) => self.eval_array_lit(elems, expected, expr.span, out),
 
             ExprKind::ArrayRepeat { value, count } => {
                 self.used_vec_type = true;
@@ -367,19 +478,62 @@ impl Codegen {
                 }
 
                 let (arr_ty, vec_val) = self.eval_expr(target, out)?;
+                if let Type::Dict(k_ty, v_ty) = arr_ty {
+                    return self.eval_dict_index(&k_ty, &v_ty, &vec_val, index, out);
+                }
+                if arr_ty == Type::Any {
+                    self.mark_runtime_type(&Type::Any);
+                    self.used_any_rt = true;
+                    let idx_any = self.eval_expr_as_any(index, out)?;
+                    let res = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {res} = call fastcc %ArchxAny @archx_any_get_idx(%ArchxAny {vec_val}, %ArchxAny {idx_any})"
+                    );
+                    self.stmt_temps.push(TempDrop {
+                        val: res.clone(),
+                        ty: Type::Any,
+                    });
+                    return Ok((Type::Any, res));
+                }
                 if arr_ty == Type::Str {
                     let (idx_ty, idx_val) = self.eval_expr(index, out)?;
-                    if idx_ty != Type::Int {
+                    let idx_val = if idx_ty == Type::Any {
+                        self.emit_unbox_any(&Type::Int, &idx_val, index.span, out)?
+                    } else if idx_ty == Type::Int {
+                        idx_val
+                    } else {
                         return Err(Diagnostic::new(
                             format!("string index must be `int`, found `{}`", idx_ty.name()),
                             index.span,
                         ));
-                    }
+                    };
                     self.used_str_byte_at = true;
+                    let eff_idx = if analysis::eval_const_int(index).map_or(false, |c| c < 0) {
+                        self.used_bounds_fail = true;
+                        let w0 = self.next_tmp();
+                        let _ = writeln!(out, "  {w0} = extractvalue %ArchxStr {vec_val}, 0");
+                        let slen = self.next_tmp();
+                        let _ = writeln!(out, "  {slen} = and i64 {w0}, 4294967295");
+                        let adj = self.next_tmp();
+                        let _ = writeln!(out, "  {adj} = add i64 {slen}, {idx_val}");
+                        let oob = self.next_tmp();
+                        let _ = writeln!(out, "  {oob} = icmp uge i64 {adj}, {slen}");
+                        let oob_lbl = self.fresh_label("sidx.oob");
+                        let ok_lbl = self.fresh_label("sidx.ok");
+                        self.emit_cond_br(&oob, &oob_lbl, &ok_lbl, out);
+                        self.start_block(&oob_lbl, out);
+                        let _ = writeln!(out, "  call void @archx_bounds_fail(i64 {idx_val}, i64 {slen})");
+                        let _ = writeln!(out, "  unreachable");
+                        self.start_block(&ok_lbl, out);
+                        adj
+                    } else {
+                        idx_val
+                    };
                     let ch = self.next_tmp();
                     let _ = writeln!(
                         out,
-                        "  {ch} = call fastcc %ArchxStr @archx_str_byte_at(%ArchxStr {vec_val}, i64 {idx_val})"
+                        "  {ch} = call fastcc %ArchxStr @archx_str_byte_at(%ArchxStr {vec_val}, i64 {eff_idx})"
                     );
                     return Ok((Type::Str, ch));
                 }
@@ -389,15 +543,58 @@ impl Codegen {
                         target.span,
                     ));
                 };
-                let (idx_ty, idx_val) = self.eval_expr(index, out)?;
-                if idx_ty != Type::Int {
+                let (idx_ty, raw_idx_val) = self.eval_expr(index, out)?;
+                let idx_val = if idx_ty == Type::Any {
+                    self.emit_unbox_any(&Type::Int, &raw_idx_val, index.span, out)?
+                } else if idx_ty == Type::Int {
+                    raw_idx_val
+                } else {
                     return Err(Diagnostic::new(
                         format!("array index must be `int`, found `{}`", idx_ty.name()),
                         index.span,
                     ));
-                }
+                };
 
-                self.emit_bounds_check_if_needed(target, index, &vec_val, &idx_val, out)?;
+                let eff_idx = if *elem_ty == Type::Any {
+                    self.used_bounds_fail = true;
+                    let len = self.next_tmp();
+                    let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec_val}, 0");
+                    let neg = self.next_tmp();
+                    let _ = writeln!(out, "  {neg} = icmp slt i64 {idx_val}, 0");
+                    let adj = self.next_tmp();
+                    let _ = writeln!(out, "  {adj} = add i64 {idx_val}, {len}");
+                    let eff = self.next_tmp();
+                    let _ = writeln!(out, "  {eff} = select i1 {neg}, i64 {adj}, i64 {idx_val}");
+                    let oob = self.next_tmp();
+                    let _ = writeln!(out, "  {oob} = icmp uge i64 {eff}, {len}");
+                    let oob_lbl = self.fresh_label("aidx.oob");
+                    let ok_lbl = self.fresh_label("aidx.ok");
+                    self.emit_cond_br(&oob, &oob_lbl, &ok_lbl, out);
+                    self.start_block(&oob_lbl, out);
+                    let _ = writeln!(out, "  call void @archx_bounds_fail(i64 {idx_val}, i64 {len})");
+                    let _ = writeln!(out, "  unreachable");
+                    self.start_block(&ok_lbl, out);
+                    eff
+                } else if analysis::eval_const_int(index).map_or(false, |c| c < 0) {
+                    self.used_bounds_fail = true;
+                    let len = self.next_tmp();
+                    let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec_val}, 0");
+                    let eff = self.next_tmp();
+                    let _ = writeln!(out, "  {eff} = add i64 {len}, {idx_val}");
+                    let oob = self.next_tmp();
+                    let _ = writeln!(out, "  {oob} = icmp uge i64 {eff}, {len}");
+                    let oob_lbl = self.fresh_label("nidx.oob");
+                    let ok_lbl = self.fresh_label("nidx.ok");
+                    self.emit_cond_br(&oob, &oob_lbl, &ok_lbl, out);
+                    self.start_block(&oob_lbl, out);
+                    let _ = writeln!(out, "  call void @archx_bounds_fail(i64 {idx_val}, i64 {len})");
+                    let _ = writeln!(out, "  unreachable");
+                    self.start_block(&ok_lbl, out);
+                    eff
+                } else {
+                    self.emit_bounds_check_if_needed(target, index, &vec_val, &idx_val, out)?;
+                    idx_val
+                };
 
                 let data_ptr = self.next_tmp();
                 let _ = writeln!(out, "  {data_ptr} = extractvalue %ArchxVec {vec_val}, 2");
@@ -405,11 +602,12 @@ impl Codegen {
                 let mem_ty = elem_mem_ir_type(&elem_ty);
                 let _ = writeln!(
                     out,
-                    "  {elem_ptr} = getelementptr inbounds {mem_ty}, ptr {data_ptr}, i64 {idx_val}"
+                    "  {elem_ptr} = getelementptr inbounds {mem_ty}, ptr {data_ptr}, i64 {eff_idx}"
                 );
                 let loaded = self.emit_elem_load(&elem_ty, &elem_ptr, out);
                 let safe_loaded = if self.type_needs_drop(&elem_ty)
-                    && self.stmt_temps.iter().any(|t| t.val == vec_val)
+                    && (*elem_ty == Type::Any
+                        || self.stmt_temps.iter().any(|t| t.val == vec_val))
                 {
                     let cloned = self.emit_clone_value(&elem_ty, &loaded, out);
                     self.stmt_temps.push(TempDrop {
@@ -427,6 +625,20 @@ impl Codegen {
                 let (ty, val) = self.eval_expr(inner, out)?;
                 match op {
                     UnOp::Neg => {
+                        if ty == Type::Any {
+                            self.mark_runtime_type(&Type::Any);
+                            self.used_any_rt = true;
+                            let reg = self.next_tmp();
+                            let _ = writeln!(
+                                out,
+                                "  {reg} = call fastcc %ArchxAny @archx_any_neg(%ArchxAny {val})"
+                            );
+                            self.stmt_temps.push(TempDrop {
+                                val: reg.clone(),
+                                ty: Type::Any,
+                            });
+                            return Ok((Type::Any, reg));
+                        }
                         if ty == Type::Float {
                             let reg = self.next_tmp();
                             let _ = writeln!(out, "  {reg} = fneg double {val}");
@@ -443,6 +655,18 @@ impl Codegen {
                         Ok((Type::Int, reg))
                     }
                     UnOp::Not => {
+                        if ty == Type::Any {
+                            self.mark_runtime_type(&Type::Any);
+                            self.used_any_rt = true;
+                            let tv = self.next_tmp();
+                            let _ = writeln!(
+                                out,
+                                "  {tv} = call fastcc i1 @archx_any_truthy(%ArchxAny {val})"
+                            );
+                            let reg = self.next_tmp();
+                            let _ = writeln!(out, "  {reg} = xor i1 {tv}, true");
+                            return Ok((Type::Bool, reg));
+                        }
                         if ty != Type::Bool {
                             return Err(Diagnostic::new(
                                 "`not` requires a `bool` operand",
@@ -499,16 +723,7 @@ impl Codegen {
         out: &mut String,
     ) -> Result<(Type, String)> {
         let mark = self.stmt_temps.len();
-        let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
-        if cond_ty != Type::Bool {
-            return Err(Diagnostic::new(
-                format!(
-                    "conditional expression condition must be `bool`, found `{}`",
-                    cond_ty.name()
-                ),
-                cond.span,
-            ));
-        }
+        let cond_val = self.eval_cond_bool(cond, "conditional expression", out)?;
         self.flush_stmt_temps_from(mark, out);
 
         let then_lbl = self.fresh_label("ifexpr.then");
@@ -594,8 +809,132 @@ impl Codegen {
             return self.gen_short_circuit(op, lhs, rhs, span, out);
         }
 
+        if matches!(op, BinOp::In | BinOp::NotIn) {
+            let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
+            match &rhs_ty {
+                Type::Dict(k_ty, _) | Type::Set(k_ty) => {
+                    return self.eval_dict_or_set_contains(
+                        k_ty,
+                        &rhs_val,
+                        lhs,
+                        op == BinOp::NotIn,
+                        out,
+                    );
+                }
+                Type::Any => {
+                    let la = self.eval_expr_as_any(lhs, out)?;
+                    self.used_any_rt = true;
+                    let fnd = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {fnd} = call fastcc i1 @archx_any_in(%ArchxAny {la}, %ArchxAny {rhs_val})"
+                    );
+                    if op == BinOp::In {
+                        return Ok((Type::Bool, fnd));
+                    }
+                    let inv = self.next_tmp();
+                    let _ = writeln!(out, "  {inv} = xor i1 {fnd}, true");
+                    return Ok((Type::Bool, inv));
+                }
+                _ => {
+                    let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
+                    let found =
+                        self.gen_in_operator(&lhs_ty, &lhs_val, &rhs_ty, &rhs_val, span, out)?;
+                    if op == BinOp::In {
+                        return Ok((Type::Bool, found));
+                    }
+                    let inv = self.next_tmp();
+                    let _ = writeln!(out, "  {inv} = xor i1 {found}, true");
+                    return Ok((Type::Bool, inv));
+                }
+            }
+        }
+
+        if matches!(&lhs.kind, ExprKind::NoneLit) || matches!(&rhs.kind, ExprKind::NoneLit) {
+            return self.eval_any_binary(op, lhs, rhs, out);
+        }
+
         let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
         let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
+
+        if lhs_ty == Type::Any || rhs_ty == Type::Any {
+            let la = if lhs_ty == Type::Any {
+                lhs_val
+            } else {
+                let b = self.emit_box_any_owned(&lhs_ty, &lhs_val, lhs.span, out)?;
+                self.stmt_temps.push(TempDrop {
+                    val: b.clone(),
+                    ty: Type::Any,
+                });
+                b
+            };
+            let ra = if rhs_ty == Type::Any {
+                rhs_val
+            } else {
+                let b = self.emit_box_any_owned(&rhs_ty, &rhs_val, rhs.span, out)?;
+                self.stmt_temps.push(TempDrop {
+                    val: b.clone(),
+                    ty: Type::Any,
+                });
+                b
+            };
+            self.mark_runtime_type(&Type::Any);
+            self.used_any_rt = true;
+            return match op {
+                BinOp::Eq | BinOp::Ne => {
+                    let eq = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {eq} = call fastcc i1 @archx_any_eq(%ArchxAny {la}, %ArchxAny {ra})"
+                    );
+                    if op == BinOp::Eq {
+                        Ok((Type::Bool, eq))
+                    } else {
+                        let inv = self.next_tmp();
+                        let _ = writeln!(out, "  {inv} = xor i1 {eq}, true");
+                        Ok((Type::Bool, inv))
+                    }
+                }
+                BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+                    let code = match op {
+                        BinOp::Lt => 0,
+                        BinOp::Gt => 1,
+                        BinOp::Le => 2,
+                        BinOp::Ge => 3,
+                        _ => unreachable!(),
+                    };
+                    let res = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {res} = call fastcc i1 @archx_any_cmp(%ArchxAny {la}, %ArchxAny {ra}, i64 {code})"
+                    );
+                    Ok((Type::Bool, res))
+                }
+                _ => {
+                    let code = match op {
+                        BinOp::Add => 0,
+                        BinOp::Sub => 1,
+                        BinOp::Mul => 2,
+                        BinOp::Div => 3,
+                        BinOp::FloorDiv => 4,
+                        BinOp::Mod => 5,
+                        BinOp::Pow => 6,
+                        _ => unreachable!(),
+                    };
+                    let rarg = self.active_region_arg();
+                    let res = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {res} = call fastcc %ArchxAny @archx_any_binop(%ArchxAny {la}, %ArchxAny {ra}, i64 {code}, ptr {rarg})"
+                    );
+                    self.stmt_temps.push(TempDrop {
+                        val: res.clone(),
+                        ty: Type::Any,
+                    });
+                    Ok((Type::Any, res))
+                }
+            };
+        }
 
         match op {
             BinOp::Add if lhs_ty == Type::Str && rhs_ty == Type::Str => {
@@ -953,6 +1292,28 @@ impl Codegen {
                 );
                 Ok(reg)
             }
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let reg = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {reg} = call fastcc i1 @archx_any_eq(%ArchxAny {lhs_val}, %ArchxAny {rhs_val})"
+                );
+                Ok(reg)
+            }
+            Type::Array(_) | Type::Dict(_, _) | Type::Set(_) => {
+                let la = self.emit_box_any_owned(lhs_ty, lhs_val, span, out)?;
+                let ra = self.emit_box_any_owned(rhs_ty, rhs_val, span, out)?;
+                let reg = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {reg} = call fastcc i1 @archx_any_eq(%ArchxAny {la}, %ArchxAny {ra})"
+                );
+                let _ = writeln!(out, "  call fastcc void @archx_any_drop(%ArchxAny {la})");
+                let _ = writeln!(out, "  call fastcc void @archx_any_drop(%ArchxAny {ra})");
+                Ok(reg)
+            }
             Type::Struct(sname) => {
                 let fields = self.structs[sname].clone();
                 let mut acc: Option<String> = None;
@@ -1248,21 +1609,11 @@ impl Codegen {
         op: BinOp,
         lhs: &Expr,
         rhs: &Expr,
-        span: Span,
+        _span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
         let mark = self.stmt_temps.len();
-        let (lhs_ty, lhs_val) = self.eval_expr(lhs, out)?;
-        if lhs_ty != Type::Bool {
-            return Err(Diagnostic::new(
-                format!(
-                    "operator `{}` requires `bool` operands, found `{}`",
-                    op.symbol(),
-                    lhs_ty.name()
-                ),
-                span,
-            ));
-        }
+        let lhs_val = self.eval_cond_bool(lhs, op.symbol(), out)?;
         self.flush_stmt_temps_from(mark, out);
 
         let slot = self.next_slot("bool.result");
@@ -1282,17 +1633,7 @@ impl Codegen {
 
         self.start_block(&rhs_label, out);
         let mark_rhs = self.stmt_temps.len();
-        let (rhs_ty, rhs_val) = self.eval_expr(rhs, out)?;
-        if rhs_ty != Type::Bool {
-            return Err(Diagnostic::new(
-                format!(
-                    "operator `{}` requires `bool` operands, found `{}`",
-                    op.symbol(),
-                    rhs_ty.name()
-                ),
-                rhs.span,
-            ));
-        }
+        let rhs_val = self.eval_cond_bool(rhs, op.symbol(), out)?;
         self.flush_stmt_temps_from(mark_rhs, out);
         let _ = writeln!(out, "  store i1 {rhs_val}, ptr {slot}, align 1");
         self.emit_br(&merge_label, out);

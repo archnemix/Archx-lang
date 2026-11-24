@@ -1,11 +1,22 @@
 //! Pure AST static analyses: SoA escape detection, monotonic `while` stride verification,
-//! Pythonic first-binding vs mutation/return variable collection, and integer constant folding.
+//! Pythonic first-binding vs mutation/return variable collection, adaptive dual-mode type
+//! specialization (`Tier 1` static native vs `Tier 2` `%ArchxAny`), and integer constant folding.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::ast::*;
 
 use super::*;
+
+#[derive(Default, Clone)]
+pub(super) struct AdaptiveHints {
+    /// Variables reassigned to incompatible types across their lifetime (`name = "a"; name = 18`)
+    /// or initialized to `None` -> automatically lowered to `%ArchxAny`.
+    pub(super) dynamic_vars: HashSet<String>,
+    /// Unannotated empty containers (`xs = []`, `d = {}`, `s = set()`) specialized to Tier-1
+    /// unboxed native containers whenever all observed operations are type-consistent.
+    pub(super) specialized_containers: HashMap<String, Type>,
+}
 
 pub(super) fn root_var_of_expr(expr: &Expr) -> Option<&str> {
     match &expr.kind {
@@ -122,6 +133,10 @@ pub(super) fn stmt_escapes_soa(
                     .map_or(false, |st| expr_escapes_soa(st, var, mutating_methods))
                 || var_escapes_soa(body, var, mutating_methods)
         }
+        StmtKind::ForDictItems { dict, body, .. } => {
+            expr_escapes_soa(dict, var, mutating_methods)
+                || var_escapes_soa(body, var, mutating_methods)
+        }
         StmtKind::Region { body } => var_escapes_soa(body, var, mutating_methods),
     }
 }
@@ -137,6 +152,23 @@ pub(super) fn expr_escapes_soa(
             let direct = matches!(&target.kind, ExprKind::Var(n) if n == var);
             (!direct && expr_escapes_soa(target, var, mutating_methods))
                 || expr_escapes_soa(index, var, mutating_methods)
+        }
+        ExprKind::Slice {
+            target,
+            start,
+            stop,
+            step,
+        } => {
+            expr_escapes_soa(target, var, mutating_methods)
+                || start
+                    .as_ref()
+                    .map_or(false, |e| expr_escapes_soa(e, var, mutating_methods))
+                || stop
+                    .as_ref()
+                    .map_or(false, |e| expr_escapes_soa(e, var, mutating_methods))
+                || step
+                    .as_ref()
+                    .map_or(false, |e| expr_escapes_soa(e, var, mutating_methods))
         }
         ExprKind::Field { target, .. } => expr_escapes_soa(target, var, mutating_methods),
         ExprKind::MethodCall {
@@ -192,9 +224,13 @@ pub(super) fn expr_escapes_soa(
             expr_escapes_soa(lhs, var, mutating_methods)
                 || expr_escapes_soa(rhs, var, mutating_methods)
         }
-        ExprKind::ArrayLit(es) => es
+        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => es
             .iter()
             .any(|e| expr_escapes_soa(e, var, mutating_methods)),
+        ExprKind::DictLit(pairs) => pairs.iter().any(|(k, v)| {
+            expr_escapes_soa(k, var, mutating_methods)
+                || expr_escapes_soa(v, var, mutating_methods)
+        }),
         ExprKind::ArrayRepeat { value, count } => {
             expr_escapes_soa(value, var, mutating_methods)
                 || expr_escapes_soa(count, var, mutating_methods)
@@ -295,7 +331,8 @@ pub(super) fn check_only_monotone_step(
             StmtKind::While { .. }
             | StmtKind::For { .. }
             | StmtKind::ForEach { .. }
-            | StmtKind::ForEnumerate { .. } => {
+            | StmtKind::ForEnumerate { .. }
+            | StmtKind::ForDictItems { .. } => {
                 return false;
             }
             _ => {}
@@ -318,7 +355,8 @@ pub(super) fn stmts_use_region(stmts: &[Stmt]) -> bool {
         StmtKind::While { body, .. }
         | StmtKind::For { body, .. }
         | StmtKind::ForEach { body, .. }
-        | StmtKind::ForEnumerate { body, .. } => stmts_use_region(body),
+        | StmtKind::ForEnumerate { body, .. }
+        | StmtKind::ForDictItems { body, .. } => stmts_use_region(body),
         _ => false,
     })
 }
@@ -328,7 +366,8 @@ pub(super) fn stmts_contain_loop(stmts: &[Stmt]) -> bool {
         StmtKind::While { .. }
         | StmtKind::For { .. }
         | StmtKind::ForEach { .. }
-        | StmtKind::ForEnumerate { .. } => true,
+        | StmtKind::ForEnumerate { .. }
+        | StmtKind::ForDictItems { .. } => true,
         StmtKind::If {
             then_body,
             else_body,
@@ -343,7 +382,7 @@ pub(super) fn stmts_contain_loop(stmts: &[Stmt]) -> bool {
 }
 
 pub(super) fn method_mutates_self(params: &[Param], stmts: &[Stmt]) -> bool {
-    let base: HashSet<String> = ["append", "pop", "clear"]
+    let base: HashSet<String> = ["append", "pop", "clear", "add", "remove", "discard"]
         .into_iter()
         .map(String::from)
         .collect();
@@ -389,6 +428,7 @@ pub(super) fn walk_returns(stmts: &[Stmt], set: &mut HashSet<String>) {
             | StmtKind::For { body, .. }
             | StmtKind::ForEach { body, .. }
             | StmtKind::ForEnumerate { body, .. }
+            | StmtKind::ForDictItems { body, .. }
             | StmtKind::Region { body } => walk_returns(body, set),
             _ => {}
         }
@@ -498,6 +538,18 @@ pub(super) fn walk_mutations(
                 inner.insert(elem_var.clone());
                 walk_mutations(body, &mut inner, mutated, mutating_methods);
             }
+            StmtKind::ForDictItems {
+                key_var,
+                val_var,
+                dict,
+                body,
+            } => {
+                walk_expr_mutations(dict, mutated, mutating_methods);
+                let mut inner = bound.clone();
+                inner.insert(key_var.clone());
+                inner.insert(val_var.clone());
+                walk_mutations(body, &mut inner, mutated, mutating_methods);
+            }
             StmtKind::Region { body } => {
                 let mut inner = bound.clone();
                 walk_mutations(body, &mut inner, mutated, mutating_methods);
@@ -574,9 +626,32 @@ pub(super) fn walk_expr_mutations(
             walk_expr_mutations(target, set, mutating_methods);
             walk_expr_mutations(index, set, mutating_methods);
         }
-        ExprKind::ArrayLit(elems) => {
+        ExprKind::Slice {
+            target,
+            start,
+            stop,
+            step,
+        } => {
+            walk_expr_mutations(target, set, mutating_methods);
+            if let Some(s) = start {
+                walk_expr_mutations(s, set, mutating_methods);
+            }
+            if let Some(e) = stop {
+                walk_expr_mutations(e, set, mutating_methods);
+            }
+            if let Some(st) = step {
+                walk_expr_mutations(st, set, mutating_methods);
+            }
+        }
+        ExprKind::ArrayLit(elems) | ExprKind::SetLit(elems) => {
             for e in elems {
                 walk_expr_mutations(e, set, mutating_methods);
+            }
+        }
+        ExprKind::DictLit(pairs) => {
+            for (k, v) in pairs {
+                walk_expr_mutations(k, set, mutating_methods);
+                walk_expr_mutations(v, set, mutating_methods);
             }
         }
         ExprKind::ArrayRepeat { value, count } => {
@@ -610,6 +685,7 @@ pub(super) fn stmts_assign_var(stmts: &[Stmt], name: &str) -> bool {
         | StmtKind::For { body, .. }
         | StmtKind::ForEach { body, .. }
         | StmtKind::ForEnumerate { body, .. }
+        | StmtKind::ForDictItems { body, .. }
         | StmtKind::Region { body } => stmts_assign_var(body, name),
         _ => false,
     })
@@ -625,6 +701,598 @@ pub(super) fn stmts_mutate_array_len(
     let mut mutated = HashSet::new();
     walk_mutations(stmts, &mut bound, &mut mutated, mutating_methods);
     mutated.contains(arr_name)
+}
+
+// ---------------- Adaptive Tiered Type Specialization ------------------------
+
+pub(super) fn compute_adaptive_hints(
+    params: &[Param],
+    stmts: &[Stmt],
+    structs: &HashMap<String, Vec<Param>>,
+    sigs: &HashMap<String, FuncSig>,
+) -> AdaptiveHints {
+    let mut env: HashMap<String, Type> = params.iter().map(|p| (p.name.clone(), p.ty.clone())).collect();
+    let mut explicitly_typed: HashSet<String> = params.iter().map(|p| p.name.clone()).collect();
+    let mut dynamic_vars: HashSet<String> = HashSet::new();
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum EmptyKind {
+        List,
+        Dict,
+        Set,
+    }
+    let mut empty_inits: HashMap<String, EmptyKind> = HashMap::new();
+    let mut list_elems: HashMap<String, Vec<Type>> = HashMap::new();
+    let mut dict_keys: HashMap<String, Vec<Type>> = HashMap::new();
+    let mut dict_vals: HashMap<String, Vec<Type>> = HashMap::new();
+    let mut set_elems: HashMap<String, Vec<Type>> = HashMap::new();
+
+    #[allow(clippy::too_many_arguments)]
+    fn walk(
+        stmts: &[Stmt],
+        env: &mut HashMap<String, Type>,
+        explicitly_typed: &mut HashSet<String>,
+        dynamic_vars: &mut HashSet<String>,
+        empty_inits: &mut HashMap<String, EmptyKind>,
+        list_elems: &mut HashMap<String, Vec<Type>>,
+        dict_keys: &mut HashMap<String, Vec<Type>>,
+        dict_vals: &mut HashMap<String, Vec<Type>>,
+        set_elems: &mut HashMap<String, Vec<Type>>,
+        structs: &HashMap<String, Vec<Param>>,
+        sigs: &HashMap<String, FuncSig>,
+    ) {
+        for s in stmts {
+            match &s.kind {
+                StmtKind::Let { name, ty, value } => {
+                    walk_expr_hints(value, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    if let Some(decl_t) = ty {
+                        explicitly_typed.insert(name.clone());
+                        env.insert(name.clone(), decl_t.clone());
+                    } else {
+                        record_var_assign(name, value, env, explicitly_typed, dynamic_vars, empty_inits, structs, sigs);
+                    }
+                }
+                StmtKind::Assign { target, op, value } => {
+                    walk_expr_hints(value, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    match target {
+                        AssignTarget::Var(name) => {
+                            if op.is_none() {
+                                record_var_assign(
+                                    name,
+                                    value,
+                                    env,
+                                    explicitly_typed,
+                                    dynamic_vars,
+                                    empty_inits,
+                                    structs,
+                                    sigs,
+                                );
+                            }
+                        }
+                        AssignTarget::Index { target: t, index } => {
+                            walk_expr_hints(t, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                            walk_expr_hints(index, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                            if let ExprKind::Var(cname) = &t.kind {
+                                if empty_inits.get(cname) == Some(&EmptyKind::Dict) {
+                                    let kt = quick_infer(index, env, structs, sigs).unwrap_or(Type::Any);
+                                    let vt = quick_infer(value, env, structs, sigs).unwrap_or(Type::Any);
+                                    dict_keys.entry(cname.clone()).or_default().push(kt);
+                                    dict_vals.entry(cname.clone()).or_default().push(vt);
+                                }
+                            }
+                        }
+                        AssignTarget::Field { target: t, .. } => {
+                            walk_expr_hints(t, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                        }
+                    }
+                }
+                StmtKind::Expr(e) | StmtKind::Return(Some(e)) => {
+                    walk_expr_hints(e, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::Assert { cond, msg } => {
+                    walk_expr_hints(cond, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    if let Some(m) = msg {
+                        walk_expr_hints(m, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
+                }
+                StmtKind::If {
+                    cond,
+                    then_body,
+                    else_body,
+                } => {
+                    walk_expr_hints(cond, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    walk(then_body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    if let Some(eb) = else_body {
+                        walk(eb, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
+                }
+                StmtKind::While { cond, body } => {
+                    walk_expr_hints(cond, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::For {
+                    var,
+                    start,
+                    end,
+                    step,
+                    body,
+                } => {
+                    walk_expr_hints(start, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    walk_expr_hints(end, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    if let Some(se) = step {
+                        walk_expr_hints(se, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
+                    env.insert(var.clone(), Type::Int);
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::ForEach { var, iter, body } => {
+                    walk_expr_hints(iter, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    let et = match quick_infer(iter, env, structs, sigs) {
+                        Some(Type::Array(inner)) | Some(Type::Set(inner)) => *inner,
+                        Some(Type::Dict(k, _)) => *k,
+                        Some(Type::Str) => Type::Str,
+                        _ => Type::Any,
+                    };
+                    env.insert(var.clone(), et);
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::ForEnumerate {
+                    idx_var,
+                    elem_var,
+                    iter,
+                    start,
+                    body,
+                } => {
+                    walk_expr_hints(iter, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    if let Some(st) = start {
+                        walk_expr_hints(st, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
+                    let et = match quick_infer(iter, env, structs, sigs) {
+                        Some(Type::Array(inner)) => *inner,
+                        Some(Type::Str) => Type::Str,
+                        _ => Type::Any,
+                    };
+                    env.insert(idx_var.clone(), Type::Int);
+                    env.insert(elem_var.clone(), et);
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::ForDictItems {
+                    key_var,
+                    val_var,
+                    dict,
+                    body,
+                } => {
+                    walk_expr_hints(dict, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    let (kt, vt) = match quick_infer(dict, env, structs, sigs) {
+                        Some(Type::Dict(k, v)) => (*k, *v),
+                        _ => (Type::Any, Type::Any),
+                    };
+                    env.insert(key_var.clone(), kt);
+                    env.insert(val_var.clone(), vt);
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::Region { body } => {
+                    walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn record_var_assign(
+        name: &str,
+        value: &Expr,
+        env: &mut HashMap<String, Type>,
+        explicitly_typed: &HashSet<String>,
+        dynamic_vars: &mut HashSet<String>,
+        empty_inits: &mut HashMap<String, EmptyKind>,
+        structs: &HashMap<String, Vec<Param>>,
+        sigs: &HashMap<String, FuncSig>,
+    ) {
+        if explicitly_typed.contains(name) {
+            return;
+        }
+        if matches!(&value.kind, ExprKind::NoneLit) {
+            dynamic_vars.insert(name.to_string());
+            env.insert(name.to_string(), Type::Any);
+            empty_inits.remove(name);
+            return;
+        }
+        if !env.contains_key(name) {
+            match &value.kind {
+                ExprKind::ArrayLit(es) if es.is_empty() => {
+                    empty_inits.insert(name.to_string(), EmptyKind::List);
+                }
+                ExprKind::DictLit(ps) if ps.is_empty() => {
+                    empty_inits.insert(name.to_string(), EmptyKind::Dict);
+                }
+                ExprKind::Call { name: fn_name, args } if fn_name == "set" && args.is_empty() => {
+                    empty_inits.insert(name.to_string(), EmptyKind::Set);
+                }
+                _ => {}
+            }
+        } else {
+            empty_inits.remove(name);
+        }
+
+        if let Some(new_t) = quick_infer(value, env, structs, sigs) {
+            if new_t == Type::Any {
+                dynamic_vars.insert(name.to_string());
+                env.insert(name.to_string(), Type::Any);
+                return;
+            }
+            if let Some(prev_t) = env.get(name).cloned() {
+                if prev_t != new_t && !compatible_empty_container(&prev_t, &new_t) {
+                    dynamic_vars.insert(name.to_string());
+                    env.insert(name.to_string(), Type::Any);
+                    return;
+                }
+            } else {
+                env.insert(name.to_string(), new_t);
+            }
+        }
+    }
+
+    fn compatible_empty_container(a: &Type, b: &Type) -> bool {
+        matches!(
+            (a, b),
+            (Type::Array(x), Type::Array(_)) if **x == Type::Any
+        ) || matches!(
+            (a, b),
+            (Type::Dict(k, v), Type::Dict(_, _)) if **k == Type::Any && **v == Type::Any
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn walk_expr_hints(
+        expr: &Expr,
+        env: &HashMap<String, Type>,
+        list_elems: &mut HashMap<String, Vec<Type>>,
+        dict_keys: &mut HashMap<String, Vec<Type>>,
+        dict_vals: &mut HashMap<String, Vec<Type>>,
+        set_elems: &mut HashMap<String, Vec<Type>>,
+        structs: &HashMap<String, Vec<Param>>,
+        sigs: &HashMap<String, FuncSig>,
+    ) {
+        match &expr.kind {
+            ExprKind::Call { name, args } => {
+                if name == "push" && args.len() == 2 {
+                    if let ExprKind::Var(vname) = &args[0].kind {
+                        let et = quick_infer(&args[1], env, structs, sigs).unwrap_or(Type::Any);
+                        list_elems.entry(vname.clone()).or_default().push(et);
+                    }
+                }
+                for a in args {
+                    walk_expr_hints(a, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::CallKw { pos_args, kw_args, .. } => {
+                for a in pos_args {
+                    walk_expr_hints(a, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                for (_, v, _) in kw_args {
+                    walk_expr_hints(v, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::MethodCall { target, method, args } => {
+                if let ExprKind::Var(vname) = &target.kind {
+                    match (method.as_str(), args.len()) {
+                        ("append", 1) => {
+                            let et = quick_infer(&args[0], env, structs, sigs).unwrap_or(Type::Any);
+                            list_elems.entry(vname.clone()).or_default().push(et);
+                        }
+                        ("add", 1) | ("discard", 1) | ("remove", 1) => {
+                            let et = quick_infer(&args[0], env, structs, sigs).unwrap_or(Type::Any);
+                            set_elems.entry(vname.clone()).or_default().push(et);
+                        }
+                        ("get", 1) => {
+                            let kt = quick_infer(&args[0], env, structs, sigs).unwrap_or(Type::Any);
+                            dict_keys.entry(vname.clone()).or_default().push(kt);
+                        }
+                        ("get", 2) => {
+                            let kt = quick_infer(&args[0], env, structs, sigs).unwrap_or(Type::Any);
+                            let vt = quick_infer(&args[1], env, structs, sigs).unwrap_or(Type::Any);
+                            dict_keys.entry(vname.clone()).or_default().push(kt);
+                            dict_vals.entry(vname.clone()).or_default().push(vt);
+                        }
+                        _ => {}
+                    }
+                }
+                walk_expr_hints(target, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                for a in args {
+                    walk_expr_hints(a, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::Index { target, index } => {
+                if let ExprKind::Var(vname) = &target.kind {
+                    let kt = quick_infer(index, env, structs, sigs).unwrap_or(Type::Any);
+                    dict_keys.entry(vname.clone()).or_default().push(kt);
+                }
+                walk_expr_hints(target, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                walk_expr_hints(index, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+            }
+            ExprKind::Slice { target, start, stop, step } => {
+                walk_expr_hints(target, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                if let Some(s) = start {
+                    walk_expr_hints(s, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                if let Some(e) = stop {
+                    walk_expr_hints(e, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                if let Some(st) = step {
+                    walk_expr_hints(st, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::Binary { op, lhs, rhs } => {
+                if matches!(op, BinOp::In | BinOp::NotIn) {
+                    if let ExprKind::Var(vname) = &rhs.kind {
+                        let kt = quick_infer(lhs, env, structs, sigs).unwrap_or(Type::Any);
+                        dict_keys.entry(vname.clone()).or_default().push(kt.clone());
+                        set_elems.entry(vname.clone()).or_default().push(kt);
+                    }
+                }
+                walk_expr_hints(lhs, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                walk_expr_hints(rhs, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+            }
+            ExprKind::Unary { expr: inner, .. } | ExprKind::Field { target: inner, .. } => {
+                walk_expr_hints(inner, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+            }
+            ExprKind::IfExpr { then_expr, cond, else_expr } => {
+                walk_expr_hints(then_expr, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                walk_expr_hints(cond, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                walk_expr_hints(else_expr, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+            }
+            ExprKind::FString(parts) => {
+                for p in parts {
+                    if let FStrPart::Expr(e) = p {
+                        walk_expr_hints(e, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
+                }
+            }
+            ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => {
+                for e in es {
+                    walk_expr_hints(e, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::DictLit(ps) => {
+                for (k, v) in ps {
+                    walk_expr_hints(k, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    walk_expr_hints(v, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+            }
+            ExprKind::ArrayRepeat { value, count } => {
+                walk_expr_hints(value, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                walk_expr_hints(count, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+            }
+            _ => {}
+        }
+    }
+
+    walk(
+        stmts,
+        &mut env,
+        &mut explicitly_typed,
+        &mut dynamic_vars,
+        &mut empty_inits,
+        &mut list_elems,
+        &mut dict_keys,
+        &mut dict_vals,
+        &mut set_elems,
+        structs,
+        sigs,
+    );
+
+    let mut specialized_containers = HashMap::new();
+    for (name, kind) in empty_inits {
+        if dynamic_vars.contains(&name) {
+            continue;
+        }
+        match kind {
+            EmptyKind::List => {
+                let elem = unify_types(list_elems.get(&name).map_or(&[], Vec::as_slice));
+                specialized_containers.insert(name, Type::Array(Box::new(elem)));
+            }
+            EmptyKind::Dict => {
+                let mut k = unify_types(dict_keys.get(&name).map_or(&[], Vec::as_slice));
+                if !k.is_hashable_key() {
+                    k = Type::Any;
+                }
+                let v = unify_types(dict_vals.get(&name).map_or(&[], Vec::as_slice));
+                specialized_containers.insert(name, Type::Dict(Box::new(k), Box::new(v)));
+            }
+            EmptyKind::Set => {
+                let mut e = unify_types(set_elems.get(&name).map_or(&[], Vec::as_slice));
+                if !e.is_hashable_key() {
+                    e = Type::Any;
+                }
+                specialized_containers.insert(name, Type::Set(Box::new(e)));
+            }
+        }
+    }
+
+    AdaptiveHints {
+        dynamic_vars,
+        specialized_containers,
+    }
+}
+
+fn unify_types(tys: &[Type]) -> Type {
+    let Some(first) = tys.first() else {
+        return Type::Any;
+    };
+    if *first == Type::Any || *first == Type::Void {
+        return Type::Any;
+    }
+    for t in &tys[1..] {
+        if t != first {
+            return Type::Any;
+        }
+    }
+    first.clone()
+}
+
+fn quick_infer(
+    expr: &Expr,
+    env: &HashMap<String, Type>,
+    structs: &HashMap<String, Vec<Param>>,
+    sigs: &HashMap<String, FuncSig>,
+) -> Option<Type> {
+    match &expr.kind {
+        ExprKind::Int(_) => Some(Type::Int),
+        ExprKind::Float(_) => Some(Type::Float),
+        ExprKind::Bool(_) => Some(Type::Bool),
+        ExprKind::NoneLit => Some(Type::Any),
+        ExprKind::Str(_) | ExprKind::FString(_) => Some(Type::Str),
+        ExprKind::Var(name) => env.get(name).cloned(),
+        ExprKind::ArrayLit(es) => {
+            if es.is_empty() {
+                Some(Type::Array(Box::new(Type::Any)))
+            } else {
+                let mut inferred = Vec::with_capacity(es.len());
+                for e in es {
+                    inferred.push(quick_infer(e, env, structs, sigs)?);
+                }
+                Some(Type::Array(Box::new(unify_types(&inferred))))
+            }
+        }
+        ExprKind::SetLit(es) => {
+            let mut inferred = Vec::with_capacity(es.len());
+            for e in es {
+                inferred.push(quick_infer(e, env, structs, sigs)?);
+            }
+            let mut elem = unify_types(&inferred);
+            if !elem.is_hashable_key() {
+                elem = Type::Any;
+            }
+            Some(Type::Set(Box::new(elem)))
+        }
+        ExprKind::DictLit(ps) => {
+            if ps.is_empty() {
+                Some(Type::Dict(Box::new(Type::Any), Box::new(Type::Any)))
+            } else {
+                let mut ks = Vec::with_capacity(ps.len());
+                let mut vs = Vec::with_capacity(ps.len());
+                for (k, v) in ps {
+                    ks.push(quick_infer(k, env, structs, sigs)?);
+                    vs.push(quick_infer(v, env, structs, sigs)?);
+                }
+                let mut kt = unify_types(&ks);
+                if !kt.is_hashable_key() {
+                    kt = Type::Any;
+                }
+                let vt = unify_types(&vs);
+                Some(Type::Dict(Box::new(kt), Box::new(vt)))
+            }
+        }
+        ExprKind::ArrayRepeat { value, .. } => {
+            let inner = quick_infer(value, env, structs, sigs)?;
+            Some(Type::Array(Box::new(inner)))
+        }
+        ExprKind::Call { name, .. } | ExprKind::CallKw { name, .. } => {
+            if let Some(sig) = sigs.get(name) {
+                return sig.ret.clone();
+            }
+            if structs.contains_key(name) {
+                return Some(Type::Struct(name.clone()));
+            }
+            match name.as_str() {
+                "int" | "len" | "ord" => Some(Type::Int),
+                "float" | "sqrt" => Some(Type::Float),
+                "str" | "input" | "chr" | "type" => Some(Type::Str),
+                "bool" | "isinstance" => Some(Type::Bool),
+                "dict" => Some(Type::Dict(Box::new(Type::Any), Box::new(Type::Any))),
+                "set" => Some(Type::Set(Box::new(Type::Any))),
+                "list" => Some(Type::Array(Box::new(Type::Any))),
+                _ => None,
+            }
+        }
+        ExprKind::Index { target, .. } => match quick_infer(target, env, structs, sigs)? {
+            Type::Array(inner) => Some(*inner),
+            Type::Dict(_, v) => Some(*v),
+            Type::Str => Some(Type::Str),
+            Type::Any => Some(Type::Any),
+            _ => None,
+        },
+        ExprKind::Slice { target, .. } => quick_infer(target, env, structs, sigs),
+        ExprKind::Field { target, field } => {
+            if let Some(Type::Struct(sname)) = quick_infer(target, env, structs, sigs) {
+                structs
+                    .get(&sname)?
+                    .iter()
+                    .find(|f| f.name == *field)
+                    .map(|f| f.ty.clone())
+            } else {
+                None
+            }
+        }
+        ExprKind::MethodCall { target, method, args } => {
+            let tt = quick_infer(target, env, structs, sigs);
+            match method.as_str() {
+                "split" => Some(Type::Array(Box::new(Type::Str))),
+                "strip" | "upper" | "lower" | "replace" => Some(Type::Str),
+                "startswith" | "endswith" => Some(Type::Bool),
+                "find" => Some(Type::Int),
+                "get" => match tt {
+                    Some(Type::Dict(_, v)) => Some(*v),
+                    _ if args.len() == 2 => quick_infer(&args[1], env, structs, sigs),
+                    _ => Some(Type::Any),
+                },
+                "keys" => match tt {
+                    Some(Type::Dict(k, _)) => Some(Type::Array(k)),
+                    _ => Some(Type::Array(Box::new(Type::Any))),
+                },
+                "values" => match tt {
+                    Some(Type::Dict(_, v)) => Some(Type::Array(v)),
+                    _ => Some(Type::Array(Box::new(Type::Any))),
+                },
+                "pop" => match tt {
+                    Some(Type::Array(e)) => Some(*e),
+                    Some(Type::Dict(_, v)) => Some(*v),
+                    _ => Some(Type::Any),
+                },
+                _ => None,
+            }
+        }
+        ExprKind::IfExpr {
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            let t1 = quick_infer(then_expr, env, structs, sigs)?;
+            let t2 = quick_infer(else_expr, env, structs, sigs)?;
+            Some(if t1 == t2 { t1 } else { Type::Any })
+        }
+        ExprKind::Unary { op, expr: inner } => match op {
+            UnOp::Not => Some(Type::Bool),
+            UnOp::Neg => quick_infer(inner, env, structs, sigs),
+        },
+        ExprKind::Binary { op, lhs, rhs } => match op {
+            BinOp::Eq
+            | BinOp::Ne
+            | BinOp::Lt
+            | BinOp::Gt
+            | BinOp::Le
+            | BinOp::Ge
+            | BinOp::In
+            | BinOp::NotIn
+            | BinOp::And
+            | BinOp::Or => Some(Type::Bool),
+            _ => {
+                let lt = quick_infer(lhs, env, structs, sigs)?;
+                let rt = quick_infer(rhs, env, structs, sigs)?;
+                if lt == Type::Any || rt == Type::Any {
+                    Some(Type::Any)
+                } else if lt == rt {
+                    Some(lt)
+                } else if *op == BinOp::Mul && (lt == Type::Str || rt == Type::Str) {
+                    Some(Type::Str)
+                } else {
+                    Some(Type::Any)
+                }
+            }
+        },
+    }
 }
 
 pub(super) fn eval_const_int(expr: &Expr) -> Option<i64> {

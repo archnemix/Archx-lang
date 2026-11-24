@@ -872,3 +872,189 @@ fn pythonic_assert_and_zero_step_panic_cleanly() {
     assert_eq!(run_step.status.code(), Some(101));
 }
 
+#[test]
+fn planar_simd_dict_set_and_slicing_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "dict_set_slice_v07",
+        "\
+def build_region_dict() -> dict[str, int]:
+    with region:
+        tmp = {\"alpha\": 10, \"beta\": 20, \"gamma\": 30}
+        tmp[\"beta\"] += 5
+        popped = tmp.pop(\"alpha\")
+        tmp[\"delta\"] = popped + 2
+        return tmp
+
+scores = {}
+for i in range(50):
+    scores[f\"k{i}\"] = i * 3
+scores[\"k10\"] += 7
+print(len(scores), scores[\"k10\"], \"k49\" in scores, \"k99\" not in scores)
+print(scores.get(\"k0\", -1), scores.get(\"missing\", -99))
+
+removed = scores.pop(\"k0\")
+print(removed, len(scores))
+
+# Deterministic insertion-order iteration even after tombstone deletion:
+small = {\"first\": 1, \"second\": 2, \"third\": 3}
+_ = small.pop(\"second\")
+small[\"fourth\"] = 4
+acc_k = \"\"
+acc_v = 0
+for k, v in small.items():
+    acc_k = acc_k + k + \",\"
+    acc_v += v
+print(acc_k, acc_v)
+
+# Planar SIMD set deduplication & operations:
+uniq = set([5, 3, 5, 1, 3, 9, 1])
+uniq.add(7)
+uniq.discard(999)
+uniq.remove(3)
+sum_u = 0
+for x in uniq:
+    sum_u += x
+print(len(uniq), 5 in uniq, 3 in uniq, sum_u)
+
+rd = build_region_dict()
+print(rd[\"beta\"], rd[\"delta\"], len(rd))
+
+# Pythonic slicing & negative indexing on lists and strings:
+nums = [10, 20, 30, 40, 50, 60]
+nums[-1] = 66
+print(nums[-1], nums[-2])
+print(nums[1:4])
+print(nums[:3])
+print(nums[4:])
+print(nums[::-2])
+
+s = \"Archx-v0.7\"
+print(s[0:5], s[-4:], s[::-1])
+",
+    );
+
+    assert_eq!(
+        out,
+        "\
+50 37 true true
+0 -99
+0 49
+first,third,fourth, 8
+4 true false 22
+25 12 3
+66 50
+[20, 30, 40]
+[10, 20, 30]
+[50, 66]
+[66, 40, 20]
+Archx v0.7 7.0v-xhcrA
+"
+    );
+}
+
+#[test]
+fn adaptive_any_mixed_containers_and_dynamic_rebinding_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "adaptive_any_v07",
+        "\
+def describe(val):
+    if val is None:
+        return \"nothing\"
+    elif isinstance(val, int):
+        return f\"int:{val * 2}\"
+    elif isinstance(val, str):
+        return f\"str:{val.upper()}\"
+    elif isinstance(val, list):
+        return f\"list:{len(val)}\"
+    return f\"other:{type(val)}\"
+
+def maybe_double(flag, n):
+    if flag:
+        return n + n
+
+# 1. Mixed-type dict & nested heterogeneous list (exact user showcase):
+hello = {\"data\": [\"Archx\", 18, \"legal\"], \"age\": 18}
+hello[\"data\"].append(\"fast\")
+hello[\"age\"] += 3
+hello[\"ok\"] = True
+print(hello[\"data\"][0], hello[\"data\"][1], hello[\"data\"][-1])
+print(hello[\"age\"], hello[\"ok\"], len(hello[\"data\"]))
+
+# 2. Dynamic variable type rebinding (`str` -> `int` -> `list` -> `None`):
+name = \"Abdullah\"
+p1 = f\"{name}:{type(name)}\"
+name = 18
+p2 = f\"{name + 2}:{type(name)}\"
+name = [\"x\", 42]
+p3 = f\"{name[0]}-{name[1]}:{type(name)}\"
+name = None
+p4 = f\"{name}:{type(name)}:{name is None}\"
+print(p1, p2, p3, p4)
+
+# 3. Untyped Python `def`, `isinstance`, and implicit `None` return:
+print(describe(\"archx\"), describe(21), describe(hello[\"data\"]), describe(None))
+print(maybe_double(True, \"go\"), maybe_double(False, \"go\"))
+",
+    );
+
+    assert_eq!(
+        out,
+        "\
+Archx 18 fast
+21 true 4
+Abdullah:str 20:int x-42:list None:NoneType:true
+str:ARCHX int:42 list:4 nothing
+gogo None
+"
+    );
+}
+
+#[test]
+fn dict_key_error_and_dynamic_type_error_panic_cleanly() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("archx-v07panic-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    // 1. Missing dictionary key raises KeyError with exit code 101:
+    let src_key = dir.join("key_err.archx.lang");
+    fs::write(&src_key, "d = {\"a\": 1}\nprint(d[\"missing\"])\n").unwrap();
+    let exe_key = exe_path(&dir, "key_err");
+    assert!(Command::new(archx()).arg(&src_key).arg("-o").arg(&exe_key).status().unwrap().success());
+    let run_key = Command::new(&exe_key).output().unwrap();
+    assert_eq!(run_key.status.code(), Some(101));
+    let out_key = format!(
+        "{}{}",
+        String::from_utf8_lossy(&run_key.stdout),
+        String::from_utf8_lossy(&run_key.stderr)
+    );
+    assert!(out_key.contains("KeyError"), "expected KeyError, got: {out_key}");
+
+    // 2. Incompatible runtime operation on rebound `any` raises TypeError with exit code 101:
+    let src_ty = dir.join("type_err.archx.lang");
+    fs::write(&src_ty, "x = \"Abdullah\"\nif False:\n    x = 18\nprint(x - 5)\n").unwrap();
+    let exe_ty = exe_path(&dir, "type_err");
+    assert!(Command::new(archx()).arg(&src_ty).arg("-o").arg(&exe_ty).status().unwrap().success());
+    let run_ty = Command::new(&exe_ty).output().unwrap();
+    assert_eq!(run_ty.status.code(), Some(101));
+    let out_ty = format!(
+        "{}{}",
+        String::from_utf8_lossy(&run_ty.stdout),
+        String::from_utf8_lossy(&run_ty.stderr)
+    );
+    assert!(out_ty.contains("TypeError"), "expected TypeError, got: {out_ty}");
+}
+

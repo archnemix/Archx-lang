@@ -76,13 +76,7 @@ impl Codegen {
             }
 
             self.start_block(&slow_cond, out);
-            let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
-            if cond_ty != Type::Bool {
-                return Err(Diagnostic::new(
-                    "`while` condition must be a `bool`",
-                    cond.span,
-                ));
-            }
+            let cond_val = self.eval_cond_bool(cond, "while", out)?;
             self.flush_stmt_temps(out);
             self.emit_cond_br(&cond_val, &slow_body, &end_label, out);
 
@@ -114,13 +108,7 @@ impl Codegen {
         self.emit_br(&cond_label, out);
 
         self.start_block(&cond_label, out);
-        let (cond_ty, cond_val) = self.eval_expr(cond, out)?;
-        if cond_ty != Type::Bool {
-            return Err(Diagnostic::new(
-                "`while` condition must be a `bool`",
-                cond.span,
-            ));
-        }
+        let cond_val = self.eval_cond_bool(cond, "while", out)?;
         self.flush_stmt_temps(out);
         self.emit_cond_br(&cond_val, &body_label, &end_label, out);
 
@@ -163,14 +151,22 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<()> {
-        let (start_ty, start_val) = self.eval_expr(start, out)?;
-        if start_ty != Type::Int {
+        let (start_ty, raw_start) = self.eval_expr(start, out)?;
+        let start_val = if start_ty == Type::Int {
+            raw_start
+        } else if start_ty == Type::Any {
+            self.emit_unbox_any(&Type::Int, &raw_start, start.span, out)?
+        } else {
             return Err(Diagnostic::new("`for` start must be an `int`", start.span));
-        }
-        let (end_ty, end_val) = self.eval_expr(end, out)?;
-        if end_ty != Type::Int {
+        };
+        let (end_ty, raw_end) = self.eval_expr(end, out)?;
+        let end_val = if end_ty == Type::Int {
+            raw_end
+        } else if end_ty == Type::Any {
+            self.emit_unbox_any(&Type::Int, &raw_end, end.span, out)?
+        } else {
             return Err(Diagnostic::new("`for` end must be an `int`", end.span));
-        }
+        };
 
         enum StepDir {
             PosConst,
@@ -179,10 +175,14 @@ impl Codegen {
         }
 
         let (step_val, step_dir, step_guaranteed_safe) = if let Some(se) = step_opt {
-            let (sty, sval) = self.eval_expr(se, out)?;
-            if sty != Type::Int {
+            let (sty, raw_step) = self.eval_expr(se, out)?;
+            let sval = if sty == Type::Int {
+                raw_step
+            } else if sty == Type::Any {
+                self.emit_unbox_any(&Type::Int, &raw_step, se.span, out)?
+            } else {
                 return Err(Diagnostic::new("`for` step must be an `int`", se.span));
-            }
+            };
             if let Some(c) = eval_const_int(se) {
                 if c == 0 {
                     return Err(Diagnostic::new("`for` / `range()` step cannot be zero", se.span));
@@ -571,10 +571,16 @@ impl Codegen {
         if iter_ty == Type::Str {
             return self.gen_foreach_str(var, iter, &iter_val, body, out);
         }
+        if let Type::Dict(k_ty, _) | Type::Set(k_ty) = &iter_ty {
+            return self.gen_foreach_dict_keys(var, &iter_ty, &k_ty.clone(), &iter_val, body, out);
+        }
+        if iter_ty == Type::Any {
+            return self.gen_foreach_any(var, &iter_val, body, out);
+        }
         let Type::Array(elem_ty) = iter_ty.clone() else {
             return Err(Diagnostic::new(
                 format!(
-                    "`for ... in` expects a `list` or `str`, found `{}`",
+                    "`for ... in` expects a `list`, `dict`, `set`, or `str`, found `{}`",
                     iter_ty.name()
                 ),
                 iter.span,
@@ -1227,4 +1233,466 @@ impl Codegen {
         Ok(())
     }
 
+    pub(super) fn gen_foreach_dict_keys(
+        &mut self,
+        var: &str,
+        iter_ty: &Type,
+        k_ty: &Type,
+        d_val: &str,
+        body: &[Stmt],
+        out: &mut String,
+    ) -> Result<()> {
+        self.used_dict_type = true;
+        let hold_outer = self.claim_stmt_temp(d_val);
+        self.flush_stmt_temps(out);
+        if hold_outer {
+            self.push_scope();
+            let hslot = self.next_slot("foreach.dict");
+            let _ = writeln!(self.allocas, "  {hslot} = alloca i64, align 8");
+            let _ = writeln!(out, "  store i64 {d_val}, ptr {hslot}, align 8");
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .owned_buffers
+                .push(DropTarget::TypedSlot {
+                    ptr: hslot,
+                    ty: iter_ty.clone(),
+                });
+        }
+
+        let len_val = self.emit_dict_len(d_val, out);
+        let idx_slot = self.next_slot("foreach.dk.idx");
+        let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
+
+        let cond_lbl = self.fresh_label("foreach.dk.cond");
+        let body_lbl = self.fresh_label("foreach.dk.body");
+        let step_lbl = self.fresh_label("foreach.dk.step");
+        let end_lbl = self.fresh_label("foreach.dk.end");
+
+        self.emit_br(&cond_lbl, out);
+        self.start_block(&cond_lbl, out);
+        let cur = self.next_tmp();
+        let _ = writeln!(out, "  {cur} = load i64, ptr {idx_slot}, align 8");
+        let more = self.next_tmp();
+        let _ = writeln!(out, "  {more} = icmp slt i64 {cur}, {len_val}");
+        self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+        self.start_block(&body_lbl, out);
+        let raw = self.next_tmp();
+        let _ = writeln!(out, "  {raw} = and i64 {d_val}, -4");
+        let hdr = self.next_tmp();
+        let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+        let kg = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 5"
+        );
+        let kptr = self.next_tmp();
+        let _ = writeln!(out, "  {kptr} = load ptr, ptr {kg}, align 8");
+        let kstore = Self::dict_key_storage_ir(k_ty);
+        let kep = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kep} = getelementptr inbounds {kstore}, ptr {kptr}, i64 {cur}"
+        );
+        let kval = self.emit_load_dict_key(k_ty, &kep, out);
+
+        let outer_depth = self.scopes.len();
+        let outer_rdepth = self.region_stack.len();
+        self.push_scope();
+        self.bind_loop_elem_var(var, k_ty, &kval, outer_rdepth, out);
+        self.loop_stack.push(LoopLabels {
+            break_label: end_lbl.clone(),
+            continue_label: step_lbl.clone(),
+            scope_depth: outer_depth,
+            region_depth: outer_rdepth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&step_lbl, out);
+        }
+
+        self.start_block(&step_lbl, out);
+        let c2 = self.next_tmp();
+        let _ = writeln!(out, "  {c2} = load i64, ptr {idx_slot}, align 8");
+        let nxt = self.next_tmp();
+        let _ = writeln!(out, "  {nxt} = add nuw nsw i64 {c2}, 1");
+        let _ = writeln!(out, "  store i64 {nxt}, ptr {idx_slot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&end_lbl, out);
+        if hold_outer {
+            self.pop_scope_with_drops(out);
+        }
+        Ok(())
+    }
+
+    pub(super) fn gen_foreach_any(
+        &mut self,
+        var: &str,
+        any_val: &str,
+        body: &[Stmt],
+        out: &mut String,
+    ) -> Result<()> {
+        self.mark_runtime_type(&Type::Any);
+        self.used_any_rt = true;
+        let hold_outer = self.claim_stmt_temp(any_val);
+        self.flush_stmt_temps(out);
+        if hold_outer {
+            self.push_scope();
+            let hslot = self.next_slot("foreach.any");
+            let _ = writeln!(self.allocas, "  {hslot} = alloca %ArchxAny, align 8");
+            let _ = writeln!(out, "  store %ArchxAny {any_val}, ptr {hslot}, align 8");
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .owned_buffers
+                .push(DropTarget::TypedSlot {
+                    ptr: hslot,
+                    ty: Type::Any,
+                });
+        }
+
+        let len_val = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {len_val} = call fastcc i64 @archx_any_len(%ArchxAny {any_val})"
+        );
+        let idx_slot = self.next_slot("foreach.any.idx");
+        let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
+
+        let cond_lbl = self.fresh_label("foreach.any.cond");
+        let body_lbl = self.fresh_label("foreach.any.body");
+        let step_lbl = self.fresh_label("foreach.any.step");
+        let end_lbl = self.fresh_label("foreach.any.end");
+
+        self.emit_br(&cond_lbl, out);
+        self.start_block(&cond_lbl, out);
+        let cur = self.next_tmp();
+        let _ = writeln!(out, "  {cur} = load i64, ptr {idx_slot}, align 8");
+        let more = self.next_tmp();
+        let _ = writeln!(out, "  {more} = icmp slt i64 {cur}, {len_val}");
+        self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+        self.start_block(&body_lbl, out);
+        let tag = self.next_tmp();
+        let _ = writeln!(out, "  {tag} = extractvalue %ArchxAny {any_val}, 0");
+        let w1 = self.next_tmp();
+        let _ = writeln!(out, "  {w1} = extractvalue %ArchxAny {any_val}, 1");
+        let is_ds = self.next_tmp();
+        let _ = writeln!(out, "  {is_ds} = icmp uge i64 {tag}, 6");
+        let ds_lbl = self.fresh_label("foreach.any.ds");
+        let ls_lbl = self.fresh_label("foreach.any.ls");
+        let got_lbl = self.fresh_label("foreach.any.got");
+        self.emit_cond_br(&is_ds, &ds_lbl, &ls_lbl, out);
+
+        self.start_block(&ds_lbl, out);
+        let draw = self.next_tmp();
+        let _ = writeln!(out, "  {draw} = and i64 {w1}, -4");
+        let dh = self.next_tmp();
+        let _ = writeln!(out, "  {dh} = inttoptr i64 {draw} to ptr");
+        let kg = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kg} = getelementptr inbounds %ArchxDictHdr, ptr {dh}, i32 0, i32 5"
+        );
+        let kp = self.next_tmp();
+        let _ = writeln!(out, "  {kp} = load ptr, ptr {kg}, align 8");
+        let kep = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kep} = getelementptr inbounds %ArchxAny, ptr {kp}, i64 {cur}"
+        );
+        let kv = self.next_tmp();
+        let _ = writeln!(out, "  {kv} = load %ArchxAny, ptr {kep}, align 8");
+        let kc = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kc} = call fastcc %ArchxAny @archx_any_clone(%ArchxAny {kv})"
+        );
+        self.emit_br(&got_lbl, out);
+
+        self.start_block(&ls_lbl, out);
+        let idx_a = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {idx_a} = insertvalue %ArchxAny {{ i64 2, i64 0, i64 0 }}, i64 {cur}, 1"
+        );
+        let lv = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {lv} = call fastcc %ArchxAny @archx_any_get_idx(%ArchxAny {any_val}, %ArchxAny {idx_a})"
+        );
+        self.emit_br(&got_lbl, out);
+
+        self.start_block(&got_lbl, out);
+        let elem_any = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {elem_any} = phi %ArchxAny [ {kc}, %{ds_lbl} ], [ {lv}, %{ls_lbl} ]"
+        );
+
+        let outer_depth = self.scopes.len();
+        let outer_rdepth = self.region_stack.len();
+        self.push_scope();
+        let sptr = self.next_slot(&format!("var.{var}"));
+        let _ = writeln!(self.allocas, "  {sptr} = alloca %ArchxAny, align 8");
+        let _ = writeln!(out, "  store %ArchxAny {elem_any}, ptr {sptr}, align 8");
+        self.scopes
+            .last_mut()
+            .unwrap()
+            .owned_buffers
+            .push(DropTarget::TypedSlot {
+                ptr: sptr.clone(),
+                ty: Type::Any,
+            });
+        self.scopes.last_mut().unwrap().vars.insert(
+            var.to_string(),
+            VarEntry {
+                ty: Type::Any,
+                storage: VarStorage::Slot(sptr),
+                is_param: false,
+                region_depth: outer_rdepth,
+            },
+        );
+
+        self.loop_stack.push(LoopLabels {
+            break_label: end_lbl.clone(),
+            continue_label: step_lbl.clone(),
+            scope_depth: outer_depth,
+            region_depth: outer_rdepth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&step_lbl, out);
+        }
+
+        self.start_block(&step_lbl, out);
+        let c2 = self.next_tmp();
+        let _ = writeln!(out, "  {c2} = load i64, ptr {idx_slot}, align 8");
+        let nxt = self.next_tmp();
+        let _ = writeln!(out, "  {nxt} = add nuw nsw i64 {c2}, 1");
+        let _ = writeln!(out, "  store i64 {nxt}, ptr {idx_slot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&end_lbl, out);
+        if hold_outer {
+            self.pop_scope_with_drops(out);
+        }
+        Ok(())
+    }
+
+    pub(super) fn gen_for_dict_items(
+        &mut self,
+        key_var: &str,
+        val_var: &str,
+        dict: &Expr,
+        body: &[Stmt],
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        if key_var == val_var {
+            return Err(Diagnostic::new(
+                format!("duplicate loop variable `{key_var}` in `for k, v in ...`"),
+                span,
+            ));
+        }
+        if self.lookup_var(key_var).is_some() {
+            return Err(Diagnostic::new(
+                format!("loop variable `{key_var}` is already defined"),
+                span,
+            ));
+        }
+        if self.lookup_var(val_var).is_some() {
+            return Err(Diagnostic::new(
+                format!("loop variable `{val_var}` is already defined"),
+                span,
+            ));
+        }
+
+        let (d_ty, raw_d) = self.eval_expr(dict, out)?;
+        let (k_ty, v_ty, d_handle, hold_ty, hold_val) = match &d_ty {
+            Type::Dict(k, v) => (
+                (**k).clone(),
+                (**v).clone(),
+                raw_d.clone(),
+                d_ty.clone(),
+                raw_d,
+            ),
+            Type::Any => {
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let tag = self.next_tmp();
+                let _ = writeln!(out, "  {tag} = extractvalue %ArchxAny {raw_d}, 0");
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = icmp eq i64 {tag}, 6");
+                self.emit_type_guard(&ok, "`.items()` requires a `dict` value", out);
+                let w1 = self.next_tmp();
+                let _ = writeln!(out, "  {w1} = extractvalue %ArchxAny {raw_d}, 1");
+                (Type::Any, Type::Any, w1, Type::Any, raw_d)
+            }
+            _ => {
+                return Err(Diagnostic::new(
+                    format!("`.items()` requires a `dict`, found `{}`", d_ty.name()),
+                    dict.span,
+                ))
+            }
+        };
+
+        self.used_dict_type = true;
+        let hold_outer = self.claim_stmt_temp(&hold_val);
+        self.flush_stmt_temps(out);
+        if hold_outer {
+            self.push_scope();
+            let hslot = self.next_slot("foritems.dict");
+            let hir = ir_type(&hold_ty);
+            let _ = writeln!(self.allocas, "  {hslot} = alloca {hir}, align 8");
+            let _ = writeln!(out, "  store {hir} {hold_val}, ptr {hslot}, align 8");
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .owned_buffers
+                .push(DropTarget::TypedSlot {
+                    ptr: hslot,
+                    ty: hold_ty,
+                });
+        }
+
+        let len_val = self.emit_dict_len(&d_handle, out);
+        let idx_slot = self.next_slot("foritems.idx");
+        let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
+
+        let cond_lbl = self.fresh_label("foritems.cond");
+        let body_lbl = self.fresh_label("foritems.body");
+        let step_lbl = self.fresh_label("foritems.step");
+        let end_lbl = self.fresh_label("foritems.end");
+
+        self.emit_br(&cond_lbl, out);
+        self.start_block(&cond_lbl, out);
+        let cur = self.next_tmp();
+        let _ = writeln!(out, "  {cur} = load i64, ptr {idx_slot}, align 8");
+        let more = self.next_tmp();
+        let _ = writeln!(out, "  {more} = icmp slt i64 {cur}, {len_val}");
+        self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+        self.start_block(&body_lbl, out);
+        let raw = self.next_tmp();
+        let _ = writeln!(out, "  {raw} = and i64 {d_handle}, -4");
+        let hdr = self.next_tmp();
+        let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+        let kg = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 5"
+        );
+        let vg = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {vg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 6"
+        );
+        let kptr = self.next_tmp();
+        let _ = writeln!(out, "  {kptr} = load ptr, ptr {kg}, align 8");
+        let vptr = self.next_tmp();
+        let _ = writeln!(out, "  {vptr} = load ptr, ptr {vg}, align 8");
+
+        let kstore = Self::dict_key_storage_ir(&k_ty);
+        let kep = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {kep} = getelementptr inbounds {kstore}, ptr {kptr}, i64 {cur}"
+        );
+        let kval = self.emit_load_dict_key(&k_ty, &kep, out);
+
+        let vmem = elem_mem_ir_type(&v_ty);
+        let vep = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {vep} = getelementptr inbounds {vmem}, ptr {vptr}, i64 {cur}"
+        );
+        let vval = self.emit_elem_load(&v_ty, &vep, out);
+
+        let outer_depth = self.scopes.len();
+        let outer_rdepth = self.region_stack.len();
+        self.push_scope();
+        self.bind_loop_elem_var(key_var, &k_ty, &kval, outer_rdepth, out);
+        self.bind_loop_elem_var(val_var, &v_ty, &vval, outer_rdepth, out);
+
+        self.loop_stack.push(LoopLabels {
+            break_label: end_lbl.clone(),
+            continue_label: step_lbl.clone(),
+            scope_depth: outer_depth,
+            region_depth: outer_rdepth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&step_lbl, out);
+        }
+
+        self.start_block(&step_lbl, out);
+        let c2 = self.next_tmp();
+        let _ = writeln!(out, "  {c2} = load i64, ptr {idx_slot}, align 8");
+        let nxt = self.next_tmp();
+        let _ = writeln!(out, "  {nxt} = add nuw nsw i64 {c2}, 1");
+        let _ = writeln!(out, "  store i64 {nxt}, ptr {idx_slot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&end_lbl, out);
+        if hold_outer {
+            self.pop_scope_with_drops(out);
+        }
+        Ok(())
+    }
+
+    fn bind_loop_elem_var(
+        &mut self,
+        var: &str,
+        ty: &Type,
+        loaded_val: &str,
+        region_depth: usize,
+        out: &mut String,
+    ) {
+        let is_mut = self.mutated_vars.contains(var) || *ty == Type::Any;
+        let storage = if is_mut {
+            let sptr = self.next_slot(&format!("var.{var}"));
+            let ty_ir = ir_type(ty);
+            let align = ir_align(ty);
+            let _ = writeln!(self.allocas, "  {sptr} = alloca {ty_ir}, align {align}");
+            let init_v = if self.type_needs_drop(ty) {
+                let c = self.emit_clone_value(ty, loaded_val, out);
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .owned_buffers
+                    .push(DropTarget::TypedSlot {
+                        ptr: sptr.clone(),
+                        ty: ty.clone(),
+                    });
+                c
+            } else {
+                loaded_val.to_string()
+            };
+            let _ = writeln!(out, "  store {ty_ir} {init_v}, ptr {sptr}, align {align}");
+            VarStorage::Slot(sptr)
+        } else {
+            VarStorage::Imm(loaded_val.to_string())
+        };
+        self.scopes.last_mut().unwrap().vars.insert(
+            var.to_string(),
+            VarEntry {
+                ty: ty.clone(),
+                storage,
+                is_param: false,
+                region_depth,
+            },
+        );
+    }
 }

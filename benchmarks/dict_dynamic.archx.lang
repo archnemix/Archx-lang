@@ -1,0 +1,54 @@
+# Suite 5 (Archx Tier-2 Dynamic `%ArchxAny` Mode):
+# Forces unboxed 24-byte `%ArchxAny` dynamic dictionaries (`dict[any, any]`) and
+# untyped dynamic dispatch on the exact same workload to measure the cost of dynamic typing.
+
+def run_str_dynamic(vocab: list[str], rounds) -> int:
+    str_checksum = 0
+    miss = "missing_token_xyz"
+    for r in range(rounds):
+        counts: dict = {}
+        for i in range(1024):
+            counts[vocab[i]] = 1
+        for step in range(8192):
+            idx = (step * 73 + r * 19) % 1024
+            k = vocab[idx]
+            counts[k] = counts[k] + (step % 7) + 1
+        for p in range(2048):
+            pidx = (p * 131 + r * 7) % 1024
+            pk = vocab[pidx]
+            if pk in counts:
+                str_checksum += int(counts[pk])
+        if miss not in counts:
+            str_checksum += int(counts.get(miss, 3))
+        for k, v in counts.items():
+            str_checksum += int(v)
+    return str_checksum
+
+def run_int_dynamic() -> int:
+    tab: dict = {}
+    for i in range(32768):
+        k = i * 17 + 3
+        tab[k] = (i * 31 + 7) % 100000
+    popped_sum = 0
+    for i in range(0, 32768, 4):
+        k = i * 17 + 3
+        popped_sum += int(tab.pop(k))
+    for j in range(8192):
+        nk = 1000000 + j * 13
+        tab[nk] = j * 5 + 1
+
+    int_checksum = popped_sum + len(tab)
+    for _pass in range(40):
+        for k, v in tab.items():
+            int_checksum += (int(k) % 997) * int(v)
+    return int_checksum
+
+vocab: list[str] = []
+for i in range(1024):
+    if i % 2 == 0:
+        vocab.append(f"tok_{i}")
+    else:
+        vocab.append(f"identifier_token_{i}")
+
+print(run_str_dynamic(vocab, 120))
+print(run_int_dynamic())
