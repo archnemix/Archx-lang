@@ -57,13 +57,46 @@ fn build_and_run(tag: &str, source: &str) -> String {
     );
 
     let run = Command::new(&exe).output().unwrap();
-    assert!(
-        run.status.success(),
-        "program failed (status={:?}):\nstdout: {}\nstderr: {}",
-        run.status,
-        String::from_utf8_lossy(&run.stdout),
-        String::from_utf8_lossy(&run.stderr)
-    );
+    if !run.status.success() {
+        let mut asan_report = String::new();
+        if cfg!(target_os = "linux") {
+            let ir_out = Command::new(archx()).arg(&src).arg("--emit-ir").output().unwrap();
+            let ll_path = dir.join(format!("{tag}_asan.ll"));
+            let asan_exe = dir.join(format!("{tag}_asan"));
+            let _ = fs::write(&ll_path, &ir_out.stdout);
+            if let Ok(st) = Command::new("clang")
+                .args([
+                    "-O1",
+                    "-g",
+                    "-fsanitize=address",
+                    "-fno-omit-frame-pointer",
+                    "-Wno-override-module",
+                ])
+                .arg(&ll_path)
+                .arg("-lm")
+                .arg("-o")
+                .arg(&asan_exe)
+                .status()
+            {
+                if st.success() {
+                    if let Ok(ar) = Command::new(&asan_exe).output() {
+                        asan_report = format!(
+                            "\n--- ASan stdout ---\n{}\n--- ASan stderr ---\n{}",
+                            String::from_utf8_lossy(&ar.stdout),
+                            String::from_utf8_lossy(&ar.stderr)
+                        );
+                    }
+                }
+            }
+        }
+        panic!(
+            "program failed (status={:?}):\nstdout: {}\nstderr: {}{}",
+            run.status,
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr),
+            asan_report
+        );
+    }
     String::from_utf8_lossy(&run.stdout).replace("\r\n", "\n")
 }
 
