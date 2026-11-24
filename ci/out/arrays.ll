@@ -746,3 +746,7 @@ declare i32 @memcmp(ptr nocapture, ptr nocapture, i64) nounwind readonly
 declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)
 declare void @exit(i32) cold noreturn nounwind
+@.fmt.lbrace = private unnamed_addr constant [2 x i8] c"{\00", align 1
+@.fmt.rbrace = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@.fmt.colon = private unnamed_addr constant [3 x i8] c": \00", align 1
+@.fmt.nl = private unnamed_addr constant [2 x i8] c"\0A\00", align 1

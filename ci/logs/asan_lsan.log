@@ -4,7 +4,13 @@ CLEAN: examples/arrays.archx.lang (0 leaks, 0 invalid accesses)
 CLEAN: examples/structs_regions.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: examples/pythonic.archx.lang ==
 CLEAN: examples/pythonic.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: examples/collections_dynamic.archx.lang ==
+CLEAN: examples/collections_dynamic.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: benchmarks/composite.archx.lang ==
 CLEAN: benchmarks/composite.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: benchmarks/nbody_float.archx.lang ==
 CLEAN: benchmarks/nbody_float.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: benchmarks/dict_bench.archx.lang ==
+CLEAN: benchmarks/dict_bench.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: benchmarks/dict_dynamic.archx.lang ==
+CLEAN: benchmarks/dict_dynamic.archx.lang (0 leaks, 0 invalid accesses)

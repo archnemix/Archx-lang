@@ -80,6 +80,22 @@ exit=0
 sample #5 = 7.5
 words: | 4 | FAST
 mean=4.5, countdown=30, buf900=90
+== emit-ir: collections_dynamic ==
+exit=0
+== compile: collections_dynamic ==
+exit=0
+compiled `examples/collections_dynamic.archx.lang` -> `/tmp/archx-collections_dynamic`
+== run: collections_dynamic ==
+exit=0
+region score: 70
+unique count: 4 has 42: true
+middle slice: [20, 30, 40, 50]
+reversed step: [60, 40, 20]
+prefix: Archx version: v0.7.0
+payload: Archx items: 4 age: 20
+before rebind: str(Abdullah)
+after rebind: int(25)
+rebound list: list(len=3) last: 7
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
@@ -88,3 +104,4 @@ loops.opt.ll exit=0
 arrays.opt.ll exit=0
 structs_regions.opt.ll exit=0
 pythonic.opt.ll exit=0
+collections_dynamic.opt.ll exit=0

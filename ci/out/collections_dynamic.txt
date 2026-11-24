@@ -1,0 +1,9 @@
+region score: 70
+unique count: 4 has 42: true
+middle slice: [20, 30, 40, 50]
+reversed step: [60, 40, 20]
+prefix: Archx version: v0.7.0
+payload: Archx items: 4 age: 20
+before rebind: str(Abdullah)
+after rebind: int(25)
+rebound list: list(len=3) last: 7

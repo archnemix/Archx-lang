@@ -607,11 +607,11 @@ entry:
   br i1 %long, label %chk_tag, label %ret_same
 chk_tag:
   %w1 = extractvalue %ArchxStr %s, 1
-  %tag = and i64 %w1, 1
+  %tag = and i64 %w1, 3
   %owned = icmp ne i64 %tag, 0
   br i1 %owned, label %dup_heap, label %ret_same
 dup_heap:
-  %src_i = and i64 %w1, -2
+  %src_i = and i64 %w1, -4
   %src = inttoptr i64 %src_i to ptr
   %dst = call noalias align 16 ptr @malloc(i64 %len)
   %isnull = icmp eq ptr %dst, null
