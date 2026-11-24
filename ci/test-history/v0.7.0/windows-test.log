@@ -7,57 +7,42 @@ Thread model: posix
 InstalledDir: C:\Program Files\LLVM\bin
 --- cargo test ---
 [1m[92m   Compiling[0m archx v0.7.0 (D:\a\Archx-lang\Archx-lang)
-[1m[93mwarning[0m[1m[97m: type `codegen::analysis::AdaptiveHints` is more private than the item `codegen::Codegen::adaptive_hints`[0m
-   [1m[96m--> [0msrc\codegen\mod.rs:735:5
-    [1m[96m|[0m
-[1m[96m735[0m [1m[96m|[0m     pub(super) adaptive_hints: AdaptiveHints,
-    [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[93mfield `codegen::Codegen::adaptive_hints` is reachable at visibility `pub(crate)`[0m
-    [1m[96m|[0m
-[1m[92mnote[0m: but type `codegen::analysis::AdaptiveHints` is only usable at visibility `pub(in crate::codegen)`
-   [1m[96m--> [0msrc\codegen\analysis.rs:12:1
-    [1m[96m|[0m
-[1m[96m 12[0m [1m[96m|[0m pub(super) struct AdaptiveHints {
-    [1m[96m|[0m [1m[92m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-    [1m[96m= [0m[1m[97mnote[0m: `#[warn(private_interfaces)]` on by default
-
-[1m[93mwarning[0m: `archx` (bin "archx") generated 1 warning (1 duplicate)
-[1m[93mwarning[0m: `archx` (bin "archx" test) generated 1 warning
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 14.27s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 15.20s
 [1m[92m     Running[0m unittests src\main.rs (target\debug\build\archx/582591fef7993384\out\archx-582591fef7993384.exe)
 
 running 34 tests
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
-test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
+test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
-test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
 test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::equality_operators ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::loop_tokens ... ok
 test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
-test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
-test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_functions_with_params ... ok
-test parser::tests::parses_if_else ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_if_else ... ok
 test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
-test parser::tests::parses_structs_regions_step_and_foreach ... ok
 test parser::tests::parses_while_and_assignment ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test parser::tests::rejects_missing_colon ... ok
 test tests::default_output_strips_archx_extensions ... ok
 
@@ -67,61 +52,43 @@ test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 running 21 tests
 test break_outside_loop_is_an_error ... ok
-test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... FAILED
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
-test emit_ir_works ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-6864\key_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-6864\key_err.exe`
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-5800\key_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-5800\key_err.exe`
 test arrays_run ... ok
-test functions_run ... ok
 test elif_and_compound_assign_run ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-6864\type_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-6864\type_err.exe`
+test emit_ir_works ... ok
+test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... FAILED
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-5800\type_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-5800\type_err.exe`
+test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
+test functions_run ... ok
 test hello_world_runs ... ok
 test if_else_runs ... ok
-test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
 test loops_run ... ok
-test planar_simd_dict_set_and_slicing_work ... FAILED
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-6864\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-6864\fail_assert.exe`
-test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
-test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-6864\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-6864\zero_step.exe`
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-5800\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-5800\fail_assert.exe`
+test planar_simd_dict_set_and_slicing_work ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-5800\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-5800\zero_step.exe`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
-test run_flag_default_output_and_str_alias_work ... ok
-test regions_step_loops_foreach_and_ownership_churn_work ... ok
+test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
 test out_of_bounds_panics_cleanly ... ok
-test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
+test regions_step_loops_foreach_and_ownership_churn_work ... ok
+test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
+test run_flag_default_output_and_str_alias_work ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
+test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 
 failures:
 
 ---- adaptive_any_mixed_containers_and_dynamic_rebinding_work stdout ----
 
-thread 'adaptive_any_mixed_containers_and_dynamic_rebinding_work' (6832) panicked at tests\cli.rs:53:5:
-compiler stderr: archx: error: error: expected `:`, found identifier `is`
-  --> 2:12
-   |
-  2 |     if val is None:
-   |            ^
-
-
+thread 'adaptive_any_mixed_containers_and_dynamic_rebinding_work' (2780) panicked at tests\cli.rs:60:5:
+program failed: 
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
----- planar_simd_dict_set_and_slicing_work stdout ----
-
-thread 'planar_simd_dict_set_and_slicing_work' (4256) panicked at tests\cli.rs:53:5:
-compiler stderr: archx: error: error: expected `:`, found `[`
-  --> 1:32
-   |
-  1 | def build_region_dict() -> dict[str, int]:
-   |                                ^
-
-
 
 
 failures:
     adaptive_any_mixed_containers_and_dynamic_rebinding_work
-    planar_simd_dict_set_and_slicing_work
 
-test result: FAILED. 19 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.03s
+test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.62s
 
 [1m[91merror[0m: test failed, to rerun pass `--test cli`
