@@ -1,6 +1,6 @@
 <!-- End-to-end execution and call-chain trace across the Archx compiler so bugs can be isolated immediately. -->
 
-# Program Flow & Call-Chain Logic (`v0.6.0`)
+# Program Flow & Call-Chain Logic (`v0.7.0`)
 
 Use this call chain whenever diagnosing a compiler bug, wrong codegen, or a memory leak.
 

@@ -11,14 +11,14 @@ All user-facing guides, architectural specifications, and engineering tracking f
 
 ## Architecture & Roadmap
 - [`Architecture.md`](Architecture.md) — End-to-end compiler pipeline, runtime ABI layouts, and `src/` module map.
-- [`Roadmap.md`](Roadmap.md) — Completed Milestones 1–5 and ordered next steps (Milestones 6–9).
+- [`Roadmap.md`](Roadmap.md) — Completed Milestones 1–7 and ordered next steps (Milestones 8–10).
 - [`Technical.md`](Technical.md) — Tech stack and file-by-file inputs, outputs, and responsibilities.
 - [`Logic.md`](Logic.md) — Call-chain and execution flow map across CLI, lexer, parser, and codegen.
 
 ## Governance, History & Machine-Readable Indexes
 - [`Rules.md`](Rules.md) — Standing engineering, modularity, testing, and CI rules.
 - [`Thinking.md`](Thinking.md) — Chronological engineering decision and bug-resolution log.
-- [`Changelog.md`](Changelog.md) — Version-by-version release history (`v0.1.0` – `v0.5.0`).
+- [`Changelog.md`](Changelog.md) — Version-by-version release history (`v0.1.0` – `v0.7.0`).
 - [`Change.md`](Change.md) — Log of user-requested additions and roadmap updates.
 - [`Workaround.md`](Workaround.md) — Documented CI/sandbox and cross-OS linker workarounds.
 - [`Secrets.md`](Secrets.md) — Repository secrets registry.

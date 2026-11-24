@@ -54,17 +54,25 @@ Every `str` value is a 16-byte two-register pair (`16 B` vs Rust `String`'s `24 
 - **Constant-divisor safe `/` and `%`**: compile-time non-zero positive divisors (`% 1000`, `% 1000000007`) bypass runtime zero and `i64::MIN / -1` branch guards, lowering to a single `srem`/`sdiv` instruction.
 - **Range-Guarded `for` Versioning + Strided `for .. step k` + Monotonic `while` Versioning**: checks array bounds once in the preheader and emits single-exit check-free inner loops so LLVM's `LoopVectorize` emits `<2 x i64>` SIMD vector bodies (`ci/out/bench_arrays.opt.ll`).
 
-## Measured 3-Suite CI Results (`ci/out/benchmarks.txt`)
+### 5. Planar `<16 x i8>` SIMD SwissTable `dict` / `set` + Two-Tier Adaptive Typing (`v0.7.0`)
+
+- **Planar SIMD SwissTable (`%ArchxDictHdr`)**: Combines 16-wide `<16 x i8>` SIMD control-byte probing (`icmp eq <16 x i8> %grp, %h2_vec` + `@llvm.cttz.i32`) with dense insertion-ordered planar `keys[]` and `vals[]` arrays (`idx_base[]` maps sparse SIMD slots to dense `0..len` indices). `@archx_dict_find_h_*` records the first available `0x80`/`0xFE` slot during lookup so `@archx_dict_upsert_*` commits new insertions with **zero second probe and zero second hash**.
+- **Register-Only Prefix-SSO String Keys**: Because `@archx_hash_str` and `@archx_str_eq` are `alwaysinline` over `%ArchxStr { w0, w1 }`, string keys `<= 12` bytes (`"tok_42"`) hash and compare 100% in two 64-bit CPU registers with **zero pointer dereferences**, while keys `> 12` bytes reject hash collisions in one 64-bit `(prefix4 << 32) | len` register compare.
+- **Two-Tier Adaptive Type Engine (`analyze_adaptive_types`)**: Infers specialized zero-tag types for homogeneous Python variables and empty `{}` / `[]` literals from usage, and promotes only genuinely heterogeneous containers or rebound variables to unboxed 24-byte `%ArchxAny { i64 tag, i64 w1, i64 w2 }` (where even `%ArchxStr` sits inline in `w1, w2` without an extra heap box).
+
+## Measured 5-Suite CI Results (`ci/out/benchmarks.txt`)
 
 Measured on GitHub Actions (`Ubuntu clang 21.1.8 -O2`, `rustc 1.100.0 -O`, best of 7 runs, identical stdout verified via `cmp`):
 
 | Suite | C (`clang -O2`) | Rust (`rustc -O`) | **Archx (`archx -O2`)** | Stripped Binary (Archx / C / Rust) |
 |---|---:|---:|---:|---:|
-| **1. Scalar (`primes`)** | **134 ms** (134) | **134 ms** (134) | **134 ms** (134) | **14 KB** / 14 KB / 330 KB |
-| **2. Arrays (`arrays`)** | **58–62 ms** (60–63) | **64 ms** (72) | **63 ms** (64) | **14 KB** / 14 KB / 331 KB |
-| **3. Composite (`composite`)** | **21 ms** (21) | **23 ms** (23) | **18 ms** (18) | **14 KB** / 14 KB / 332 KB |
+| **1. Scalar (`primes`)** | **119 ms** (119) | **119 ms** (119) | **119 ms** (119) | **14 KB** / 14 KB / 330 KB |
+| **2. Arrays (`arrays`)** | **57–59 ms** (58–63) | **61 ms** (61) | **56 ms** (57) | **14 KB** / 14 KB / 331 KB |
+| **3. Composite (`composite`)** | **22 ms** (22) | **25 ms** (25) | **18 ms** (18) | **14 KB** / 14 KB / 332 KB |
+| **4. Pythonic Float N-Body (`nbody_float`)** | **67 ms** (68) | **67 ms** (67) | **62 ms** (62) | **14 KB** / 14 KB / 332 KB |
+| **5. Planar SIMD Dict (`dict_bench`)** | **61 ms** (62) | **52 ms** (52) | **48 ms** (`87 ms` `%ArchxAny`) | **22 KB** / 14 KB / 354 KB |
 
-On Suite 3 (`composite`: 100k 48B `Body` structs × 120 steps + 40k scratch/string rounds), **Archx is 14% faster than C (`18 ms` vs `21 ms`) and 22% faster than Rust (`18 ms` vs `23 ms`)**, with **0 bytes leaked** under LeakSanitizer (`ci/logs/asan_lsan.log`).
+Across **Suites 2, 3, 4, and 5**, **Archx beats both `-O2` C and `-O` Rust** — including beating Rust's `std::collections::HashMap` (`hashbrown`) on Suite 5 (`48 ms` vs `52 ms` Rust / `61 ms` C) with **0 bytes leaked** across all 8 targets under LeakSanitizer (`ci/logs/asan_lsan.log`).
 
 ## What we have implemented so far
 

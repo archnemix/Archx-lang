@@ -1,8 +1,8 @@
-<!-- Complete user manual and language reference for everything built in Archx up to Milestone 6 (v0.6.0). -->
+<!-- Complete user manual and language reference for everything built in Archx up to Milestone 7 (v0.7.0). -->
 
-# Archx Language & Usage Guide (`v0.6.0`)
+# Archx Language & Usage Guide (`v0.7.0`)
 
-Archx gives you **1:1 Pythonic syntax and standard console I/O** (`def`, `class`, `self`, `range`, `enumerate`, `f"..."`, `print(..., sep=..., end=...)`, `input()`, `float`, `list[T]`) compiled directly to **native machine code via LLVM IR (`clang -O2`)** with **zero garbage collector**, **transparent AoS-to-SoA SIMD**, **16-byte prefix-SSO strings**, and **scoped `region:` bump arenas**.
+Archx gives you **1:1 Pythonic syntax, Planar SIMD `dict`/`set`, slicing, negative indexing, smart two-tier adaptive typing (`any`), and standard console I/O** (`def`, `class`, `self`, `dict`, `set`, `xs[a:b:step]`, `xs[-1]`, `range`, `enumerate`, `f"..."`, `print(..., sep=..., end=...)`, `input()`, `float`, `list[T]`) compiled directly to **native machine code via LLVM IR (`clang -O2`)** with **zero garbage collector**, **transparent AoS-to-SoA SIMD**, **16-byte prefix-SSO strings**, and **scoped `region:` bump arenas**.
 
 ---
 
@@ -86,19 +86,27 @@ Layout rules:
 | `bool` | `bool` | `True` / `False` (also `true` / `false`) | `i1` in SSA, `i8` in `list[bool]` |
 | `str` | `string` | Immutable UTF-8 16-byte prefix-SSO string | `%ArchxStr` (`{ i64, i64 }`) |
 | `list[T]` | `[T]` | Homogeneous contiguous dynamic array (`list[int]`, `list[Body]`) | `%ArchxVec` or SoA planes |
+| `dict[K, V]` | `dict` | Planar `<16 x i8>` SIMD SwissTable dictionary (`dict` = `dict[any, any]`) | `i64` tagged `%ArchxDictHdr*` |
+| `set[T]` | `set` | Planar `<16 x i8>` SIMD SwissTable hash set (`set` = `set[any]`) | `i64` tagged `%ArchxDictHdr*` (`v_sz = 0`) |
+| `any` | — | Unboxed 24-byte dynamic value (`None`, `bool`, `int`, `float`, `str`, `list`, `dict`, `set`) | `%ArchxAny` (`{ i64, i64, i64 }`) |
 | `ClassName` | `StructName` | Value class / struct | `%ArchxStruct_Name` |
-| `None` | `void` | Empty / unit return type (`-> None` or omitted `->`) | `void` |
+| `None` | `void` | Empty / unit return type (`-> None` or omitted `->`) or dynamic `None` value | `void` / `%ArchxAny` (`tag = 0`) |
 
-### Variable assignment without `let`
+### Variable assignment without `let` & Smart Adaptive Typing
 
-First assignment in a function/script introduces the variable automatically (`let` remains supported for backward compatibility):
+First assignment in a function/script introduces the variable automatically (`let` remains supported for backward compatibility). Archx's **Two-Tier Adaptive Type Engine** (`analyze_adaptive_types`) inspects the entire function body:
+1. **Tier 1 (Zero-Tag Static Specialization)**: Variables whose types stay uniform — including empty `{}` and `[]` inferred from subsequent `scores["a"] = 1` or `xs.append(42)` — compile to **100% unboxed static registers and specialized Planar SIMD containers** with zero tag bits!
+2. **Tier 2 (Automatic `%ArchxAny` Dynamic Promotion)**: Variables rebound across incompatible types (`name = "Abdullah"` then `name = 18` or `name = None`), mixed container literals (`{"data": ["Archx", 18, "legal"], "age": 18}`), or untyped parameters (`def describe(val):`) automatically promote to 24-byte stack-register `%ArchxAny`:
 
 ```python
-x = 42                      # inferred as int (SSA register if never mutated!)
-pi: float = 3.14159         # optional type annotation
-items: list[int] = []       # annotation required for empty list literals
+x = 42                      # Tier 1: pure i64 SSA register
+scores = {}                 # Tier 1: inferred as dict[str, int] from usage below!
+scores["k0"] = 100
 
-x += 8                      # updates existing `x` (+=, -=, *=, /=, //=, %=)
+name = "Abdullah"           # Tier 2: promoted to %ArchxAny because rebound below!
+name = 18
+name = ["x", 42]
+name = None
 ```
 
 ---
@@ -255,4 +263,52 @@ def run_batches(rounds: int) -> str:
     with region:
         out = f"completed {rounds} rounds (acc={acc})"
         return out              # automatically promoted to heap before region unwind!
+```
+
+---
+
+## 11. Planar SIMD Dictionaries (`dict`), Sets (`set`), Slicing & Dynamic `any`
+
+### Planar `<16 x i8>` SIMD Dictionaries & Sets
+Archx `dict[K, V]` and `set[T]` combine **16-wide `<16 x i8>` SwissTable SIMD control-byte probing** with **dense insertion-ordered planar `keys[]` and `vals[]` arrays** (like CPython's compact dict, without GC or PyObject pointer chasing) and full `with region:` arena support:
+
+```python
+scores = {"alpha": 10, "beta": 20}
+scores["alpha"] += 5
+print(scores.get("gamma", -1))      # -1
+removed = scores.pop("beta")        # 20 (preserves insertion order!)
+
+for k, v in scores.items():         # dense 0..len plane scan — skips 0 empty buckets!
+    print(k, v)
+
+uniq = set([5, 3, 5, 1, 9])         # or {5, 3, 1, 9}
+uniq.add(7)
+uniq.discard(99)
+print(3 in uniq, len(uniq))         # true 5
+```
+
+### Pythonic Slicing & Negative Indexing (`xs[a:b:step]`, `xs[-1]`, `s[::-1]`)
+Lists, strings, and dynamic `any` sequences support Python negative indices (`idx < 0` adds `len` once before bounds checking) and full `start:stop:step` clamping (including negative steps):
+
+```python
+nums = [10, 20, 30, 40, 50, 60]
+nums[-1] = 66
+print(nums[1:4])                    # [20, 30, 40] (contiguous memcpy fast path!)
+print(nums[::-2])                   # [66, 40, 20]
+
+s = "Archx-v0.7"
+print(s[0:5], s[-4:], s[::-1])      # Archx v0.7 7.0v-xhcrA
+```
+
+### Dynamic Containers, Untyped Functions, `is None` & `type(x)`
+```python
+def describe(val):                  # untyped parameter defaults to %ArchxAny
+    if val is None:
+        return "empty"
+    return f"{type(val)}:{val}"
+
+hello = {"data": ["Archx", 18, "legal"], "age": 18}
+hello["data"].append("fast")        # mutates nested list in place!
+hello["age"] += 3
+print(describe(hello["data"]), describe(None))
 ```

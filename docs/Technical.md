@@ -1,6 +1,6 @@
 <!-- Technical reference of the Archx stack, module inputs/outputs, and internal invariants. -->
 
-# Technical Reference (`v0.6.0`)
+# Technical Reference (`v0.7.0`)
 
 ## 1. Technology Stack
 - **Implementation language**: Rust (`edition = "2021"`, `0` external crates in `Cargo.toml`).
@@ -20,8 +20,10 @@
 | `src/ast.rs` | `Span`, parsed nodes | `Program`, `StructDef`, `Func`, `Stmt`, `Expr`, `Type` | Typed AST definitions shared between parser and codegen (`CallArg`, `MethodCall`, `Ternary`, `ForEnumerate`, etc.). |
 | `src/parser.rs` | `Vec<Token>` | `Result<Program>` | Bounded-depth (`MAX_NESTING = 128`) parser for 1:1 Python (`def`, `class`, `range`, `enumerate`, script `main`) & classic syntax. |
 | `src/codegen/mod.rs` | `&Program` | `Result<String>` (LLVM IR) | Struct/method signature & receiver layout, `Codegen` state, function frames, and runtime flag finalization. |
-| `src/codegen/analysis.rs` | `&[Stmt]`, `&Expr` | Escape/mutation sets, `Option<i64>` | Pure AST analyses: SoA escape checking, monotonic `while` stride checking, Pythonic first-binding vs mutation sets, const folding. |
-| `src/codegen/stmt.rs` | `&Stmt`, `&[Stmt]` | Appended LLVM IR | Pythonic implicit variable intro, `let`, `with region:`, `int`/`bool`/`float` SoA setup, `assert`, `pass`, and assignments. |
+| `src/codegen/analysis.rs` | `&[Stmt]`, `&Expr` | `AdaptiveHints`, escape/mutation sets | Two-tier adaptive specialization vs `%ArchxAny` promotion, SoA escape checking, monotonic `while` stride checking, const folding. |
+| `src/codegen/any.rs` | `Type`, `%ArchxAny` | Boxed/unboxed/dispatched IR | 24-byte `%ArchxAny` boxing/unboxing, runtime type guards, dynamic ops, indexing, and calls. |
+| `src/codegen/collections.rs` | `dict`/`set`/slice AST | Planar SIMD & slice IR | Planar `<16 x i8>` SIMD `dict[K, V]` & `set[T]`, per-type drop/clone helpers, Pythonic slicing, and negative indexing. |
+| `src/codegen/stmt.rs` | `&Stmt`, `&[Stmt]` | Appended LLVM IR | Pythonic implicit variable intro & adaptive rebinding, `let`, `with region:`, `int`/`bool`/`float` SoA setup, `assert`, `pass`, and assignments. |
 | `src/codegen/loops.rs` | Loop AST nodes | Versioned/elided LLVM IR | `while`, `range`/`a..b` (pos/neg/dynamic steps), `for x in arr`, `for ch in s`, and `for i, x in enumerate(xs, start)`. |
 | `src/codegen/expr.rs` | `&Expr`, `Option<&Type>` | `Result<(Type, String)>` | Literals, indexing (`arr[i]`, `s[i]`), fields, `int` & `float` math (`//`, `**`), ternary, `in`/`not in`, `[v]*n`, `s*n`, SSO strings. |
 | `src/codegen/calls.rs` | Call name & `&[CallArg]` | `Result<(Type, String)>` | User `fastcc` calls, positional/keyword constructors, `int`/`float`/`str`/`bool` casts, and LEGB soft built-ins. |
@@ -31,5 +33,6 @@
 | `src/codegen/memory.rs` | Element `Type`, count/index | Checked `ptr` / bounds IR | `2^47` size checks, `align 16` `malloc`/`calloc`/`realloc`, `double` zero-page `calloc`, and bounds-check elision proofs. |
 | `src/codegen/runtime.rs` | `used_*` flags | Private LLVM IR helpers | Core `@archx_region_*`, `@archx_str_*`, panic handlers, and core `libc`/intrinsic declarations. |
 | `src/codegen/runtime_py.rs` | `used_*` Pythonic flags | Private LLVM IR helpers | `@archx_input`, `@archx_fmt_float_buf`, `@archx_str_from_slice`, `int`/`float` parsers, string methods, and panic helpers. |
-| `src/codegen/tests.rs` | Inline Archx snippets | Unit test assertions | Verifies IR generation, Pythonic SoA + `range` bounds elision, SSO strings, and region escape errors. |
+| `src/codegen/runtime_hash_any.rs` | `used_dict_*` / `used_any_rt` | Private LLVM IR helpers | Planar `<16 x i8>` SIMD SwissTable runtime, `@archx_slice_bounds`, `@archx_str_slice`, and `%ArchxAny` dynamic runtime helpers. |
+| `src/codegen/tests.rs` | Inline Archx snippets | Unit test assertions | Verifies IR generation, adaptive Tier-1/Tier-2 lowering, Pythonic SoA + `range` bounds elision, SSO strings, and region escape errors. |
 | `tests/cli.rs` | Fresh `archx` binary | Native stdout / exit codes | Cross-platform end-to-end integration tests (including piped `stdin` `input()`) across Linux, macOS, and Windows. |
