@@ -128,6 +128,31 @@ impl Codegen {
                 );
                 res
             }
+            Type::Any => {
+                if val == "zeroinitializer" {
+                    return val.to_string();
+                }
+                self.mark_runtime_type(&Type::Any);
+                self.used_any_rt = true;
+                let res = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {res} = call fastcc %ArchxAny @archx_any_clone(%ArchxAny {val})"
+                );
+                res
+            }
+            Type::Dict(k, v) => {
+                let fn_sym = self.ensure_dict_clone_helper(k, Some(v));
+                let res = self.next_tmp();
+                let _ = writeln!(out, "  {res} = call fastcc i64 {fn_sym}(i64 {val})");
+                res
+            }
+            Type::Set(inner) => {
+                let fn_sym = self.ensure_dict_clone_helper(inner, None);
+                let res = self.next_tmp();
+                let _ = writeln!(out, "  {res} = call fastcc i64 {fn_sym}(i64 {val})");
+                res
+            }
             Type::Array(elem_ty) => {
                 let fn_sym = self.ensure_vec_clone_helper(elem_ty);
                 let res = self.next_tmp();
