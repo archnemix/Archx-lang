@@ -263,6 +263,59 @@ impl Codegen {
                     }
                 }
             }
+
+            // In-place mutating method on a dictionary value (`hello["data"].append("fast")`):
+            if matches!(method, "append" | "pop" | "add" | "remove" | "discard" | "clear") {
+                if let ExprKind::Var(dname) = &arr_expr.kind {
+                    if let Some(dentry) = self.lookup_var(dname).cloned() {
+                        if let Type::Dict(k_ty, v_ty) = &dentry.ty {
+                            if **v_ty == Type::Any {
+                                let (_, d_val) = self.eval_expr(arr_expr, out)?;
+                                self.used_dict_rt = true;
+                                self.used_key_fail = true;
+                                let fam = Self::dict_family_suffix(k_ty);
+                                let (kir, kval) = self.eval_key_for_dict(k_ty, idx_expr, out)?;
+                                let didx = self.next_tmp();
+                                let _ = writeln!(
+                                    out,
+                                    "  {didx} = call fastcc i64 @archx_dict_lookup_{fam}(i64 {d_val}, {kir} {kval})"
+                                );
+                                let ok = self.next_tmp();
+                                let _ = writeln!(out, "  {ok} = icmp sge i64 {didx}, 0");
+                                let ok_lbl = self.fresh_label("dm.ok");
+                                let miss_lbl = self.fresh_label("dm.miss");
+                                self.emit_cond_br(&ok, &ok_lbl, &miss_lbl, out);
+                                self.start_block(&miss_lbl, out);
+                                let _ = writeln!(out, "  call void @archx_key_fail()");
+                                let _ = writeln!(out, "  unreachable");
+                                self.start_block(&ok_lbl, out);
+                                let borrowed = self.next_tmp();
+                                let raw = self.next_tmp();
+                                let _ = writeln!(out, "  {raw} = and i64 {d_val}, -4");
+                                let hdr = self.next_tmp();
+                                let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+                                let vg = self.next_tmp();
+                                let _ = writeln!(
+                                    out,
+                                    "  {vg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 6"
+                                );
+                                let vp = self.next_tmp();
+                                let _ = writeln!(out, "  {vp} = load ptr, ptr {vg}, align 8");
+                                let vep = self.next_tmp();
+                                let _ = writeln!(
+                                    out,
+                                    "  {vep} = getelementptr inbounds %ArchxAny, ptr {vp}, i64 {didx}"
+                                );
+                                let _ = writeln!(
+                                    out,
+                                    "  {borrowed} = load %ArchxAny, ptr {vep}, align 8"
+                                );
+                                return self.gen_any_method(&borrowed, method, args, span, out);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // 3. Evaluate receiver by value:

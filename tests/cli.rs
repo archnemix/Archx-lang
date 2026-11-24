@@ -59,7 +59,9 @@ fn build_and_run(tag: &str, source: &str) -> String {
     let run = Command::new(&exe).output().unwrap();
     assert!(
         run.status.success(),
-        "program failed: {}",
+        "program failed (status={:?}):\nstdout: {}\nstderr: {}",
+        run.status,
+        String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
     );
     String::from_utf8_lossy(&run.stdout).replace("\r\n", "\n")
