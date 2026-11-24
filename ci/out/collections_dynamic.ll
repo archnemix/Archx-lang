@@ -1505,7 +1505,7 @@ ret_same:
   ret %ArchxStr %s
 }
 
-define private fastcc i1 @archx_str_eq(%ArchxStr %a, %ArchxStr %b) nounwind {
+define private fastcc i1 @archx_str_eq(%ArchxStr %a, %ArchxStr %b) alwaysinline nounwind {
 entry:
   %aw0 = extractvalue %ArchxStr %a, 0
   %bw0 = extractvalue %ArchxStr %b, 0
@@ -2295,7 +2295,7 @@ entry:
   ret i64 %x3
 }
 
-define private fastcc i64 @archx_hash_str(%ArchxStr %s) nounwind {
+define private fastcc i64 @archx_hash_str(%ArchxStr %s) alwaysinline nounwind {
 entry:
   %w0 = extractvalue %ArchxStr %s, 0
   %w1 = extractvalue %ArchxStr %s, 1
@@ -2577,17 +2577,17 @@ rehash_done:
   ret void
 }
 
-define private fastcc { i64, i64 } @archx_dict_find_i64(i64 %d, i64 %key) alwaysinline {
+define private fastcc { i64, i64 } @archx_dict_find_h_i64(i64 %d, i64 %key, i64 %h) alwaysinline {
 entry:
   %raw = and i64 %d, -4
   %is_z = icmp eq i64 %raw, 0
-  br i1 %is_z, label %not_found, label %chk_ctrl
+  br i1 %is_z, label %not_found_empty, label %chk_ctrl
 chk_ctrl:
   %hdr = inttoptr i64 %raw to ptr
   %ctrl_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 4
   %ctrl = load ptr, ptr %ctrl_p, align 8
   %c_null = icmp eq ptr %ctrl, null
-  br i1 %c_null, label %not_found, label %do_probe
+  br i1 %c_null, label %not_found_empty, label %do_probe
 do_probe:
   %mask_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 2
   %keys_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
@@ -2596,7 +2596,6 @@ do_probe:
   %scap = add i64 %mask, 1
   %c_init = add i64 %scap, 16
   %idx_base = getelementptr inbounds i8, ptr %ctrl, i64 %c_init
-  %h = call fastcc i64 @archx_hash_i64(i64 %key)
   %h2_64 = lshr i64 %h, 57
   %h2 = trunc i64 %h2_64 to i8
   %h2_ins = insertelement <16 x i8> poison, i8 %h2, i32 0
@@ -2606,6 +2605,7 @@ do_probe:
 probe:
   %pos = phi i64 [ %pos0, %do_probe ], [ %pos_next, %next_grp ]
   %step = phi i64 [ 0, %do_probe ], [ %step_next, %next_grp ]
+  %avail = phi i64 [ -1, %do_probe ], [ %avail_cur, %next_grp ]
   %gp = getelementptr inbounds i8, ptr %ctrl, i64 %pos
   %grp = load <16 x i8>, ptr %gp, align 1
   %mcmp = icmp eq <16 x i8> %grp, %h2_vec
@@ -2633,10 +2633,26 @@ mbit_cont:
   %mmask_next = and i32 %mmask, %mm1
   br label %mbit
 chk_empty:
+  %need_a = icmp slt i64 %avail, 0
+  br i1 %need_a, label %find_a, label %after_a
+find_a:
+  %acmp = icmp slt <16 x i8> %grp, zeroinitializer
+  %abits16 = bitcast <16 x i1> %acmp to i16
+  %amask0 = zext i16 %abits16 to i32
+  %has_a0 = icmp ne i32 %amask0, 0
+  br i1 %has_a0, label %set_a, label %after_a
+set_a:
+  %atz = call i32 @llvm.cttz.i32(i32 %amask0, i1 true)
+  %atz64 = zext i32 %atz to i64
+  %as_add = add i64 %pos, %atz64
+  %aslot = and i64 %as_add, %mask
+  br label %after_a
+after_a:
+  %avail_cur = phi i64 [ %avail, %chk_empty ], [ -1, %find_a ], [ %aslot, %set_a ]
   %ecmp = icmp eq <16 x i8> %grp, <i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128>
   %ebits = bitcast <16 x i1> %ecmp to i16
   %has_e = icmp ne i16 %ebits, 0
-  br i1 %has_e, label %not_found, label %next_grp
+  br i1 %has_e, label %not_found_avail, label %next_grp
 next_grp:
   %step_next = add i64 %step, 16
   %padd = add i64 %pos, %step_next
@@ -2646,8 +2662,19 @@ found:
   %f0 = insertvalue { i64, i64 } poison, i64 %didx, 0
   %f1 = insertvalue { i64, i64 } %f0, i64 %slot, 1
   ret { i64, i64 } %f1
-not_found:
+not_found_avail:
+  %nf0 = insertvalue { i64, i64 } poison, i64 -1, 0
+  %nf1 = insertvalue { i64, i64 } %nf0, i64 %avail_cur, 1
+  ret { i64, i64 } %nf1
+not_found_empty:
   ret { i64, i64 } { i64 -1, i64 -1 }
+}
+
+define private fastcc { i64, i64 } @archx_dict_find_i64(i64 %d, i64 %key) alwaysinline {
+entry:
+  %h = call fastcc i64 @archx_hash_i64(i64 %key)
+  %res = call fastcc { i64, i64 } @archx_dict_find_h_i64(i64 %d, i64 %key, i64 %h)
+  ret { i64, i64 } %res
 }
 
 define private fastcc i64 @archx_dict_lookup_i64(i64 %d, i64 %key) alwaysinline {
@@ -2670,8 +2697,9 @@ do_grow0:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
 chk_probe_existing:
-  %found_pair = call fastcc { i64, i64 } @archx_dict_find_i64(i64 %d, i64 %key)
+  %found_pair = call fastcc { i64, i64 } @archx_dict_find_h_i64(i64 %d, i64 %key, i64 %h)
   %found_idx = extractvalue { i64, i64 } %found_pair, 0
+  %avail_slot = extractvalue { i64, i64 } %found_pair, 1
   %exists = icmp sge i64 %found_idx, 0
   br i1 %exists, label %ret_existing, label %chk_cap
 ret_existing:
@@ -2688,7 +2716,17 @@ chk_cap:
   %lhs = shl i64 %u1, 3
   %rhs = mul i64 %scap0, 7
   %full = icmp sgt i64 %lhs, %rhs
-  br i1 %full, label %do_grow1, label %probe_insert_init
+  br i1 %full, label %do_grow1, label %fast_insert_prep
+fast_insert_prep:
+  %len_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 0
+  %used_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 1
+  %keys_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
+  %keys_f = load ptr, ptr %keys_pf, align 8
+  %c_init_f = add i64 %scap0, 16
+  %idx_base_f = getelementptr inbounds i8, ptr %ctrl0, i64 %c_init_f
+  %h2_64_f = lshr i64 %h, 57
+  %h2_f = trunc i64 %h2_64_f to i8
+  br label %iput_commit
 do_grow1:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
@@ -2726,40 +2764,50 @@ iput:
   %tz = call i32 @llvm.cttz.i32(i32 %amask, i1 true)
   %tz64 = zext i32 %tz to i64
   %s_add = add i64 %pos, %tz64
-  %slot = and i64 %s_add, %mask
-  %sp_c = getelementptr inbounds i8, ptr %ctrl, i64 %slot
+  %slot_g = and i64 %s_add, %mask
+  br label %iput_commit
+iput_commit:
+  %slot = phi i64 [ %avail_slot, %fast_insert_prep ], [ %slot_g, %iput ]
+  %ctrl_c = phi ptr [ %ctrl0, %fast_insert_prep ], [ %ctrl, %iput ]
+  %scap_c = phi i64 [ %scap0, %fast_insert_prep ], [ %scap, %iput ]
+  %idx_base_c = phi ptr [ %idx_base_f, %fast_insert_prep ], [ %idx_base, %iput ]
+  %keys_c = phi ptr [ %keys_f, %fast_insert_prep ], [ %keys, %iput ]
+  %len_pc = phi ptr [ %len_pf, %fast_insert_prep ], [ %len_p, %iput ]
+  %used_pc = phi ptr [ %used_pf, %fast_insert_prep ], [ %used_p2, %iput ]
+  %h2_c = phi i8 [ %h2_f, %fast_insert_prep ], [ %h2, %iput ]
+  %sp_c = getelementptr inbounds i8, ptr %ctrl_c, i64 %slot
   %old_cb = load i8, ptr %sp_c, align 1
   %was_empty = icmp eq i8 %old_cb, -128
-  %u_cur = load i64, ptr %used_p2, align 8
+  %u_cur = load i64, ptr %used_pc, align 8
   %u_inc = zext i1 %was_empty to i64
   %u_new = add i64 %u_cur, %u_inc
-  store i64 %u_new, ptr %used_p2, align 8
-  call fastcc void @archx_dict_set_ctrl(ptr %ctrl, i64 %scap, i64 %slot, i8 %h2)
-  %d_idx = load i64, ptr %len_p, align 8
+  store i64 %u_new, ptr %used_pc, align 8
+  call fastcc void @archx_dict_set_ctrl(ptr %ctrl_c, i64 %scap_c, i64 %slot, i8 %h2_c)
+  %d_idx = load i64, ptr %len_pc, align 8
   %d_new = add i64 %d_idx, 1
-  store i64 %d_new, ptr %len_p, align 8
-  %ip = getelementptr inbounds i32, ptr %idx_base, i64 %slot
+  store i64 %d_new, ptr %len_pc, align 8
+  %ip = getelementptr inbounds i32, ptr %idx_base_c, i64 %slot
   %d_idx32 = trunc i64 %d_idx to i32
   store i32 %d_idx32, ptr %ip, align 4
   %stored_k = add i64 %key, 0
-  %kp = getelementptr inbounds i64, ptr %keys, i64 %d_idx
+  %kp = getelementptr inbounds i64, ptr %keys_c, i64 %d_idx
   store i64 %stored_k, ptr %kp, align 8
   %rn0 = insertvalue { i64, i1 } poison, i64 %d_idx, 0
   %rn1 = insertvalue { i64, i1 } %rn0, i1 false, 1
   ret { i64, i1 } %rn1
 }
 
-define private fastcc { i64, i64 } @archx_dict_find_str(i64 %d, %ArchxStr %key) alwaysinline {
+define private fastcc { i64, i64 } @archx_dict_find_h_str(i64 %d, %ArchxStr %key, i64 %h) alwaysinline {
 entry:
   %raw = and i64 %d, -4
   %is_z = icmp eq i64 %raw, 0
-  br i1 %is_z, label %not_found, label %chk_ctrl
+  br i1 %is_z, label %not_found_empty, label %chk_ctrl
 chk_ctrl:
   %hdr = inttoptr i64 %raw to ptr
   %ctrl_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 4
   %ctrl = load ptr, ptr %ctrl_p, align 8
   %c_null = icmp eq ptr %ctrl, null
-  br i1 %c_null, label %not_found, label %do_probe
+  br i1 %c_null, label %not_found_empty, label %do_probe
 do_probe:
   %mask_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 2
   %keys_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
@@ -2768,7 +2816,6 @@ do_probe:
   %scap = add i64 %mask, 1
   %c_init = add i64 %scap, 16
   %idx_base = getelementptr inbounds i8, ptr %ctrl, i64 %c_init
-  %h = call fastcc i64 @archx_hash_str(%ArchxStr %key)
   %h2_64 = lshr i64 %h, 57
   %h2 = trunc i64 %h2_64 to i8
   %h2_ins = insertelement <16 x i8> poison, i8 %h2, i32 0
@@ -2778,6 +2825,7 @@ do_probe:
 probe:
   %pos = phi i64 [ %pos0, %do_probe ], [ %pos_next, %next_grp ]
   %step = phi i64 [ 0, %do_probe ], [ %step_next, %next_grp ]
+  %avail = phi i64 [ -1, %do_probe ], [ %avail_cur, %next_grp ]
   %gp = getelementptr inbounds i8, ptr %ctrl, i64 %pos
   %grp = load <16 x i8>, ptr %gp, align 1
   %mcmp = icmp eq <16 x i8> %grp, %h2_vec
@@ -2805,10 +2853,26 @@ mbit_cont:
   %mmask_next = and i32 %mmask, %mm1
   br label %mbit
 chk_empty:
+  %need_a = icmp slt i64 %avail, 0
+  br i1 %need_a, label %find_a, label %after_a
+find_a:
+  %acmp = icmp slt <16 x i8> %grp, zeroinitializer
+  %abits16 = bitcast <16 x i1> %acmp to i16
+  %amask0 = zext i16 %abits16 to i32
+  %has_a0 = icmp ne i32 %amask0, 0
+  br i1 %has_a0, label %set_a, label %after_a
+set_a:
+  %atz = call i32 @llvm.cttz.i32(i32 %amask0, i1 true)
+  %atz64 = zext i32 %atz to i64
+  %as_add = add i64 %pos, %atz64
+  %aslot = and i64 %as_add, %mask
+  br label %after_a
+after_a:
+  %avail_cur = phi i64 [ %avail, %chk_empty ], [ -1, %find_a ], [ %aslot, %set_a ]
   %ecmp = icmp eq <16 x i8> %grp, <i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128>
   %ebits = bitcast <16 x i1> %ecmp to i16
   %has_e = icmp ne i16 %ebits, 0
-  br i1 %has_e, label %not_found, label %next_grp
+  br i1 %has_e, label %not_found_avail, label %next_grp
 next_grp:
   %step_next = add i64 %step, 16
   %padd = add i64 %pos, %step_next
@@ -2818,8 +2882,19 @@ found:
   %f0 = insertvalue { i64, i64 } poison, i64 %didx, 0
   %f1 = insertvalue { i64, i64 } %f0, i64 %slot, 1
   ret { i64, i64 } %f1
-not_found:
+not_found_avail:
+  %nf0 = insertvalue { i64, i64 } poison, i64 -1, 0
+  %nf1 = insertvalue { i64, i64 } %nf0, i64 %avail_cur, 1
+  ret { i64, i64 } %nf1
+not_found_empty:
   ret { i64, i64 } { i64 -1, i64 -1 }
+}
+
+define private fastcc { i64, i64 } @archx_dict_find_str(i64 %d, %ArchxStr %key) alwaysinline {
+entry:
+  %h = call fastcc i64 @archx_hash_str(%ArchxStr %key)
+  %res = call fastcc { i64, i64 } @archx_dict_find_h_str(i64 %d, %ArchxStr %key, i64 %h)
+  ret { i64, i64 } %res
 }
 
 define private fastcc i64 @archx_dict_lookup_str(i64 %d, %ArchxStr %key) alwaysinline {
@@ -2842,8 +2917,9 @@ do_grow0:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
 chk_probe_existing:
-  %found_pair = call fastcc { i64, i64 } @archx_dict_find_str(i64 %d, %ArchxStr %key)
+  %found_pair = call fastcc { i64, i64 } @archx_dict_find_h_str(i64 %d, %ArchxStr %key, i64 %h)
   %found_idx = extractvalue { i64, i64 } %found_pair, 0
+  %avail_slot = extractvalue { i64, i64 } %found_pair, 1
   %exists = icmp sge i64 %found_idx, 0
   br i1 %exists, label %ret_existing, label %chk_cap
 ret_existing:
@@ -2860,7 +2936,17 @@ chk_cap:
   %lhs = shl i64 %u1, 3
   %rhs = mul i64 %scap0, 7
   %full = icmp sgt i64 %lhs, %rhs
-  br i1 %full, label %do_grow1, label %probe_insert_init
+  br i1 %full, label %do_grow1, label %fast_insert_prep
+fast_insert_prep:
+  %len_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 0
+  %used_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 1
+  %keys_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
+  %keys_f = load ptr, ptr %keys_pf, align 8
+  %c_init_f = add i64 %scap0, 16
+  %idx_base_f = getelementptr inbounds i8, ptr %ctrl0, i64 %c_init_f
+  %h2_64_f = lshr i64 %h, 57
+  %h2_f = trunc i64 %h2_64_f to i8
+  br label %iput_commit
 do_grow1:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
@@ -2898,40 +2984,50 @@ iput:
   %tz = call i32 @llvm.cttz.i32(i32 %amask, i1 true)
   %tz64 = zext i32 %tz to i64
   %s_add = add i64 %pos, %tz64
-  %slot = and i64 %s_add, %mask
-  %sp_c = getelementptr inbounds i8, ptr %ctrl, i64 %slot
+  %slot_g = and i64 %s_add, %mask
+  br label %iput_commit
+iput_commit:
+  %slot = phi i64 [ %avail_slot, %fast_insert_prep ], [ %slot_g, %iput ]
+  %ctrl_c = phi ptr [ %ctrl0, %fast_insert_prep ], [ %ctrl, %iput ]
+  %scap_c = phi i64 [ %scap0, %fast_insert_prep ], [ %scap, %iput ]
+  %idx_base_c = phi ptr [ %idx_base_f, %fast_insert_prep ], [ %idx_base, %iput ]
+  %keys_c = phi ptr [ %keys_f, %fast_insert_prep ], [ %keys, %iput ]
+  %len_pc = phi ptr [ %len_pf, %fast_insert_prep ], [ %len_p, %iput ]
+  %used_pc = phi ptr [ %used_pf, %fast_insert_prep ], [ %used_p2, %iput ]
+  %h2_c = phi i8 [ %h2_f, %fast_insert_prep ], [ %h2, %iput ]
+  %sp_c = getelementptr inbounds i8, ptr %ctrl_c, i64 %slot
   %old_cb = load i8, ptr %sp_c, align 1
   %was_empty = icmp eq i8 %old_cb, -128
-  %u_cur = load i64, ptr %used_p2, align 8
+  %u_cur = load i64, ptr %used_pc, align 8
   %u_inc = zext i1 %was_empty to i64
   %u_new = add i64 %u_cur, %u_inc
-  store i64 %u_new, ptr %used_p2, align 8
-  call fastcc void @archx_dict_set_ctrl(ptr %ctrl, i64 %scap, i64 %slot, i8 %h2)
-  %d_idx = load i64, ptr %len_p, align 8
+  store i64 %u_new, ptr %used_pc, align 8
+  call fastcc void @archx_dict_set_ctrl(ptr %ctrl_c, i64 %scap_c, i64 %slot, i8 %h2_c)
+  %d_idx = load i64, ptr %len_pc, align 8
   %d_new = add i64 %d_idx, 1
-  store i64 %d_new, ptr %len_p, align 8
-  %ip = getelementptr inbounds i32, ptr %idx_base, i64 %slot
+  store i64 %d_new, ptr %len_pc, align 8
+  %ip = getelementptr inbounds i32, ptr %idx_base_c, i64 %slot
   %d_idx32 = trunc i64 %d_idx to i32
   store i32 %d_idx32, ptr %ip, align 4
   %stored_k = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %key)
-  %kp = getelementptr inbounds %ArchxStr, ptr %keys, i64 %d_idx
+  %kp = getelementptr inbounds %ArchxStr, ptr %keys_c, i64 %d_idx
   store %ArchxStr %stored_k, ptr %kp, align 8
   %rn0 = insertvalue { i64, i1 } poison, i64 %d_idx, 0
   %rn1 = insertvalue { i64, i1 } %rn0, i1 false, 1
   ret { i64, i1 } %rn1
 }
 
-define private fastcc { i64, i64 } @archx_dict_find_any(i64 %d, %ArchxAny %key) {
+define private fastcc { i64, i64 } @archx_dict_find_h_any(i64 %d, %ArchxAny %key, i64 %h) {
 entry:
   %raw = and i64 %d, -4
   %is_z = icmp eq i64 %raw, 0
-  br i1 %is_z, label %not_found, label %chk_ctrl
+  br i1 %is_z, label %not_found_empty, label %chk_ctrl
 chk_ctrl:
   %hdr = inttoptr i64 %raw to ptr
   %ctrl_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 4
   %ctrl = load ptr, ptr %ctrl_p, align 8
   %c_null = icmp eq ptr %ctrl, null
-  br i1 %c_null, label %not_found, label %do_probe
+  br i1 %c_null, label %not_found_empty, label %do_probe
 do_probe:
   %mask_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 2
   %keys_p = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
@@ -2940,7 +3036,6 @@ do_probe:
   %scap = add i64 %mask, 1
   %c_init = add i64 %scap, 16
   %idx_base = getelementptr inbounds i8, ptr %ctrl, i64 %c_init
-  %h = call fastcc i64 @archx_any_hash(%ArchxAny %key)
   %h2_64 = lshr i64 %h, 57
   %h2 = trunc i64 %h2_64 to i8
   %h2_ins = insertelement <16 x i8> poison, i8 %h2, i32 0
@@ -2950,6 +3045,7 @@ do_probe:
 probe:
   %pos = phi i64 [ %pos0, %do_probe ], [ %pos_next, %next_grp ]
   %step = phi i64 [ 0, %do_probe ], [ %step_next, %next_grp ]
+  %avail = phi i64 [ -1, %do_probe ], [ %avail_cur, %next_grp ]
   %gp = getelementptr inbounds i8, ptr %ctrl, i64 %pos
   %grp = load <16 x i8>, ptr %gp, align 1
   %mcmp = icmp eq <16 x i8> %grp, %h2_vec
@@ -2977,10 +3073,26 @@ mbit_cont:
   %mmask_next = and i32 %mmask, %mm1
   br label %mbit
 chk_empty:
+  %need_a = icmp slt i64 %avail, 0
+  br i1 %need_a, label %find_a, label %after_a
+find_a:
+  %acmp = icmp slt <16 x i8> %grp, zeroinitializer
+  %abits16 = bitcast <16 x i1> %acmp to i16
+  %amask0 = zext i16 %abits16 to i32
+  %has_a0 = icmp ne i32 %amask0, 0
+  br i1 %has_a0, label %set_a, label %after_a
+set_a:
+  %atz = call i32 @llvm.cttz.i32(i32 %amask0, i1 true)
+  %atz64 = zext i32 %atz to i64
+  %as_add = add i64 %pos, %atz64
+  %aslot = and i64 %as_add, %mask
+  br label %after_a
+after_a:
+  %avail_cur = phi i64 [ %avail, %chk_empty ], [ -1, %find_a ], [ %aslot, %set_a ]
   %ecmp = icmp eq <16 x i8> %grp, <i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128, i8 -128>
   %ebits = bitcast <16 x i1> %ecmp to i16
   %has_e = icmp ne i16 %ebits, 0
-  br i1 %has_e, label %not_found, label %next_grp
+  br i1 %has_e, label %not_found_avail, label %next_grp
 next_grp:
   %step_next = add i64 %step, 16
   %padd = add i64 %pos, %step_next
@@ -2990,8 +3102,19 @@ found:
   %f0 = insertvalue { i64, i64 } poison, i64 %didx, 0
   %f1 = insertvalue { i64, i64 } %f0, i64 %slot, 1
   ret { i64, i64 } %f1
-not_found:
+not_found_avail:
+  %nf0 = insertvalue { i64, i64 } poison, i64 -1, 0
+  %nf1 = insertvalue { i64, i64 } %nf0, i64 %avail_cur, 1
+  ret { i64, i64 } %nf1
+not_found_empty:
   ret { i64, i64 } { i64 -1, i64 -1 }
+}
+
+define private fastcc { i64, i64 } @archx_dict_find_any(i64 %d, %ArchxAny %key) {
+entry:
+  %h = call fastcc i64 @archx_any_hash(%ArchxAny %key)
+  %res = call fastcc { i64, i64 } @archx_dict_find_h_any(i64 %d, %ArchxAny %key, i64 %h)
+  ret { i64, i64 } %res
 }
 
 define private fastcc i64 @archx_dict_lookup_any(i64 %d, %ArchxAny %key) {
@@ -3014,8 +3137,9 @@ do_grow0:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
 chk_probe_existing:
-  %found_pair = call fastcc { i64, i64 } @archx_dict_find_any(i64 %d, %ArchxAny %key)
+  %found_pair = call fastcc { i64, i64 } @archx_dict_find_h_any(i64 %d, %ArchxAny %key, i64 %h)
   %found_idx = extractvalue { i64, i64 } %found_pair, 0
+  %avail_slot = extractvalue { i64, i64 } %found_pair, 1
   %exists = icmp sge i64 %found_idx, 0
   br i1 %exists, label %ret_existing, label %chk_cap
 ret_existing:
@@ -3032,7 +3156,17 @@ chk_cap:
   %lhs = shl i64 %u1, 3
   %rhs = mul i64 %scap0, 7
   %full = icmp sgt i64 %lhs, %rhs
-  br i1 %full, label %do_grow1, label %probe_insert_init
+  br i1 %full, label %do_grow1, label %fast_insert_prep
+fast_insert_prep:
+  %len_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 0
+  %used_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 1
+  %keys_pf = getelementptr inbounds %ArchxDictHdr, ptr %hdr, i32 0, i32 5
+  %keys_f = load ptr, ptr %keys_pf, align 8
+  %c_init_f = add i64 %scap0, 16
+  %idx_base_f = getelementptr inbounds i8, ptr %ctrl0, i64 %c_init_f
+  %h2_64_f = lshr i64 %h, 57
+  %h2_f = trunc i64 %h2_64_f to i8
+  br label %iput_commit
 do_grow1:
   call fastcc void @archx_dict_grow(ptr %hdr)
   br label %probe_insert_init
@@ -3070,23 +3204,33 @@ iput:
   %tz = call i32 @llvm.cttz.i32(i32 %amask, i1 true)
   %tz64 = zext i32 %tz to i64
   %s_add = add i64 %pos, %tz64
-  %slot = and i64 %s_add, %mask
-  %sp_c = getelementptr inbounds i8, ptr %ctrl, i64 %slot
+  %slot_g = and i64 %s_add, %mask
+  br label %iput_commit
+iput_commit:
+  %slot = phi i64 [ %avail_slot, %fast_insert_prep ], [ %slot_g, %iput ]
+  %ctrl_c = phi ptr [ %ctrl0, %fast_insert_prep ], [ %ctrl, %iput ]
+  %scap_c = phi i64 [ %scap0, %fast_insert_prep ], [ %scap, %iput ]
+  %idx_base_c = phi ptr [ %idx_base_f, %fast_insert_prep ], [ %idx_base, %iput ]
+  %keys_c = phi ptr [ %keys_f, %fast_insert_prep ], [ %keys, %iput ]
+  %len_pc = phi ptr [ %len_pf, %fast_insert_prep ], [ %len_p, %iput ]
+  %used_pc = phi ptr [ %used_pf, %fast_insert_prep ], [ %used_p2, %iput ]
+  %h2_c = phi i8 [ %h2_f, %fast_insert_prep ], [ %h2, %iput ]
+  %sp_c = getelementptr inbounds i8, ptr %ctrl_c, i64 %slot
   %old_cb = load i8, ptr %sp_c, align 1
   %was_empty = icmp eq i8 %old_cb, -128
-  %u_cur = load i64, ptr %used_p2, align 8
+  %u_cur = load i64, ptr %used_pc, align 8
   %u_inc = zext i1 %was_empty to i64
   %u_new = add i64 %u_cur, %u_inc
-  store i64 %u_new, ptr %used_p2, align 8
-  call fastcc void @archx_dict_set_ctrl(ptr %ctrl, i64 %scap, i64 %slot, i8 %h2)
-  %d_idx = load i64, ptr %len_p, align 8
+  store i64 %u_new, ptr %used_pc, align 8
+  call fastcc void @archx_dict_set_ctrl(ptr %ctrl_c, i64 %scap_c, i64 %slot, i8 %h2_c)
+  %d_idx = load i64, ptr %len_pc, align 8
   %d_new = add i64 %d_idx, 1
-  store i64 %d_new, ptr %len_p, align 8
-  %ip = getelementptr inbounds i32, ptr %idx_base, i64 %slot
+  store i64 %d_new, ptr %len_pc, align 8
+  %ip = getelementptr inbounds i32, ptr %idx_base_c, i64 %slot
   %d_idx32 = trunc i64 %d_idx to i32
   store i32 %d_idx32, ptr %ip, align 4
   %stored_k = call fastcc %ArchxAny @archx_any_clone(%ArchxAny %key)
-  %kp = getelementptr inbounds %ArchxAny, ptr %keys, i64 %d_idx
+  %kp = getelementptr inbounds %ArchxAny, ptr %keys_c, i64 %d_idx
   store %ArchxAny %stored_k, ptr %kp, align 8
   %rn0 = insertvalue { i64, i1 } poison, i64 %d_idx, 0
   %rn1 = insertvalue { i64, i1 } %rn0, i1 false, 1
