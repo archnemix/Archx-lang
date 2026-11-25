@@ -1,46 +1,161 @@
 [1m[92m   Compiling[0m archx v0.8.0 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
-    [1m[94m--> [0mtests/cli.rs:1103:15
-     [1m[94m|[0m
-[1m[94m1103[0m [1m[94m|[0m     let out = compile_and_run_stdout(
-     [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+[1m[33mwarning[0m[1m: type `tuples_enums::EnumInfo` is more private than the item `codegen::Codegen::enums`[0m
+   [1m[94m--> [0msrc/codegen/mod.rs:840:5
+    [1m[94m|[0m
+[1m[94m840[0m [1m[94m|[0m     pub(super) enums: HashMap<String, EnumInfo>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[33mfield `codegen::Codegen::enums` is reachable at visibility `pub(crate)`[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: but type `tuples_enums::EnumInfo` is only usable at visibility `pub(in crate::codegen)`
+   [1m[94m--> [0msrc/codegen/tuples_enums.rs:13:1
+    [1m[94m|[0m
+[1m[94m 13[0m [1m[94m|[0m pub(super) struct EnumInfo {
+    [1m[94m|[0m [1m[92m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(private_interfaces)]` on by default
 
-[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
-    [1m[94m--> [0mtests/cli.rs:1221:18
-     [1m[94m|[0m
-[1m[94m1221[0m [1m[94m|[0m     let out_py = compile_and_run_stdout("full_tour_py", &ax_py_src);
-     [1m[94m|[0m                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-
-[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
-    [1m[94m--> [0mtests/cli.rs:1222:19
-     [1m[94m|[0m
-[1m[94m1222[0m [1m[94m|[0m     let out_spd = compile_and_run_stdout("full_tour_spd", &ax_spd_src);
-     [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
-
-[1m[91merror[E0004][0m[1m: non-exhaustive patterns: `&ast::ExprKind::TupleLit(_)` not covered[0m
-   [1m[94m--> [0msrc/codegen/memory.rs:662:15
+[1m[33mwarning[0m[1m: field `0` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:193:14
     [1m[94m|[0m
-[1m[94m662[0m [1m[94m|[0m         match &expr.kind {
-    [1m[94m|[0m               [1m[91m^^^^^^^^^^[0m [1m[91mpattern `&ast::ExprKind::TupleLit(_)` not covered[0m
+[1m[94m193[0m [1m[94m|[0m     Wildcard(Span),
+    [1m[94m|[0m     [1m[94m--------[0m [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
     [1m[94m|[0m
-[1m[92mnote[0m: `ast::ExprKind` defined here
-   [1m[94m--> [0msrc/ast.rs:223:10
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
     [1m[94m|[0m
-[1m[94m223[0m [1m[94m|[0m pub enum ExprKind {
-    [1m[94m|[0m          [1m[92m^^^^^^^^[0m
-[1m[94m...[0m
-[1m[94m238[0m [1m[94m|[0m     TupleLit(Vec<Expr>),
-    [1m[94m|[0m     [1m[94m--------[0m [1m[94mnot covered[0m
-    [1m[94m= [0m[1mnote[0m: the matched value is of type `&ast::ExprKind`
-[1m[96mhelp[0m: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-    [1m[94m|[0m
-[1m[94m749[0m [92m~ [0m            | ExprKind::Var(_) => {}[92m,[0m
-[1m[94m750[0m [92m+             &ast::ExprKind::TupleLit(_) => todo!()[0m
+[1m[94m193[0m [91m- [0m    Wildcard([91mSpan[0m),
+[1m[94m193[0m [92m+ [0m    Wildcard([92m()[0m),
     [1m[94m|[0m
 
-[1mFor more information about this error, try `rustc --explain E0425`.[0m
-[1m[91merror[0m: could not compile `archx` (test "cli") due to 3 previous errors
-[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
-[1mFor more information about this error, try `rustc --explain E0004`.[0m
-[1m[91merror[0m: could not compile `archx` (bin "archx") due to 1 previous error
-[1m[91merror[0m: could not compile `archx` (bin "archx" test) due to 1 previous error
+[1m[33mwarning[0m[1m: field `1` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:194:18
+    [1m[94m|[0m
+[1m[94m194[0m [1m[94m|[0m     Bind(String, Span),
+    [1m[94m|[0m     [1m[94m----[0m         [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m194[0m [91m- [0m    Bind(String, [91mSpan[0m),
+[1m[94m194[0m [92m+ [0m    Bind(String, [92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: field `1` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:195:14
+    [1m[94m|[0m
+[1m[94m195[0m [1m[94m|[0m     Int(i64, Span),
+    [1m[94m|[0m     [1m[94m---[0m      [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m195[0m [91m- [0m    Int(i64, [91mSpan[0m),
+[1m[94m195[0m [92m+ [0m    Int(i64, [92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: field `1` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:196:16
+    [1m[94m|[0m
+[1m[94m196[0m [1m[94m|[0m     Float(f64, Span),
+    [1m[94m|[0m     [1m[94m-----[0m      [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m196[0m [91m- [0m    Float(f64, [91mSpan[0m),
+[1m[94m196[0m [92m+ [0m    Float(f64, [92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: field `1` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:197:16
+    [1m[94m|[0m
+[1m[94m197[0m [1m[94m|[0m     Bool(bool, Span),
+    [1m[94m|[0m     [1m[94m----[0m       [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m197[0m [91m- [0m    Bool(bool, [91mSpan[0m),
+[1m[94m197[0m [92m+ [0m    Bool(bool, [92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: field `0` is never read[0m
+   [1m[94m--> [0msrc/ast.rs:199:13
+    [1m[94m|[0m
+[1m[94m199[0m [1m[94m|[0m     NonePat(Span),
+    [1m[94m|[0m     [1m[94m-------[0m [1m[33m^^^^[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mfield in this variant[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `Pattern` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+[1m[96mhelp[0m: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    [1m[94m|[0m
+[1m[94m199[0m [91m- [0m    NonePat([91mSpan[0m),
+[1m[94m199[0m [92m+ [0m    NonePat([92m()[0m),
+    [1m[94m|[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx") generated 7 warnings (5 duplicates)
+[1m[33mwarning[0m: `archx` (bin "archx" test) generated 7 warnings (2 duplicates)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 10.17s
+[1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/3f6a62d64073b855/out/archx-3f6a62d64073b855)
+
+running 37 tests
+test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
+test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
+test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
+test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
+test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
+test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
+test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+
+thread 'codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead' (2409) panicked at src/codegen/tests.rs:242:33:
+called `Result::unwrap()` on an `Err` value: Diagnostic { message: "function `area` must return a value on every path", span: Span { line: 11, col: 1 } }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
+test codegen::tests::non_exhaustive_enum_match_and_oob_tuple_index_are_rejected ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
+test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... FAILED
+test lexer::tests::array_elif_and_compound_assign_tokens ... ok
+test lexer::tests::comments_and_blank_lines_are_ignored ... ok
+test lexer::tests::indents_and_dedents ... ok
+test lexer::tests::comparison_and_boolean_tokens ... ok
+test lexer::tests::equality_operators ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
+test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::strings_with_both_quote_styles ... ok
+test lexer::tests::loop_tokens ... ok
+test parser::tests::parses_booleans_and_comparisons ... ok
+test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test parser::tests::parses_enums_tuples_optionals_match_and_init_class ... ok
+test parser::tests::parses_functions_with_params ... ok
+test parser::tests::parses_for_and_break_continue ... ok
+test parser::tests::parses_if_else ... ok
+test parser::tests::parses_main_and_print ... ok
+test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test parser::tests::rejects_missing_colon ... ok
+test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test tests::default_output_strips_archx_extensions ... ok
+
+failures:
+
+failures:
+    codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead
+
+test result: FAILED. 36 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[91merror[0m: test failed, to rerun pass `--bin archx`
