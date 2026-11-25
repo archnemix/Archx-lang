@@ -718,7 +718,7 @@ impl Codegen {
             ExprKind::Call { name, args } => {
                 if args.is_empty()
                     && self.lookup_var(name).is_none()
-                    && !self.funcs.contains_key(name)
+                    && !self.sigs.contains_key(name)
                 {
                     match name.as_str() {
                         "set" => return self.eval_set_lit(&[], expected, expr.span, out),
