@@ -715,7 +715,21 @@ impl Codegen {
 
             ExprKind::Binary { op, lhs, rhs } => self.gen_binary(*op, lhs, rhs, expr.span, out),
 
-            ExprKind::Call { name, args } => self.gen_call(name, args, expr.span, out),
+            ExprKind::Call { name, args } => {
+                if args.is_empty()
+                    && self.lookup_var(name).is_none()
+                    && !self.funcs.contains_key(name)
+                {
+                    match name.as_str() {
+                        "set" => return self.eval_set_lit(&[], expected, expr.span, out),
+                        "dict" => return self.eval_dict_lit(&[], expected, expr.span, out),
+                        "list" => return self.eval_array_lit(&[], expected, expr.span, out),
+                        "tuple" => return self.eval_tuple_lit(&[], expected, expr.span, out),
+                        _ => {}
+                    }
+                }
+                self.gen_call(name, args, expr.span, out)
+            }
         }
     }
 

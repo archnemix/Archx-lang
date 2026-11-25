@@ -1027,9 +1027,19 @@ pub(super) fn compute_adaptive_hints(
                 ExprKind::DictLit(ps) if ps.is_empty() => {
                     empty_inits.insert(name.to_string(), EmptyKind::Dict);
                 }
-                ExprKind::Call { name: fn_name, args } if fn_name == "set" && args.is_empty() => {
-                    empty_inits.insert(name.to_string(), EmptyKind::Set);
-                }
+                ExprKind::Call { name: fn_name, args } if args.is_empty() => match fn_name.as_str()
+                {
+                    "list" => {
+                        empty_inits.insert(name.to_string(), EmptyKind::List);
+                    }
+                    "dict" => {
+                        empty_inits.insert(name.to_string(), EmptyKind::Dict);
+                    }
+                    "set" => {
+                        empty_inits.insert(name.to_string(), EmptyKind::Set);
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         } else {
