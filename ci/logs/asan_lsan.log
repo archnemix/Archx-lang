@@ -6,6 +6,12 @@ CLEAN: examples/structs_regions.archx.lang (0 leaks, 0 invalid accesses)
 CLEAN: examples/pythonic.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: examples/collections_dynamic.archx.lang ==
 CLEAN: examples/collections_dynamic.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: examples/enums_matching.archx.lang ==
+CLEAN: examples/enums_matching.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: examples/comparison/full_tour_pythonic.archx.lang ==
+CLEAN: examples/comparison/full_tour_pythonic.archx.lang (0 leaks, 0 invalid accesses)
+== ASan + LSan check: examples/comparison/full_tour_speed.archx.lang ==
+CLEAN: examples/comparison/full_tour_speed.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: benchmarks/composite.archx.lang ==
 CLEAN: benchmarks/composite.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: benchmarks/nbody_float.archx.lang ==

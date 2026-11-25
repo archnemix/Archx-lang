@@ -1,0 +1,10 @@
+stats=5,42,86
+swap=99,10 tup=archx:true len=3
+found=42 at 2
+missing=None
+circle:3.5
+large-circle:12.0
+square:16.0
+rect:15.0
+long_region_allocated_shape_identifier@7,9
+empty

@@ -29,60 +29,62 @@
 
 define internal fastcc %ArchxAny @archx_fn_summarize_tag(%ArchxAny %arg.val) {
 entry:
-  %t0 = call fastcc i1 @archx_any_eq(%ArchxAny %arg.val, %ArchxAny zeroinitializer)
-  br i1 %t0, label %if.then.0, label %if.else.1
+  %t0 = call fastcc %ArchxAny @archx_any_clone(%ArchxAny %arg.val)
+  %t1 = call fastcc i1 @archx_any_eq(%ArchxAny %t0, %ArchxAny zeroinitializer)
+  call fastcc void @archx_any_drop(%ArchxAny %t0)
+  br i1 %t1, label %if.then.0, label %if.else.1
 if.then.0:
-  %t1 = extractvalue %ArchxStr { i64 8390326386350358533, i64 121 }, 0
-  %t2 = extractvalue %ArchxStr { i64 8390326386350358533, i64 121 }, 1
-  %t3 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t1, 1
-  %t4 = insertvalue %ArchxAny %t3, i64 %t2, 2
-  ret %ArchxAny %t4
+  %t2 = extractvalue %ArchxStr { i64 8390326386350358533, i64 121 }, 0
+  %t3 = extractvalue %ArchxStr { i64 8390326386350358533, i64 121 }, 1
+  %t4 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t2, 1
+  %t5 = insertvalue %ArchxAny %t4, i64 %t3, 2
+  ret %ArchxAny %t5
 if.else.1:
-  %t5 = extractvalue %ArchxAny %arg.val, 0
-  %t6 = icmp eq i64 %t5, 2
-  br i1 %t6, label %if.then.3, label %if.else.4
+  %t6 = extractvalue %ArchxAny %arg.val, 0
+  %t7 = icmp eq i64 %t6, 2
+  br i1 %t7, label %if.then.3, label %if.else.4
 if.then.3:
-  %t7 = call fastcc %ArchxStr @archx_any_to_str(%ArchxAny %arg.val, ptr null)
-  %t8 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 2915076256066174980, i64 0 }, %ArchxStr %t7, ptr null)
-  %t9 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t8, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
-  %t10 = extractvalue %ArchxStr %t9, 0
-  %t11 = extractvalue %ArchxStr %t9, 1
-  %t12 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t10, 1
-  %t13 = insertvalue %ArchxAny %t12, i64 %t11, 2
+  %t8 = call fastcc %ArchxStr @archx_any_to_str(%ArchxAny %arg.val, ptr null)
+  %t9 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 2915076256066174980, i64 0 }, %ArchxStr %t8, ptr null)
+  %t10 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t9, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
+  %t11 = extractvalue %ArchxStr %t10, 0
+  %t12 = extractvalue %ArchxStr %t10, 1
+  %t13 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t11, 1
+  %t14 = insertvalue %ArchxAny %t13, i64 %t12, 2
+  call fastcc void @archx_str_drop(%ArchxStr %t9)
   call fastcc void @archx_str_drop(%ArchxStr %t8)
-  call fastcc void @archx_str_drop(%ArchxStr %t7)
-  ret %ArchxAny %t13
+  ret %ArchxAny %t14
 if.else.4:
-  %t14 = extractvalue %ArchxAny %arg.val, 0
-  %t15 = icmp eq i64 %t14, 4
-  br i1 %t15, label %if.then.6, label %if.else.7
+  %t15 = extractvalue %ArchxAny %arg.val, 0
+  %t16 = icmp eq i64 %t15, 4
+  br i1 %t16, label %if.then.6, label %if.else.7
 if.then.6:
-  %t16 = call fastcc %ArchxStr @archx_any_to_str(%ArchxAny %arg.val, ptr null)
-  %t17 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 2914519946132193284, i64 0 }, %ArchxStr %t16, ptr null)
-  %t18 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t17, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
-  %t19 = extractvalue %ArchxStr %t18, 0
-  %t20 = extractvalue %ArchxStr %t18, 1
-  %t21 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t19, 1
-  %t22 = insertvalue %ArchxAny %t21, i64 %t20, 2
+  %t17 = call fastcc %ArchxStr @archx_any_to_str(%ArchxAny %arg.val, ptr null)
+  %t18 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 2914519946132193284, i64 0 }, %ArchxStr %t17, ptr null)
+  %t19 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t18, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
+  %t20 = extractvalue %ArchxStr %t19, 0
+  %t21 = extractvalue %ArchxStr %t19, 1
+  %t22 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t20, 1
+  %t23 = insertvalue %ArchxAny %t22, i64 %t21, 2
+  call fastcc void @archx_str_drop(%ArchxStr %t18)
   call fastcc void @archx_str_drop(%ArchxStr %t17)
-  call fastcc void @archx_str_drop(%ArchxStr %t16)
-  ret %ArchxAny %t22
+  ret %ArchxAny %t23
 if.else.7:
-  %t23 = extractvalue %ArchxAny %arg.val, 0
-  %t24 = icmp eq i64 %t23, 5
-  br i1 %t24, label %if.then.9, label %if.else.10
+  %t24 = extractvalue %ArchxAny %arg.val, 0
+  %t25 = icmp eq i64 %t24, 5
+  br i1 %t25, label %if.then.9, label %if.else.10
 if.then.9:
-  %t25 = call fastcc i64 @archx_any_len(%ArchxAny %arg.val)
-  %t26 = call fastcc %ArchxStr @archx_str_from_int(i64 %t25, ptr null)
-  %t27 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8391166443298750473, i64 263845145640 }, %ArchxStr %t26, ptr null)
-  %t28 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t27, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
-  %t29 = extractvalue %ArchxStr %t28, 0
-  %t30 = extractvalue %ArchxStr %t28, 1
-  %t31 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t29, 1
-  %t32 = insertvalue %ArchxAny %t31, i64 %t30, 2
+  %t26 = call fastcc i64 @archx_any_len(%ArchxAny %arg.val)
+  %t27 = call fastcc %ArchxStr @archx_str_from_int(i64 %t26, ptr null)
+  %t28 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8391166443298750473, i64 263845145640 }, %ArchxStr %t27, ptr null)
+  %t29 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t28, %ArchxStr { i64 176093659137, i64 0 }, ptr null)
+  %t30 = extractvalue %ArchxStr %t29, 0
+  %t31 = extractvalue %ArchxStr %t29, 1
+  %t32 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t30, 1
+  %t33 = insertvalue %ArchxAny %t32, i64 %t31, 2
+  call fastcc void @archx_str_drop(%ArchxStr %t28)
   call fastcc void @archx_str_drop(%ArchxStr %t27)
-  call fastcc void @archx_str_drop(%ArchxStr %t26)
-  ret %ArchxAny %t32
+  ret %ArchxAny %t33
 if.else.10:
   br label %if.merge.11
 if.merge.11:
@@ -92,13 +94,13 @@ if.merge.8:
 if.merge.5:
   br label %if.merge.2
 if.merge.2:
-  %t33 = call fastcc %ArchxStr @archx_any_type_name(%ArchxAny %arg.val)
-  %t34 = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %t33)
-  %t35 = extractvalue %ArchxStr %t34, 0
-  %t36 = extractvalue %ArchxStr %t34, 1
-  %t37 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t35, 1
-  %t38 = insertvalue %ArchxAny %t37, i64 %t36, 2
-  ret %ArchxAny %t38
+  %t34 = call fastcc %ArchxStr @archx_any_type_name(%ArchxAny %arg.val)
+  %t35 = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %t34)
+  %t36 = extractvalue %ArchxStr %t35, 0
+  %t37 = extractvalue %ArchxStr %t35, 1
+  %t38 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t36, 1
+  %t39 = insertvalue %ArchxAny %t38, i64 %t37, 2
+  ret %ArchxAny %t39
 }
 
 define internal fastcc i64 @archx_fn_count_words_in_region(%ArchxVec %arg.words) {

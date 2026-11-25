@@ -1,107 +1,131 @@
-== building scalar benchmark (primes) ==
-compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/primes_ax`
-== building array benchmark (arrays) ==
-compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/arrays_ax`
-== building composite Milestone 5 benchmark (composite) ==
-compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/comp_ax`
-== building Pythonic floating-point N-body benchmark (nbody_float) ==
-compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/nbody_ax`
-== building Planar SIMD dict + Adaptive Static vs Dynamic benchmark (dict_bench) ==
-compiled `benchmarks/dict_bench.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/dict_ax`
-compiled `benchmarks/dict_dynamic.archx.lang` -> `/tmp/tmp.Bjl5j7XZ5d/dict_ax_dyn`
+== verifying 1:1 source identity of full_tour.py and full_tour_pythonic.archx.lang ==
+== building Archx compiler (release) ==
+== building Suite 1: scalar benchmark (primes) ==
+compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/primes_ax`
+== building Suite 2: array benchmark (arrays) ==
+compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/arrays_ax`
+== building Suite 3: composite Milestone 5 benchmark (composite) ==
+compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/comp_ax`
+== building Suite 4: Pythonic floating-point N-body benchmark (nbody_float) ==
+compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/nbody_ax`
+== building Suite 5: Planar SIMD dict + Adaptive Static vs Dynamic (dict_bench) ==
+compiled `benchmarks/dict_bench.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/dict_ax`
+compiled `benchmarks/dict_dynamic.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/dict_ax_dyn`
+== building Suite 6: 5-Way Full-Feature Tour (examples/comparison/full_tour.*) ==
+compiled `examples/comparison/full_tour_pythonic.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/tour_ax_py`
+compiled `examples/comparison/full_tour_speed.archx.lang` -> `/tmp/tmp.mLiZilsS9Z/tour_ax_spd`
 
-== verifying scalar outputs match ==
+== verifying Suite 1 (primes) outputs match (Python 3, C, Rust, Archx) ==
 75517
 33860
 
-== verifying array outputs match ==
+== verifying Suite 2 (arrays) outputs match (Python 3, C raw, C checked, Rust, Archx) ==
 57243166
 348513
 
-== verifying composite outputs match ==
+== verifying Suite 3 (composite) outputs match (Python 3, C, Rust, Archx) ==
 14248875
 421461999
 
-== verifying nbody_float outputs match ==
+== verifying Suite 4 (nbody_float) outputs match (Python 3, C, Rust, Archx) ==
 11232960
 3595406
 
-== verifying dict_bench outputs match (C, Rust, Archx Static, Archx Dynamic) ==
+== verifying Suite 5 (dict_bench) outputs match (Python 3, C, Rust, Archx Static, Archx Dynamic) ==
 12163680
 27629691796536
-all implementations agree
 
-== timing scalar benchmark: best of 7 runs (ms) ==
-== timing array benchmark: best of 7 runs (ms) ==
-== timing composite benchmark: best of 7 runs (ms) ==
-== timing nbody_float benchmark: best of 7 runs (ms) ==
-== timing dict_bench benchmark: best of 7 runs (ms) ==
+== verifying Suite 6 (full_tour 5-way showcase) outputs match ==
+sim=7684989
+dict_slice=2307705,nohtyp_smetsys_xhcra
+tuple_opt=8,104,3543,10099,empty
+match_dispatch=33780000
+all implementations across all 6 suites agree!
 
-Archx vs C vs Rust -- head-to-head benchmarks (v0.7.0)
-======================================================
+== timing Suite 1 (primes): Python best of 3, native best of 7 (ms) ==
+== timing Suite 2 (arrays): Python best of 3, native best of 7 (ms) ==
+== timing Suite 3 (composite): Python best of 3, native best of 7 (ms) ==
+== timing Suite 4 (nbody_float): Python best of 3, native best of 7 (ms) ==
+== timing Suite 5 (dict_bench): Python best of 3, native best of 7 (ms) ==
+== timing Suite 6 (5-Way Full-Feature Tour): Python best of 3, native best of 7 (ms) ==
+Archx vs Python 3 vs C vs Rust -- head-to-head benchmarks (v0.8.0)
+==================================================================
 
 Toolchain
 ---------
+Python 3.14.4
 Ubuntu clang version 21.1.8 (6ubuntu1)
 rustc 1.100.0 (0ef1bc386 2026-11-09)
-archx (this repo, cargo build --release)
-optimisation: -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
+archx v0.8.0 (this repo, cargo build --release)
+optimisation: python3 (CPython), clang -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
 
 1. Scalar loops (benchmarks/primes.*)
 -------------------------------------
-  - sum of squares 0..20,000,000 mod 1,000,007
-  - count primes below 400,000 by trial division
+  - sum of squares 0..20,000,000 mod 1,000,007 + trial-division primes below 400,000
   Output: 75517,33860
 
-  Language               Best ms (mean)   Raw KB   Stripped KB
-  C      (clang -O2)         104 (104)        16          14
-  Rust   (rustc -O)          104 (104)      4388         330
-  Archx  (archx -O2)         104 (104)        16          14
+  Language                     Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3  (python3)              1420 (1421)        1.0x          n/a         n/a
+  C         (clang -O2)            97 (97)        14.6x          16          14
+  Rust      (rustc -O)             97 (97)        14.6x        4388         330
+  Archx     (archx -O2)            97 (97)        14.6x          16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
-  - 60 rounds of 1,000,000-element vector math: dst[i] = a[i]*3 + b[i] + r
-  - Sieve of Eratosthenes below 5,000,000
+  - 60 rounds of 1,000,000-element vector math + Sieve of Eratosthenes below 5,000,000
   Output: 57243166,348513
 
-  Language                       Best ms (mean)   Raw KB   Stripped KB
-  C raw ptr   (unchecked -O2)        46 (47)        16          14
-  C checked   (slice struct -O2)     45 (46)        16          14
-  Rust        (safe Vec -O)          49 (49)      4389         331
-  Archx       (safe [T] -O2)         47 (47)        16          14
+  Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3    (python3)              2475 (2488)        1.0x          n/a         n/a
+  C raw ptr   (unchecked -O2)        75 (76)        33.0x          16          14
+  C checked   (slice struct -O2)     75 (75)        33.0x          16          14
+  Rust        (safe Vec -O)          75 (75)        33.0x        4389         331
+  Archx       (safe [T] -O2)         76 (76)        32.6x          16          14
 
 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 ------------------------------------------------------------------------------
-  - 100,000 6-field Body structs (48B) x 120 timesteps (full + step-8 update)
-  - 40,000 rounds of variable-length scratch buffer + short/long string concat/eq
+  - 100,000 6-field Body structs x 120 timesteps + 40,000 rounds of arena/string ops
   Output: 14248875,421461999
 
-  Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS + malloc/strcmp -O2)   16 (16)        16          14
-  Rust   (Vec<Body> + String -O)     18 (18)      4390         332
-  Archx  (SoA + region + SSO -O2)    14 (14)        16          14
+  Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3  (python3)              648 (651)        1.0x          n/a         n/a
+  C         (AoS + malloc -O2)     32 (32)        20.2x          16          14
+  Rust      (Vec<Body> + String)   34 (34)        19.1x        4390         332
+  Archx     (SoA + region + SSO)   25 (25)        25.9x          16          14
 
 4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 ----------------------------------------------------------------------------------------
-  - 100,000 7-field f64 Body objects (56B) x 60 central-field integration steps + .kinetic()
-  - 64-body all-pairs gravitational N-body x 2,000 steps (sqrt + f64 reductions)
+  - 100,000 7-field f64 Body objects x 60 central-field steps + 64-body all-pairs N-body x 2,000 steps
   Output: 11232960,3595406
 
-  Language                       Best ms (mean)   Raw KB   Stripped KB
-  C      (AoS Body* -O2 -lm)         56 (56)        16          14
-  Rust   (Vec<Body> -O)              56 (56)      4390         332
-  Archx  (Pythonic class + SoA -O2)  52 (53)        16          14
+  Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3  (python3)              2538 (2570)        1.0x          n/a         n/a
+  C         (AoS Body* -O2 -lm)    41 (41)        61.9x          16          14
+  Rust      (Vec<Body> -O)         41 (41)        61.9x        4390         332
+  Archx     (Pythonic class + SoA) 36 (36)        70.5x          16          14
 
 5. Planar SIMD Dict & Smart Adaptive Typing (benchmarks/dict_bench.* & dict_dynamic.*)
 --------------------------------------------------------------------------------------
-  - 120 rounds x 1,024-key str->i64 frequency counts (8,192 updates + 2,048 lookups + items)
-  - 32,768-key i64->i64 SwissTable + 8,192 .pop() tombstones + 8,192 inserts + 40 .items() scans
+  - 120 rounds x 1,024-key str->i64 counts + 32,768-key i64->i64 churn & 40-pass iteration
   Output: 12163680,27629691796536
 
-  Language                                 Best ms (mean)   Raw KB   Stripped KB
-  C             (AoS open-addressing -O2)      44 (45)        16          14
-  Rust          (std::HashMap -O)              39 (40)      4424         354
-  Archx Static  (Planar SIMD + region -O2)     40 (40)        24          22
-  Archx Dynamic (%ArchxAny dict[any,any] -O2)  72 (72)        24          22
+  Language                            Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3       (python3 built-in dict)  172 (173)        1.0x          n/a         n/a
+  C              (AoS open-addressing)    51 (51)        3.4x          16          14
+  Rust           (std::HashMap -O)        37 (37)        4.6x        4424         354
+  Archx Static   (Planar SIMD + region)   36 (36)        4.8x          24          22
+  Archx Dynamic  (%ArchxAny dict[any])    58 (58)        3.0x          24          22
 
-written to ci/out/benchmarks.txt
+6. 5-Way Full-Feature Tour (examples/comparison/full_tour.* -- v0.1.0 through v0.8.0)
+-------------------------------------------------------------------------------------
+  - N-body physics + Planar SIMD dict/set + slicing + tuples + T | None + enum/match-case
+  Output: sim=7684989 dict_slice=2307705,nohtyp_smetsys_xhcra|tuple_opt=8,104,3543,10099,empty match_dispatch=33780000
+
+  Language                                 Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3          (full_tour.py)             298 (299)        1.0x          n/a         n/a
+  Archx Pythonic    (1:1 == full_tour.py -O2)  13 (13)        22.9x          36          34
+  Archx Speed       (SoA + region + enum -O2)  12 (12)        24.8x          36          34
+  Clang C           (full_tour.c -O2 -lm)      9 (9)        33.1x          16          14
+  Rust              (full_tour.rs rustc -O)    13 (13)        22.9x        4430         359
+
+saved -> /home/runner/work/Archx-lang/Archx-lang/ci/out/benchmarks.txt

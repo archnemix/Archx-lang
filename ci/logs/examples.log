@@ -96,6 +96,23 @@ payload: Archx items: 4 age: 20
 before rebind: str(Abdullah)
 after rebind: int(25)
 rebound list: list(len=3) last: 7
+== emit-ir: enums_matching ==
+exit=0
+== compile: enums_matching ==
+exit=0
+compiled `examples/enums_matching.archx.lang` -> `/tmp/archx-enums_matching`
+== run: enums_matching ==
+exit=0
+stats=5,42,86
+swap=99,10 tup=archx:true len=3
+found=42 at 2
+missing=None
+circle:3.5
+large-circle:12.0
+square:16.0
+rect:15.0
+long_region_allocated_shape_identifier@7,9
+empty
 == optimized IR (clang -O2) ==
 hello.opt.ll exit=0
 functions.opt.ll exit=0
@@ -105,3 +122,4 @@ arrays.opt.ll exit=0
 structs_regions.opt.ll exit=0
 pythonic.opt.ll exit=0
 collections_dynamic.opt.ll exit=0
+enums_matching.opt.ll exit=0

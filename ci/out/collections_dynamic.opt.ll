@@ -51,11 +51,19 @@ entry:
   %out_sso.i58 = alloca [16 x i8], align 8
   %btmp.i = alloca [12 x i8], align 4
   %out_sso.i.sroa.6 = alloca i64, align 8
-  %t0 = tail call fastcc i1 @archx_any_eq(%ArchxAny %arg.val, %ArchxAny zeroinitializer)
-  br i1 %t0, label %common.ret, label %if.else.1
+  %t0 = tail call fastcc { i64, i64, i64 } @archx_any_clone(%ArchxAny %arg.val)
+  %newret5 = extractvalue { i64, i64, i64 } %t0, 0
+  %oldret6 = insertvalue %ArchxAny poison, i64 %newret5, 0
+  %newret7 = extractvalue { i64, i64, i64 } %t0, 1
+  %oldret8 = insertvalue %ArchxAny %oldret6, i64 %newret7, 1
+  %newret9 = extractvalue { i64, i64, i64 } %t0, 2
+  %oldret10 = insertvalue %ArchxAny %oldret8, i64 %newret9, 2
+  %t1 = tail call fastcc i1 @archx_any_eq(%ArchxAny %oldret10, %ArchxAny zeroinitializer)
+  tail call fastcc void @archx_any_drop(%ArchxAny %oldret10)
+  br i1 %t1, label %common.ret, label %if.else.1
 
 common.ret:                                       ; preds = %do_free.i52, %archx_str_drop.exit44, %do_free.i30, %archx_str_drop.exit22, %do_free.i8, %archx_str_drop.exit, %entry, %archx_str_clone.exit
-  %common.ret.op = phi %ArchxAny [ %t38, %archx_str_clone.exit ], [ { i64 4, i64 8390326386350358533, i64 121 }, %entry ], [ %t13347, %archx_str_drop.exit ], [ %t13347, %do_free.i8 ], [ %t22357, %archx_str_drop.exit22 ], [ %t22357, %do_free.i30 ], [ %t32367, %archx_str_drop.exit44 ], [ %t32367, %do_free.i52 ]
+  %common.ret.op = phi %ArchxAny [ %t39, %archx_str_clone.exit ], [ { i64 4, i64 8390326386350358533, i64 121 }, %entry ], [ %t14347, %archx_str_drop.exit ], [ %t14347, %do_free.i8 ], [ %t23357, %archx_str_drop.exit22 ], [ %t23357, %do_free.i30 ], [ %t33367, %archx_str_drop.exit44 ], [ %t33367, %do_free.i52 ]
   %oldret = extractvalue %ArchxAny %common.ret.op, 0
   %newret = insertvalue { i64, i64, i64 } poison, i64 %oldret, 0
   %oldret1 = extractvalue %ArchxAny %common.ret.op, 1
@@ -65,8 +73,8 @@ common.ret:                                       ; preds = %do_free.i52, %archx
   ret { i64, i64, i64 } %newret4
 
 if.else.1:                                        ; preds = %entry
-  %t5 = extractvalue %ArchxAny %arg.val, 0
-  switch i64 %t5, label %t7.i [
+  %t6 = extractvalue %ArchxAny %arg.val, 0
+  switch i64 %t6, label %t7.i [
     i64 2, label %if.then.3
     i64 4, label %if.then.6
     i64 5, label %l_cont.i
@@ -77,12 +85,12 @@ if.else.1:                                        ; preds = %entry
   ]
 
 if.then.3:                                        ; preds = %if.else.1
-  %t7 = tail call fastcc { i64, i64 } @archx_any_to_str(%ArchxAny %arg.val)
-  %newret5 = extractvalue { i64, i64 } %t7, 0
-  %newret7 = extractvalue { i64, i64 } %t7, 1
+  %t8 = tail call fastcc { i64, i64 } @archx_any_to_str(%ArchxAny %arg.val)
+  %newret11 = extractvalue { i64, i64 } %t8, 0
+  %newret13 = extractvalue { i64, i64 } %t8, 1
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i.sroa.6)
-  %blen.i = and i64 %newret5, 4294967295
+  %blen.i = and i64 %newret11, 4294967295
   %bz.i = icmp eq i64 %blen.i, 0
   br i1 %bz.i, label %archx_str_concat.exit, label %calc_tot.i
 
@@ -100,16 +108,16 @@ mat_a.i:                                          ; preds = %calc_tot.i
   br i1 %bshort.i, label %build.i, label %build.i.thread
 
 build.i.thread:                                   ; preds = %mat_a.i
-  %braw.i = and i64 %newret7, -4
+  %braw.i = and i64 %newret13, -4
   %blptr.i = inttoptr i64 %braw.i to ptr
   br label %alloc_heap.i
 
 build.i:                                          ; preds = %mat_a.i
-  %bp4.i = lshr i64 %newret5, 32
+  %bp4.i = lshr i64 %newret11, 32
   %bp4_32.i = trunc nuw i64 %bp4.i to i32
   store i32 %bp4_32.i, ptr %btmp.i, align 4
   %btmp4.i = getelementptr inbounds nuw i8, ptr %btmp.i, i64 4
-  store i64 %newret7, ptr %btmp4.i, align 4
+  store i64 %newret13, ptr %btmp4.i, align 4
   %fits_sso.i = icmp samesign ult i64 %blen.i, 9
   br i1 %fits_sso.i, label %build_sso.i, label %alloc_heap.i
 
@@ -203,8 +211,8 @@ archx_str_concat.exit93.thread:                   ; preds = %archx_str_concat.ex
   %common.ret.op.i81.ph = phi %ArchxStr [ { i64 176093659137, i64 0 }, %archx_str_concat.exit ], [ %rs1.i91, %build_sso.i83 ]
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i56)
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i58)
-  %t10342 = extractvalue %ArchxStr %common.ret.op.i81.ph, 0
-  %t11343 = extractvalue %ArchxStr %common.ret.op.i81.ph, 1
+  %t11342 = extractvalue %ArchxStr %common.ret.op.i81.ph, 0
+  %t12343 = extractvalue %ArchxStr %common.ret.op.i81.ph, 1
   br label %archx_str_drop.exit
 
 archx_str_concat.exit93:                          ; preds = %alloc_heap.i68
@@ -231,29 +239,29 @@ do_free.i:                                        ; preds = %archx_str_concat.ex
   br label %archx_str_drop.exit
 
 archx_str_drop.exit:                              ; preds = %archx_str_concat.exit93.thread, %archx_str_concat.exit93, %do_free.i
-  %t10342.pn = phi i64 [ %t10342, %archx_str_concat.exit93.thread ], [ %w0_out.i78, %archx_str_concat.exit93 ], [ %w0_out.i78, %do_free.i ]
-  %t11343.pn = phi i64 [ %t11343, %archx_str_concat.exit93.thread ], [ %htagged.i73, %archx_str_concat.exit93 ], [ %htagged.i73, %do_free.i ]
-  %t12344.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t10342.pn, 1
-  %t13347 = insertvalue %ArchxAny %t12344.pn, i64 %t11343.pn, 2
+  %t11342.pn = phi i64 [ %t11342, %archx_str_concat.exit93.thread ], [ %w0_out.i78, %archx_str_concat.exit93 ], [ %w0_out.i78, %do_free.i ]
+  %t12343.pn = phi i64 [ %t12343, %archx_str_concat.exit93.thread ], [ %htagged.i73, %archx_str_concat.exit93 ], [ %htagged.i73, %do_free.i ]
+  %t13344.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t11342.pn, 1
+  %t14347 = insertvalue %ArchxAny %t13344.pn, i64 %t12343.pn, 2
   %long.i3 = icmp samesign ult i64 %blen.i, 13
-  %tag.i6 = and i64 %newret7, 1
+  %tag.i6 = and i64 %newret13, 1
   %owned.not.i7 = icmp eq i64 %tag.i6, 0
   %or.cond368 = select i1 %long.i3, i1 true, i1 %owned.not.i7
   br i1 %or.cond368, label %common.ret, label %do_free.i8
 
 do_free.i8:                                       ; preds = %archx_str_drop.exit
-  %raw.i9 = and i64 %newret7, -2
+  %raw.i9 = and i64 %newret13, -2
   %ptr.i10 = inttoptr i64 %raw.i9 to ptr
   tail call void @free(ptr %ptr.i10)
   br label %common.ret
 
 if.then.6:                                        ; preds = %if.else.1
-  %t16 = tail call fastcc { i64, i64 } @archx_any_to_str(%ArchxAny %arg.val)
-  %newret9 = extractvalue { i64, i64 } %t16, 0
-  %newret11 = extractvalue { i64, i64 } %t16, 1
+  %t17 = tail call fastcc { i64, i64 } @archx_any_to_str(%ArchxAny %arg.val)
+  %newret15 = extractvalue { i64, i64 } %t17, 0
+  %newret17 = extractvalue { i64, i64 } %t17, 1
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i95)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i96.sroa.6)
-  %blen.i99 = and i64 %newret9, 4294967295
+  %blen.i99 = and i64 %newret15, 4294967295
   %bz.i101 = icmp eq i64 %blen.i99, 0
   br i1 %bz.i101, label %archx_str_concat.exit147, label %calc_tot.i102
 
@@ -271,16 +279,16 @@ mat_a.i105:                                       ; preds = %calc_tot.i102
   br i1 %bshort.i110, label %build.i114, label %build.i114.thread
 
 build.i114.thread:                                ; preds = %mat_a.i105
-  %braw.i112 = and i64 %newret11, -4
+  %braw.i112 = and i64 %newret17, -4
   %blptr.i113 = inttoptr i64 %braw.i112 to ptr
   br label %alloc_heap.i117
 
 build.i114:                                       ; preds = %mat_a.i105
-  %bp4.i142 = lshr i64 %newret9, 32
+  %bp4.i142 = lshr i64 %newret15, 32
   %bp4_32.i143 = trunc nuw i64 %bp4.i142 to i32
   store i32 %bp4_32.i143, ptr %btmp.i95, align 4
   %btmp4.i144 = getelementptr inbounds nuw i8, ptr %btmp.i95, i64 4
-  store i64 %newret11, ptr %btmp4.i144, align 4
+  store i64 %newret17, ptr %btmp4.i144, align 4
   %fits_sso.i116 = icmp samesign ult i64 %blen.i99, 9
   br i1 %fits_sso.i116, label %build_sso.i132, label %alloc_heap.i117
 
@@ -374,8 +382,8 @@ archx_str_concat.exit201.thread:                  ; preds = %archx_str_concat.ex
   %common.ret.op.i184.ph = phi %ArchxStr [ { i64 176093659137, i64 0 }, %archx_str_concat.exit147 ], [ %rs1.i194, %build_sso.i186 ]
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i148)
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i150)
-  %t19352 = extractvalue %ArchxStr %common.ret.op.i184.ph, 0
-  %t20353 = extractvalue %ArchxStr %common.ret.op.i184.ph, 1
+  %t20352 = extractvalue %ArchxStr %common.ret.op.i184.ph, 0
+  %t21353 = extractvalue %ArchxStr %common.ret.op.i184.ph, 1
   br label %archx_str_drop.exit22
 
 archx_str_concat.exit201:                         ; preds = %alloc_heap.i171
@@ -402,18 +410,18 @@ do_free.i19:                                      ; preds = %archx_str_concat.ex
   br label %archx_str_drop.exit22
 
 archx_str_drop.exit22:                            ; preds = %archx_str_concat.exit201.thread, %archx_str_concat.exit201, %do_free.i19
-  %t19352.pn = phi i64 [ %t19352, %archx_str_concat.exit201.thread ], [ %w0_out.i181, %archx_str_concat.exit201 ], [ %w0_out.i181, %do_free.i19 ]
-  %t20353.pn = phi i64 [ %t20353, %archx_str_concat.exit201.thread ], [ %htagged.i176, %archx_str_concat.exit201 ], [ %htagged.i176, %do_free.i19 ]
-  %t21354.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t19352.pn, 1
-  %t22357 = insertvalue %ArchxAny %t21354.pn, i64 %t20353.pn, 2
+  %t20352.pn = phi i64 [ %t20352, %archx_str_concat.exit201.thread ], [ %w0_out.i181, %archx_str_concat.exit201 ], [ %w0_out.i181, %do_free.i19 ]
+  %t21353.pn = phi i64 [ %t21353, %archx_str_concat.exit201.thread ], [ %htagged.i176, %archx_str_concat.exit201 ], [ %htagged.i176, %do_free.i19 ]
+  %t22354.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t20352.pn, 1
+  %t23357 = insertvalue %ArchxAny %t22354.pn, i64 %t21353.pn, 2
   %long.i25 = icmp samesign ult i64 %blen.i99, 13
-  %tag.i28 = and i64 %newret11, 1
+  %tag.i28 = and i64 %newret17, 1
   %owned.not.i29 = icmp eq i64 %tag.i28, 0
   %or.cond370 = select i1 %long.i25, i1 true, i1 %owned.not.i29
   br i1 %or.cond370, label %common.ret, label %do_free.i30
 
 do_free.i30:                                      ; preds = %archx_str_drop.exit22
-  %raw.i31 = and i64 %newret11, -2
+  %raw.i31 = and i64 %newret17, -2
   %ptr.i32 = inttoptr i64 %raw.i31 to ptr
   tail call void @free(ptr %ptr.i32)
   br label %common.ret
@@ -607,8 +615,8 @@ archx_str_concat.exit309.thread:                  ; preds = %archx_str_concat.ex
   %common.ret.op.i292.ph = phi %ArchxStr [ { i64 176093659137, i64 0 }, %archx_str_concat.exit255 ], [ %rs1.i302, %build_sso.i294 ]
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i256)
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i258)
-  %t29362 = extractvalue %ArchxStr %common.ret.op.i292.ph, 0
-  %t30363 = extractvalue %ArchxStr %common.ret.op.i292.ph, 1
+  %t30362 = extractvalue %ArchxStr %common.ret.op.i292.ph, 0
+  %t31363 = extractvalue %ArchxStr %common.ret.op.i292.ph, 1
   br label %archx_str_drop.exit44
 
 archx_str_concat.exit309:                         ; preds = %alloc_heap.i279
@@ -635,10 +643,10 @@ do_free.i41:                                      ; preds = %archx_str_concat.ex
   br label %archx_str_drop.exit44
 
 archx_str_drop.exit44:                            ; preds = %archx_str_concat.exit309.thread, %archx_str_concat.exit309, %do_free.i41
-  %t29362.pn = phi i64 [ %t29362, %archx_str_concat.exit309.thread ], [ %w0_out.i289, %archx_str_concat.exit309 ], [ %w0_out.i289, %do_free.i41 ]
-  %t30363.pn = phi i64 [ %t30363, %archx_str_concat.exit309.thread ], [ %htagged.i284, %archx_str_concat.exit309 ], [ %htagged.i284, %do_free.i41 ]
-  %t31364.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t29362.pn, 1
-  %t32367 = insertvalue %ArchxAny %t31364.pn, i64 %t30363.pn, 2
+  %t30362.pn = phi i64 [ %t30362, %archx_str_concat.exit309.thread ], [ %w0_out.i289, %archx_str_concat.exit309 ], [ %w0_out.i289, %do_free.i41 ]
+  %t31363.pn = phi i64 [ %t31363, %archx_str_concat.exit309.thread ], [ %htagged.i284, %archx_str_concat.exit309 ], [ %htagged.i284, %do_free.i41 ]
+  %t32364.pn = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t30362.pn, 1
+  %t33367 = insertvalue %ArchxAny %t32364.pn, i64 %t31363.pn, 2
   %long.i47 = icmp samesign ult i64 %blen.i207, 13
   %tag.i50 = and i64 %bw1.i206, 1
   %owned.not.i51 = icmp eq i64 %tag.i50, 0
@@ -696,11 +704,11 @@ copy.i:                                           ; preds = %dup_heap.i
   br label %archx_str_clone.exit
 
 archx_str_clone.exit:                             ; preds = %archx_any_type_name.exit, %chk_tag.i327, %copy.i
-  %t35.pre-phi = phi i64 [ %w0.i323, %archx_any_type_name.exit ], [ %w0.i323, %chk_tag.i327 ], [ %.pre, %copy.i ]
+  %t36.pre-phi = phi i64 [ %w0.i323, %archx_any_type_name.exit ], [ %w0.i323, %chk_tag.i327 ], [ %.pre, %copy.i ]
   %common.ret.op.i326 = phi %ArchxStr [ %common.ret.op.i322, %archx_any_type_name.exit ], [ %common.ret.op.i322, %chk_tag.i327 ], [ %out.i, %copy.i ]
-  %t36 = extractvalue %ArchxStr %common.ret.op.i326, 1
-  %t37 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t35.pre-phi, 1
-  %t38 = insertvalue %ArchxAny %t37, i64 %t36, 2
+  %t37 = extractvalue %ArchxStr %common.ret.op.i326, 1
+  %t38 = insertvalue %ArchxAny { i64 4, i64 0, i64 0 }, i64 %t36.pre-phi, 1
+  %t39 = insertvalue %ArchxAny %t38, i64 %t37, 2
   br label %common.ret
 }
 
