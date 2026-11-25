@@ -236,6 +236,10 @@ impl<'a> Lexer<'a> {
                     self.bump();
                     tokens.push(Token::new(TokenKind::Colon, span));
                 }
+                b'|' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Pipe, span));
+                }
                 b'"' | b'\'' => {
                     let value = self.lex_string(c)?;
                     tokens.push(Token::new(TokenKind::Str(value), span));

@@ -28,11 +28,12 @@ impl Codegen {
             Type::Int | Type::Float | Type::Dict(_, _) | Type::Set(_) => "8".to_string(),
             Type::Str => "16".to_string(),
             Type::Array(_) | Type::Any => "24".to_string(),
-            Type::Struct(sname) => {
+            Type::Struct(_) | Type::Enum(_) | Type::Tuple(_) | Type::Optional(_) => {
+                let mem_ty = elem_mem_ir_type(elem_ty);
                 let gp = self.next_tmp();
                 let _ = writeln!(
                     out,
-                    "  {gp} = getelementptr %ArchxStruct_{sname}, ptr null, i64 1"
+                    "  {gp} = getelementptr {mem_ty}, ptr null, i64 1"
                 );
                 let sz = self.next_tmp();
                 let _ = writeln!(out, "  {sz} = ptrtoint ptr {gp} to i64");

@@ -101,6 +101,10 @@ impl Codegen {
                     );
                     return Ok((Type::Void, String::new()));
                 }
+                Type::Tuple(_) | Type::Optional(_) | Type::Enum(_) => {
+                    self.emit_print_composite_v8(&ty, &val, true, span, out)?;
+                    return Ok((Type::Void, String::new()));
+                }
                 Type::Struct(sname) => {
                     return Err(Diagnostic::new(
                         format!(
@@ -176,7 +180,7 @@ impl Codegen {
         Ok((Type::Void, String::new()))
     }
 
-    fn emit_print_inline_val(
+    pub(super) fn emit_print_inline_val(
         &mut self,
         ty: &Type,
         val: &str,
@@ -241,6 +245,9 @@ impl Codegen {
                     out,
                     "  call fastcc void @archx_any_print(%ArchxAny {val}, i1 false)"
                 );
+            }
+            Type::Tuple(_) | Type::Optional(_) | Type::Enum(_) => {
+                self.emit_print_composite_v8(ty, val, false, span, out)?;
             }
             Type::Struct(sname) => {
                 return Err(Diagnostic::new(
@@ -552,6 +559,62 @@ impl Codegen {
             Type::Void => {
                 let (nw0, nw1) = pack_sso_str_words(b"None");
                 Ok(format!("{{ i64 {nw0}, i64 {nw1} }}"))
+            }
+            Type::Optional(inner) => {
+                let opt_ir = ir_type(ty);
+                let has = self.next_tmp();
+                let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {val}, 0");
+                let res_slot = self.next_slot("stropt.res");
+                let _ = writeln!(self.allocas, "  {res_slot} = alloca %ArchxStr, align 8");
+                let (nw0, nw1) = pack_sso_str_words(b"None");
+                let _ = writeln!(
+                    out,
+                    "  store %ArchxStr {{ i64 {nw0}, i64 {nw1} }}, ptr {res_slot}, align 8"
+                );
+                let some_lbl = self.fresh_label("stropt.some");
+                let done_lbl = self.fresh_label("stropt.done");
+                self.emit_cond_br(&has, &some_lbl, &done_lbl, out);
+
+                self.start_block(&some_lbl, out);
+                let iv = self.next_tmp();
+                let _ = writeln!(out, "  {iv} = extractvalue {opt_ir} {val}, 1");
+                let inner_s = self.emit_value_to_str(inner, &iv, span, out)?;
+                let owned_s = if self.claim_stmt_temp(&inner_s) {
+                    inner_s
+                } else {
+                    self.emit_clone_value(&Type::Str, &inner_s, out)
+                };
+                let _ = writeln!(out, "  store %ArchxStr {owned_s}, ptr {res_slot}, align 8");
+                self.emit_br(&done_lbl, out);
+
+                self.start_block(&done_lbl, out);
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = load %ArchxStr, ptr {res_slot}, align 8");
+                self.stmt_temps.push(TempDrop {
+                    val: r.clone(),
+                    ty: Type::Str,
+                });
+                Ok(r)
+            }
+            Type::Tuple(items) => {
+                let (lp0, lp1) = pack_sso_str_words(b"(");
+                let mut acc = format!("{{ i64 {lp0}, i64 {lp1} }}");
+                let tup_ir = ir_type(ty);
+                for (i, item_ty) in items.iter().enumerate() {
+                    if i > 0 {
+                        let (sp0, sp1) = pack_sso_str_words(b", ");
+                        let sep = format!("{{ i64 {sp0}, i64 {sp1} }}");
+                        acc = self.emit_str_concat_call(&acc, &sep, out);
+                    }
+                    let fv = self.next_tmp();
+                    let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {val}, {i}");
+                    let es = self.emit_value_to_str(item_ty, &fv, span, out)?;
+                    acc = self.emit_str_concat_call(&acc, &es, out);
+                }
+                let close_bytes: &[u8] = if items.len() == 1 { b",)" } else { b")" };
+                let (rp0, rp1) = pack_sso_str_words(close_bytes);
+                let rp = format!("{{ i64 {rp0}, i64 {rp1} }}");
+                Ok(self.emit_str_concat_call(&acc, &rp, out))
             }
             Type::Any => {
                 self.mark_runtime_type(&Type::Any);

@@ -91,49 +91,54 @@ impl Codegen {
                 if let Some(expr) = value {
                     let expected_hint = self.current_ret.clone();
                     if let ExprKind::Var(vname) = &expr.kind {
-                        if let Some(entry) = self.lookup_var(vname).cloned() {
-                            if !entry.is_param
-                                && self.type_needs_drop(&entry.ty)
-                                && matches!(entry.storage, VarStorage::Slot(_))
-                            {
-                                if let Some(expected) = &expected_hint {
-                                    if *expected != entry.ty && *expected != Type::Any {
+                        if !self.is_narrowed_optional(vname) {
+                            if let Some(entry) = self.lookup_var(vname).cloned() {
+                                if !entry.is_param
+                                    && self.type_needs_drop(&entry.ty)
+                                    && matches!(entry.storage, VarStorage::Slot(_))
+                                {
+                                    if let Some(expected) = &expected_hint {
+                                        if *expected != entry.ty
+                                            && *expected != Type::Any
+                                            && *expected != Type::Optional(Box::new(entry.ty.clone()))
+                                        {
+                                            return Err(Diagnostic::new(
+                                                format!(
+                                                    "`return` type mismatch: expected `{}`, found `{}`",
+                                                    expected.name(),
+                                                    entry.ty.name()
+                                                ),
+                                                stmt.span,
+                                            ));
+                                        }
+                                    } else if !self.is_main {
                                         return Err(Diagnostic::new(
-                                            format!(
-                                                "`return` type mismatch: expected `{}`, found `{}`",
-                                                expected.name(),
-                                                entry.ty.name()
-                                            ),
+                                            "this function does not return a value",
                                             stmt.span,
                                         ));
                                     }
-                                } else if !self.is_main {
-                                    return Err(Diagnostic::new(
-                                        "this function does not return a value",
-                                        stmt.span,
-                                    ));
-                                }
-                                if expected_hint.as_ref() == Some(&entry.ty) {
-                                    let VarStorage::Slot(slot_ptr) = entry.storage else {
-                                        unreachable!()
-                                    };
-                                    let ty_ir = ir_type(&entry.ty);
-                                    let align = ir_align(&entry.ty);
-                                    let loaded = self.next_tmp();
-                                    let _ = writeln!(
-                                        out,
-                                        "  {loaded} = load {ty_ir}, ptr {slot_ptr}, align {align}"
-                                    );
-                                    let final_val = if !self.region_stack.is_empty() {
-                                        self.emit_promote_to_heap(&entry.ty, &loaded, out)
-                                    } else {
-                                        loaded
-                                    };
-                                    self.flush_stmt_temps(out);
-                                    self.emit_func_exit_cleanup(Some(&slot_ptr), out);
-                                    let _ = writeln!(out, "  ret {ty_ir} {final_val}");
-                                    self.terminated = true;
-                                    return Ok(());
+                                    if expected_hint.as_ref() == Some(&entry.ty) {
+                                        let VarStorage::Slot(slot_ptr) = entry.storage else {
+                                            unreachable!()
+                                        };
+                                        let ty_ir = ir_type(&entry.ty);
+                                        let align = ir_align(&entry.ty);
+                                        let loaded = self.next_tmp();
+                                        let _ = writeln!(
+                                            out,
+                                            "  {loaded} = load {ty_ir}, ptr {slot_ptr}, align {align}"
+                                        );
+                                        let final_val = if !self.region_stack.is_empty() {
+                                            self.emit_promote_to_heap(&entry.ty, &loaded, out)
+                                        } else {
+                                            loaded
+                                        };
+                                        self.flush_stmt_temps(out);
+                                        self.emit_func_exit_cleanup(Some(&slot_ptr), out);
+                                        let _ = writeln!(out, "  ret {ty_ir} {final_val}");
+                                        self.terminated = true;
+                                        return Ok(());
+                                    }
                                 }
                             }
                         }
@@ -244,12 +249,18 @@ impl Codegen {
                     self.emit_func_exit_cleanup(None, out);
                     out.push_str("  ret i32 0\n");
                 } else {
-                    match &self.current_ret {
+                    match &self.current_ret.clone() {
                         Some(Type::Any) => {
                             self.mark_runtime_type(&Type::Any);
                             self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             out.push_str("  ret %ArchxAny zeroinitializer\n");
+                        }
+                        Some(Type::Optional(inner)) => {
+                            let opt_ir = ir_type(&Type::Optional(inner.clone()));
+                            self.flush_stmt_temps(out);
+                            self.emit_func_exit_cleanup(None, out);
+                            let _ = writeln!(out, "  ret {opt_ir} zeroinitializer");
                         }
                         Some(_) => {
                             return Err(Diagnostic::new(
@@ -294,6 +305,12 @@ impl Codegen {
                 self.flush_stmt_temps(out);
                 Ok(())
             }
+
+            StmtKind::TupleAssign { targets, value } => {
+                self.gen_tuple_assign(targets, value, stmt.span, out)
+            }
+
+            StmtKind::Match { subject, cases } => self.gen_match(subject, cases, stmt.span, out),
 
             StmtKind::While { cond, body } => self.gen_while(cond, body, out),
 
@@ -368,6 +385,7 @@ impl Codegen {
                 then_body,
                 else_body,
             } => {
+                let narrowing = self.detect_optional_narrowing(cond);
                 let cond_val = self.eval_cond_bool(cond, "if", out)?;
                 self.flush_stmt_temps(out);
 
@@ -379,6 +397,13 @@ impl Codegen {
 
                 self.start_block(&then_label, out);
                 self.push_scope();
+                if let Some((ref nvar, NarrowingKind::SomeInThen)) = narrowing {
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .narrowed_optionals
+                        .insert(nvar.clone());
+                }
                 self.gen_block(then_body, out)?;
                 self.pop_scope_with_drops(out);
                 let then_terminated = self.terminated;
@@ -389,6 +414,13 @@ impl Codegen {
                 self.start_block(&else_label, out);
                 if let Some(body) = else_body {
                     self.push_scope();
+                    if let Some((ref nvar, NarrowingKind::NoneInThen)) = narrowing {
+                        self.scopes
+                            .last_mut()
+                            .unwrap()
+                            .narrowed_optionals
+                            .insert(nvar.clone());
+                    }
                     self.gen_block(body, out)?;
                     self.pop_scope_with_drops(out);
                 }
@@ -401,6 +433,22 @@ impl Codegen {
                 if then_terminated && else_terminated {
                     let _ = writeln!(out, "  unreachable");
                     self.terminated = true;
+                } else if then_terminated && !else_terminated {
+                    if let Some((nvar, NarrowingKind::NoneInThen)) = narrowing {
+                        self.scopes
+                            .last_mut()
+                            .unwrap()
+                            .narrowed_optionals
+                            .insert(nvar);
+                    }
+                } else if else_terminated && !then_terminated {
+                    if let Some((nvar, NarrowingKind::SomeInThen)) = narrowing {
+                        self.scopes
+                            .last_mut()
+                            .unwrap()
+                            .narrowed_optionals
+                            .insert(nvar);
+                    }
                 }
                 Ok(())
             }
@@ -423,7 +471,7 @@ impl Codegen {
                     span,
                 ));
             }
-            validate_type(t, &self.structs, span)?;
+            validate_type(t, &self.structs, &self.enums, span)?;
             self.mark_runtime_type(t);
         }
 
@@ -928,6 +976,7 @@ impl Codegen {
                     } else {
                         self.eval_owned_for_slot(&entry.ty, value, out)?
                     };
+                    self.clear_narrowed_optional(name);
                     if needs_drop {
                         let old_val = self.next_tmp();
                         let _ = writeln!(

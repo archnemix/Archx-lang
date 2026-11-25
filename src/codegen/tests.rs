@@ -207,3 +207,75 @@ print(hello[\"data\"][0], hello[\"age\"], name, type(name), inspect_val(name))
             "mixed-value dict + type-rebound `name` + untyped `def` must lower via %ArchxAny:\n{ir}"
         );
     }
+
+    #[test]
+    fn tuples_optionals_enums_and_match_compile_without_any_overhead() {
+        let src = "\
+enum Shape:
+    Circle(float)
+    Rect(float, float)
+    Empty
+
+def div_opt(a: int, b: int) -> int | None:
+    if b == 0:
+        return None
+    return a // b
+
+def area(s: Shape) -> float:
+    match s:
+        case Shape.Circle(r) if r > 0.0:
+            return 3.0 * r * r
+        case Shape.Circle(_):
+            return 0.0
+        case Shape.Rect(w, h):
+            return w * h
+        case Shape.Empty:
+            return 0.0
+
+def main():
+    pair = (10, 20)
+    x, y = pair
+    q = div_opt(x + y, 3)
+    if q is not None:
+        print(q + 1, area(Shape.Rect(2.0, 5.0)))
+";
+        let ir = lower_src(src).unwrap();
+        assert!(ir.contains("%ArchxEnum_Shape = type { i64, [2 x i64] }"), "{ir}");
+        assert!(ir.contains("{ i1, i64 }"), "int | None must lower to stack {{ i1, i64 }}:\n{ir}");
+        assert!(
+            !ir.contains("%ArchxAny"),
+            "static tuples, T | None, enums, and match must emit zero %ArchxAny overhead:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn non_exhaustive_enum_match_and_oob_tuple_index_are_rejected() {
+        let non_exh = "\
+enum Cmd:
+    Start(int)
+    Stop
+
+def run(c: Cmd) -> int:
+    match c:
+        case Cmd.Start(x):
+            return x
+    return 0
+
+def main():
+    print(run(Cmd.Stop))
+";
+        let err = lower_src(non_exh).unwrap_err();
+        assert!(
+            err.message.contains("non-exhaustive") && err.message.contains("Cmd.Stop"),
+            "got: {}",
+            err.message
+        );
+
+        let oob_tup = "\
+def main():
+    t = (1, \"hi\")
+    print(t[2])
+";
+        let err2 = lower_src(oob_tup).unwrap_err();
+        assert!(err2.message.contains("out of range"), "got: {}", err2.message);
+    }

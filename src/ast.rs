@@ -13,7 +13,10 @@ pub enum Type {
     Array(Box<Type>),
     Dict(Box<Type>, Box<Type>),
     Set(Box<Type>),
+    Tuple(Vec<Type>),
+    Optional(Box<Type>),
     Struct(String),
+    Enum(String),
 }
 
 impl Type {
@@ -28,7 +31,12 @@ impl Type {
             Type::Array(elem) => format!("list[{}]", elem.name()),
             Type::Dict(k, v) => format!("dict[{}, {}]", k.name(), v.name()),
             Type::Set(elem) => format!("set[{}]", elem.name()),
-            Type::Struct(name) => name.clone(),
+            Type::Tuple(elems) => format!(
+                "tuple[{}]",
+                elems.iter().map(|t| t.name()).collect::<Vec<_>>().join(", ")
+            ),
+            Type::Optional(inner) => format!("{} | None", inner.name()),
+            Type::Struct(name) | Type::Enum(name) => name.clone(),
         }
     }
 
@@ -44,7 +52,22 @@ impl Type {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub structs: Vec<StructDef>,
+    pub enums: Vec<EnumDef>,
     pub funcs: Vec<Func>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumDef {
+    pub name: String,
+    pub variants: Vec<EnumVariant>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumVariant {
+    pub name: String,
+    pub fields: Vec<Type>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +160,14 @@ pub enum StmtKind {
         dict: Expr,
         body: Vec<Stmt>,
     },
+    TupleAssign {
+        targets: Vec<String>,
+        value: Expr,
+    },
+    Match {
+        subject: Expr,
+        cases: Vec<MatchCase>,
+    },
     Region {
         body: Vec<Stmt>,
     },
@@ -147,6 +178,33 @@ pub enum StmtKind {
     Pass,
     Break,
     Continue,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchCase {
+    pub pattern: Pattern,
+    pub guard: Option<Expr>,
+    pub body: Vec<Stmt>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum Pattern {
+    Wildcard(Span),
+    Bind(String, Span),
+    Int(i64, Span),
+    Float(f64, Span),
+    Bool(bool, Span),
+    Str(String, Span),
+    NonePat(Span),
+    Tuple(Vec<Pattern>, Span),
+    Or(Vec<Pattern>, Span),
+    EnumVariant {
+        enum_name: String,
+        variant: String,
+        args: Vec<Pattern>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -177,6 +235,7 @@ pub enum ExprKind {
     },
     DictLit(Vec<(Expr, Expr)>),
     SetLit(Vec<Expr>),
+    TupleLit(Vec<Expr>),
     Index {
         target: Box<Expr>,
         index: Box<Expr>,

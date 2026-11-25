@@ -25,8 +25,13 @@ impl Codegen {
 
         self.scopes = vec![Scope::default()];
         self.stmt_temps.clear();
-        self.adaptive_hints =
-            compute_adaptive_hints(&func.params, &func.body, &self.structs, &self.sigs);
+        self.adaptive_hints = compute_adaptive_hints(
+            &func.params,
+            &func.body,
+            &self.structs,
+            &self.enums,
+            &self.sigs,
+        );
         let mut mutated =
             collect_mutated_vars(&func.params, &func.body, &self.mutating_method_names);
         for dvar in &self.adaptive_hints.dynamic_vars {
@@ -133,6 +138,10 @@ impl Codegen {
                 self.mark_runtime_type(&Type::Any);
                 self.emit_func_exit_cleanup(None, &mut body);
                 body.push_str("  ret %ArchxAny zeroinitializer\n");
+            } else if let Some(Type::Optional(inner)) = &self.current_ret.clone() {
+                let opt_ir = ir_type(&Type::Optional(inner.clone()));
+                self.emit_func_exit_cleanup(None, &mut body);
+                let _ = writeln!(body, "  ret {opt_ir} zeroinitializer");
             } else {
                 return Err(Diagnostic::new(
                     format!(
@@ -160,6 +169,13 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
+        // 0. Algebraic enum payload construction (`Shape.Circle(3.0)`):
+        if let ExprKind::Var(ename) = &target.kind {
+            if self.lookup_var(ename).is_none() && self.enums.contains_key(ename) {
+                return self.gen_enum_construct(ename, method, args, span, out);
+            }
+        }
+
         // 1. In-place list mutators (`xs.append(v)`, `xs.pop()`, `xs.clear()`) on a list variable:
         if let ExprKind::Var(vname) = &target.kind {
             if let Some(entry) = self.lookup_var(vname).cloned() {

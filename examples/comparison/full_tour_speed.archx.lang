@@ -1,0 +1,180 @@
+# Archx 5-Way Full-Feature Comparison — Edition 3:
+#   - `full_tour_speed.archx.lang` (Archx Speed / Systems Syntax)
+#
+# Computes the EXACT same deterministic output as `full_tour.py`,
+# `full_tour_pythonic.archx.lang`, `full_tour.c`, and `full_tour.rs`,
+# while unlocking Archx's systems-level layout & arena optimizations:
+#   1. `[Body(...); n]` -> transparent 5-plane `align 16` SIMD SoA layout
+#   2. `with region:`   -> O(1) bump-arena Planar `<16 x i8>` SIMD `dict`/`set`
+#   3. `enum Event`     -> stack-inline `{ i64, [2 x i64] }` algebraic sum type
+#                          with compiler-verified exhaustive `match` dispatch
+#   4. `(int, int, int)` & `int | None` -> unboxed register tuples & optionals
+
+struct Body:
+    x: float
+    y: float
+    vx: float
+    vy: float
+    mass: float
+
+    def kinetic(self) -> float:
+        return 0.5 * self.mass * (self.vx * self.vx + self.vy * self.vy)
+
+
+enum Event:
+    Circle(int)
+    Rect(int, int)
+    Square(int)
+    Pulse(int)
+    Idle
+
+
+func simulate_field(n: int, steps: int) -> int:
+    # `[Body(...); n]` automatically lowers to 5 contiguous `align 16` double* SoA planes:
+    let bodies = [Body(0.0, 0.0, 0.0, 0.0, 0.0); n]
+    for i in 0..n:
+        let fi = float(i + 1)
+        bodies[i].x = fi * 0.001
+        bodies[i].y = fi * -0.002
+        bodies[i].vx = 0.02
+        bodies[i].vy = -0.015
+        bodies[i].mass = 1.0 + fi * 0.0002
+
+    let dt = 0.01
+    for _s in 0..steps:
+        for i in 0..n:
+            let bx = bodies[i].x
+            let by = bodies[i].y
+            let r2 = bx * bx + by * by + 1.0
+            let inv = dt / sqrt(r2)
+            bodies[i].vx -= bx * inv
+            bodies[i].vy -= by * inv
+            bodies[i].x += bodies[i].vx * dt
+            bodies[i].y += bodies[i].vy * dt
+
+    let ke = 0.0
+    for i in 0..n:
+        ke += bodies[i].kinetic()
+    return int(ke * 1000.0)
+
+
+func dict_and_slicing_tour(rounds: int) -> (int, str):
+    let vocab: [str] = []
+    for i in 0..512:
+        if i % 2 == 0:
+            vocab.append(f"tok_{i}")
+        else:
+            let raw = f"   Telemetry_Channel_{i}  "
+            vocab.append(raw.strip().lower())
+
+    let banner = "archx_systems_python"[::-1]
+    let checksum = 0
+    let miss = "absent_channel_key"
+
+    for r in 0..rounds:
+        with region:
+            let counts: dict[str, int] = {}
+            let seen: set[int] = set()
+            for i in 0..512:
+                counts[vocab[i]] = 1
+            for step in 0..4096:
+                let idx = (step * 73 + r * 19) % 512
+                let key = vocab[idx]
+                counts[key] += (step % 5) + 1
+                if step < 64:
+                    seen.add(idx)
+            for p in 0..1024:
+                let pk = vocab[(p * 131 + r * 7) % 512]
+                checksum += counts.get(pk, 0)
+            if miss not in counts:
+                checksum += len(seen)
+            for _k, v in counts.items():
+                checksum += v
+
+    let nums = [10, 25, 40, 55, 70, 85, 100, 115]
+    let sliced = nums[1:7:2]
+    checksum += sliced[0] + sliced[-1] + nums[-1]
+    return checksum, banner
+
+
+func analyze_series(xs: [int]) -> (int, int, int):
+    let lo = xs[0]
+    let hi = xs[0]
+    let total = 0
+    for x in xs:
+        if x < lo:
+            lo = x
+        if x > hi:
+            hi = x
+        total += x
+    return lo, hi, total
+
+
+func find_spike(xs: [int], threshold: int) -> int | None:
+    for i, x in enumerate(xs):
+        if x >= threshold:
+            return i * 1000 + x
+    return None
+
+
+func make_event(kind: int, a: int, b: int) -> Event:
+    match kind:
+        case 0:
+            return Event.Circle(a)
+        case 1:
+            return Event.Rect(a, b)
+        case 2:
+            return Event.Square(a)
+        case 3:
+            return Event.Pulse(a)
+        case _:
+            return Event.Idle
+
+
+func dispatch_events(total_events: int) -> int:
+    let acc = 0
+    for i in 0..total_events:
+        let kind = i % 5
+        let a = (i * 17 + 3) % 40
+        let b = (i * 13 + 7) % 25
+        let ev = make_event(kind, a, b)
+        match ev:
+            case Event.Circle(r) if r > 20:
+                acc += r * r + 7
+            case Event.Circle(r):
+                acc += r * 3 + 1
+            case Event.Rect(w, h):
+                acc += w * h
+            case Event.Square(s) | Event.Pulse(s):
+                acc += s * 4 + 2
+            case Event.Idle:
+                acc += 1
+    return acc
+
+
+func main():
+    let mode = 8
+    let sim_score = simulate_field(40000, 30)
+    let dict_score, rev_banner = dict_and_slicing_tour(60)
+
+    let series = [0; 64]
+    for i in 0..64:
+        series[i] = ((i * 37 + 11) % 97) + mode
+    let lo, hi, total = analyze_series(series)
+
+    let hit = find_spike(series, 95)
+    let miss = find_spike(series, 999)
+    let hit_out = hit + 1 if hit is not None else -1
+    let miss_label = "none"
+    match miss:
+        case None:
+            miss_label = "empty"
+        case v:
+            miss_label = f"val_{v}"
+
+    let dispatch_score = dispatch_events(200000)
+
+    print(f"sim={sim_score}")
+    print(f"dict_slice={dict_score},{rev_banner}")
+    print(f"tuple_opt={lo},{hi},{total},{hit_out},{miss_label}")
+    print(f"match_dispatch={dispatch_score}")

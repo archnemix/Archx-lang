@@ -137,6 +137,18 @@ pub(super) fn stmt_escapes_soa(
             expr_escapes_soa(dict, var, mutating_methods)
                 || var_escapes_soa(body, var, mutating_methods)
         }
+        StmtKind::TupleAssign { targets, value } => {
+            targets.iter().any(|t| t == var) || expr_escapes_soa(value, var, mutating_methods)
+        }
+        StmtKind::Match { subject, cases } => {
+            expr_escapes_soa(subject, var, mutating_methods)
+                || cases.iter().any(|c| {
+                    c.guard
+                        .as_ref()
+                        .map_or(false, |g| expr_escapes_soa(g, var, mutating_methods))
+                        || var_escapes_soa(&c.body, var, mutating_methods)
+                })
+        }
         StmtKind::Region { body } => var_escapes_soa(body, var, mutating_methods),
     }
 }
@@ -224,7 +236,7 @@ pub(super) fn expr_escapes_soa(
             expr_escapes_soa(lhs, var, mutating_methods)
                 || expr_escapes_soa(rhs, var, mutating_methods)
         }
-        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => es
+        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) | ExprKind::TupleLit(es) => es
             .iter()
             .any(|e| expr_escapes_soa(e, var, mutating_methods)),
         ExprKind::DictLit(pairs) => pairs.iter().any(|(k, v)| {
@@ -328,6 +340,16 @@ pub(super) fn check_only_monotone_step(
                     return false;
                 }
             }
+            StmtKind::TupleAssign { targets, .. } if targets.iter().any(|t| t == idx) => {
+                return false;
+            }
+            StmtKind::Match { cases, .. } => {
+                for c in cases {
+                    if !check_only_monotone_step(&c.body, idx, full_body, stride_out, cg) {
+                        return false;
+                    }
+                }
+            }
             StmtKind::While { .. }
             | StmtKind::For { .. }
             | StmtKind::ForEach { .. }
@@ -357,6 +379,7 @@ pub(super) fn stmts_use_region(stmts: &[Stmt]) -> bool {
         | StmtKind::ForEach { body, .. }
         | StmtKind::ForEnumerate { body, .. }
         | StmtKind::ForDictItems { body, .. } => stmts_use_region(body),
+        StmtKind::Match { cases, .. } => cases.iter().any(|c| stmts_use_region(&c.body)),
         _ => false,
     })
 }
@@ -376,6 +399,7 @@ pub(super) fn stmts_contain_loop(stmts: &[Stmt]) -> bool {
             stmts_contain_loop(then_body)
                 || else_body.as_ref().map_or(false, |b| stmts_contain_loop(b))
         }
+        StmtKind::Match { cases, .. } => cases.iter().any(|c| stmts_contain_loop(&c.body)),
         StmtKind::Region { body } => stmts_contain_loop(body),
         _ => false,
     })
@@ -430,8 +454,27 @@ pub(super) fn walk_returns(stmts: &[Stmt], set: &mut HashSet<String>) {
             | StmtKind::ForEnumerate { body, .. }
             | StmtKind::ForDictItems { body, .. }
             | StmtKind::Region { body } => walk_returns(body, set),
+            StmtKind::Match { cases, .. } => {
+                for c in cases {
+                    walk_returns(&c.body, set);
+                }
+            }
             _ => {}
         }
+    }
+}
+
+pub(super) fn collect_pattern_binds(pat: &Pattern, out: &mut Vec<String>) {
+    match pat {
+        Pattern::Bind(name, _) => out.push(name.clone()),
+        Pattern::Tuple(ps, _)
+        | Pattern::Or(ps, _)
+        | Pattern::EnumVariant { args: ps, .. } => {
+            for p in ps {
+                collect_pattern_binds(p, out);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -550,6 +593,31 @@ pub(super) fn walk_mutations(
                 inner.insert(val_var.clone());
                 walk_mutations(body, &mut inner, mutated, mutating_methods);
             }
+            StmtKind::TupleAssign { targets, value } => {
+                walk_expr_mutations(value, mutated, mutating_methods);
+                for name in targets {
+                    if bound.contains(name) {
+                        mutated.insert(name.clone());
+                    } else {
+                        bound.insert(name.clone());
+                    }
+                }
+            }
+            StmtKind::Match { subject, cases } => {
+                walk_expr_mutations(subject, mutated, mutating_methods);
+                for c in cases {
+                    let mut inner = bound.clone();
+                    let mut pbinds = Vec::new();
+                    collect_pattern_binds(&c.pattern, &mut pbinds);
+                    for pb in pbinds {
+                        inner.insert(pb);
+                    }
+                    if let Some(g) = &c.guard {
+                        walk_expr_mutations(g, mutated, mutating_methods);
+                    }
+                    walk_mutations(&c.body, &mut inner, mutated, mutating_methods);
+                }
+            }
             StmtKind::Region { body } => {
                 let mut inner = bound.clone();
                 walk_mutations(body, &mut inner, mutated, mutating_methods);
@@ -643,7 +711,7 @@ pub(super) fn walk_expr_mutations(
                 walk_expr_mutations(st, set, mutating_methods);
             }
         }
-        ExprKind::ArrayLit(elems) | ExprKind::SetLit(elems) => {
+        ExprKind::ArrayLit(elems) | ExprKind::SetLit(elems) | ExprKind::TupleLit(elems) => {
             for e in elems {
                 walk_expr_mutations(e, set, mutating_methods);
             }
@@ -687,6 +755,8 @@ pub(super) fn stmts_assign_var(stmts: &[Stmt], name: &str) -> bool {
         | StmtKind::ForEnumerate { body, .. }
         | StmtKind::ForDictItems { body, .. }
         | StmtKind::Region { body } => stmts_assign_var(body, name),
+        StmtKind::TupleAssign { targets, .. } => targets.iter().any(|t| t == name),
+        StmtKind::Match { cases, .. } => cases.iter().any(|c| stmts_assign_var(&c.body, name)),
         _ => false,
     })
 }
@@ -709,9 +779,16 @@ pub(super) fn compute_adaptive_hints(
     params: &[Param],
     stmts: &[Stmt],
     structs: &HashMap<String, Vec<Param>>,
+    enums: &HashMap<String, EnumInfo>,
     sigs: &HashMap<String, FuncSig>,
 ) -> AdaptiveHints {
-    let mut env: HashMap<String, Type> = params.iter().map(|p| (p.name.clone(), p.ty.clone())).collect();
+    let mut env: HashMap<String, Type> = enums
+        .keys()
+        .map(|ename| (ename.clone(), Type::Enum(ename.clone())))
+        .collect();
+    for p in params {
+        env.insert(p.name.clone(), p.ty.clone());
+    }
     let mut explicitly_typed: HashSet<String> = params.iter().map(|p| p.name.clone()).collect();
     let mut dynamic_vars: HashSet<String> = HashSet::new();
 
@@ -865,11 +942,51 @@ pub(super) fn compute_adaptive_hints(
                     walk_expr_hints(dict, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                     let (kt, vt) = match quick_infer(dict, env, structs, sigs) {
                         Some(Type::Dict(k, v)) => (*k, *v),
+                        Some(Type::Array(inner)) => match *inner {
+                            Type::Tuple(mut ts) if ts.len() == 2 => {
+                                let b = ts.pop().unwrap();
+                                let a = ts.pop().unwrap();
+                                (a, b)
+                            }
+                            _ => (Type::Any, Type::Any),
+                        },
                         _ => (Type::Any, Type::Any),
                     };
                     env.insert(key_var.clone(), kt);
                     env.insert(val_var.clone(), vt);
                     walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                }
+                StmtKind::TupleAssign { targets, value } => {
+                    walk_expr_hints(value, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    let elem_tys: Vec<Type> = match quick_infer(value, env, structs, sigs) {
+                        Some(Type::Tuple(ts)) if ts.len() == targets.len() => ts,
+                        _ => vec![Type::Any; targets.len()],
+                    };
+                    for (tname, et) in targets.iter().zip(elem_tys.into_iter()) {
+                        if explicitly_typed.contains(tname) {
+                            continue;
+                        }
+                        if et == Type::Any {
+                            dynamic_vars.insert(tname.clone());
+                            env.insert(tname.clone(), Type::Any);
+                        } else if let Some(prev) = env.get(tname).cloned() {
+                            if prev != et && !compatible_assign(&prev, &et) {
+                                dynamic_vars.insert(tname.clone());
+                                env.insert(tname.clone(), Type::Any);
+                            }
+                        } else {
+                            env.insert(tname.clone(), et);
+                        }
+                    }
+                }
+                StmtKind::Match { subject, cases } => {
+                    walk_expr_hints(subject, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    for c in cases {
+                        if let Some(g) = &c.guard {
+                            walk_expr_hints(g, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                        }
+                        walk(&c.body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
+                    }
                 }
                 StmtKind::Region { body } => {
                     walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
@@ -894,6 +1011,9 @@ pub(super) fn compute_adaptive_hints(
             return;
         }
         if matches!(&value.kind, ExprKind::NoneLit) {
+            if matches!(env.get(name), Some(Type::Optional(_))) {
+                return;
+            }
             dynamic_vars.insert(name.to_string());
             env.insert(name.to_string(), Type::Any);
             empty_inits.remove(name);
@@ -923,7 +1043,7 @@ pub(super) fn compute_adaptive_hints(
                 return;
             }
             if let Some(prev_t) = env.get(name).cloned() {
-                if prev_t != new_t && !compatible_empty_container(&prev_t, &new_t) {
+                if prev_t != new_t && !compatible_assign(&prev_t, &new_t) {
                     dynamic_vars.insert(name.to_string());
                     env.insert(name.to_string(), Type::Any);
                     return;
@@ -934,13 +1054,16 @@ pub(super) fn compute_adaptive_hints(
         }
     }
 
-    fn compatible_empty_container(a: &Type, b: &Type) -> bool {
+    fn compatible_assign(prev: &Type, next: &Type) -> bool {
         matches!(
-            (a, b),
+            (prev, next),
             (Type::Array(x), Type::Array(_)) if **x == Type::Any
         ) || matches!(
-            (a, b),
+            (prev, next),
             (Type::Dict(k, v), Type::Dict(_, _)) if **k == Type::Any && **v == Type::Any
+        ) || matches!(
+            (prev, next),
+            (Type::Optional(inner), rhs) if **inner == *rhs
         )
     }
 
@@ -1050,7 +1173,7 @@ pub(super) fn compute_adaptive_hints(
                     }
                 }
             }
-            ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => {
+            ExprKind::ArrayLit(es) | ExprKind::SetLit(es) | ExprKind::TupleLit(es) => {
                 for e in es {
                     walk_expr_hints(e, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                 }
@@ -1167,6 +1290,13 @@ fn quick_infer(
             }
             Some(Type::Set(Box::new(elem)))
         }
+        ExprKind::TupleLit(es) => {
+            let mut ts = Vec::with_capacity(es.len());
+            for e in es {
+                ts.push(quick_infer(e, env, structs, sigs)?);
+            }
+            Some(Type::Tuple(ts))
+        }
         ExprKind::DictLit(ps) => {
             if ps.is_empty() {
                 Some(Type::Dict(Box::new(Type::Any), Box::new(Type::Any)))
@@ -1207,27 +1337,37 @@ fn quick_infer(
                 _ => None,
             }
         }
-        ExprKind::Index { target, .. } => match quick_infer(target, env, structs, sigs)? {
+        ExprKind::Index { target, index } => match quick_infer(target, env, structs, sigs)? {
             Type::Array(inner) => Some(*inner),
             Type::Dict(_, v) => Some(*v),
+            Type::Tuple(ts) => {
+                let idx = eval_const_int(index)?;
+                let adj = if idx < 0 { idx + ts.len() as i64 } else { idx };
+                if adj >= 0 && (adj as usize) < ts.len() {
+                    Some(ts[adj as usize].clone())
+                } else {
+                    None
+                }
+            }
             Type::Str => Some(Type::Str),
             Type::Any => Some(Type::Any),
             _ => None,
         },
         ExprKind::Slice { target, .. } => quick_infer(target, env, structs, sigs),
-        ExprKind::Field { target, field } => {
-            if let Some(Type::Struct(sname)) = quick_infer(target, env, structs, sigs) {
-                structs
-                    .get(&sname)?
-                    .iter()
-                    .find(|f| f.name == *field)
-                    .map(|f| f.ty.clone())
-            } else {
-                None
-            }
-        }
+        ExprKind::Field { target, field } => match quick_infer(target, env, structs, sigs)? {
+            Type::Struct(sname) => structs
+                .get(&sname)?
+                .iter()
+                .find(|f| f.name == *field)
+                .map(|f| f.ty.clone()),
+            Type::Enum(ename) => Some(Type::Enum(ename)),
+            _ => None,
+        },
         ExprKind::MethodCall { target, method, args } => {
             let tt = quick_infer(target, env, structs, sigs);
+            if let Some(Type::Enum(ename)) = tt {
+                return Some(Type::Enum(ename));
+            }
             match method.as_str() {
                 "split" => Some(Type::Array(Box::new(Type::Str))),
                 "strip" | "upper" | "lower" | "replace" => Some(Type::Str),
@@ -1259,6 +1399,24 @@ fn quick_infer(
             else_expr,
             ..
         } => {
+            if matches!(&else_expr.kind, ExprKind::NoneLit)
+                && !matches!(&then_expr.kind, ExprKind::NoneLit)
+            {
+                let t1 = quick_infer(then_expr, env, structs, sigs)?;
+                return Some(match t1 {
+                    Type::Optional(_) | Type::Any => t1,
+                    other => Type::Optional(Box::new(other)),
+                });
+            }
+            if matches!(&then_expr.kind, ExprKind::NoneLit)
+                && !matches!(&else_expr.kind, ExprKind::NoneLit)
+            {
+                let t2 = quick_infer(else_expr, env, structs, sigs)?;
+                return Some(match t2 {
+                    Type::Optional(_) | Type::Any => t2,
+                    other => Type::Optional(Box::new(other)),
+                });
+            }
             let t1 = quick_infer(then_expr, env, structs, sigs)?;
             let t2 = quick_infer(else_expr, env, structs, sigs)?;
             Some(if t1 == t2 { t1 } else { Type::Any })

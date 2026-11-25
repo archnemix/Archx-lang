@@ -132,9 +132,71 @@ impl Codegen {
                 );
                 Ok(r)
             }
-            Type::Struct(sname) => Err(Diagnostic::new(
+            Type::Optional(inner) => {
+                let opt_ir = ir_type(ty);
+                let has = self.next_tmp();
+                let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {owned_val}, 0");
+                let res_slot = self.next_slot("boxopt.res");
+                let _ = writeln!(self.allocas, "  {res_slot} = alloca %ArchxAny, align 8");
+                let _ = writeln!(
+                    out,
+                    "  store %ArchxAny zeroinitializer, ptr {res_slot}, align 8"
+                );
+                let some_lbl = self.fresh_label("boxopt.some");
+                let done_lbl = self.fresh_label("boxopt.done");
+                self.emit_cond_br(&has, &some_lbl, &done_lbl, out);
+
+                self.start_block(&some_lbl, out);
+                let iv = self.next_tmp();
+                let _ = writeln!(out, "  {iv} = extractvalue {opt_ir} {owned_val}, 1");
+                if self.type_needs_drop(inner) {
+                    self.stmt_temps.push(TempDrop {
+                        val: iv.clone(),
+                        ty: (**inner).clone(),
+                    });
+                }
+                let boxed = self.emit_box_any_owned(inner, &iv, span, out)?;
+                let _ = writeln!(out, "  store %ArchxAny {boxed}, ptr {res_slot}, align 8");
+                self.emit_br(&done_lbl, out);
+
+                self.start_block(&done_lbl, out);
+                let r = self.next_tmp();
+                let _ = writeln!(out, "  {r} = load %ArchxAny, ptr {res_slot}, align 8");
+                Ok(r)
+            }
+            Type::Tuple(items) => {
+                let tup_ir = ir_type(ty);
+                let count = items.len();
+                if count == 0 {
+                    let vec = self.build_vec_val("0", "0", "null", out);
+                    return Ok(self.emit_wrap_any_vec_cell(&vec, out));
+                }
+                let bytes = (count * 24).to_string();
+                let dst = self.emit_checked_malloc(&bytes, out);
+                for (i, item_ty) in items.iter().enumerate() {
+                    let fv = self.next_tmp();
+                    let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {owned_val}, {i}");
+                    if self.type_needs_drop(item_ty) {
+                        self.stmt_temps.push(TempDrop {
+                            val: fv.clone(),
+                            ty: item_ty.clone(),
+                        });
+                    }
+                    let boxed = self.emit_box_any_owned(item_ty, &fv, span, out)?;
+                    let dp = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {dp} = getelementptr inbounds %ArchxAny, ptr {dst}, i64 {i}"
+                    );
+                    let _ = writeln!(out, "  store %ArchxAny {boxed}, ptr {dp}, align 8");
+                }
+                let c_str = count.to_string();
+                let vec = self.build_vec_val(&c_str, &c_str, &dst, out);
+                Ok(self.emit_wrap_any_vec_cell(&vec, out))
+            }
+            Type::Struct(sname) | Type::Enum(sname) => Err(Diagnostic::new(
                 format!(
-                    "cannot box class/struct `{sname}` into dynamic `any`; keep `{sname}` statically typed"
+                    "cannot box `{sname}` into dynamic `any`; keep `{sname}` statically typed"
                 ),
                 span,
             )),
@@ -473,6 +535,46 @@ impl Codegen {
                 });
                 Ok(cloned)
             }
+            Type::Optional(inner) => {
+                let opt_ir = ir_type(expected);
+                let align = ir_align(expected);
+                let res_slot = self.next_slot("unboxopt.res");
+                let _ = writeln!(self.allocas, "  {res_slot} = alloca {opt_ir}, align {align}");
+                let _ = writeln!(
+                    out,
+                    "  store {opt_ir} zeroinitializer, ptr {res_slot}, align {align}"
+                );
+                let is_none = self.next_tmp();
+                let _ = writeln!(out, "  {is_none} = icmp eq i64 {tag}, 0");
+                let some_lbl = self.fresh_label("unboxopt.some");
+                let done_lbl = self.fresh_label("unboxopt.done");
+                self.emit_cond_br(&is_none, &done_lbl, &some_lbl, out);
+
+                self.start_block(&some_lbl, out);
+                let unboxed = self.emit_unbox_any(inner, any_val, span, out)?;
+                let _ = self.claim_stmt_temp(&unboxed);
+                let s0 = self.next_tmp();
+                let _ = writeln!(out, "  {s0} = insertvalue {opt_ir} undef, i1 1, 0");
+                let s1 = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {s1} = insertvalue {opt_ir} {s0}, {} {unboxed}, 1",
+                    ir_type(inner)
+                );
+                let _ = writeln!(out, "  store {opt_ir} {s1}, ptr {res_slot}, align {align}");
+                self.emit_br(&done_lbl, out);
+
+                self.start_block(&done_lbl, out);
+                let loaded = self.next_tmp();
+                let _ = writeln!(out, "  {loaded} = load {opt_ir}, ptr {res_slot}, align {align}");
+                if self.type_needs_drop(expected) {
+                    self.stmt_temps.push(TempDrop {
+                        val: loaded.clone(),
+                        ty: expected.clone(),
+                    });
+                }
+                Ok(loaded)
+            }
             _ => Err(Diagnostic::new(
                 format!(
                     "cannot implicitly unbox dynamic `any` into static `{}`",
@@ -666,6 +768,31 @@ impl Codegen {
             );
             return Ok((Type::Str, res));
         }
+        if let Type::Optional(inner) = &ty {
+            let opt_ir = ir_type(&ty);
+            let has = self.next_tmp();
+            let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {val}, 0");
+            let inner_tname = match inner.as_ref() {
+                Type::Int => "int",
+                Type::Float => "float",
+                Type::Bool => "bool",
+                Type::Str => "str",
+                Type::Array(_) => "list",
+                Type::Tuple(_) => "tuple",
+                Type::Dict(_, _) => "dict",
+                Type::Set(_) => "set",
+                Type::Struct(s) | Type::Enum(s) => s.as_str(),
+                _ => "object",
+            };
+            let (_, s_some) = self.eval_str_lit(inner_tname);
+            let (_, s_none) = self.eval_str_lit("NoneType");
+            let sel = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {sel} = select i1 {has}, %ArchxStr {s_some}, %ArchxStr {s_none}"
+            );
+            return Ok((Type::Str, sel));
+        }
         let tname = match &ty {
             Type::Int => "int",
             Type::Float => "float",
@@ -673,10 +800,11 @@ impl Codegen {
             Type::Str => "str",
             Type::Void => "NoneType",
             Type::Array(_) => "list",
+            Type::Tuple(_) => "tuple",
             Type::Dict(_, _) => "dict",
             Type::Set(_) => "set",
-            Type::Struct(sname) => sname.as_str(),
-            Type::Any => unreachable!(),
+            Type::Struct(sname) | Type::Enum(sname) => sname.as_str(),
+            Type::Optional(_) | Type::Any => unreachable!(),
         };
         Ok(self.eval_str_lit(tname))
     }
@@ -710,9 +838,10 @@ impl Codegen {
             "float" => Some(3),
             "str" | "string" => Some(4),
             "list" => Some(5),
+            "tuple" => None,
             "dict" => Some(6),
             "set" => Some(7),
-            name if self.structs.contains_key(name) => None,
+            name if self.structs.contains_key(name) || self.enums.contains_key(name) => None,
             other => {
                 return Err(Diagnostic::new(
                     format!("unknown type `{other}` in `isinstance`"),
@@ -733,6 +862,37 @@ impl Codegen {
             return Ok((Type::Bool, m));
         }
 
+        if let Type::Optional(inner) = &ty {
+            let opt_ir = ir_type(&ty);
+            let has = self.next_tmp();
+            let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {val}, 0");
+            if target_tname == "NoneType" {
+                let inv = self.next_tmp();
+                let _ = writeln!(out, "  {inv} = xor i1 {has}, true");
+                return Ok((Type::Bool, inv));
+            }
+            let inner_match = match (inner.as_ref(), target_tname) {
+                (Type::Bool, "bool")
+                | (Type::Int, "int")
+                | (Type::Float, "float")
+                | (Type::Str, "str" | "string")
+                | (Type::Array(_), "list")
+                | (Type::Tuple(_), "tuple")
+                | (Type::Dict(_, _), "dict")
+                | (Type::Set(_), "set") => true,
+                (Type::Struct(s), cname) | (Type::Enum(s), cname) => s == cname,
+                _ => false,
+            };
+            return Ok((
+                Type::Bool,
+                if inner_match {
+                    has
+                } else {
+                    "false".to_string()
+                },
+            ));
+        }
+
         let static_match = match (&ty, target_tname) {
             (Type::Void, "NoneType") => true,
             (Type::Bool, "bool") => true,
@@ -740,9 +900,10 @@ impl Codegen {
             (Type::Float, "float") => true,
             (Type::Str, "str" | "string") => true,
             (Type::Array(_), "list") => true,
+            (Type::Tuple(_), "tuple") => true,
             (Type::Dict(_, _), "dict") => true,
             (Type::Set(_), "set") => true,
-            (Type::Struct(s), cname) => s == cname,
+            (Type::Struct(s), cname) | (Type::Enum(s), cname) => s == cname,
             _ => false,
         };
         Ok((Type::Bool, if static_match { "true" } else { "false" }.to_string()))

@@ -32,6 +32,68 @@ impl Codegen {
         }
 
         if let Some(fields) = self.structs.get(name).cloned() {
+            if let Some(init_sig) = self
+                .methods
+                .get(&(name.to_string(), "__init__".to_string()))
+                .cloned()
+            {
+                if args.len() != init_sig.params.len() {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "`{name}.__init__` expects {} argument(s), found {}",
+                            init_sig.params.len(),
+                            args.len()
+                        ),
+                        span,
+                    ));
+                }
+                let mut arg_vals = Vec::with_capacity(args.len());
+                for (i, arg) in args.iter().enumerate() {
+                    let pty = &init_sig.params[i];
+                    if *pty == Type::Any {
+                        arg_vals.push((Type::Any, self.eval_expr_as_any(arg, out)?));
+                    } else {
+                        let (aty, raw_v) = self.eval_expr_typed(arg, Some(pty), out)?;
+                        let fv = if aty == *pty {
+                            raw_v
+                        } else if aty == Type::Any {
+                            self.emit_unbox_any(pty, &raw_v, arg.span, out)?
+                        } else {
+                            return Err(Diagnostic::new(
+                                format!(
+                                    "argument {} of `{name}` expects `{}`, found `{}`",
+                                    i + 1,
+                                    pty.name(),
+                                    aty.name()
+                                ),
+                                arg.span,
+                            ));
+                        };
+                        arg_vals.push((pty.clone(), fv));
+                    }
+                }
+                let s_ir = format!("%ArchxStruct_{name}");
+                let cslot = self.next_slot(&format!("init.{name}"));
+                let _ = writeln!(self.allocas, "  {cslot} = alloca {s_ir}, align 8");
+                let _ = writeln!(out, "  store {s_ir} zeroinitializer, ptr {cslot}, align 8");
+                let mut call = format!("  call fastcc void {}(ptr {cslot}", init_sig.ir_name);
+                for (pty, val) in &arg_vals {
+                    let _ = write!(call, ", {} {}", ir_type(pty), val);
+                }
+                call.push_str(")\n");
+                out.push_str(&call);
+                let loaded = self.next_tmp();
+                let _ = writeln!(out, "  {loaded} = load {s_ir}, ptr {cslot}, align 8");
+                let sty = Type::Struct(name.to_string());
+                if self.type_needs_drop(&sty) {
+                    self.stmt_temps.push(TempDrop {
+                        val: loaded.clone(),
+                        ty: sty.clone(),
+                    });
+                }
+                return Ok((sty, loaded));
+            }
+
             if args.len() != fields.len() {
                 return Err(Diagnostic::new(
                     format!(
@@ -481,6 +543,7 @@ impl Codegen {
                 let _ = writeln!(out, "  {r} = icmp sgt i64 {l}, 0");
                 Ok((Type::Bool, r))
             }
+            Type::Tuple(items) => Ok((Type::Bool, (!items.is_empty()).to_string())),
             Type::Dict(_, _) | Type::Set(_) => {
                 let l = self.emit_dict_len(&val, out);
                 let r = self.next_tmp();
@@ -937,6 +1000,7 @@ impl Codegen {
                 let reg = self.emit_dict_len(&val, out);
                 Ok((Type::Int, reg))
             }
+            Type::Tuple(items) => Ok((Type::Int, (items.len() as i64).to_string())),
             Type::Any => {
                 self.mark_runtime_type(&Type::Any);
                 self.used_any_rt = true;
@@ -946,7 +1010,7 @@ impl Codegen {
             }
             other => Err(Diagnostic::new(
                 format!(
-                    "`len` expects a `list`, `dict`, `set`, or `str`, found `{}`",
+                    "`len` expects a `list`, `tuple`, `dict`, `set`, or `str`, found `{}`",
                     other.name()
                 ),
                 args[0].span,

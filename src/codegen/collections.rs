@@ -438,7 +438,7 @@ impl Codegen {
                 Some(Type::Dict(k, v)) => ((**k).clone(), (**v).clone()),
                 _ => (Type::Any, Type::Any),
             };
-            validate_type(&Type::Dict(Box::new(kt.clone()), Box::new(vt.clone())), &self.structs, span)?;
+            validate_type(&Type::Dict(Box::new(kt.clone()), Box::new(vt.clone())), &self.structs, &self.enums, span)?;
             let d = self.emit_new_empty_dict_or_set(&kt, Some(&vt), out);
             let res_ty = Type::Dict(Box::new(kt), Box::new(vt));
             self.stmt_temps.push(TempDrop {
@@ -452,6 +452,7 @@ impl Codegen {
             validate_type(
                 &Type::Dict(exp_k.clone(), exp_v.clone()),
                 &self.structs,
+                &self.enums,
                 span,
             )?;
             let d = self.emit_new_empty_dict_or_set(exp_k, Some(exp_v), out);
@@ -623,7 +624,7 @@ impl Codegen {
         out: &mut String,
     ) -> Result<(Type, String)> {
         if let Some(Type::Set(exp_e)) = expected {
-            validate_type(&Type::Set(exp_e.clone()), &self.structs, span)?;
+            validate_type(&Type::Set(exp_e.clone()), &self.structs, &self.enums, span)?;
             let s = self.emit_new_empty_dict_or_set(exp_e, None, out);
             let fam = Self::dict_family_suffix(exp_e);
             for e in elems {

@@ -11,15 +11,18 @@ mod loops;
 mod memory;
 mod methods;
 mod ownership;
+mod pattern_match;
 mod runtime;
 mod runtime_hash_any;
 mod runtime_py;
 mod stmt;
+mod tuples_enums;
 #[cfg(test)]
 mod tests;
 
 use self::analysis::*;
-use crate::ast::{Func, Param, Program, StructDef, Type};
+use self::tuples_enums::*;
+use crate::ast::{EnumDef, Func, Param, Program, StructDef, Type};
 use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -36,7 +39,10 @@ pub(super) const MAX_NESTING: usize = 128;
 /// - `fastcc` internal ABI + first-class `class`/`struct` methods + transparent local `SoA` splitting
 /// - 16-byte inline-prefix SSO `%ArchxStr` (`<= 12` bytes in 2 registers, 0 heap allocs)
 /// - Escape-checked `region:` / `with region:` bump-pointer arenas with slab reuse
-pub fn lower(program: &Program) -> Result<String> {
+pub fn lower(raw_program: &Program) -> Result<String> {
+    let enum_names: HashSet<String> = raw_program.enums.iter().map(|e| e.name.clone()).collect();
+    let program = resolve_program_types(raw_program, &enum_names);
+
     let mut struct_map: HashMap<String, Vec<Param>> = HashMap::new();
     let mut struct_spans: HashMap<String, Span> = HashMap::new();
 
@@ -47,9 +53,9 @@ pub fn lower(program: &Program) -> Result<String> {
                 sdef.span,
             ));
         }
-        if struct_map.contains_key(&sdef.name) {
+        if struct_map.contains_key(&sdef.name) || enum_names.contains(&sdef.name) {
             return Err(Diagnostic::new(
-                format!("struct `{}` is defined more than once", sdef.name),
+                format!("type `{}` is defined more than once", sdef.name),
                 sdef.span,
             ));
         }
@@ -72,13 +78,47 @@ pub fn lower(program: &Program) -> Result<String> {
         struct_spans.insert(sdef.name.clone(), sdef.span);
     }
 
+    let mut enum_defs_map: HashMap<String, EnumDef> = HashMap::new();
+    for edef in &program.enums {
+        if BUILTINS.contains(&edef.name.as_str()) || PRIMITIVE_TYPES.contains(&edef.name.as_str()) {
+            return Err(Diagnostic::new(
+                format!("`{}` is a reserved name and cannot be an enum", edef.name),
+                edef.span,
+            ));
+        }
+        if enum_defs_map.contains_key(&edef.name) {
+            return Err(Diagnostic::new(
+                format!("enum `{}` is defined more than once", edef.name),
+                edef.span,
+            ));
+        }
+        let mut seen_variants = HashSet::new();
+        for v in &edef.variants {
+            if !seen_variants.insert(v.name.as_str()) {
+                return Err(Diagnostic::new(
+                    format!("duplicate variant `{}` in enum `{}`", v.name, edef.name),
+                    v.span,
+                ));
+            }
+        }
+        enum_defs_map.insert(edef.name.clone(), edef.clone());
+    }
+
     for sdef in &program.structs {
         for f in &sdef.fields {
-            validate_type(&f.ty, &struct_map, sdef.span)?;
+            validate_type(&f.ty, &struct_map, &enum_defs_map, sdef.span)?;
+        }
+    }
+    for edef in &program.enums {
+        for v in &edef.variants {
+            for fty in &v.fields {
+                validate_type(fty, &struct_map, &enum_defs_map, v.span)?;
+            }
         }
     }
 
     let ordered_structs = topo_sort_structs(&program.structs, &struct_map, &struct_spans)?;
+    let enum_layouts = compute_enum_layouts(&program.enums, &struct_map, &enum_defs_map)?;
 
     let mut sigs = HashMap::new();
     let mut methods: HashMap<(String, String), MethodSig> = HashMap::new();
@@ -109,7 +149,7 @@ pub fn lower(program: &Program) -> Result<String> {
                         m.span,
                     ));
                 }
-                validate_type(&param.ty, &struct_map, m.span)?;
+                validate_type(&param.ty, &struct_map, &enum_defs_map, m.span)?;
                 mark_type_usage(
                     &param.ty,
                     &mut any_sig_uses_vec,
@@ -127,7 +167,7 @@ pub fn lower(program: &Program) -> Result<String> {
             let ret = match &m.ret {
                 Some(Type::Void) | None => None,
                 Some(ty) => {
-                    validate_type(ty, &struct_map, m.span)?;
+                    validate_type(ty, &struct_map, &enum_defs_map, m.span)?;
                     mark_type_usage(
                         ty,
                         &mut any_sig_uses_vec,
@@ -138,7 +178,7 @@ pub fn lower(program: &Program) -> Result<String> {
                     Some(ty.clone())
                 }
             };
-            let self_by_ptr = method_mutates_self(&m.params, &m.body);
+            let self_by_ptr = m.name == "__init__" || method_mutates_self(&m.params, &m.body);
             if self_by_ptr {
                 mutating_method_names.insert(m.name.clone());
             }
@@ -183,10 +223,10 @@ pub fn lower(program: &Program) -> Result<String> {
                 func.span,
             ));
         }
-        if struct_map.contains_key(&func.name) {
+        if struct_map.contains_key(&func.name) || enum_defs_map.contains_key(&func.name) {
             return Err(Diagnostic::new(
                 format!(
-                    "function `{}` conflicts with struct `{}` of the same name",
+                    "function `{}` conflicts with type `{}` of the same name",
                     func.name, func.name
                 ),
                 func.span,
@@ -207,7 +247,7 @@ pub fn lower(program: &Program) -> Result<String> {
                     func.span,
                 ));
             }
-            validate_type(&param.ty, &struct_map, func.span)?;
+            validate_type(&param.ty, &struct_map, &enum_defs_map, func.span)?;
             mark_type_usage(
                 &param.ty,
                 &mut any_sig_uses_vec,
@@ -226,7 +266,7 @@ pub fn lower(program: &Program) -> Result<String> {
         let ret = match &func.ret {
             Some(Type::Void) | None => None,
             Some(ty) => {
-                validate_type(ty, &struct_map, func.span)?;
+                validate_type(ty, &struct_map, &enum_defs_map, func.span)?;
                 mark_type_usage(
                     ty,
                     &mut any_sig_uses_vec,
@@ -277,9 +317,24 @@ pub fn lower(program: &Program) -> Result<String> {
         }
     }
 
+    for edef in &program.enums {
+        for v in &edef.variants {
+            for fty in &v.fields {
+                mark_type_usage(
+                    fty,
+                    &mut any_sig_uses_vec,
+                    &mut any_sig_uses_str,
+                    &mut any_sig_uses_dict,
+                    &mut any_sig_uses_any,
+                );
+            }
+        }
+    }
+
     let mut cg = Codegen {
         strings: StringTable::new(),
         structs: struct_map,
+        enums: enum_layouts,
         sigs,
         methods,
         mutating_method_names,
@@ -305,6 +360,8 @@ pub fn lower(program: &Program) -> Result<String> {
         emitted_vec_clones: HashSet::new(),
         emitted_dict_drops: HashSet::new(),
         emitted_dict_clones: HashSet::new(),
+        emitted_enum_drops: HashSet::new(),
+        emitted_enum_clones: HashSet::new(),
         used_vec_type: any_sig_uses_vec,
         used_str_type: any_sig_uses_str,
         used_dict_type: any_sig_uses_dict,
@@ -423,6 +480,18 @@ pub fn lower(program: &Program) -> Result<String> {
     if cg.used_region {
         out.push_str("%ArchxRegion = type { ptr, ptr, ptr, ptr }\n");
     }
+    for edef in &program.enums {
+        let info = &cg.enums[&edef.name];
+        if info.payload_words == 0 {
+            let _ = writeln!(out, "%ArchxEnum_{} = type {{ i64 }}", edef.name);
+        } else {
+            let _ = writeln!(
+                out,
+                "%ArchxEnum_{} = type {{ i64, [{} x i64] }}",
+                edef.name, info.payload_words
+            );
+        }
+    }
     for sname in &ordered_structs {
         let fields = &cg.structs[sname];
         let _ = write!(out, "%ArchxStruct_{sname} = type {{ ");
@@ -439,6 +508,7 @@ pub fn lower(program: &Program) -> Result<String> {
         || cg.used_dict_type
         || cg.used_any_type
         || cg.used_region
+        || !program.enums.is_empty()
         || !ordered_structs.is_empty()
     {
         out.push('\n');
@@ -477,14 +547,21 @@ pub fn lower(program: &Program) -> Result<String> {
     Ok(out)
 }
 
-pub(super) fn validate_type(
+pub(super) fn validate_type<V>(
     ty: &Type,
     structs: &HashMap<String, Vec<Param>>,
+    enums: &HashMap<String, V>,
     span: Span,
 ) -> Result<()> {
     match ty {
         Type::Int | Type::Float | Type::Bool | Type::Str | Type::Any | Type::Void => Ok(()),
-        Type::Array(inner) => validate_type(inner, structs, span),
+        Type::Array(inner) | Type::Optional(inner) => validate_type(inner, structs, enums, span),
+        Type::Tuple(items) => {
+            for t in items {
+                validate_type(t, structs, enums, span)?;
+            }
+            Ok(())
+        }
         Type::Dict(k, v) => {
             if !k.is_hashable_key() {
                 return Err(Diagnostic::new(
@@ -492,8 +569,8 @@ pub(super) fn validate_type(
                     span,
                 ));
             }
-            validate_type(k, structs, span)?;
-            validate_type(v, structs, span)
+            validate_type(k, structs, enums, span)?;
+            validate_type(v, structs, enums, span)
         }
         Type::Set(inner) => {
             if !inner.is_hashable_key() {
@@ -502,13 +579,20 @@ pub(super) fn validate_type(
                     span,
                 ));
             }
-            validate_type(inner, structs, span)
+            validate_type(inner, structs, enums, span)
         }
         Type::Struct(name) => {
             if structs.contains_key(name) {
                 Ok(())
             } else {
                 Err(Diagnostic::new(format!("unknown type `{name}`"), span))
+            }
+        }
+        Type::Enum(name) => {
+            if enums.contains_key(name) {
+                Ok(())
+            } else {
+                Err(Diagnostic::new(format!("unknown enum `{name}`"), span))
             }
         }
     }
@@ -526,6 +610,14 @@ pub(super) fn mark_type_usage(
             *used_vec = true;
             mark_type_usage(inner, used_vec, used_str, used_dict, used_any);
         }
+        Type::Optional(inner) => {
+            mark_type_usage(inner, used_vec, used_str, used_dict, used_any);
+        }
+        Type::Tuple(items) => {
+            for t in items {
+                mark_type_usage(t, used_vec, used_str, used_dict, used_any);
+            }
+        }
         Type::Dict(k, v) => {
             *used_dict = true;
             mark_type_usage(k, used_vec, used_str, used_dict, used_any);
@@ -542,6 +634,19 @@ pub(super) fn mark_type_usage(
             *used_dict = true;
         }
         Type::Str => *used_str = true,
+        _ => {}
+    }
+}
+
+fn collect_struct_deps(ty: &Type, out: &mut Vec<String>) {
+    match ty {
+        Type::Struct(dep) => out.push(dep.clone()),
+        Type::Optional(inner) => collect_struct_deps(inner, out),
+        Type::Tuple(items) => {
+            for t in items {
+                collect_struct_deps(t, out);
+            }
+        }
         _ => {}
     }
 }
@@ -577,10 +682,12 @@ pub(super) fn topo_sort_structs(
             None => {}
         }
         state.insert(name.to_string(), State::Visiting);
+        let mut deps = Vec::new();
         for f in &map[name] {
-            if let Type::Struct(dep) = &f.ty {
-                dfs(dep, map, spans, state, ordered)?;
-            }
+            collect_struct_deps(&f.ty, &mut deps);
+        }
+        for dep in deps {
+            dfs(&dep, map, spans, state, ordered)?;
         }
         state.insert(name.to_string(), State::Visited);
         ordered.push(name.to_string());
@@ -650,6 +757,7 @@ pub(super) struct Scope {
     pub(super) vars: HashMap<String, VarEntry>,
     pub(super) known_lens: HashMap<String, KnownLen>,
     pub(super) bounded_vars: HashSet<String>,
+    pub(super) narrowed_optionals: HashSet<String>,
     pub(super) owned_buffers: Vec<DropTarget>,
 }
 
@@ -729,6 +837,7 @@ impl StringTable {
 pub(super) struct Codegen {
     pub(super) strings: StringTable,
     pub(super) structs: HashMap<String, Vec<Param>>,
+    pub(super) enums: HashMap<String, EnumInfo>,
     pub(super) sigs: HashMap<String, FuncSig>,
     pub(super) methods: HashMap<(String, String), MethodSig>,
     pub(super) mutating_method_names: HashSet<String>,
@@ -754,6 +863,8 @@ pub(super) struct Codegen {
     pub(super) emitted_vec_clones: HashSet<String>,
     pub(super) emitted_dict_drops: HashSet<String>,
     pub(super) emitted_dict_clones: HashSet<String>,
+    pub(super) emitted_enum_drops: HashSet<String>,
+    pub(super) emitted_enum_clones: HashSet<String>,
     pub(super) used_vec_type: bool,
     pub(super) used_str_type: bool,
     pub(super) used_dict_type: bool,
@@ -824,8 +935,13 @@ impl Codegen {
     pub(super) fn gen_func(&mut self, func: &Func, out: &mut String) -> Result<()> {
         self.scopes = vec![Scope::default()];
         self.stmt_temps.clear();
-        self.adaptive_hints =
-            compute_adaptive_hints(&func.params, &func.body, &self.structs, &self.sigs);
+        self.adaptive_hints = compute_adaptive_hints(
+            &func.params,
+            &func.body,
+            &self.structs,
+            &self.enums,
+            &self.sigs,
+        );
         let mut mutated =
             collect_mutated_vars(&func.params, &func.body, &self.mutating_method_names);
         for dvar in &self.adaptive_hints.dynamic_vars {
@@ -935,6 +1051,10 @@ impl Codegen {
                 self.used_any_type = true;
                 self.emit_func_exit_cleanup(None, &mut body);
                 body.push_str("  ret %ArchxAny zeroinitializer\n");
+            } else if let Some(Type::Optional(inner)) = &self.current_ret.clone() {
+                let opt_ir = ir_type(&Type::Optional(inner.clone()));
+                self.emit_func_exit_cleanup(None, &mut body);
+                let _ = writeln!(body, "  ret {opt_ir} zeroinitializer");
             } else {
                 return Err(Diagnostic::new(
                     format!(
@@ -1081,7 +1201,17 @@ pub(super) fn type_mangle_key(ty: &Type) -> String {
         Type::Any => "y".to_string(),
         Type::Void => "v".to_string(),
         Type::Struct(name) => format!("S{}_{name}", name.len()),
+        Type::Enum(name) => format!("U{}_{name}", name.len()),
         Type::Array(inner) => format!("A_{}", type_mangle_key(inner)),
+        Type::Optional(inner) => format!("O_{}", type_mangle_key(inner)),
+        Type::Tuple(items) => {
+            let mut s = format!("T{}", items.len());
+            for t in items {
+                s.push('_');
+                s.push_str(&type_mangle_key(t));
+            }
+            s
+        }
         Type::Dict(k, v) => format!("D_{}_{}", type_mangle_key(k), type_mangle_key(v)),
         Type::Set(inner) => format!("E_{}", type_mangle_key(inner)),
     }
@@ -1096,6 +1226,16 @@ pub(super) fn ir_type(ty: &Type) -> String {
         Type::Any => "%ArchxAny".to_string(),
         Type::Array(_) => "%ArchxVec".to_string(),
         Type::Struct(name) => format!("%ArchxStruct_{name}"),
+        Type::Enum(name) => format!("%ArchxEnum_{name}"),
+        Type::Optional(inner) => format!("{{ i1, {} }}", ir_type(inner)),
+        Type::Tuple(items) => {
+            if items.is_empty() {
+                "{ i8 }".to_string()
+            } else {
+                let parts: Vec<String> = items.iter().map(ir_type).collect();
+                format!("{{ {} }}", parts.join(", "))
+            }
+        }
         Type::Void => "void".to_string(),
     }
 }
@@ -1103,6 +1243,9 @@ pub(super) fn ir_type(ty: &Type) -> String {
 pub(super) fn ir_align(ty: &Type) -> u32 {
     match ty {
         Type::Bool => 1,
+        Type::Tuple(items) if items.is_empty() => 1,
+        Type::Tuple(items) => items.iter().map(ir_align).max().unwrap_or(1),
+        Type::Optional(inner) => ir_align(inner).max(1),
         Type::Int
         | Type::Float
         | Type::Str
@@ -1110,7 +1253,8 @@ pub(super) fn ir_align(ty: &Type) -> u32 {
         | Type::Array(_)
         | Type::Dict(_, _)
         | Type::Set(_)
-        | Type::Struct(_) => 8,
+        | Type::Struct(_)
+        | Type::Enum(_) => 8,
         Type::Void => 1,
     }
 }

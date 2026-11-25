@@ -1093,3 +1093,142 @@ fn dict_key_error_and_dynamic_type_error_panic_cleanly() {
     assert!(out_ty.contains("TypeError"), "expected TypeError, got: {out_ty}");
 }
 
+#[test]
+fn tuples_optionals_enums_and_pattern_matching_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = compile_and_run_stdout(
+        "v08_showcase",
+        "\
+enum ExprNode:
+    Const(int)
+    Pair(int, int)
+    Named(str)
+    Nil
+
+def eval_node(n: ExprNode) -> int:
+    match n:
+        case ExprNode.Const(v) if v < 0:
+            return -v
+        case ExprNode.Const(v):
+            return v
+        case ExprNode.Pair(a, b):
+            return a * 10 + b
+        case ExprNode.Named(s):
+            return len(s)
+        case ExprNode.Nil:
+            return 0
+
+def make_promoted_enum() -> ExprNode:
+    with region:
+        label = \"region_promoted_enum_payload_string\"
+        return ExprNode.Named(label)
+
+def lookup_even(xs: list[int]) -> (int, int) | None:
+    for i, x in enumerate(xs):
+        if x % 2 == 0:
+            return i, x
+
+def guard_unwrap(opt: int | None) -> int:
+    if opt is None:
+        return -99
+    return opt + 5
+
+def main():
+    # 1. Tuples, unpacking, swap, negative indexing, list-of-tuples iteration:
+    x, y = 7, 13
+    x, y = y, x
+    tup = (\"archx\", 8, True)
+    pairs = [(\"a\", 2), (\"b\", 5), (\"c\", 9)]
+    psum = 0
+    for k, v in pairs:
+        psum += len(k) * v
+    print(f\"{x},{y} {tup[0]}:{tup[-1]} {psum}\")
+
+    # 2. T | None optionals, narrowing, ternary promotion, and match unwrapping:
+    r1 = lookup_even([3, 9, 14, 21])
+    r2 = lookup_even([1, 3, 5])
+    if r1 is not None:
+        idx, val = r1
+        print(f\"even={idx}:{val}\")
+    match r2:
+        case None:
+            print(\"none_ok\")
+        case (i, v):
+            print(f\"bad:{i}:{v}\")
+    m_some: int | None = 40
+    match m_some:
+        case None:
+            print(\"bad\")
+        case 0:
+            print(\"zero\")
+        case n:
+            print(f\"unwrapped={n + 2} g={guard_unwrap(m_some)},{guard_unwrap(None)}\")
+
+    # 3. Algebraic enums, OR-patterns, guards, and region-return promotion:
+    promoted = make_promoted_enum()
+    nodes = [ExprNode.Const(-6), ExprNode.Pair(3, 4), promoted, ExprNode.Nil]
+    scores: list[int] = []
+    for nd in nodes:
+        scores.append(eval_node(nd))
+    tag_acc = 0
+    for code in [1, 2, 3, 9]:
+        match code:
+            case 1 | 2:
+                tag_acc += 10
+            case 3 if len(scores) == 4:
+                tag_acc += 100
+            case _:
+                tag_acc += 1
+    print(scores, tag_acc)
+",
+    );
+
+    assert_eq!(
+        out,
+        "\
+13,7 archx:true 16
+even=2:14
+none_ok
+unwrapped=42 g=45,-99
+[6, 34, 35, 0] 121
+"
+    );
+}
+
+#[test]
+fn full_tour_pythonic_and_speed_editions_match_exactly() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let py_src = fs::read_to_string(root.join("examples/comparison/full_tour.py")).unwrap();
+    let ax_py_src =
+        fs::read_to_string(root.join("examples/comparison/full_tour_pythonic.archx.lang")).unwrap();
+    assert_eq!(
+        py_src, ax_py_src,
+        "full_tour.py and full_tour_pythonic.archx.lang must stay 1:1 identical"
+    );
+
+    let ax_spd_src =
+        fs::read_to_string(root.join("examples/comparison/full_tour_speed.archx.lang")).unwrap();
+
+    let out_py = compile_and_run_stdout("full_tour_py", &ax_py_src);
+    let out_spd = compile_and_run_stdout("full_tour_spd", &ax_spd_src);
+
+    let expected = "\
+sim=7684989
+dict_slice=2307705,nohtyp_smetsys_xhcra
+tuple_opt=8,104,3543,10099,empty
+match_dispatch=33780000
+";
+    assert_eq!(out_py, expected, "1:1 Pythonic edition output mismatch");
+    assert_eq!(out_spd, expected, "Speed edition output mismatch");
+}
+
+

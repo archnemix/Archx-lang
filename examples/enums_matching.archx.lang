@@ -1,0 +1,78 @@
+# Milestone 8 (`v0.8.0`) showcase:
+#   - Zero-heap tuples & multiple-return unpacking (`lo, hi, total = ...`)
+#   - Stack-inline `T | None` optionals & flow-sensitive narrowing
+#   - Algebraic `enum` sum types with heap/SSO string & list payloads
+#   - Pythonic `match` / `case` structural pattern matching (`|`, `if` guards, destructuring)
+
+enum Shape:
+    Circle(float)
+    Rect(float, float)
+    Labeled(str, (int, int))
+    Empty
+
+
+def min_max_sum(xs: list[int]) -> (int, int, int):
+    lo = xs[0]
+    hi = xs[0]
+    total = 0
+    for x in xs:
+        if x < lo:
+            lo = x
+        if x > hi:
+            hi = x
+        total += x
+    return lo, hi, total
+
+
+def find_gt(xs: list[int], limit: int) -> int | None:
+    for i, x in enumerate(xs):
+        if x > limit:
+            return i
+    return None
+
+
+def describe_shape(s: Shape) -> str:
+    match s:
+        case Shape.Circle(r) if r >= 10.0:
+            return f"large-circle:{r}"
+        case Shape.Circle(r):
+            return f"circle:{r}"
+        case Shape.Rect(w, h) if w == h:
+            return f"square:{w * h}"
+        case Shape.Rect(w, h):
+            return f"rect:{w * h}"
+        case Shape.Labeled(tag, (x, y)):
+            return f"{tag}@{x},{y}"
+        case Shape.Empty:
+            return "empty"
+
+
+def main():
+    nums = [12, 5, 42, 19, 8]
+    lo, hi, total = min_max_sum(nums)
+    print(f"stats={lo},{hi},{total}")
+
+    a = 10
+    b = 99
+    a, b = b, a
+    pair = ("archx", 8, True)
+    print(f"swap={a},{b} tup={pair[0]}:{pair[-1]} len={len(pair)}")
+
+    idx_ok = find_gt(nums, 20)
+    idx_no = find_gt(nums, 500)
+    if idx_ok is not None:
+        print(f"found={nums[idx_ok]} at {idx_ok}")
+    print(f"missing={idx_no}")
+
+    with region:
+        long_label = "long_region_allocated_shape_identifier"
+        shapes = [
+            Shape.Circle(3.5),
+            Shape.Circle(12.0),
+            Shape.Rect(4.0, 4.0),
+            Shape.Rect(3.0, 5.0),
+            Shape.Labeled(long_label, (7, 9)),
+            Shape.Empty,
+        ]
+        for sh in shapes:
+            print(describe_shape(sh))

@@ -1517,6 +1517,21 @@ impl Codegen {
         }
 
         let (d_ty, raw_d) = self.eval_expr(dict, out)?;
+        if let Type::Array(elem_ty) = &d_ty {
+            if let Type::Tuple(items) = elem_ty.as_ref() {
+                if items.len() == 2 {
+                    return self.gen_for_tuple2_list(
+                        key_var,
+                        val_var,
+                        &items[0],
+                        &items[1],
+                        &raw_d,
+                        body,
+                        out,
+                    );
+                }
+            }
+        }
         let (k_ty, v_ty, d_handle, hold_ty, hold_val) = match &d_ty {
             Type::Dict(k, v) => (
                 (**k).clone(),
@@ -1694,5 +1709,100 @@ impl Codegen {
                 region_depth,
             },
         );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn gen_for_tuple2_list(
+        &mut self,
+        var_a: &str,
+        var_b: &str,
+        ty_a: &Type,
+        ty_b: &Type,
+        vec_val: &str,
+        body: &[Stmt],
+        out: &mut String,
+    ) -> Result<()> {
+        let tup_ty = Type::Tuple(vec![ty_a.clone(), ty_b.clone()]);
+        let arr_ty = Type::Array(Box::new(tup_ty.clone()));
+        let hold_outer = self.claim_stmt_temp(vec_val);
+        self.flush_stmt_temps(out);
+        if hold_outer {
+            self.push_scope();
+            let hslot = self.next_slot("fortup.vec");
+            let _ = writeln!(self.allocas, "  {hslot} = alloca %ArchxVec, align 8");
+            let _ = writeln!(out, "  store %ArchxVec {vec_val}, ptr {hslot}, align 8");
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .owned_buffers
+                .push(DropTarget::TypedSlot {
+                    ptr: hslot,
+                    ty: arr_ty,
+                });
+        }
+
+        let len = self.next_tmp();
+        let _ = writeln!(out, "  {len} = extractvalue %ArchxVec {vec_val}, 0");
+        let data = self.next_tmp();
+        let _ = writeln!(out, "  {data} = extractvalue %ArchxVec {vec_val}, 2");
+
+        let islot = self.next_slot("fortup.i");
+        let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 0, ptr {islot}, align 8");
+
+        let cond_lbl = self.fresh_label("fortup.cond");
+        let body_lbl = self.fresh_label("fortup.body");
+        let step_lbl = self.fresh_label("fortup.step");
+        let end_lbl = self.fresh_label("fortup.end");
+
+        self.emit_br(&cond_lbl, out);
+        self.start_block(&cond_lbl, out);
+        let cur = self.next_tmp();
+        let _ = writeln!(out, "  {cur} = load i64, ptr {islot}, align 8");
+        let more = self.next_tmp();
+        let _ = writeln!(out, "  {more} = icmp slt i64 {cur}, {len}");
+        self.emit_cond_br(&more, &body_lbl, &end_lbl, out);
+
+        self.start_block(&body_lbl, out);
+        let tup_ir = ir_type(&tup_ty);
+        let ep = self.next_tmp();
+        let _ = writeln!(out, "  {ep} = getelementptr inbounds {tup_ir}, ptr {data}, i64 {cur}");
+        let tval = self.emit_elem_load(&tup_ty, &ep, out);
+        let va = self.next_tmp();
+        let _ = writeln!(out, "  {va} = extractvalue {tup_ir} {tval}, 0");
+        let vb = self.next_tmp();
+        let _ = writeln!(out, "  {vb} = extractvalue {tup_ir} {tval}, 1");
+
+        let outer_depth = self.scopes.len();
+        let outer_rdepth = self.region_stack.len();
+        self.push_scope();
+        self.bind_loop_elem_var(var_a, ty_a, &va, outer_rdepth, out);
+        self.bind_loop_elem_var(var_b, ty_b, &vb, outer_rdepth, out);
+        self.loop_stack.push(LoopLabels {
+            break_label: end_lbl.clone(),
+            continue_label: step_lbl.clone(),
+            scope_depth: outer_depth,
+            region_depth: outer_rdepth,
+        });
+        self.gen_block(body, out)?;
+        self.loop_stack.pop();
+        self.pop_scope_with_drops(out);
+        if !self.terminated {
+            self.emit_br(&step_lbl, out);
+        }
+
+        self.start_block(&step_lbl, out);
+        let c2 = self.next_tmp();
+        let _ = writeln!(out, "  {c2} = load i64, ptr {islot}, align 8");
+        let nxt = self.next_tmp();
+        let _ = writeln!(out, "  {nxt} = add nuw nsw i64 {c2}, 1");
+        let _ = writeln!(out, "  store i64 {nxt}, ptr {islot}, align 8");
+        self.emit_br(&cond_lbl, out);
+
+        self.start_block(&end_lbl, out);
+        if hold_outer {
+            self.pop_scope_with_drops(out);
+        }
+        Ok(())
     }
 }

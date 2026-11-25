@@ -14,10 +14,17 @@ impl Codegen {
         match ty {
             Type::Int | Type::Float | Type::Bool | Type::Void => false,
             Type::Str | Type::Any | Type::Array(_) | Type::Dict(_, _) | Type::Set(_) => true,
+            Type::Optional(inner) => self.type_needs_drop(inner),
+            Type::Tuple(items) => items.iter().any(|t| self.type_needs_drop(t)),
             Type::Struct(name) => self
                 .structs
                 .get(name)
                 .map_or(false, |fs| fs.iter().any(|f| self.type_needs_drop(&f.ty))),
+            Type::Enum(name) => self.enums.get(name).map_or(false, |info| {
+                info.variants
+                    .iter()
+                    .any(|(_, fs, _)| fs.iter().any(|t| self.type_needs_drop(t)))
+            }),
         }
     }
 
@@ -107,6 +114,37 @@ impl Codegen {
                     }
                 }
             }
+            Type::Tuple(items) => {
+                let tup_ir = ir_type(ty);
+                for (i, t) in items.iter().enumerate() {
+                    if self.type_needs_drop(t) {
+                        let fv = self.next_tmp();
+                        let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {val}, {i}");
+                        self.emit_drop_value(t, &fv, out);
+                    }
+                }
+            }
+            Type::Optional(inner) => {
+                if val == "zeroinitializer" {
+                    return;
+                }
+                let opt_ir = ir_type(ty);
+                let has = self.next_tmp();
+                let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {val}, 0");
+                let some_lbl = self.fresh_label("drop.opt.some");
+                let done_lbl = self.fresh_label("drop.opt.done");
+                self.emit_cond_br(&has, &some_lbl, &done_lbl, out);
+                self.start_block(&some_lbl, out);
+                let iv = self.next_tmp();
+                let _ = writeln!(out, "  {iv} = extractvalue {opt_ir} {val}, 1");
+                self.emit_drop_value(inner, &iv, out);
+                self.emit_br(&done_lbl, out);
+                self.start_block(&done_lbl, out);
+            }
+            Type::Enum(ename) => {
+                let fn_sym = self.ensure_enum_drop_helper(ename);
+                let _ = writeln!(out, "  call fastcc void {fn_sym}(%ArchxEnum_{ename} {val})");
+            }
             _ => {}
         }
     }
@@ -184,6 +222,72 @@ impl Codegen {
                 }
                 agg
             }
+            Type::Tuple(items) => {
+                let tup_ir = ir_type(ty);
+                let mut agg = val.to_string();
+                for (i, t) in items.iter().enumerate() {
+                    if self.type_needs_drop(t) {
+                        let fv = self.next_tmp();
+                        let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {val}, {i}");
+                        let cv = self.emit_clone_value(t, &fv, out);
+                        let next_agg = self.next_tmp();
+                        let _ = writeln!(
+                            out,
+                            "  {next_agg} = insertvalue {tup_ir} {agg}, {} {cv}, {i}",
+                            ir_type(t)
+                        );
+                        agg = next_agg;
+                    }
+                }
+                agg
+            }
+            Type::Optional(inner) => {
+                if val == "zeroinitializer" {
+                    return val.to_string();
+                }
+                let opt_ir = ir_type(ty);
+                let inner_ir = ir_type(inner);
+                let has = self.next_tmp();
+                let _ = writeln!(out, "  {has} = extractvalue {opt_ir} {val}, 0");
+                let some_lbl = self.fresh_label("clone.opt.some");
+                let some_end_lbl = self.fresh_label("clone.opt.some.end");
+                let none_lbl = self.fresh_label("clone.opt.none");
+                let done_lbl = self.fresh_label("clone.opt.done");
+                self.emit_cond_br(&has, &some_lbl, &none_lbl, out);
+
+                self.start_block(&none_lbl, out);
+                self.emit_br(&done_lbl, out);
+
+                self.start_block(&some_lbl, out);
+                let iv = self.next_tmp();
+                let _ = writeln!(out, "  {iv} = extractvalue {opt_ir} {val}, 1");
+                let cv = self.emit_clone_value(inner, &iv, out);
+                let s0 = self.next_tmp();
+                let _ = writeln!(out, "  {s0} = insertvalue {opt_ir} undef, i1 1, 0");
+                let s1 = self.next_tmp();
+                let _ = writeln!(out, "  {s1} = insertvalue {opt_ir} {s0}, {inner_ir} {cv}, 1");
+                self.emit_br(&some_end_lbl, out);
+
+                self.start_block(&some_end_lbl, out);
+                self.emit_br(&done_lbl, out);
+
+                self.start_block(&done_lbl, out);
+                let phi = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {phi} = phi {opt_ir} [ zeroinitializer, %{none_lbl} ], [ {s1}, %{some_end_lbl} ]"
+                );
+                phi
+            }
+            Type::Enum(ename) => {
+                let fn_sym = self.ensure_enum_clone_helper(ename);
+                let res = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {res} = call fastcc %ArchxEnum_{ename} {fn_sym}(%ArchxEnum_{ename} {val})"
+                );
+                res
+            }
             _ => val.to_string(),
         }
     }
@@ -205,7 +309,7 @@ impl Codegen {
                 );
                 res
             }
-            Type::Any | Type::Dict(_, _) | Type::Set(_) => {
+            Type::Any | Type::Dict(_, _) | Type::Set(_) | Type::Optional(_) | Type::Enum(_) => {
                 let cloned = self.emit_clone_value(ty, val, out);
                 self.emit_drop_value(ty, val, out);
                 cloned
@@ -257,6 +361,25 @@ impl Codegen {
                             out,
                             "  {next_agg} = insertvalue %ArchxStruct_{sname} {agg}, {} {pv}, {i}",
                             ir_type(&f.ty)
+                        );
+                        agg = next_agg;
+                    }
+                }
+                agg
+            }
+            Type::Tuple(items) => {
+                let tup_ir = ir_type(ty);
+                let mut agg = val.to_string();
+                for (i, t) in items.iter().enumerate() {
+                    if self.type_needs_drop(t) {
+                        let fv = self.next_tmp();
+                        let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {val}, {i}");
+                        let pv = self.emit_promote_to_heap(t, &fv, out);
+                        let next_agg = self.next_tmp();
+                        let _ = writeln!(
+                            out,
+                            "  {next_agg} = insertvalue {tup_ir} {agg}, {} {pv}, {i}",
+                            ir_type(t)
                         );
                         agg = next_agg;
                     }

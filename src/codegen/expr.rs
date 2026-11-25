@@ -213,7 +213,19 @@ impl Codegen {
         self.enter_depth(expr.span)?;
         let res = self.eval_expr_typed_inner(expr, expected, out);
         self.depth -= 1;
-        res
+        let (ty, val) = res?;
+        if let Some(Type::Optional(inner)) = expected {
+            if ty == Type::Void && matches!(&expr.kind, ExprKind::NoneLit) {
+                return Ok((
+                    Type::Optional(inner.clone()),
+                    "zeroinitializer".to_string(),
+                ));
+            }
+            if ty == **inner {
+                return Ok(self.wrap_optional_some(inner, &val, out));
+            }
+        }
+        Ok((ty, val))
     }
 
     pub(super) fn eval_expr_typed_inner(
@@ -254,6 +266,8 @@ impl Codegen {
             ExprKind::DictLit(pairs) => self.eval_dict_lit(pairs, expected, expr.span, out),
 
             ExprKind::SetLit(elems) => self.eval_set_lit(elems, expected, expr.span, out),
+
+            ExprKind::TupleLit(elems) => self.eval_tuple_lit(elems, expected, expr.span, out),
 
             ExprKind::Slice {
                 target,
@@ -298,8 +312,8 @@ impl Codegen {
                 let entry = self.lookup_var(name).cloned().ok_or_else(|| {
                     Diagnostic::new(format!("undefined variable `{name}`"), expr.span)
                 })?;
-                match entry.storage {
-                    VarStorage::Imm(val) => Ok((entry.ty, val)),
+                let (raw_ty, raw_val) = match entry.storage {
+                    VarStorage::Imm(val) => (entry.ty, val),
                     VarStorage::Slot(ptr) => {
                         let reg = self.next_tmp();
                         let _ = writeln!(
@@ -308,18 +322,34 @@ impl Codegen {
                             ir_type(&entry.ty),
                             ir_align(&entry.ty)
                         );
-                        Ok((entry.ty, reg))
+                        (entry.ty, reg)
                     }
-                    VarStorage::Soa { .. } => Err(Diagnostic::new(
-                        format!(
-                            "array `{name}` uses local SoA layout and cannot be copied as a whole"
-                        ),
-                        expr.span,
-                    )),
+                    VarStorage::Soa { .. } => {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "array `{name}` uses local SoA layout and cannot be copied as a whole"
+                            ),
+                            expr.span,
+                        ));
+                    }
+                };
+                if let Type::Optional(inner) = &raw_ty {
+                    if self.is_narrowed_optional(name) {
+                        let opt_ir = ir_type(&raw_ty);
+                        let unwrapped = self.next_tmp();
+                        let _ = writeln!(out, "  {unwrapped} = extractvalue {opt_ir} {raw_val}, 1");
+                        return Ok(((**inner).clone(), unwrapped));
+                    }
                 }
+                Ok((raw_ty, raw_val))
             }
 
             ExprKind::Field { target, field } => {
+                if let ExprKind::Var(ename) = &target.kind {
+                    if self.lookup_var(ename).is_none() && self.enums.contains_key(ename) {
+                        return self.gen_enum_unit(ename, field, expr.span, out);
+                    }
+                }
                 if let ExprKind::Index {
                     target: arr_e,
                     index: idx_e,
@@ -478,6 +508,9 @@ impl Codegen {
                 }
 
                 let (arr_ty, vec_val) = self.eval_expr(target, out)?;
+                if let Type::Tuple(items) = arr_ty {
+                    return self.eval_tuple_index(&items, &vec_val, index, expr.span, out);
+                }
                 if let Type::Dict(k_ty, v_ty) = arr_ty {
                     return self.eval_dict_index(&k_ty, &v_ty, &vec_val, index, out);
                 }
@@ -722,6 +755,7 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
+        let narrowing = self.detect_optional_narrowing(cond);
         let mark = self.stmt_temps.len();
         let cond_val = self.eval_cond_bool(cond, "conditional expression", out)?;
         self.flush_stmt_temps_from(mark, out);
@@ -730,17 +764,95 @@ impl Codegen {
         let else_lbl = self.fresh_label("ifexpr.else");
         let merge_lbl = self.fresh_label("ifexpr.merge");
 
+        // Promote `x if cond else None` / `None if cond else x` to stack `Type::Optional(T)`:
+        let promote_to_opt = expected.is_none()
+            && (matches!(&then_expr.kind, ExprKind::NoneLit)
+                ^ matches!(&else_expr.kind, ExprKind::NoneLit));
+
         self.emit_cond_br(&cond_val, &then_lbl, &else_lbl, out);
 
+        if promote_to_opt && matches!(&then_expr.kind, ExprKind::NoneLit) {
+            self.start_block(&else_lbl, out);
+            let mark_e = self.stmt_temps.len();
+            let (else_ty, raw_else) = self.eval_expr(else_expr, out)?;
+            if else_ty == Type::Void {
+                return Err(Diagnostic::new(
+                    "conditional expression branches must produce a value",
+                    else_expr.span,
+                ));
+            }
+            let res_ty = match &else_ty {
+                Type::Optional(_) | Type::Any => else_ty.clone(),
+                other => Type::Optional(Box::new(other.clone())),
+            };
+            let needs_drop = self.type_needs_drop(&res_ty);
+            let else_wrapped = if res_ty == else_ty {
+                raw_else
+            } else {
+                self.wrap_optional_some(&else_ty, &raw_else, out).1
+            };
+            let else_owned = if needs_drop {
+                if self.claim_stmt_temp(&else_wrapped) {
+                    else_wrapped
+                } else {
+                    self.emit_clone_value(&res_ty, &else_wrapped, out)
+                }
+            } else {
+                else_wrapped
+            };
+            self.flush_stmt_temps_from(mark_e, out);
+            let slot = self.next_slot("ifexpr.res");
+            let ty_ir = ir_type(&res_ty);
+            let align = ir_align(&res_ty);
+            let _ = writeln!(self.allocas, "  {slot} = alloca {ty_ir}, align {align}");
+            let _ = writeln!(out, "  store {ty_ir} {else_owned}, ptr {slot}, align {align}");
+            self.emit_br(&merge_lbl, out);
+
+            self.start_block(&then_lbl, out);
+            let _ = writeln!(out, "  store {ty_ir} zeroinitializer, ptr {slot}, align {align}");
+            self.emit_br(&merge_lbl, out);
+
+            self.start_block(&merge_lbl, out);
+            let res = self.next_tmp();
+            let _ = writeln!(out, "  {res} = load {ty_ir}, ptr {slot}, align {align}");
+            if needs_drop {
+                self.stmt_temps.push(TempDrop {
+                    val: res.clone(),
+                    ty: res_ty.clone(),
+                });
+            }
+            return Ok((res_ty, res));
+        }
+
         self.start_block(&then_lbl, out);
+        self.push_scope();
+        if let Some((ref nvar, NarrowingKind::SomeInThen)) = narrowing {
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .narrowed_optionals
+                .insert(nvar.clone());
+        }
         let mark_t = self.stmt_temps.len();
-        let (then_ty, raw_then) = self.eval_expr_typed(then_expr, expected, out)?;
-        if then_ty == Type::Void {
+        let res_then = self.eval_expr_typed(then_expr, expected, out);
+        self.pop_scope_with_drops(out);
+        let (raw_then_ty, mut raw_then) = res_then?;
+        if raw_then_ty == Type::Void {
             return Err(Diagnostic::new(
                 "conditional expression branches must produce a value",
                 then_expr.span,
             ));
         }
+        let then_ty = if promote_to_opt
+            && matches!(&else_expr.kind, ExprKind::NoneLit)
+            && !matches!(&raw_then_ty, Type::Optional(_) | Type::Any)
+        {
+            let (oty, oval) = self.wrap_optional_some(&raw_then_ty, &raw_then, out);
+            raw_then = oval;
+            oty
+        } else {
+            raw_then_ty
+        };
         let needs_drop = self.type_needs_drop(&then_ty);
         let then_owned = if needs_drop {
             if self.claim_stmt_temp(&raw_then) {
@@ -760,8 +872,18 @@ impl Codegen {
         self.emit_br(&merge_lbl, out);
 
         self.start_block(&else_lbl, out);
+        self.push_scope();
+        if let Some((ref nvar, NarrowingKind::NoneInThen)) = narrowing {
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .narrowed_optionals
+                .insert(nvar.clone());
+        }
         let mark_e = self.stmt_temps.len();
-        let (else_ty, raw_else) = self.eval_expr_typed(else_expr, Some(&then_ty), out)?;
+        let res_else = self.eval_expr_typed(else_expr, Some(&then_ty), out);
+        self.pop_scope_with_drops(out);
+        let (else_ty, raw_else) = res_else?;
         if else_ty != then_ty {
             return Err(Diagnostic::new(
                 format!(
@@ -850,6 +972,16 @@ impl Codegen {
             }
         }
 
+        if matches!(&lhs.kind, ExprKind::NoneLit) && !matches!(&rhs.kind, ExprKind::NoneLit) {
+            if let Some(res) = self.eval_optional_none_cmp(op, rhs, out)? {
+                return Ok(res);
+            }
+        } else if matches!(&rhs.kind, ExprKind::NoneLit) && !matches!(&lhs.kind, ExprKind::NoneLit)
+        {
+            if let Some(res) = self.eval_optional_none_cmp(op, lhs, out)? {
+                return Ok(res);
+            }
+        }
         if matches!(&lhs.kind, ExprKind::NoneLit) || matches!(&rhs.kind, ExprKind::NoneLit) {
             return self.eval_any_binary(op, lhs, rhs, out);
         }
@@ -1260,6 +1392,18 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<String> {
+        if let Type::Optional(inner) = lhs_ty {
+            if **inner == *rhs_ty {
+                let (_, wrapped_r) = self.wrap_optional_some(rhs_ty, rhs_val, out);
+                return self.emit_structural_eq(lhs_ty, lhs_val, &wrapped_r, span, out);
+            }
+        }
+        if let Type::Optional(inner) = rhs_ty {
+            if **inner == *lhs_ty {
+                let (_, wrapped_l) = self.wrap_optional_some(lhs_ty, lhs_val, out);
+                return self.emit_structural_eq(rhs_ty, &wrapped_l, rhs_val, span, out);
+            }
+        }
         if lhs_ty != rhs_ty {
             return Err(Diagnostic::new(
                 format!("cannot compare `{}` and `{}`", lhs_ty.name(), rhs_ty.name()),
@@ -1267,6 +1411,9 @@ impl Codegen {
             ));
         }
         match lhs_ty {
+            Type::Tuple(_) | Type::Optional(_) | Type::Enum(_) => {
+                self.emit_structural_eq(lhs_ty, lhs_val, rhs_val, span, out)
+            }
             Type::Int => {
                 let reg = self.next_tmp();
                 let _ = writeln!(out, "  {reg} = icmp eq i64 {lhs_val}, {rhs_val}");

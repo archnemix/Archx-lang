@@ -26,6 +26,7 @@ impl Parser {
 
     pub fn parse_program(&mut self) -> Result<Program> {
         let mut structs = Vec::new();
+        let mut enums = Vec::new();
         let mut funcs = Vec::new();
         let mut top_stmts = Vec::new();
         self.skip_newlines();
@@ -33,6 +34,11 @@ impl Parser {
         while !self.check(&TokenKind::Eof) {
             if self.check(&TokenKind::Struct) {
                 structs.push(self.parse_struct()?);
+            } else if matches!(&self.peek().kind, TokenKind::Ident(k) if k == "enum")
+                && matches!(&self.peek_at(1).kind, TokenKind::Ident(_))
+                && self.peek_at(2).kind == TokenKind::Colon
+            {
+                enums.push(self.parse_enum()?);
             } else if self.check(&TokenKind::Func) {
                 funcs.push(self.parse_func()?);
             } else {
@@ -66,7 +72,79 @@ impl Parser {
             });
         }
 
-        Ok(Program { structs, funcs })
+        Ok(Program {
+            structs,
+            enums,
+            funcs,
+        })
+    }
+
+    fn parse_enum(&mut self) -> Result<EnumDef> {
+        let span = self.peek().span;
+        self.bump(); // `enum`
+        let name = self.expect_ident("an enum name")?;
+        self.expect(TokenKind::Colon, "`:`")?;
+        self.expect(TokenKind::Newline, "a newline after enum header")?;
+        self.expect(TokenKind::Indent, "an indented enum body")?;
+
+        let mut variants = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                break;
+            }
+            if self.check(&TokenKind::Pass) {
+                self.bump();
+                self.expect(TokenKind::Newline, "a newline after `pass`")?;
+                continue;
+            }
+            let vspan = self.peek().span;
+            let vname = self.expect_ident("an enum variant name")?;
+            let mut fields = Vec::new();
+            if self.check(&TokenKind::LParen) {
+                self.bump();
+                while !self.check(&TokenKind::RParen) {
+                    let fty = if matches!(&self.peek().kind, TokenKind::Ident(_))
+                        && self.peek_at(1).kind == TokenKind::Colon
+                    {
+                        self.bump(); // field label
+                        self.bump(); // `:`
+                        self.parse_type()?
+                    } else {
+                        self.parse_type()?
+                    };
+                    if fty == Type::Void {
+                        return Err(Diagnostic::new(
+                            "enum variant payload field cannot have type `None` / `void`",
+                            vspan,
+                        ));
+                    }
+                    fields.push(fty);
+                    if self.check(&TokenKind::Comma) {
+                        self.bump();
+                    } else {
+                        break;
+                    }
+                }
+                self.expect(TokenKind::RParen, "`)`")?;
+            }
+            self.expect(TokenKind::Newline, "a newline after enum variant")?;
+            variants.push(EnumVariant {
+                name: vname,
+                fields,
+                span: vspan,
+            });
+        }
+
+        self.expect(TokenKind::Dedent, "the end of the enum body")?;
+        if variants.is_empty() {
+            return Err(Diagnostic::new("enum must have at least one variant", span));
+        }
+        Ok(EnumDef {
+            name,
+            variants,
+            span,
+        })
     }
 
     fn parse_struct(&mut self) -> Result<StructDef> {
@@ -104,6 +182,11 @@ impl Parser {
         }
 
         self.expect(TokenKind::Dedent, "the end of the class/struct body")?;
+        if fields.is_empty() {
+            if let Some(init_m) = methods.iter().find(|m| m.name == "__init__") {
+                fields = infer_fields_from_init(init_m);
+            }
+        }
         if fields.is_empty() {
             return Err(Diagnostic::new(
                 "class/struct must have at least one field",
@@ -278,14 +361,58 @@ impl Parser {
 
     fn parse_type(&mut self) -> Result<Type> {
         self.enter_depth()?;
-        let res = self.parse_type_inner();
+        let res = self.parse_type_union();
         self.depth -= 1;
         res
+    }
+
+    fn parse_type_union(&mut self) -> Result<Type> {
+        let mut ty = self.parse_type_inner()?;
+        while self.check(&TokenKind::Pipe) {
+            self.bump();
+            let rhs = self.parse_type_inner()?;
+            ty = match (ty, rhs) {
+                (Type::Void, other) | (other, Type::Void) => match other {
+                    Type::Void => Type::Void,
+                    Type::Optional(inner) => Type::Optional(inner),
+                    Type::Any => Type::Any,
+                    concrete => Type::Optional(Box::new(concrete)),
+                },
+                (a, b) if a == b => a,
+                _ => Type::Any,
+            };
+        }
+        Ok(ty)
     }
 
     fn parse_type_inner(&mut self) -> Result<Type> {
         let token = self.peek().clone();
         match &token.kind {
+            TokenKind::LParen => {
+                self.bump();
+                if self.check(&TokenKind::RParen) {
+                    self.bump();
+                    return Ok(Type::Tuple(Vec::new()));
+                }
+                let first = self.parse_type()?;
+                if self.check(&TokenKind::Comma) {
+                    self.bump();
+                    let mut elems = vec![first];
+                    while !self.check(&TokenKind::RParen) {
+                        elems.push(self.parse_type()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.expect(TokenKind::RParen, "`)`")?;
+                    Ok(Type::Tuple(elems))
+                } else {
+                    self.expect(TokenKind::RParen, "`)`")?;
+                    Ok(first)
+                }
+            }
             TokenKind::LBracket => {
                 self.bump();
                 let elem = self.parse_type()?;
@@ -301,6 +428,48 @@ impl Parser {
             TokenKind::NoneLit => {
                 self.bump();
                 Ok(Type::Void)
+            }
+            TokenKind::Ident(name) if name == "tuple" => {
+                self.bump();
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    let mut elems = Vec::new();
+                    if !self.check(&TokenKind::RBracket) {
+                        loop {
+                            let t = self.parse_type()?;
+                            if t == Type::Void {
+                                return Err(Diagnostic::new(
+                                    "tuple element cannot have type `void` / `None`",
+                                    token.span,
+                                ));
+                            }
+                            elems.push(t);
+                            if self.check(&TokenKind::Comma) {
+                                self.bump();
+                                if self.check(&TokenKind::RBracket) {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    Ok(Type::Tuple(elems))
+                } else {
+                    Ok(Type::Any)
+                }
+            }
+            TokenKind::Ident(name) if name == "Optional" => {
+                self.bump();
+                self.expect(TokenKind::LBracket, "`[` after `Optional`")?;
+                let inner = self.parse_type()?;
+                self.expect(TokenKind::RBracket, "`]`")?;
+                if inner == Type::Void || inner == Type::Any {
+                    Ok(inner)
+                } else {
+                    Ok(Type::Optional(Box::new(inner)))
+                }
             }
             TokenKind::Ident(name) if name == "list" => {
                 self.bump();
@@ -429,7 +598,7 @@ impl Parser {
                 None
             };
             self.expect(TokenKind::Eq, "`=`")?;
-            let value = self.parse_expr()?;
+            let value = self.parse_tuple_or_expr()?;
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
                 kind: StmtKind::Let { name, ty, value },
@@ -443,7 +612,7 @@ impl Parser {
             self.bump(); // `:`
             let ty = self.parse_type()?;
             self.expect(TokenKind::Eq, "`=` after type annotation")?;
-            let value = self.parse_expr()?;
+            let value = self.parse_tuple_or_expr()?;
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
                 kind: StmtKind::Let {
@@ -463,13 +632,32 @@ impl Parser {
                 self.bump();
                 None
             } else {
-                Some(self.parse_expr()?)
+                Some(self.parse_tuple_or_expr()?)
             };
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
                 kind: StmtKind::Return(value),
                 span,
             });
+        }
+
+        // Python 3.10+ soft keyword `match <subject>:`
+        if matches!(&self.peek().kind, TokenKind::Ident(k) if k == "match") {
+            let saved = self.pos;
+            self.bump();
+            let is_match_header = if let Ok(subj) = self.parse_tuple_or_expr() {
+                if self.check(&TokenKind::Colon) && self.peek_at(1).kind == TokenKind::Newline {
+                    Some(subj)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some(subject) = is_match_header {
+                return self.parse_match_tail(span, subject);
+            }
+            self.pos = saved;
         }
 
         if self.check(&TokenKind::If) {
@@ -724,6 +912,29 @@ impl Parser {
         }
 
         let lhs = self.parse_expr()?;
+
+        // Bare comma-separated tuple unpacking: `a, b = expr` / `x, y = y, x`
+        if self.check(&TokenKind::Comma) {
+            let ExprKind::Var(first_var) = lhs.kind else {
+                return Err(Diagnostic::new(
+                    "tuple unpacking targets must be variable names",
+                    lhs.span,
+                ));
+            };
+            let mut targets = vec![first_var];
+            while self.check(&TokenKind::Comma) {
+                self.bump();
+                targets.push(self.expect_ident("a variable name in tuple unpacking")?);
+            }
+            self.expect(TokenKind::Eq, "`=` after tuple unpacking targets")?;
+            let value = self.parse_tuple_or_expr()?;
+            self.expect(TokenKind::Newline, "a newline after tuple assignment")?;
+            return Ok(Stmt {
+                kind: StmtKind::TupleAssign { targets, value },
+                span,
+            });
+        }
+
         let assign_op = match &self.peek().kind {
             TokenKind::Eq => Some(None),
             TokenKind::PlusEq => Some(Some(BinOp::Add)),
@@ -739,6 +950,29 @@ impl Parser {
         if let Some(op) = assign_op {
             let eq_span = self.peek().span;
             self.bump();
+            if op.is_none() {
+                if let ExprKind::TupleLit(items) = &lhs.kind {
+                    if !items.is_empty() {
+                        let mut targets = Vec::with_capacity(items.len());
+                        for item in items {
+                            if let ExprKind::Var(v) = &item.kind {
+                                targets.push(v.clone());
+                            } else {
+                                return Err(Diagnostic::new(
+                                    "tuple unpacking targets must be variable names",
+                                    item.span,
+                                ));
+                            }
+                        }
+                        let value = self.parse_tuple_or_expr()?;
+                        self.expect(TokenKind::Newline, "a newline after tuple assignment")?;
+                        return Ok(Stmt {
+                            kind: StmtKind::TupleAssign { targets, value },
+                            span,
+                        });
+                    }
+                }
+            }
             let target = match lhs.kind {
                 ExprKind::Var(name) => AssignTarget::Var(name),
                 ExprKind::Index { target, index } => AssignTarget::Index { target, index },
@@ -750,7 +984,11 @@ impl Parser {
                     ));
                 }
             };
-            let value = self.parse_expr()?;
+            let value = if op.is_none() {
+                self.parse_tuple_or_expr()?
+            } else {
+                self.parse_expr()?
+            };
             self.expect(TokenKind::Newline, "a newline after the assignment")?;
             return Ok(Stmt {
                 kind: StmtKind::Assign { target, op, value },
@@ -763,6 +1001,217 @@ impl Parser {
             kind: StmtKind::Expr(lhs),
             span,
         })
+    }
+
+    fn parse_tuple_or_expr(&mut self) -> Result<Expr> {
+        let first = self.parse_expr()?;
+        if !self.check(&TokenKind::Comma) {
+            return Ok(first);
+        }
+        let span = first.span;
+        let mut elems = vec![first];
+        while self.check(&TokenKind::Comma) {
+            self.bump();
+            if self.check(&TokenKind::Newline)
+                || self.check(&TokenKind::Colon)
+                || self.check(&TokenKind::Eof)
+            {
+                break;
+            }
+            elems.push(self.parse_expr()?);
+        }
+        Ok(Expr {
+            kind: ExprKind::TupleLit(elems),
+            span,
+        })
+    }
+
+    fn parse_match_tail(&mut self, span: Span, subject: Expr) -> Result<Stmt> {
+        self.enter_depth()?;
+        let res = self.parse_match_tail_inner(span, subject);
+        self.depth -= 1;
+        res
+    }
+
+    fn parse_match_tail_inner(&mut self, span: Span, subject: Expr) -> Result<Stmt> {
+        self.expect(TokenKind::Colon, "`:` after `match` subject")?;
+        self.expect(TokenKind::Newline, "a newline after `match` header")?;
+        self.expect(TokenKind::Indent, "an indented `match` body")?;
+
+        let mut cases = Vec::new();
+        loop {
+            self.skip_newlines();
+            if self.check(&TokenKind::Dedent) || self.check(&TokenKind::Eof) {
+                break;
+            }
+            let cspan = self.peek().span;
+            if !matches!(&self.peek().kind, TokenKind::Ident(k) if k == "case") {
+                return Err(Diagnostic::new(
+                    format!("expected `case` arm inside `match`, found {}", self.peek().kind.describe()),
+                    cspan,
+                ));
+            }
+            self.bump(); // `case`
+            let pattern = self.parse_pattern()?;
+            let guard = if self.check(&TokenKind::If) {
+                self.bump();
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
+            self.expect(TokenKind::Colon, "`:` after `case` pattern")?;
+            self.expect(TokenKind::Newline, "a newline after `case` header")?;
+            self.expect(TokenKind::Indent, "an indented `case` body")?;
+            let body = self.parse_block_body()?;
+            self.expect(TokenKind::Dedent, "the end of the `case` body")?;
+            if body.is_empty() {
+                return Err(Diagnostic::new("`case` body cannot be empty", cspan));
+            }
+            cases.push(MatchCase {
+                pattern,
+                guard,
+                body,
+                span: cspan,
+            });
+        }
+
+        self.expect(TokenKind::Dedent, "the end of the `match` body")?;
+        if cases.is_empty() {
+            return Err(Diagnostic::new("`match` must have at least one `case` arm", span));
+        }
+        Ok(Stmt {
+            kind: StmtKind::Match { subject, cases },
+            span,
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pattern> {
+        self.enter_depth()?;
+        let res = self.parse_or_pattern();
+        self.depth -= 1;
+        res
+    }
+
+    fn parse_or_pattern(&mut self) -> Result<Pattern> {
+        let first = self.parse_single_pattern()?;
+        if !self.check(&TokenKind::Pipe) {
+            return Ok(first);
+        }
+        let span = self.peek().span;
+        let mut alts = vec![first];
+        while self.check(&TokenKind::Pipe) {
+            self.bump();
+            alts.push(self.parse_single_pattern()?);
+        }
+        Ok(Pattern::Or(alts, span))
+    }
+
+    fn parse_single_pattern(&mut self) -> Result<Pattern> {
+        let tok = self.peek().clone();
+        let span = tok.span;
+        match tok.kind {
+            TokenKind::NoneLit => {
+                self.bump();
+                Ok(Pattern::NonePat(span))
+            }
+            TokenKind::Bool(b) => {
+                self.bump();
+                Ok(Pattern::Bool(b, span))
+            }
+            TokenKind::Int(n) => {
+                self.bump();
+                Ok(Pattern::Int(n, span))
+            }
+            TokenKind::Float(x) => {
+                self.bump();
+                Ok(Pattern::Float(x, span))
+            }
+            TokenKind::Minus => {
+                self.bump();
+                match self.peek().kind {
+                    TokenKind::Int(n) => {
+                        self.bump();
+                        Ok(Pattern::Int(n.wrapping_neg(), span))
+                    }
+                    TokenKind::Float(x) => {
+                        self.bump();
+                        Ok(Pattern::Float(-x, span))
+                    }
+                    _ => Err(Diagnostic::new(
+                        "expected numeric literal after `-` in pattern",
+                        span,
+                    )),
+                }
+            }
+            TokenKind::Str(s) => {
+                self.bump();
+                Ok(Pattern::Str(s, span))
+            }
+            TokenKind::LParen | TokenKind::LBracket => {
+                let close = if tok.kind == TokenKind::LParen {
+                    TokenKind::RParen
+                } else {
+                    TokenKind::RBracket
+                };
+                let close_desc = if tok.kind == TokenKind::LParen { "`)`" } else { "`]`" };
+                self.bump();
+                if self.check(&close) {
+                    self.bump();
+                    return Ok(Pattern::Tuple(Vec::new(), span));
+                }
+                let first = self.parse_pattern()?;
+                if tok.kind == TokenKind::LParen && !self.check(&TokenKind::Comma) {
+                    self.expect(close, close_desc)?;
+                    return Ok(first);
+                }
+                let mut elems = vec![first];
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&close) {
+                        break;
+                    }
+                    elems.push(self.parse_pattern()?);
+                }
+                self.expect(close, close_desc)?;
+                Ok(Pattern::Tuple(elems, span))
+            }
+            TokenKind::Ident(name) if name == "_" => {
+                self.bump();
+                Ok(Pattern::Wildcard(span))
+            }
+            TokenKind::Ident(name) => {
+                self.bump();
+                if self.check(&TokenKind::Dot) {
+                    self.bump();
+                    let variant = self.expect_ident("an enum variant name after `.`")?;
+                    let mut args = Vec::new();
+                    if self.check(&TokenKind::LParen) {
+                        self.bump();
+                        while !self.check(&TokenKind::RParen) {
+                            args.push(self.parse_pattern()?);
+                            if self.check(&TokenKind::Comma) {
+                                self.bump();
+                            } else {
+                                break;
+                            }
+                        }
+                        self.expect(TokenKind::RParen, "`)`")?;
+                    }
+                    Ok(Pattern::EnumVariant {
+                        enum_name: name,
+                        variant,
+                        args,
+                        span,
+                    })
+                } else {
+                    Ok(Pattern::Bind(name, span))
+                }
+            }
+            _ => Err(Diagnostic::new(
+                format!("expected a match pattern, found {}", tok.kind.describe()),
+                span,
+            )),
+        }
     }
 
     fn parse_if_tail(&mut self, span: Span, keyword: &str) -> Result<Stmt> {
@@ -1508,9 +1957,34 @@ impl Parser {
             }
             TokenKind::LParen => {
                 self.bump();
-                let expr = self.parse_expr()?;
-                self.expect(TokenKind::RParen, "`)`")?;
-                Ok(expr)
+                if self.check(&TokenKind::RParen) {
+                    self.bump();
+                    return Ok(Expr {
+                        kind: ExprKind::TupleLit(Vec::new()),
+                        span,
+                    });
+                }
+                let first = self.parse_expr()?;
+                if self.check(&TokenKind::Comma) {
+                    self.bump();
+                    let mut elems = vec![first];
+                    while !self.check(&TokenKind::RParen) {
+                        elems.push(self.parse_expr()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.expect(TokenKind::RParen, "`)`")?;
+                    Ok(Expr {
+                        kind: ExprKind::TupleLit(elems),
+                        span,
+                    })
+                } else {
+                    self.expect(TokenKind::RParen, "`)`")?;
+                    Ok(first)
+                }
             }
             _ => Err(Diagnostic::new(
                 format!("expected an expression, found {}", token.kind.describe()),
@@ -1644,6 +2118,16 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 rewrite_main_calls_in_expr(dict);
                 rewrite_main_calls_in_stmts(body);
             }
+            StmtKind::TupleAssign { value, .. } => rewrite_main_calls_in_expr(value),
+            StmtKind::Match { subject, cases } => {
+                rewrite_main_calls_in_expr(subject);
+                for c in cases {
+                    if let Some(g) = &mut c.guard {
+                        rewrite_main_calls_in_expr(g);
+                    }
+                    rewrite_main_calls_in_stmts(&mut c.body);
+                }
+            }
             StmtKind::Region { body } => rewrite_main_calls_in_stmts(body),
             StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
         }
@@ -1664,6 +2148,13 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
                 }
                 if let Some(eb) = else_body {
                     if stmts_have_value_return(eb) {
+                        return true;
+                    }
+                }
+            }
+            StmtKind::Match { cases, .. } => {
+                for c in cases {
+                    if stmts_have_value_return(&c.body) {
                         return true;
                     }
                 }
@@ -1731,7 +2222,7 @@ fn rewrite_main_calls_in_expr(expr: &mut Expr) {
             rewrite_main_calls_in_expr(cond);
             rewrite_main_calls_in_expr(else_expr);
         }
-        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => {
+        ExprKind::ArrayLit(es) | ExprKind::SetLit(es) | ExprKind::TupleLit(es) => {
             for e in es {
                 rewrite_main_calls_in_expr(e);
             }
@@ -1781,6 +2272,41 @@ fn rewrite_main_calls_in_expr(expr: &mut Expr) {
         | ExprKind::Str(_)
         | ExprKind::Var(_) => {}
     }
+}
+
+fn infer_fields_from_init(init_fn: &Func) -> Vec<Param> {
+    let mut fields: Vec<Param> = Vec::new();
+    for stmt in &init_fn.body {
+        if let StmtKind::Assign {
+            target: AssignTarget::Field { target, field },
+            op: None,
+            value,
+        } = &stmt.kind
+        {
+            if matches!(&target.kind, ExprKind::Var(v) if v == "self")
+                && !fields.iter().any(|f| f.name == *field)
+            {
+                let ty = match &value.kind {
+                    ExprKind::Var(pname) => init_fn
+                        .params
+                        .iter()
+                        .find(|p| p.name == *pname)
+                        .map(|p| p.ty.clone())
+                        .unwrap_or(Type::Any),
+                    ExprKind::Int(_) => Type::Int,
+                    ExprKind::Float(_) => Type::Float,
+                    ExprKind::Bool(_) => Type::Bool,
+                    ExprKind::Str(_) | ExprKind::FString(_) => Type::Str,
+                    _ => Type::Any,
+                };
+                fields.push(Param {
+                    name: field.clone(),
+                    ty,
+                });
+            }
+        }
+    }
+    fields
 }
 
 #[cfg(test)]
@@ -1921,5 +2447,33 @@ print(f\"count={len(nums)}\", end=\"\\n\")
     fn rejects_missing_colon() {
         let tokens = Lexer::new("func main()\n    print(\"x\")\n").tokenize().unwrap();
         assert!(Parser::new(tokens).parse_program().is_err());
+    }
+
+    #[test]
+    fn parses_enums_tuples_optionals_match_and_init_class() {
+        let program = parse(
+            "\
+enum Event:
+    Add(int, int)
+    Reset
+
+class Body:
+    def __init__(self, x: float, mass: float):
+        self.x = x
+        self.mass = mass
+
+def run(ev: Event) -> (int, int) | None:
+    match ev:
+        case Event.Add(a, b) if a >= 0:
+            return a, b
+        case Event.Add(_, _) | Event.Reset:
+            return None
+",
+        );
+        assert_eq!(program.enums.len(), 1);
+        assert_eq!(program.enums[0].variants.len(), 2);
+        assert_eq!(program.structs.len(), 1);
+        assert_eq!(program.structs[0].fields.len(), 2);
+        assert_eq!(program.funcs.len(), 1);
     }
 }

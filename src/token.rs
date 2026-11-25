@@ -37,6 +37,7 @@ pub enum TokenKind {
     // Punctuation
     Colon,
     Semicolon,
+    Pipe,
     Arrow,
     Dot,
     DotDot,
@@ -107,6 +108,7 @@ impl TokenKind {
             TokenKind::Bool(value) => format!("boolean `{value}`"),
             TokenKind::Colon => "`:`".to_string(),
             TokenKind::Semicolon => "`;`".to_string(),
+            TokenKind::Pipe => "`|`".to_string(),
             TokenKind::Arrow => "`->`".to_string(),
             TokenKind::Dot => "`.`".to_string(),
             TokenKind::DotDot => "`..`".to_string(),
