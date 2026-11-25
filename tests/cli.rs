@@ -1100,7 +1100,7 @@ fn tuples_optionals_enums_and_pattern_matching_work() {
         return;
     }
 
-    let out = compile_and_run_stdout(
+    let out = build_and_run(
         "v08_showcase",
         "\
 enum ExprNode:
@@ -1218,8 +1218,8 @@ fn full_tour_pythonic_and_speed_editions_match_exactly() {
     let ax_spd_src =
         fs::read_to_string(root.join("examples/comparison/full_tour_speed.archx.lang")).unwrap();
 
-    let out_py = compile_and_run_stdout("full_tour_py", &ax_py_src);
-    let out_spd = compile_and_run_stdout("full_tour_spd", &ax_spd_src);
+    let out_py = build_and_run("full_tour_py", &ax_py_src);
+    let out_spd = build_and_run("full_tour_spd", &ax_spd_src);
 
     let expected = "\
 sim=7684989

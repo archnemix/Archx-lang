@@ -648,6 +648,20 @@ impl Codegen {
                     self.scan_stmt_for_iv_arrays(iv, loop_body, inner, out);
                 }
             }
+            StmtKind::TupleAssign { value, .. } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, value, out);
+            }
+            StmtKind::Match { subject, cases } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, subject, out);
+                for c in cases {
+                    if let Some(g) = &c.guard {
+                        self.scan_expr_for_iv_arrays(iv, loop_body, g, out);
+                    }
+                    for inner in &c.body {
+                        self.scan_stmt_for_iv_arrays(iv, loop_body, inner, out);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -677,7 +691,8 @@ impl Codegen {
             }
             ExprKind::Call { args, .. }
             | ExprKind::ArrayLit(args)
-            | ExprKind::SetLit(args) => {
+            | ExprKind::SetLit(args)
+            | ExprKind::TupleLit(args) => {
                 for a in args {
                     self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
                 }
