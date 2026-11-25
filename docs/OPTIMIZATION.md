@@ -58,21 +58,28 @@ Every `str` value is a 16-byte two-register pair (`16 B` vs Rust `String`'s `24 
 
 - **Planar SIMD SwissTable (`%ArchxDictHdr`)**: Combines 16-wide `<16 x i8>` SIMD control-byte probing (`icmp eq <16 x i8> %grp, %h2_vec` + `@llvm.cttz.i32`) with dense insertion-ordered planar `keys[]` and `vals[]` arrays (`idx_base[]` maps sparse SIMD slots to dense `0..len` indices). `@archx_dict_find_h_*` records the first available `0x80`/`0xFE` slot during lookup so `@archx_dict_upsert_*` commits new insertions with **zero second probe and zero second hash**.
 - **Register-Only Prefix-SSO String Keys**: Because `@archx_hash_str` and `@archx_str_eq` are `alwaysinline` over `%ArchxStr { w0, w1 }`, string keys `<= 12` bytes (`"tok_42"`) hash and compare 100% in two 64-bit CPU registers with **zero pointer dereferences**, while keys `> 12` bytes reject hash collisions in one 64-bit `(prefix4 << 32) | len` register compare.
-- **Two-Tier Adaptive Type Engine (`analyze_adaptive_types`)**: Infers specialized zero-tag types for homogeneous Python variables and empty `{}` / `[]` literals from usage, and promotes only genuinely heterogeneous containers or rebound variables to unboxed 24-byte `%ArchxAny { i64 tag, i64 w1, i64 w2 }` (where even `%ArchxStr` sits inline in `w1, w2` without an extra heap box).
+- **Two-Tier Adaptive Type Engine (`analyze_adaptive_types`)**: Infers specialized zero-tag types for homogeneous Python variables and empty `{}` / `[]` / `set()` / `dict()` calls from usage, and promotes only genuinely heterogeneous containers or rebound variables to unboxed 24-byte `%ArchxAny { i64 tag, i64 w1, i64 w2 }` (where even `%ArchxStr` sits inline in `w1, w2` without an extra heap box).
 
-## Measured 5-Suite CI Results (`ci/out/benchmarks.txt`)
+### 6. Zero-Heap Tuples, Unboxed `T | None` Optionals & Stack Algebraic `enum`s (`v0.8.0`)
 
-Measured on GitHub Actions (`Ubuntu clang 21.1.8 -O2`, `rustc 1.100.0 -O`, best of 7 runs, identical stdout verified via `cmp`):
+- **Register-Promoted Value Tuples (`{ T1, T2, ... }`)**: Unlike Python `tuple` (a heap-allocated `PyTupleObject` + refcounted `PyObject*` elements), Archx tuples compile directly to unboxed LLVM aggregates (`insertvalue` / `extractvalue`), enabling LLVM's `SROA` to keep multiple-return values (`return lo, hi, total`), `a, b = b, a` swaps, and `(kind, a, b)` `match` subjects 100% in CPU registers (`ci/out/bench_full_tour.opt.ll`).
+- **Stack-Inline `T | None` (`{ i1, T }`) + Flow-Sensitive Narrowing**: `int | None` lowers to `{ i1, i64 }` in registers with zero heap boxing; `if hit is not None:` and `hit + 1 if hit is not None else -1` extract `hit` once into a plain `i64` register across the guarded branch.
+- **Stack Algebraic `enum`s (`%ArchxEnum_Name = type { i64, [W x i64] }`) + Exhaustive `match`**: Sum types store an `i64` discriminant plus `W` inline 8-byte words (`[2 x i64]` for `Event`), and compiler-verified exhaustive `match` lowers to branch-eliminated tag comparisons (`unreachable` fallthrough) so LLVM turns variant dispatch into tight jump tables or `select` chains (`12 ms` in `full_tour_speed` vs `13 ms` `rustc -O` and `298 ms` `Python 3.14.4`).
 
-| Suite | C (`clang -O2`) | Rust (`rustc -O`) | **Archx (`archx -O2`)** | Stripped Binary (Archx / C / Rust) |
-|---|---:|---:|---:|---:|
-| **1. Scalar (`primes`)** | **119 ms** (119) | **119 ms** (119) | **119 ms** (119) | **14 KB** / 14 KB / 330 KB |
-| **2. Arrays (`arrays`)** | **57–59 ms** (58–63) | **61 ms** (61) | **56 ms** (57) | **14 KB** / 14 KB / 331 KB |
-| **3. Composite (`composite`)** | **22 ms** (22) | **25 ms** (25) | **18 ms** (18) | **14 KB** / 14 KB / 332 KB |
-| **4. Pythonic Float N-Body (`nbody_float`)** | **67 ms** (68) | **67 ms** (67) | **62 ms** (62) | **14 KB** / 14 KB / 332 KB |
-| **5. Planar SIMD Dict (`dict_bench`)** | **61 ms** (62) | **52 ms** (52) | **48 ms** (`87 ms` `%ArchxAny`) | **22 KB** / 14 KB / 354 KB |
+## Measured 6-Suite CI Results (`ci/out/benchmarks.txt`)
 
-Across **Suites 2, 3, 4, and 5**, **Archx beats both `-O2` C and `-O` Rust** — including beating Rust's `std::collections::HashMap` (`hashbrown`) on Suite 5 (`48 ms` vs `52 ms` Rust / `61 ms` C) with **0 bytes leaked** across all 8 targets under LeakSanitizer (`ci/logs/asan_lsan.log`).
+Measured on GitHub Actions (`Python 3.14.4`, `Ubuntu clang 21.1.8 -O2`, `rustc 1.100.0 -O`, `archx v0.8.0 -O2`, identical stdout verified via `cmp`):
+
+| Suite | Python 3 (`python3`) | C (`clang -O2`) | Rust (`rustc -O`) | **Archx (`archx -O2`)** | vs Python 3 | Stripped Binary (Archx / C / Rust) |
+|---|---:|---:|---:|---:|---:|---:|
+| **1. Scalar (`primes`)** | 1,420 ms | **97 ms** | **97 ms** | **97 ms** | **14.6×** | **14 KB** / 14 KB / 330 KB |
+| **2. Arrays (`arrays`)** | 2,475 ms | **75 ms** | **75 ms** | **76 ms** | **32.6×** | **14 KB** / 14 KB / 331 KB |
+| **3. Composite (`composite`)** | 648 ms | 32 ms | 34 ms | **25 ms** | **25.9×** | **14 KB** / 14 KB / 332 KB |
+| **4. Pythonic Float N-Body (`nbody_float`)** | 2,538 ms | 41 ms | 41 ms | **36 ms** | **70.5×** | **14 KB** / 14 KB / 332 KB |
+| **5. Planar SIMD Dict (`dict_bench`)** | 172 ms | 51 ms | 37 ms | **36 ms** (`58 ms` `%ArchxAny`) | **4.8×** (`3.0×`) | **22 KB** / 14 KB / 354 KB |
+| **6. 5-Way Full Tour (`full_tour`)** | 298 ms | **9 ms** | 13 ms | **12 ms** Speed / **13 ms** 1:1 Pythonic | **24.8× / 22.9×** | **34 KB** / 14 KB / 359 KB |
+
+Across **Suites 3, 4, and 5**, **Archx beats Python 3 by `4.8×`–`70.5×` AND beats both `-O2` C and `-O` Rust**; on **Suite 6**, unchanged Python 3.10+ source (`full_tour_pythonic.archx.lang`, byte-for-byte identical to `full_tour.py`) ties `rustc -O` (`13 ms`, `22.9×` faster than Python 3) while `full_tour_speed.archx.lang` runs in `12 ms` (`24.8×` faster than Python 3), with **0 bytes leaked** across all 11 targets under LeakSanitizer (`ci/logs/asan_lsan.log`).
 
 ## What we have implemented so far
 

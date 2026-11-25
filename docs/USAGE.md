@@ -1,8 +1,8 @@
-<!-- Complete user manual and language reference for everything built in Archx up to Milestone 7 (v0.7.0). -->
+<!-- Complete user manual and language reference for everything built in Archx up to Milestone 8 (v0.8.0). -->
 
-# Archx Language & Usage Guide (`v0.7.0`)
+# Archx Language & Usage Guide (`v0.8.0`)
 
-Archx gives you **1:1 Pythonic syntax, Planar SIMD `dict`/`set`, slicing, negative indexing, smart two-tier adaptive typing (`any`), and standard console I/O** (`def`, `class`, `self`, `dict`, `set`, `xs[a:b:step]`, `xs[-1]`, `range`, `enumerate`, `f"..."`, `print(..., sep=..., end=...)`, `input()`, `float`, `list[T]`) compiled directly to **native machine code via LLVM IR (`clang -O2`)** with **zero garbage collector**, **transparent AoS-to-SoA SIMD**, **16-byte prefix-SSO strings**, and **scoped `region:` bump arenas**.
+Archx gives you **1:1 Pythonic syntax, zero-heap tuples & unpacking, stack-inline `T | None` optionals, algebraic `enum` sum types, exhaustive `match`/`case`, Planar SIMD `dict`/`set`, slicing, smart two-tier adaptive typing (`any`), and standard console I/O** (`def`, `class`, `def __init__`, `enum`, `match`/`case`, `dict`, `set`, `xs[a:b:step]`, `xs[-1]`, `range`, `enumerate`, `f"..."`, `print(..., sep=..., end=...)`, `input()`, `float`, `list[T]`) compiled directly to **native machine code via LLVM IR (`clang -O2`)** with **zero garbage collector**, **transparent AoS-to-SoA SIMD**, **16-byte prefix-SSO strings**, and **scoped `region:` bump arenas**.
 
 ---
 
@@ -312,3 +312,74 @@ hello["data"].append("fast")        # mutates nested list in place!
 hello["age"] += 3
 print(describe(hello["data"]), describe(None))
 ```
+
+---
+
+## 12. Tuples, `T | None` Optionals, Algebraic `enum`s & Structural `match` / `case` (`v0.8.0`)
+
+### Zero-Heap Tuples & Unpacking (`(a, b)`, `tuple[T1, T2]`, `a, b = b, a`)
+Tuples compile directly to unboxed LLVM register/stack aggregates (`{ i64, %ArchxStr }`) with **zero heap allocation**:
+
+```python
+def min_max_sum(xs: list[int]) -> tuple[int, int, int]:   # or `-> (int, int, int):`
+    lo, hi, total = xs[0], xs[0], 0
+    for x in xs:
+        if x < lo:
+            lo = x
+        if x > hi:
+            hi = x
+        total += x
+    return lo, hi, total
+
+lo, hi, total = min_max_sum([12, 5, 42, 19])
+a, b = 10, 99
+a, b = b, a                                               # zero-temp register swap
+pair = ("archx", 8, True)
+print(lo, hi, total, a, b, pair[0], pair[-1], len(pair))
+
+for k, v in [("x", 2), ("y", 5)]:
+    print(k, v)
+```
+
+### Stack-Inline `T | None` Optionals & Flow-Sensitive Narrowing
+`T | None` lowers to `{ i1, T }` on the stack/in registers (zero heap boxing!), automatically coercing `T` and `None` on assignment/return and narrowing `x` to `T` after `if x is not None:`, `if x is None: return`, or `x + 1 if x is not None else -1`:
+
+```python
+def find_spike(xs: list[int], threshold: int) -> int | None:
+    for i, x in enumerate(xs):
+        if x >= threshold:
+            return i
+    return None
+
+idx = find_spike([4, 9, 25, 11], 20)
+if idx is not None:
+    print(idx + 100)                                      # `idx` narrowed to `int`!
+```
+
+### Algebraic `enum` Sum Types & Exhaustive `match` / `case`
+`enum` declares stack-inline tagged sum types (`%ArchxEnum_Name = type { i64, [W x i64] }`) supporting unit and payload-carrying variants (including heap/SSO `str`, `list`, `dict`, tuples, and `with region:` return promotion). `match` / `case` supports literals, bindings, `_`, tuple patterns, `Enum.Variant(...)` destructuring, `|` OR-patterns, and `if` guards — and **rejects non-exhaustive `enum` matches at compile time**:
+
+```python
+enum Event:
+    Circle(float)
+    Rect(float, float)
+    Tag(str)
+    Idle
+
+def score(ev: Event) -> float:
+    match ev:
+        case Event.Circle(r) if r >= 10.0:
+            return 3.14159 * r * r
+        case Event.Circle(r):
+            return 2.0 * 3.14159 * r
+        case Event.Rect(w, h):
+            return w * h
+        case Event.Tag(s):
+            return float(len(s))
+        case Event.Idle:
+            return 0.0
+```
+
+### Python `def __init__(self, ...):` Constructors
+Classes can declare fields either PEP-526 style (`x: float`) or standard Python `def __init__(self, x: float, y: float): self.x = x; self.y = y` (or both). See [`examples/comparison/`](../examples/comparison/README.md) for a complete **byte-for-byte identical** Python 3.10+ vs Archx 1:1 Pythonic vs Archx Speed vs C vs Rust comparison!
+

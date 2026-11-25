@@ -1,9 +1,9 @@
 {
   "_comment": "Fast-lookup index of every key file in the Archx repository: inputs, outputs, and single responsibility.",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "files": {
     "Cargo.toml": {
-      "purpose": "Rust crate manifest for the zero-dependency archx compiler (v0.6.0).",
+      "purpose": "Rust crate manifest for the zero-dependency archx compiler (v0.8.0).",
       "inputs": [],
       "outputs": ["target/release/archx"]
     },
@@ -18,34 +18,54 @@
       "outputs": ["Span", "Diagnostic", "Result<T>"]
     },
     "src/token.rs": {
-      "purpose": "Lexical token enum (including FStrPart, Float, SlashSlash, StarStar, Assert, Pass, With, NoneLit) and token descriptions.",
+      "purpose": "Lexical token enum (including Pipe, FStrPart, Float, SlashSlash, StarStar, Is, Assert, Pass, With, NoneLit) and token descriptions.",
       "inputs": ["TokenKind, Span"],
       "outputs": ["Token", "TokenKind::describe()"]
     },
     "src/lexer.rs": {
-      "purpose": "4-space indentation-aware UTF-8 lexer with f-string interpolation, float/underscore numbers, and Python keywords.",
+      "purpose": "4-space indentation-aware UTF-8 lexer with f-string interpolation, float/underscore numbers, Pipe `|`, and Python keywords.",
       "inputs": ["source: &str"],
       "outputs": ["Result<Vec<Token>>"]
     },
     "src/ast.rs": {
-      "purpose": "AST definitions for Program, StructDef (with methods), Func, Stmt, Expr, CallArg, AssignTarget, and Type.",
+      "purpose": "AST definitions for Program, StructDef, EnumDef, Func, Stmt, Pattern, Expr, CallArg, AssignTarget, and Type.",
       "inputs": ["Parsed nodes and Spans"],
       "outputs": ["ast::Program"]
     },
     "src/parser.rs": {
-      "purpose": "Bounded-depth parser supporting 1:1 Python syntax (def, class, range, enumerate, with region:, script main) and classic syntax.",
+      "purpose": "Bounded-depth parser supporting 1:1 Python syntax (def, class + __init__, enum, match/case, tuples, T | None, dict/set/slice, script main) and classic syntax.",
       "inputs": ["Vec<Token>"],
       "outputs": ["Result<Program>"]
     },
     "src/codegen/mod.rs": {
-      "purpose": "LLVM IR module orchestrator, struct/method layout resolution, Codegen state, function frames, and runtime flag finalization.",
+      "purpose": "LLVM IR module orchestrator, enum/struct/method/__init__ layout resolution, Codegen state, function frames, and runtime flag finalization.",
       "inputs": ["&ast::Program"],
       "outputs": ["Result<String> (textual LLVM IR)"]
     },
     "src/codegen/analysis.rs": {
-      "purpose": "Pure AST static analyses: SoA escape detection, monotonic while stride verification, Pythonic first-binding vs mutation sets, and constant int folding.",
+      "purpose": "Pure AST static analyses: Two-Tier Adaptive Type Engine, SoA escape detection, monotonic while stride verification, mutation sets, and constant folding.",
       "inputs": ["&[Stmt]", "&Expr"],
-      "outputs": ["bool", "HashSet<String>", "Option<i64>"]
+      "outputs": ["AdaptiveHints", "bool", "HashSet<String>", "Option<i64>"]
+    },
+    "src/codegen/tuples_enums.rs": {
+      "purpose": "Zero-heap tuples, stack-inline T | None optionals + flow-sensitive narrowing, algebraic enum sum types, tuple unpacking, and composite RAII/region promotion.",
+      "inputs": ["Tuple / Optional / Enum AST nodes"],
+      "outputs": ["Appended LLVM IR instructions"]
+    },
+    "src/codegen/pattern_match.rs": {
+      "purpose": "Pythonic match / case structural pattern matching (OR-patterns, guards, destructuring, T | None unwrapping, and compile-time enum exhaustiveness).",
+      "inputs": ["&Expr", "&[MatchCase]"],
+      "outputs": ["Appended LLVM IR basic blocks"]
+    },
+    "src/codegen/any.rs": {
+      "purpose": "Unboxed 24-byte %ArchxAny boxing/unboxing, runtime type guards, dynamic operations, indexing, and dynamic calls.",
+      "inputs": ["&Type", "%ArchxAny SSA values"],
+      "outputs": ["Result<(Type, String)>"]
+    },
+    "src/codegen/collections.rs": {
+      "purpose": "Planar <16 x i8> SIMD SwissTable dict[K, V] & set[T] lowering, per-type clone/drop helpers, Pythonic slicing, and negative indexing.",
+      "inputs": ["Dict / Set / Slice AST nodes"],
+      "outputs": ["Result<(Type, String)>"]
     },
     "src/codegen/stmt.rs": {
       "purpose": "Statement, Pythonic implicit variable binding, with region:, int/bool/float SoA setup, assert/pass, and assignment lowering.",
@@ -53,17 +73,17 @@
       "outputs": ["Appended LLVM IR instructions"]
     },
     "src/codegen/loops.rs": {
-      "purpose": "while, range/a..b (positive, negative, and dynamic steps), for x in arr, for ch in s, and enumerate lowering.",
+      "purpose": "while, range/a..b, for x in arr, for a, b in pairs, for k, v in d.items(), for ch in s, and enumerate lowering.",
       "inputs": ["Loop AST nodes"],
       "outputs": ["Appended LLVM IR basic blocks"]
     },
     "src/codegen/expr.rs": {
-      "purpose": "Expression lowering: int/float/bool/None/str literals, indexing, fields, // and ** math, inline ternary, in/not in, [v]*n, s*n, and SSO strings.",
+      "purpose": "Expression lowering: scalars, tuples, dicts, sets, indexing/slicing, fields/Enum.Variant, // and ** math, ternary with T | None narrowing, and SSO strings.",
       "inputs": ["&Expr", "Option<&Type>"],
       "outputs": ["Result<(Type, String)>"]
     },
     "src/codegen/calls.rs": {
-      "purpose": "User fastcc calls, positional/keyword constructors, int/float/str/bool conversions, and LEGB soft built-ins.",
+      "purpose": "User fastcc calls, __init__ & positional/keyword constructors, int/float/str/bool conversions, and LEGB soft built-ins.",
       "inputs": ["name: &str", "args: &[CallArg]"],
       "outputs": ["Result<(Type, String)>"]
     },
@@ -73,7 +93,7 @@
       "outputs": ["Result<(Type, String)>"]
     },
     "src/codegen/methods.rs": {
-      "purpose": "class/struct self method definitions & dispatch, list (.append/.pop/.clear), and SSO-aware string methods.",
+      "purpose": "class/struct self method definitions & dispatch, dict/set/list/any methods, and SSO-aware string methods.",
       "inputs": ["&Func / receiver &Expr + method"],
       "outputs": ["Result<(Type, String)>"]
     },
@@ -97,33 +117,58 @@
       "inputs": ["Codegen Pythonic used_* flags"],
       "outputs": ["Private LLVM IR helper functions and declares"]
     },
+    "src/codegen/runtime_hash_any.rs": {
+      "purpose": "On-demand Planar <16 x i8> SIMD SwissTable runtime, slice bounds/str slice helpers, and %ArchxAny dynamic runtime helpers.",
+      "inputs": ["Codegen dict/any used_* flags"],
+      "outputs": ["Private LLVM IR helper functions"]
+    },
     "src/codegen/tests.rs": {
-      "purpose": "Unit tests for LLVM IR codegen, Pythonic float SoA + range bounds elision, SSO strings, and region escape checking.",
+      "purpose": "Unit tests for LLVM IR codegen, tuples/optionals/enums/match, adaptive typing, Pythonic float SoA, SSO strings, and region escape checking.",
       "inputs": ["Archx source snippets"],
-      "outputs": ["cargo test --lib pass/fail"]
+      "outputs": ["cargo test --bin archx pass/fail"]
     },
-    "examples/pythonic.archx.lang": {
-      "purpose": "Runnable showcase of 1:1 Pythonic Archx syntax, methods, f-strings, print(sep=...), float, enumerate, and with region:.",
+    "examples/enums_matching.archx.lang": {
+      "purpose": "Runnable v0.8.0 showcase of tuples, T | None optionals, algebraic enums with region-allocated strings, and exhaustive match/case.",
       "inputs": [],
-      "outputs": ["ci/out/pythonic.txt"]
+      "outputs": ["ci/out/enums_matching.txt"]
     },
-    "benchmarks/nbody_float.archx.lang": {
-      "purpose": "Suite 4 1:1 Pythonic floating-point N-body & OOP method benchmark beating C -O2 and Rust -O.",
+    "examples/comparison/full_tour.py": {
+      "purpose": "Python 3.10+ reference edition of the 5-way v0.1.0-v0.8.0 full-feature tour (byte-identical to full_tour_pythonic.archx.lang).",
       "inputs": [],
-      "outputs": ["ci/out/benchmarks.txt"]
+      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+    },
+    "examples/comparison/full_tour_pythonic.archx.lang": {
+      "purpose": "1:1 Pythonic Archx edition (byte-for-byte identical to full_tour.py), compiling ahead-of-time to run 22.9x faster than Python 3.",
+      "inputs": [],
+      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+    },
+    "examples/comparison/full_tour_speed.archx.lang": {
+      "purpose": "Speed/Systems Archx edition using [Body(...); n] SIMD SoA, with region: Planar SIMD dict/set, and stack enum Event (24.8x faster than Python 3).",
+      "inputs": [],
+      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+    },
+    "examples/comparison/full_tour.c": {
+      "purpose": "Clang C (-O2 -lm) edition of the 5-way full-feature comparison showcase.",
+      "inputs": [],
+      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+    },
+    "examples/comparison/full_tour.rs": {
+      "purpose": "Rust (rustc -O) edition of the 5-way full-feature comparison showcase.",
+      "inputs": [],
+      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
     },
     "tests/cli.rs": {
-      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests including piped stdin input().",
+      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests including v0.8.0 tuples/enums/match and full_tour parity.",
       "inputs": ["CARGO_BIN_EXE_archx", "Temp .archx.lang programs"],
       "outputs": ["cargo test --test cli pass/fail"]
     },
     "benchmarks/run.sh": {
-      "purpose": "Builds, verifies stdout via cmp, and times C vs Rust vs Archx across primes, arrays, composite, and nbody_float suites.",
-      "inputs": ["benchmarks/*.{c,rs,archx.lang}"],
+      "purpose": "Builds, verifies byte-identical stdout via cmp, and times Python 3 vs C vs Rust vs Archx across all 6 benchmark suites.",
+      "inputs": ["benchmarks/*.{py,c,rs,archx.lang}", "examples/comparison/full_tour.*"],
       "outputs": ["ci/out/benchmarks.txt"]
     },
     ".github/workflows/ci.yml": {
-      "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), ASan+LSan verification, 4-suite benchmarks, and repo-committed logs/test-history.",
+      "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), 11-target ASan+LSan verification, 6-suite Python 3/C/Rust/Archx benchmarks, and repo-committed logs/test-history.",
       "inputs": ["Git push or workflow_dispatch"],
       "outputs": ["ci/logs/*", "ci/out/*", "ci/test-history/v<VERSION>/*"]
     }

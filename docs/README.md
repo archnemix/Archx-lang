@@ -5,20 +5,20 @@
 All user-facing guides, architectural specifications, and engineering tracking files for Archx live here.
 
 ## User & Language Documentation
-- [`USAGE.md`](USAGE.md) — **Start here**: complete guide to everything built so far and how to use every CLI option and language construct.
+- [`USAGE.md`](USAGE.md) — **Start here**: complete guide to everything built so far (`v0.8.0`) and how to use every CLI option and language construct.
 - [`FUNDAMENTALS.md`](FUNDAMENTALS.md) — Core language philosophy, memory model, binary size, readability, and safety principles.
-- [`OPTIMIZATION.md`](OPTIMIZATION.md) — Four-layer optimization strategy and `-O2` LLVM IR proofs (`SoA`, `region:`, `16B SSO`, bounds elision).
+- [`OPTIMIZATION.md`](OPTIMIZATION.md) — Optimization strategy, `-O2` LLVM IR proofs (`SoA`, `region:`, `16B SSO`, Planar SIMD `dict`/`set`, zero-heap tuples/`T | None`/`enum`), and 6-suite `Python 3` / `C` / `Rust` / `Archx` CI timings.
 
 ## Architecture & Roadmap
-- [`Architecture.md`](Architecture.md) — End-to-end compiler pipeline, runtime ABI layouts, and `src/` module map.
-- [`Roadmap.md`](Roadmap.md) — Completed Milestones 1–7 and ordered next steps (Milestones 8–10).
-- [`Technical.md`](Technical.md) — Tech stack and file-by-file inputs, outputs, and responsibilities.
-- [`Logic.md`](Logic.md) — Call-chain and execution flow map across CLI, lexer, parser, and codegen.
+- [`Architecture.md`](Architecture.md) — End-to-end compiler pipeline, runtime ABI layouts, and `src/` module map (`v0.8.0`).
+- [`Roadmap.md`](Roadmap.md) — Completed Milestones 1–8 and ordered next steps (Milestones 9–10).
+- [`Technical.md`](Technical.md) — Tech stack and file-by-file inputs, outputs, and responsibilities (`v0.8.0`).
+- [`Logic.md`](Logic.md) — Call-chain and execution flow map across CLI, lexer, parser, and codegen (`v0.8.0`).
 
 ## Governance, History & Machine-Readable Indexes
 - [`Rules.md`](Rules.md) — Standing engineering, modularity, testing, and CI rules.
 - [`Thinking.md`](Thinking.md) — Chronological engineering decision and bug-resolution log.
-- [`Changelog.md`](Changelog.md) — Version-by-version release history (`v0.1.0` – `v0.7.0`).
+- [`Changelog.md`](Changelog.md) — Version-by-version release history (`v0.1.0` – `v0.8.0`).
 - [`Change.md`](Change.md) — Log of user-requested additions and roadmap updates.
 - [`Workaround.md`](Workaround.md) — Documented CI/sandbox and cross-OS linker workarounds.
 - [`Secrets.md`](Secrets.md) — Repository secrets registry.
