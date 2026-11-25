@@ -1,0 +1,54 @@
+OS: windows-latest
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo 1.100.0 (3acc79c0c 2026-11-05)
+clang version 20.1.8
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+InstalledDir: C:\Program Files\LLVM\bin
+--- cargo test ---
+[1m[92m   Compiling[0m archx v0.8.0 (D:\a\Archx-lang\Archx-lang)
+[1m[91merror[E0425][0m[1m[97m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[96m--> [0mtests\cli.rs:1103:15
+     [1m[96m|[0m
+[1m[96m1103[0m [1m[96m|[0m     let out = compile_and_run_stdout(
+     [1m[96m|[0m               [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[96m--> [0mtests\cli.rs:1221:18
+     [1m[96m|[0m
+[1m[96m1221[0m [1m[96m|[0m     let out_py = compile_and_run_stdout("full_tour_py", &ax_py_src);
+     [1m[96m|[0m                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[91merror[E0425][0m[1m[97m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[96m--> [0mtests\cli.rs:1222:19
+     [1m[96m|[0m
+[1m[96m1222[0m [1m[96m|[0m     let out_spd = compile_and_run_stdout("full_tour_spd", &ax_spd_src);
+     [1m[96m|[0m                   [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[97mFor more information about this error, try `rustc --explain E0425`.[0m
+[1m[91merror[0m: could not compile `archx` (test "cli") due to 3 previous errors
+[1m[93mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[E0004][0m[1m[97m: non-exhaustive patterns: `&ast::ExprKind::TupleLit(_)` not covered[0m
+   [1m[96m--> [0msrc\codegen\memory.rs:662:15
+    [1m[96m|[0m
+[1m[96m662[0m [1m[96m|[0m         match &expr.kind {
+    [1m[96m|[0m               [1m[91m^^^^^^^^^^[0m [1m[91mpattern `&ast::ExprKind::TupleLit(_)` not covered[0m
+    [1m[96m|[0m
+[1m[92mnote[0m: `ast::ExprKind` defined here
+   [1m[96m--> [0msrc\ast.rs:223:10
+    [1m[96m|[0m
+[1m[96m223[0m [1m[96m|[0m pub enum ExprKind {
+    [1m[96m|[0m          [1m[92m^^^^^^^^[0m
+[1m[96m...[0m
+[1m[96m238[0m [1m[96m|[0m     TupleLit(Vec<Expr>),
+    [1m[96m|[0m     [1m[96m--------[0m [1m[96mnot covered[0m
+    [1m[96m= [0m[1m[97mnote[0m: the matched value is of type `&ast::ExprKind`
+[1m[96mhelp[0m: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    [1m[96m|[0m
+[1m[96m749[0m [92m~ [0m            | ExprKind::Var(_) => {}[92m,[0m
+[1m[96m750[0m [92m+             &ast::ExprKind::TupleLit(_) => todo!()[0m
+    [1m[96m|[0m
+
+[1m[97mFor more information about this error, try `rustc --explain E0004`.[0m
+[1m[91merror[0m: could not compile `archx` (bin "archx") due to 1 previous error
+[1m[91merror[0m: could not compile `archx` (bin "archx" test) due to 1 previous error

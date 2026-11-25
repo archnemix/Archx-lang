@@ -1,5 +1,6 @@
 rustc 1.100.0 (0ef1bc386 2026-11-09)
 cargo 1.100.0 (3acc79c0c 2026-11-05)
+Python 3.14.4
 clang path: /usr/bin/clang
 Ubuntu clang version 21.1.8 (6ubuntu1)
 Target: x86_64-pc-linux-gnu

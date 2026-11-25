@@ -1,0 +1,54 @@
+OS: macos-latest
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo 1.100.0 (3acc79c0c 2026-11-05)
+Apple clang version 21.0.0 (clang-2100.1.1.101)
+Target: arm64-apple-darwin25.6.0
+Thread model: posix
+InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+--- cargo test ---
+[1m[92m   Compiling[0m archx v0.8.0 (/Users/runner/work/Archx-lang/Archx-lang)
+[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[94m--> [0mtests/cli.rs:1103:15
+     [1m[94m|[0m
+[1m[94m1103[0m [1m[94m|[0m     let out = compile_and_run_stdout(
+     [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[94m--> [0mtests/cli.rs:1221:18
+     [1m[94m|[0m
+[1m[94m1221[0m [1m[94m|[0m     let out_py = compile_and_run_stdout("full_tour_py", &ax_py_src);
+     [1m[94m|[0m                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `compile_and_run_stdout` in this scope[0m
+    [1m[94m--> [0mtests/cli.rs:1222:19
+     [1m[94m|[0m
+[1m[94m1222[0m [1m[94m|[0m     let out_spd = compile_and_run_stdout("full_tour_spd", &ax_spd_src);
+     [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1mFor more information about this error, try `rustc --explain E0425`.[0m
+[1m[91merror[0m: could not compile `archx` (test "cli") due to 3 previous errors
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[E0004][0m[1m: non-exhaustive patterns: `&ast::ExprKind::TupleLit(_)` not covered[0m
+   [1m[94m--> [0msrc/codegen/memory.rs:662:15
+    [1m[94m|[0m
+[1m[94m662[0m [1m[94m|[0m         match &expr.kind {
+    [1m[94m|[0m               [1m[91m^^^^^^^^^^[0m [1m[91mpattern `&ast::ExprKind::TupleLit(_)` not covered[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: `ast::ExprKind` defined here
+   [1m[94m--> [0msrc/ast.rs:223:10
+    [1m[94m|[0m
+[1m[94m223[0m [1m[94m|[0m pub enum ExprKind {
+    [1m[94m|[0m          [1m[92m^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m238[0m [1m[94m|[0m     TupleLit(Vec<Expr>),
+    [1m[94m|[0m     [1m[94m--------[0m [1m[94mnot covered[0m
+    [1m[94m= [0m[1mnote[0m: the matched value is of type `&ast::ExprKind`
+[1m[96mhelp[0m: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    [1m[94m|[0m
+[1m[94m749[0m [92m~ [0m            | ExprKind::Var(_) => {}[92m,[0m
+[1m[94m750[0m [92m+             &ast::ExprKind::TupleLit(_) => todo!()[0m
+    [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0004`.[0m
+[1m[91merror[0m: could not compile `archx` (bin "archx") due to 1 previous error
+[1m[91merror[0m: could not compile `archx` (bin "archx" test) due to 1 previous error
