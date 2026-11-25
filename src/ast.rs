@@ -207,6 +207,23 @@ pub enum Pattern {
     },
 }
 
+impl Pattern {
+    pub fn span(&self) -> Span {
+        match self {
+            Pattern::Wildcard(s)
+            | Pattern::Bind(_, s)
+            | Pattern::Int(_, s)
+            | Pattern::Float(_, s)
+            | Pattern::Bool(_, s)
+            | Pattern::Str(_, s)
+            | Pattern::NonePat(s)
+            | Pattern::Tuple(_, s)
+            | Pattern::Or(_, s)
+            | Pattern::EnumVariant { span: s, .. } => *s,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum FStrPart {
     Lit(String),

@@ -28,6 +28,7 @@ impl Codegen {
 
         // Compile-time exhaustiveness check for algebraic `enum`s:
         self.check_enum_exhaustiveness(&subj_ty, cases, span)?;
+        let match_exhaustive = is_match_exhaustive(&subj_ty, cases);
 
         self.push_scope();
         let subj_ir = ir_type(&subj_ty);
@@ -158,7 +159,7 @@ impl Codegen {
 
             if ci + 1 < cases.len() {
                 self.start_block(&next_case_lbl, out);
-            } else if !is_irrefutable_pattern(&case.pattern, &subj_ty) || case.guard.is_some() {
+            } else if !match_exhaustive {
                 any_reached_end = true;
             }
         }
@@ -224,9 +225,10 @@ impl Codegen {
         none_already_matched: bool,
         fail_lbl: &str,
         binds: &mut Vec<(String, Type, String)>,
-        span: Span,
+        _case_span: Span,
         out: &mut String,
     ) -> Result<()> {
+        let span = pat.span();
         if let Type::Optional(inner) = val_ty {
             let should_unwrap = match pat {
                 Pattern::Wildcard(_) | Pattern::NonePat(_) => false,
@@ -634,6 +636,65 @@ fn pattern_matches_none(pat: &Pattern) -> bool {
     match pat {
         Pattern::NonePat(_) | Pattern::Wildcard(_) | Pattern::Bind(_, _) => true,
         Pattern::Or(alts, _) => alts.iter().any(pattern_matches_none),
+        _ => false,
+    }
+}
+
+fn is_match_exhaustive(subj_ty: &Type, cases: &[MatchCase]) -> bool {
+    if matches!(subj_ty, Type::Enum(_)) {
+        // `check_enum_exhaustiveness` already verified all variants are covered unguarded.
+        return true;
+    }
+    if cases
+        .iter()
+        .any(|c| c.guard.is_none() && is_irrefutable_pattern(&c.pattern, subj_ty))
+    {
+        return true;
+    }
+    match subj_ty {
+        Type::Optional(inner) => {
+            let mut has_none = false;
+            let mut has_some = false;
+            for c in cases {
+                if c.guard.is_some() {
+                    continue;
+                }
+                if pattern_matches_none(&c.pattern) {
+                    has_none = true;
+                }
+                if is_irrefutable_pattern(&c.pattern, inner)
+                    && !matches!(c.pattern, Pattern::NonePat(_))
+                {
+                    has_some = true;
+                }
+            }
+            has_none && has_some
+        }
+        Type::Bool => {
+            let mut has_t = false;
+            let mut has_f = false;
+            for c in cases {
+                if c.guard.is_some() {
+                    continue;
+                }
+                if pattern_matches_bool(&c.pattern, true) {
+                    has_t = true;
+                }
+                if pattern_matches_bool(&c.pattern, false) {
+                    has_f = true;
+                }
+            }
+            has_t && has_f
+        }
+        _ => false,
+    }
+}
+
+fn pattern_matches_bool(pat: &Pattern, b: bool) -> bool {
+    match pat {
+        Pattern::Bool(v, _) => *v == b,
+        Pattern::Wildcard(_) | Pattern::Bind(_, _) => true,
+        Pattern::Or(alts, _) => alts.iter().any(|a| pattern_matches_bool(a, b)),
         _ => false,
     }
 }

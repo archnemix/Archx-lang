@@ -10,7 +10,7 @@ use crate::diag::{Diagnostic, Result, Span};
 use super::*;
 
 #[derive(Clone, Debug)]
-pub(super) struct EnumInfo {
+pub(crate) struct EnumInfo {
     /// `(variant_name, field_types, field_word_offsets)`
     pub(super) variants: Vec<(String, Vec<Type>, Vec<usize>)>,
     /// Number of 8-byte `i64` payload words (`0` for pure unit enums).
