@@ -590,7 +590,44 @@ impl Parser {
 
         if self.check(&TokenKind::Let) {
             self.bump();
+            if self.check(&TokenKind::LParen) {
+                self.bump();
+                let mut targets = vec![self.expect_ident("a variable name")?];
+                self.expect(TokenKind::Comma, "`,` in tuple `let` destructuring")?;
+                while !self.check(&TokenKind::RParen) {
+                    targets.push(self.expect_ident("a variable name")?);
+                    if !self.check(&TokenKind::Comma) {
+                        break;
+                    }
+                    self.bump();
+                }
+                self.expect(TokenKind::RParen, "`)`")?;
+                self.expect(TokenKind::Eq, "`=`")?;
+                let value = self.parse_tuple_or_expr()?;
+                self.expect(TokenKind::Newline, "a newline after the statement")?;
+                return Ok(Stmt {
+                    kind: StmtKind::TupleAssign { targets, value },
+                    span,
+                });
+            }
             let name = self.expect_ident("a variable name")?;
+            if self.check(&TokenKind::Comma) {
+                let mut targets = vec![name];
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::Eq) {
+                        break;
+                    }
+                    targets.push(self.expect_ident("a variable name")?);
+                }
+                self.expect(TokenKind::Eq, "`=`")?;
+                let value = self.parse_tuple_or_expr()?;
+                self.expect(TokenKind::Newline, "a newline after the statement")?;
+                return Ok(Stmt {
+                    kind: StmtKind::TupleAssign { targets, value },
+                    span,
+                });
+            }
             let ty = if self.check(&TokenKind::Colon) {
                 self.bump();
                 Some(self.parse_type()?)
