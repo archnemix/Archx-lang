@@ -65,6 +65,7 @@ impl Parser {
             }
             funcs.push(Func {
                 name: "main".to_string(),
+                type_params: Vec::new(),
                 params: Vec::new(),
                 ret: None,
                 body: top_stmts,
@@ -147,10 +148,61 @@ impl Parser {
         })
     }
 
+    fn parse_type_params(&mut self) -> Result<Vec<String>> {
+        if !self.check(&TokenKind::LBracket) {
+            return Ok(Vec::new());
+        }
+        let span = self.peek().span;
+        self.bump(); // `[`
+        let mut params = Vec::new();
+        while !self.check(&TokenKind::RBracket) {
+            let tp = self.expect_ident("a type parameter name")?;
+            if params.contains(&tp) {
+                return Err(Diagnostic::new(
+                    format!("duplicate type parameter `{tp}`"),
+                    span,
+                ));
+            }
+            // Optional PEP 695 bound: `def f[T: int](...)` or `def f[T: (int, float)](...)`
+            if self.check(&TokenKind::Colon) {
+                self.bump();
+                if self.check(&TokenKind::LParen) {
+                    self.bump();
+                    while !self.check(&TokenKind::RParen) {
+                        let _ = self.parse_type()?;
+                        if self.check(&TokenKind::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.expect(TokenKind::RParen, "`)`")?;
+                } else {
+                    let _ = self.parse_type()?;
+                }
+            }
+            params.push(tp);
+            if self.check(&TokenKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(TokenKind::RBracket, "`]` after type parameters")?;
+        if params.is_empty() {
+            return Err(Diagnostic::new(
+                "type parameter list `[...]` cannot be empty",
+                span,
+            ));
+        }
+        Ok(params)
+    }
+
     fn parse_struct(&mut self) -> Result<StructDef> {
         let span = self.peek().span;
         self.expect(TokenKind::Struct, "`class` or `struct`")?;
         let name = self.expect_ident("a class/struct name")?;
+        let type_params = self.parse_type_params()?;
         self.expect(TokenKind::Colon, "`:`")?;
         self.expect(TokenKind::Newline, "a newline after class/struct header")?;
         self.expect(TokenKind::Indent, "an indented class/struct body")?;
@@ -196,6 +248,7 @@ impl Parser {
 
         Ok(StructDef {
             name,
+            type_params,
             fields,
             methods,
             span,
@@ -206,6 +259,7 @@ impl Parser {
         let span = self.peek().span;
         self.expect(TokenKind::Func, "`def`")?;
         let name = self.expect_ident("a method name")?;
+        let type_params = self.parse_type_params()?;
         self.expect(TokenKind::LParen, "`(`")?;
 
         let mut params = Vec::new();
@@ -226,13 +280,15 @@ impl Parser {
         let self_ty = if self.check(&TokenKind::Colon) {
             self.bump();
             let t = self.parse_type()?;
-            if t != Type::Struct(struct_name.to_string()) {
+            let valid_self = t == Type::Struct(struct_name.to_string())
+                || matches!(&t, Type::GenericInst { name: gn, .. } if gn == struct_name);
+            if !valid_self {
                 return Err(Diagnostic::new(
                     format!("`self` in `{struct_name}.{name}` must have type `{struct_name}`"),
                     span,
                 ));
             }
-            t
+            Type::Struct(struct_name.to_string())
         } else {
             Type::Struct(struct_name.to_string())
         };
@@ -283,6 +339,7 @@ impl Parser {
 
         Ok(Func {
             name,
+            type_params,
             params,
             ret,
             body,
@@ -295,6 +352,7 @@ impl Parser {
 
         self.expect(TokenKind::Func, "`def` or `func`")?;
         let name = self.expect_ident("a function name")?;
+        let type_params = self.parse_type_params()?;
         self.expect(TokenKind::LParen, "`(`")?;
 
         let mut params = Vec::new();
@@ -352,6 +410,7 @@ impl Parser {
 
         Ok(Func {
             name,
+            type_params,
             params,
             ret,
             body,
@@ -548,10 +607,55 @@ impl Parser {
                 self.bump();
                 Ok(Type::Void)
             }
+            TokenKind::Ident(name) if name == "Callable" => {
+                self.bump();
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    if self.check(&TokenKind::LBracket) {
+                        self.bump();
+                        while !self.check(&TokenKind::RBracket) {
+                            let _ = self.parse_type()?;
+                            if self.check(&TokenKind::Comma) {
+                                self.bump();
+                            } else {
+                                break;
+                            }
+                        }
+                        self.expect(TokenKind::RBracket, "`]`")?;
+                    } else {
+                        let _ = self.parse_type()?;
+                    }
+                    self.expect(TokenKind::Comma, "`,` in `Callable[[...], Ret]`")?;
+                    let _ = self.parse_type()?;
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                }
+                Ok(Type::Any)
+            }
             TokenKind::Ident(name) => {
                 let sname = name.clone();
                 self.bump();
-                Ok(Type::Struct(sname))
+                if self.check(&TokenKind::LBracket) {
+                    self.bump();
+                    let mut args = Vec::new();
+                    while !self.check(&TokenKind::RBracket) {
+                        args.push(self.parse_type()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    if args.is_empty() {
+                        return Err(Diagnostic::new(
+                            format!("generic type `{sname}[...]` requires at least one type argument"),
+                            token.span,
+                        ));
+                    }
+                    Ok(Type::GenericInst { name: sname, args })
+                } else {
+                    Ok(Type::Struct(sname))
+                }
             }
             _ => Err(Diagnostic::new(
                 "expected a type (`int`, `float`, `bool`, `str`, `None`, `list[T]`, `[T]`, or class/struct name)",
@@ -724,10 +828,30 @@ impl Parser {
 
         if self.check(&TokenKind::For) {
             self.bump();
-            let var = self.expect_ident("a loop variable name")?;
-            if self.check(&TokenKind::Comma) {
+            let mut loop_vars = Vec::new();
+            if self.check(&TokenKind::LParen) {
                 self.bump();
-                let elem_var = self.expect_ident("a second loop variable name")?;
+                loop_vars.push(self.expect_ident("a loop variable name")?);
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::RParen) {
+                        break;
+                    }
+                    loop_vars.push(self.expect_ident("a loop variable name")?);
+                }
+                self.expect(TokenKind::RParen, "`)`")?;
+            } else {
+                loop_vars.push(self.expect_ident("a loop variable name")?);
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::In) {
+                        break;
+                    }
+                    loop_vars.push(self.expect_ident("a loop variable name")?);
+                }
+            }
+
+            if loop_vars.len() >= 2 {
                 self.expect(TokenKind::In, "`in`")?;
                 let iter_expr = self.parse_expr()?;
                 self.expect(TokenKind::Colon, "`:`")?;
@@ -738,58 +862,97 @@ impl Parser {
                 if body.is_empty() {
                     return Err(Diagnostic::new("`for` body cannot be empty", span));
                 }
-                return match iter_expr.kind {
-                    ExprKind::Call { name, mut args } if name == "enumerate" => {
-                        if args.is_empty() || args.len() > 2 {
+                if let ExprKind::Call { ref name, ref args } = iter_expr.kind {
+                    if name == "zip" {
+                        if args.len() != loop_vars.len() {
                             return Err(Diagnostic::new(
-                                "`enumerate()` expects 1 or 2 arguments (`enumerate(seq[, start])`)",
+                                format!(
+                                    "`zip(...)` supplies {} iterables, but `for` unpacks {} variables",
+                                    args.len(),
+                                    loop_vars.len()
+                                ),
                                 iter_expr.span,
                             ));
                         }
-                        let start = if args.len() == 2 {
-                            Some(args.remove(1))
-                        } else {
-                            None
+                        let ExprKind::Call { args, .. } = iter_expr.kind else {
+                            unreachable!()
                         };
-                        let iter = args.remove(0);
-                        Ok(Stmt {
-                            kind: StmtKind::ForEnumerate {
-                                idx_var: var,
-                                elem_var,
-                                iter,
-                                start,
+                        return Ok(Stmt {
+                            kind: StmtKind::ForZip {
+                                vars: loop_vars,
+                                iters: args,
                                 body,
                             },
                             span,
-                        })
+                        });
                     }
-                    ExprKind::MethodCall {
-                        target,
-                        method,
-                        args,
-                    } if method == "items" && args.is_empty() => Ok(Stmt {
-                        kind: StmtKind::ForDictItems {
-                            key_var: var,
-                            val_var: elem_var,
-                            dict: *target,
-                            body,
-                        },
-                        span,
-                    }),
-                    other => Ok(Stmt {
-                        kind: StmtKind::ForDictItems {
-                            key_var: var,
-                            val_var: elem_var,
-                            dict: Expr {
-                                kind: other,
-                                span: iter_expr.span,
+                }
+                if loop_vars.len() == 2 {
+                    let elem_var = loop_vars.pop().unwrap();
+                    let var = loop_vars.pop().unwrap();
+                    return match iter_expr.kind {
+                        ExprKind::Call { name, mut args } if name == "enumerate" => {
+                            if args.is_empty() || args.len() > 2 {
+                                return Err(Diagnostic::new(
+                                    "`enumerate()` expects 1 or 2 arguments (`enumerate(seq[, start])`)",
+                                    iter_expr.span,
+                                ));
+                            }
+                            let start = if args.len() == 2 {
+                                Some(args.remove(1))
+                            } else {
+                                None
+                            };
+                            let iter = args.remove(0);
+                            Ok(Stmt {
+                                kind: StmtKind::ForEnumerate {
+                                    idx_var: var,
+                                    elem_var,
+                                    iter,
+                                    start,
+                                    body,
+                                },
+                                span,
+                            })
+                        }
+                        ExprKind::MethodCall {
+                            target,
+                            method,
+                            args,
+                        } if method == "items" && args.is_empty() => Ok(Stmt {
+                            kind: StmtKind::ForDictItems {
+                                key_var: var,
+                                val_var: elem_var,
+                                dict: *target,
+                                body,
                             },
-                            body,
-                        },
-                        span,
-                    }),
-                };
+                            span,
+                        }),
+                        other => Ok(Stmt {
+                            kind: StmtKind::ForDictItems {
+                                key_var: var,
+                                val_var: elem_var,
+                                dict: Expr {
+                                    kind: other,
+                                    span: iter_expr.span,
+                                },
+                                body,
+                            },
+                            span,
+                        }),
+                    };
+                }
+                return Ok(Stmt {
+                    kind: StmtKind::ForTupleUnpack {
+                        vars: loop_vars,
+                        iter: iter_expr,
+                        body,
+                    },
+                    span,
+                });
             }
+
+            let var = loop_vars.pop().unwrap();
 
             self.expect(TokenKind::In, "`in`")?;
             let first = self.parse_expr()?;
@@ -1342,8 +1505,11 @@ impl Parser {
         res
     }
 
-    // Python inline conditional: `then_expr if cond else else_expr`
+    // Python inline conditional (`then_expr if cond else else_expr`) and `lambda`
     fn parse_if_expr(&mut self) -> Result<Expr> {
+        if self.check(&TokenKind::Lambda) {
+            return self.parse_lambda();
+        }
         let then_expr = self.parse_or()?;
         if self.check(&TokenKind::If) {
             let span = self.peek().span;
@@ -1361,6 +1527,146 @@ impl Parser {
             });
         }
         Ok(then_expr)
+    }
+
+    fn parse_lambda(&mut self) -> Result<Expr> {
+        let span = self.peek().span;
+        self.expect(TokenKind::Lambda, "`lambda`")?;
+        let mut params = Vec::new();
+        // Archx Speed optional typed params: `lambda (x: int, y: int): x + y`
+        if self.check(&TokenKind::LParen) {
+            self.bump();
+            while !self.check(&TokenKind::RParen) {
+                let pname = self.expect_ident("lambda parameter name")?;
+                let ty = if self.check(&TokenKind::Colon) {
+                    self.bump();
+                    self.parse_type()?
+                } else {
+                    Type::Any
+                };
+                params.push(Param { name: pname, ty });
+                if self.check(&TokenKind::Comma) {
+                    self.bump();
+                } else {
+                    break;
+                }
+            }
+            self.expect(TokenKind::RParen, "`)`")?;
+            if self.check(&TokenKind::Arrow) {
+                self.bump();
+                let _ = self.parse_type()?;
+            }
+        } else if !self.check(&TokenKind::Colon) {
+            // Standard 1:1 Python lambda: `lambda x, y: x + y`
+            loop {
+                if self.check(&TokenKind::Colon) {
+                    break;
+                }
+                let pname = self.expect_ident("lambda parameter name")?;
+                params.push(Param {
+                    name: pname,
+                    ty: Type::Any,
+                });
+                if self.check(&TokenKind::Comma) {
+                    self.bump();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.expect(TokenKind::Colon, "`:` after lambda parameters")?;
+        let body = self.parse_expr()?;
+        Ok(Expr {
+            kind: ExprKind::Lambda {
+                params,
+                body: Box::new(body),
+            },
+            span,
+        })
+    }
+
+    fn parse_comp_clauses(&mut self) -> Result<Vec<CompClause>> {
+        let mut clauses = Vec::new();
+        while self.check(&TokenKind::For) {
+            let span = self.peek().span;
+            self.bump(); // `for`
+            let mut vars = Vec::new();
+            if self.check(&TokenKind::LParen) {
+                self.bump();
+                vars.push(self.expect_ident("comprehension target variable")?);
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::RParen) {
+                        break;
+                    }
+                    vars.push(self.expect_ident("comprehension target variable")?);
+                }
+                self.expect(TokenKind::RParen, "`)`")?;
+            } else {
+                vars.push(self.expect_ident("comprehension target variable")?);
+                while self.check(&TokenKind::Comma) {
+                    self.bump();
+                    if self.check(&TokenKind::In) {
+                        break;
+                    }
+                    vars.push(self.expect_ident("comprehension target variable")?);
+                }
+            }
+            self.expect(TokenKind::In, "`in` in comprehension")?;
+            // PEP 709 grammar: iterable and filter condition are `disjunction` (`parse_or`),
+            // NOT `parse_expr`, so `if cond` is parsed as the comprehension filter clause!
+            let iter = self.parse_or()?;
+            let mut conds = Vec::new();
+            while self.check(&TokenKind::If) {
+                self.bump();
+                conds.push(self.parse_or()?);
+            }
+            clauses.push(CompClause {
+                vars,
+                iter,
+                conds,
+                span,
+            });
+        }
+        Ok(clauses)
+    }
+
+    /// Speculatively parse `[T1, T2, ...]` only when immediately followed by `(`.
+    fn try_parse_explicit_type_args(&mut self) -> Option<Vec<Type>> {
+        if !self.check(&TokenKind::LBracket) {
+            return None;
+        }
+        let saved_pos = self.pos;
+        let saved_depth = self.depth;
+        self.bump(); // `[`
+        let mut targs = Vec::new();
+        loop {
+            if self.check(&TokenKind::RBracket) {
+                break;
+            }
+            match self.parse_type() {
+                Ok(t) => targs.push(t),
+                Err(_) => {
+                    self.pos = saved_pos;
+                    self.depth = saved_depth;
+                    return None;
+                }
+            }
+            if self.check(&TokenKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        if !targs.is_empty() && self.check(&TokenKind::RBracket) {
+            self.bump(); // `]`
+            if self.check(&TokenKind::LParen) {
+                return Some(targs);
+            }
+        }
+        self.pos = saved_pos;
+        self.depth = saved_depth;
+        None
     }
 
     fn enter_depth(&mut self) -> Result<()> {
@@ -1720,13 +2026,46 @@ impl Parser {
                 let member = self.expect_ident("a field or method name after `.`")?;
                 if self.check(&TokenKind::LParen) {
                     self.bump();
-                    let mut args = Vec::new();
+                    let mut pos_args = Vec::new();
+                    let mut kw_args = Vec::new();
                     if !self.check(&TokenKind::RParen) {
                         loop {
                             if self.check(&TokenKind::RParen) {
                                 break;
                             }
-                            args.push(self.parse_expr()?);
+                            if matches!(&self.peek().kind, TokenKind::Ident(_))
+                                && self.peek_at(1).kind == TokenKind::Eq
+                            {
+                                let kw_span = self.peek().span;
+                                let kw = self.expect_ident("keyword argument name")?;
+                                self.bump(); // `=`
+                                let val = self.parse_expr()?;
+                                kw_args.push((kw, val, kw_span));
+                            } else {
+                                if !kw_args.is_empty() {
+                                    return Err(Diagnostic::new(
+                                        "positional argument cannot follow keyword argument",
+                                        self.peek().span,
+                                    ));
+                                }
+                                let first_arg = self.parse_expr()?;
+                                if pos_args.is_empty()
+                                    && kw_args.is_empty()
+                                    && self.check(&TokenKind::For)
+                                {
+                                    let arg_span = first_arg.span;
+                                    let clauses = self.parse_comp_clauses()?;
+                                    pos_args.push(Expr {
+                                        kind: ExprKind::GenExpr {
+                                            elt: Box::new(first_arg),
+                                            clauses,
+                                        },
+                                        span: arg_span,
+                                    });
+                                    break;
+                                }
+                                pos_args.push(first_arg);
+                            }
                             if self.check(&TokenKind::Comma) {
                                 self.bump();
                             } else {
@@ -1735,13 +2074,25 @@ impl Parser {
                         }
                     }
                     self.expect(TokenKind::RParen, "`)`")?;
-                    expr = Expr {
-                        kind: ExprKind::MethodCall {
-                            target: Box::new(expr),
-                            method: member,
-                            args,
-                        },
-                        span,
+                    expr = if kw_args.is_empty() {
+                        Expr {
+                            kind: ExprKind::MethodCall {
+                                target: Box::new(expr),
+                                method: member,
+                                args: pos_args,
+                            },
+                            span,
+                        }
+                    } else {
+                        Expr {
+                            kind: ExprKind::MethodCallKw {
+                                target: Box::new(expr),
+                                method: member,
+                                pos_args,
+                                kw_args,
+                            },
+                            span,
+                        }
                     };
                 } else {
                     expr = Expr {
@@ -1752,6 +2103,31 @@ impl Parser {
                         span,
                     };
                 }
+            } else if self.check(&TokenKind::LParen) {
+                let span = self.peek().span;
+                self.bump();
+                let mut args = Vec::new();
+                if !self.check(&TokenKind::RParen) {
+                    loop {
+                        if self.check(&TokenKind::RParen) {
+                            break;
+                        }
+                        args.push(self.parse_expr()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(TokenKind::RParen, "`)`")?;
+                expr = Expr {
+                    kind: ExprKind::CallExpr {
+                        callee: Box::new(expr),
+                        args,
+                    },
+                    span,
+                };
             } else {
                 break;
             }
@@ -1834,6 +2210,7 @@ impl Parser {
             }
             TokenKind::Ident(name) => {
                 self.bump();
+                let explicit_targs = self.try_parse_explicit_type_args();
                 if self.check(&TokenKind::LParen) {
                     self.bump();
                     let mut pos_args = Vec::new();
@@ -1858,7 +2235,23 @@ impl Parser {
                                         self.peek().span,
                                     ));
                                 }
-                                pos_args.push(self.parse_expr()?);
+                                let first_arg = self.parse_expr()?;
+                                if pos_args.is_empty()
+                                    && kw_args.is_empty()
+                                    && self.check(&TokenKind::For)
+                                {
+                                    let arg_span = first_arg.span;
+                                    let clauses = self.parse_comp_clauses()?;
+                                    pos_args.push(Expr {
+                                        kind: ExprKind::GenExpr {
+                                            elt: Box::new(first_arg),
+                                            clauses,
+                                        },
+                                        span: arg_span,
+                                    });
+                                    break;
+                                }
+                                pos_args.push(first_arg);
                             }
                             if self.check(&TokenKind::Comma) {
                                 self.bump();
@@ -1868,7 +2261,17 @@ impl Parser {
                         }
                     }
                     self.expect(TokenKind::RParen, "`)`")?;
-                    if kw_args.is_empty() {
+                    if let Some(type_args) = explicit_targs {
+                        Ok(Expr {
+                            kind: ExprKind::CallGeneric {
+                                name,
+                                type_args,
+                                pos_args,
+                                kw_args,
+                            },
+                            span,
+                        })
+                    } else if kw_args.is_empty() {
                         Ok(Expr {
                             kind: ExprKind::Call {
                                 name,
@@ -1908,6 +2311,17 @@ impl Parser {
                     });
                 }
                 let first = self.parse_expr()?;
+                if self.check(&TokenKind::For) {
+                    let clauses = self.parse_comp_clauses()?;
+                    self.expect(TokenKind::RBracket, "`]`")?;
+                    return Ok(Expr {
+                        kind: ExprKind::ListComp {
+                            elt: Box::new(first),
+                            clauses,
+                        },
+                        span,
+                    });
+                }
                 if self.check(&TokenKind::Semicolon) {
                     self.bump();
                     let count = self.parse_expr()?;
@@ -1947,6 +2361,18 @@ impl Parser {
                 if self.check(&TokenKind::Colon) {
                     self.bump();
                     let first_val = self.parse_expr()?;
+                    if self.check(&TokenKind::For) {
+                        let clauses = self.parse_comp_clauses()?;
+                        self.expect(TokenKind::RBrace, "`}`")?;
+                        return Ok(Expr {
+                            kind: ExprKind::DictComp {
+                                key: Box::new(first),
+                                val: Box::new(first_val),
+                                clauses,
+                            },
+                            span,
+                        });
+                    }
                     let mut pairs = vec![(first, first_val)];
                     while self.check(&TokenKind::Comma) {
                         self.bump();
@@ -1970,6 +2396,17 @@ impl Parser {
                         span,
                     })
                 } else {
+                    if self.check(&TokenKind::For) {
+                        let clauses = self.parse_comp_clauses()?;
+                        self.expect(TokenKind::RBrace, "`}`")?;
+                        return Ok(Expr {
+                            kind: ExprKind::SetComp {
+                                elt: Box::new(first),
+                                clauses,
+                            },
+                            span,
+                        });
+                    }
                     let mut elems = vec![first];
                     while self.check(&TokenKind::Comma) {
                         self.bump();
@@ -2002,6 +2439,17 @@ impl Parser {
                     });
                 }
                 let first = self.parse_expr()?;
+                if self.check(&TokenKind::For) {
+                    let clauses = self.parse_comp_clauses()?;
+                    self.expect(TokenKind::RParen, "`)`")?;
+                    return Ok(Expr {
+                        kind: ExprKind::GenExpr {
+                            elt: Box::new(first),
+                            clauses,
+                        },
+                        span,
+                    });
+                }
                 if self.check(&TokenKind::Comma) {
                     self.bump();
                     let mut elems = vec![first];
@@ -2155,6 +2603,16 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 rewrite_main_calls_in_expr(dict);
                 rewrite_main_calls_in_stmts(body);
             }
+            StmtKind::ForZip { iters, body, .. } => {
+                for it in iters {
+                    rewrite_main_calls_in_expr(it);
+                }
+                rewrite_main_calls_in_stmts(body);
+            }
+            StmtKind::ForTupleUnpack { iter, body, .. } => {
+                rewrite_main_calls_in_expr(iter);
+                rewrite_main_calls_in_stmts(body);
+            }
             StmtKind::TupleAssign { value, .. } => rewrite_main_calls_in_expr(value),
             StmtKind::Match { subject, cases } => {
                 rewrite_main_calls_in_expr(subject);
@@ -2201,6 +2659,8 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
             | StmtKind::ForEach { body, .. }
             | StmtKind::ForEnumerate { body, .. }
             | StmtKind::ForDictItems { body, .. }
+            | StmtKind::ForZip { body, .. }
+            | StmtKind::ForTupleUnpack { body, .. }
             | StmtKind::Region { body } => {
                 if stmts_have_value_return(body) {
                     return true;
@@ -2237,11 +2697,71 @@ fn rewrite_main_calls_in_expr(expr: &mut Expr) {
                 rewrite_main_calls_in_expr(v);
             }
         }
+        ExprKind::CallGeneric {
+            name,
+            pos_args,
+            kw_args,
+            ..
+        } => {
+            if name == "main" {
+                *name = "__archx_user_main".to_string();
+            }
+            for a in pos_args {
+                rewrite_main_calls_in_expr(a);
+            }
+            for (_, v, _) in kw_args {
+                rewrite_main_calls_in_expr(v);
+            }
+        }
+        ExprKind::CallExpr { callee, args } => {
+            rewrite_main_calls_in_expr(callee);
+            for a in args {
+                rewrite_main_calls_in_expr(a);
+            }
+        }
         ExprKind::MethodCall { target, args, .. } => {
             rewrite_main_calls_in_expr(target);
             for a in args {
                 rewrite_main_calls_in_expr(a);
             }
+        }
+        ExprKind::MethodCallKw {
+            target,
+            pos_args,
+            kw_args,
+            ..
+        } => {
+            rewrite_main_calls_in_expr(target);
+            for a in pos_args {
+                rewrite_main_calls_in_expr(a);
+            }
+            for (_, v, _) in kw_args {
+                rewrite_main_calls_in_expr(v);
+            }
+        }
+        ExprKind::ListComp { elt, clauses }
+        | ExprKind::SetComp { elt, clauses }
+        | ExprKind::GenExpr { elt, clauses } => {
+            rewrite_main_calls_in_expr(elt);
+            for cl in clauses {
+                rewrite_main_calls_in_expr(&mut cl.iter);
+                for c in &mut cl.conds {
+                    rewrite_main_calls_in_expr(c);
+                }
+            }
+        }
+        ExprKind::DictComp { key, val, clauses } => {
+            rewrite_main_calls_in_expr(key);
+            rewrite_main_calls_in_expr(val);
+            for cl in clauses {
+                rewrite_main_calls_in_expr(&mut cl.iter);
+                for c in &mut cl.conds {
+                    rewrite_main_calls_in_expr(c);
+                }
+            }
+        }
+        ExprKind::Lambda { body, .. } => {
+            rewrite_main_calls_in_expr(body);
         }
         ExprKind::FString(parts) => {
             for p in parts {

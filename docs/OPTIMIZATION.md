@@ -64,22 +64,23 @@ Every `str` value is a 16-byte two-register pair (`16 B` vs Rust `String`'s `24 
 
 - **Register-Promoted Value Tuples (`{ T1, T2, ... }`)**: Unlike Python `tuple` (a heap-allocated `PyTupleObject` + refcounted `PyObject*` elements), Archx tuples compile directly to unboxed LLVM aggregates (`insertvalue` / `extractvalue`), enabling LLVM's `SROA` to keep multiple-return values (`return lo, hi, total`), `a, b = b, a` swaps, and `(kind, a, b)` `match` subjects 100% in CPU registers (`ci/out/bench_full_tour.opt.ll`).
 - **Stack-Inline `T | None` (`{ i1, T }`) + Flow-Sensitive Narrowing**: `int | None` lowers to `{ i1, i64 }` in registers with zero heap boxing; `if hit is not None:` and `hit + 1 if hit is not None else -1` extract `hit` once into a plain `i64` register across the guarded branch.
-- **Stack Algebraic `enum`s (`%ArchxEnum_Name = type { i64, [W x i64] }`) + Exhaustive `match`**: Sum types store an `i64` discriminant plus `W` inline 8-byte words (`[2 x i64]` for `Event`), and compiler-verified exhaustive `match` lowers to branch-eliminated tag comparisons (`unreachable` fallthrough) so LLVM turns variant dispatch into tight jump tables or `select` chains (`12 ms` in `full_tour_speed` vs `13 ms` `rustc -O` and `298 ms` `Python 3.14.4`).
+- **Stack Algebraic `enum`s (`%ArchxEnum_Name = type { i64, [W x i64] }`) + Exhaustive `match`**: Sum types store an `i64` discriminant plus `W` inline 8-byte words (`[2 x i64]` for `Event`), and compiler-verified exhaustive `match` lowers to branch-eliminated tag comparisons (`unreachable` fallthrough) so LLVM turns variant dispatch into tight jump tables or `select` chains (`16 ms` in `full_tour_speed` vs `19 ms` `rustc -O` and `464 ms` `Python 3`).
 
 ## Measured 6-Suite CI Results (`ci/out/benchmarks.txt`)
 
-Measured on GitHub Actions (`Python 3.14.4`, `Ubuntu clang 21.1.8 -O2`, `rustc 1.100.0 -O`, `archx v0.8.0 -O2`, identical stdout verified via `cmp`):
+Measured with `benchmarks/run.sh` (`Python 3.11.2`, `clang -O2 -ffp-contract=off`, `rustc -O`, `archx v0.9.0 -O2`, identical stdout verified via `cmp`); see `ci/out/benchmarks.txt`:
 
 | Suite | Python 3 (`python3`) | C (`clang -O2`) | Rust (`rustc -O`) | **Archx (`archx -O2`)** | vs Python 3 | Stripped Binary (Archx / C / Rust) |
 |---|---:|---:|---:|---:|---:|---:|
-| **1. Scalar (`primes`)** | 1,420 ms | **97 ms** | **97 ms** | **97 ms** | **14.6×** | **14 KB** / 14 KB / 330 KB |
-| **2. Arrays (`arrays`)** | 2,475 ms | **75 ms** | **75 ms** | **76 ms** | **32.6×** | **14 KB** / 14 KB / 331 KB |
-| **3. Composite (`composite`)** | 648 ms | 32 ms | 34 ms | **25 ms** | **25.9×** | **14 KB** / 14 KB / 332 KB |
-| **4. Pythonic Float N-Body (`nbody_float`)** | 2,538 ms | 41 ms | 41 ms | **36 ms** | **70.5×** | **14 KB** / 14 KB / 332 KB |
-| **5. Planar SIMD Dict (`dict_bench`)** | 172 ms | 51 ms | 37 ms | **36 ms** (`58 ms` `%ArchxAny`) | **4.8×** (`3.0×`) | **22 KB** / 14 KB / 354 KB |
-| **6. 5-Way Full Tour (`full_tour`)** | 298 ms | **9 ms** | 13 ms | **12 ms** Speed / **13 ms** 1:1 Pythonic | **24.8× / 22.9×** | **34 KB** / 14 KB / 359 KB |
+| **1. Scalar (`primes`)** | 41 ms | 116 ms | 117 ms | 117 ms | 0.4× | **5 KB** / 5 KB / 335 KB |
+| **2. Arrays (`arrays`)** | 5,279 ms | 89 ms | 88 ms | **91 ms** | **58.0×** | **6 KB** / 6 KB / 336 KB |
+| **3. Composite (`composite`)** | 1,416 ms | 64 ms | 40 ms | **27 ms** | **52.4×** | **9 KB** / 8 KB / 337 KB |
+| **4. Pythonic Float N-Body (`nbody_float`)** | 3,562 ms | 57 ms | 57 ms | **51 ms** | **69.8×** | **10 KB** / 8 KB / 337 KB |
+| **5. Planar SIMD Dict (`dict_bench`)** | 274 ms | 67 ms | 47 ms | **46 ms** (`87 ms` `%ArchxAny`) | **6.0×** (`3.1×`) | **16 KB** / 8 KB / 358 KB |
+| **6. 5-Way Full Tour (`full_tour`)** | 464 ms | 25 ms | 19 ms | **16 ms** Speed / **18 ms** 1:1 Pythonic | **29.0× / 25.8×** | **36 KB** / 12 KB / 381 KB |
+| **7. Comprehensions & Inline Sorting (`pipelines`)** | 41 ms | 10 ms | 9 ms | **10 ms** 1:1 Pythonic | **4.1×** | **31 KB** / 11 KB / 405 KB |
 
-Across **Suites 3, 4, and 5**, **Archx beats Python 3 by `4.8×`–`70.5×` AND beats both `-O2` C and `-O` Rust**; on **Suite 6**, unchanged Python 3.10+ source (`full_tour_pythonic.archx.lang`, byte-for-byte identical to `full_tour.py`) ties `rustc -O` (`13 ms`, `22.9×` faster than Python 3) while `full_tour_speed.archx.lang` runs in `12 ms` (`24.8×` faster than Python 3), with **0 bytes leaked** across all 11 targets under LeakSanitizer (`ci/logs/asan_lsan.log`).
+Across **Suites 3, 4, and 5**, **Archx beats Python 3 by `6.0×`–`69.8×` AND beats both `-O2` C and `-O` Rust**; on **Suite 6**, unchanged Python 3.10+ source (`full_tour_pythonic.archx.lang`, byte-for-byte identical to `full_tour.py`) beats `clang -O2` (`18 ms` vs `25 ms`, `25.8×` faster than Python 3) while `full_tour_speed.archx.lang` runs in `16 ms` (`29.0×` faster than Python 3); on **Suite 7** the 1:1 Archx edition matches `clang -O2` exactly (`10 ms`, `4.1×` faster than Python 3, within 11% of `rustc -O`), with **0 bytes leaked** across all 11 targets under LeakSanitizer (`ci/logs/asan_lsan.log`).
 
 ## What we have implemented so far
 

@@ -263,6 +263,47 @@ impl Codegen {
                 else_expr,
             } => self.gen_if_expr(then_expr, cond, else_expr, expected, expr.span, out),
 
+            ExprKind::ListComp { elt, clauses } => {
+                self.eval_list_comp(elt, clauses, expected, expr.span, out)
+            }
+
+            ExprKind::SetComp { elt, clauses } => {
+                self.eval_set_comp(elt, clauses, expected, expr.span, out)
+            }
+
+            ExprKind::DictComp { key, val, clauses } => {
+                self.eval_dict_comp(key, val, clauses, expected, expr.span, out)
+            }
+
+            ExprKind::GenExpr { elt, clauses } => {
+                self.eval_gen_expr(elt, clauses, expected, expr.span, out)
+            }
+
+            ExprKind::Lambda { .. } => Err(Diagnostic::new(
+                "a `lambda` must be bound to a name (`f = lambda x: ...`) or used as \
+                 `key=lambda ...`",
+                expr.span,
+            )),
+
+            ExprKind::MethodCallKw {
+                target,
+                method,
+                pos_args,
+                kw_args,
+            } => self.gen_method_call_kw(target, method, pos_args, kw_args, expr.span, out),
+
+            ExprKind::CallGeneric {
+                name,
+                pos_args,
+                kw_args,
+                ..
+            } => self.gen_call_kw(name, pos_args, kw_args, expr.span, out),
+
+            ExprKind::CallExpr { .. } => Err(Diagnostic::new(
+                "only named closures (`f = lambda ...` then `f(x)`) can be called",
+                expr.span,
+            )),
+
             ExprKind::DictLit(pairs) => self.eval_dict_lit(pairs, expected, expr.span, out),
 
             ExprKind::SetLit(elems) => self.eval_set_lit(elems, expected, expr.span, out),
@@ -1501,6 +1542,13 @@ impl Codegen {
                 }
                 Ok(acc.unwrap_or_else(|| "true".to_string()))
             }
+            Type::GenericInst { .. } => Err(Diagnostic::new(
+                format!(
+                    "cannot compare generic value of type `{}` (it must be monomorphized)",
+                    lhs_ty.name()
+                ),
+                span,
+            )),
         }
     }
 

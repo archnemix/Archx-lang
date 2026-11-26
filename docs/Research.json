@@ -3,28 +3,85 @@
   "entries": {
     "german_umbra_strings": {
       "summary": "16-byte string representation storing u32 length + 4-byte prefix in word 0 and either 8 inline bytes (<= 12 B total) or a pointer in word 1. Enables register-only short strings and O(1) prefix-rejected equality without pointer dereferences.",
-      "applied_in": ["src/codegen/expr.rs", "src/codegen/runtime.rs"],
+      "applied_in": [
+        "src/codegen/expr.rs",
+        "src/codegen/runtime.rs"
+      ],
       "url": "https://cedardb.com/blog/german_strings/"
     },
     "arena_bump_allocators": {
       "summary": "Bump-pointer arena allocation inside contiguous 64 KB slabs reduces temporary batch allocation to 2 pointer instructions and O(1) watermark reset, outperforming per-object malloc/free by 8-10x on allocation-heavy loops.",
-      "applied_in": ["src/codegen/stmt.rs", "src/codegen/runtime.rs"],
+      "applied_in": [
+        "src/codegen/stmt.rs",
+        "src/codegen/runtime.rs"
+      ],
       "url": "https://andreleite.com/posts/2025/nstl/virtual-memory-arena-allocator/"
     },
     "aos_vs_soa_vectorization": {
       "summary": "Splitting Array-of-Structs (AoS) into Structure-of-Arrays (SoA) contiguous 16B-aligned planes avoids loading untouched fields into L1 cache lines and eliminates SIMD gather/shufflevector blend instructions in LLVM LoopVectorize.",
-      "applied_in": ["src/codegen/stmt.rs", "src/codegen/loops.rs", "src/codegen/analysis.rs"],
+      "applied_in": [
+        "src/codegen/stmt.rs",
+        "src/codegen/loops.rs",
+        "src/codegen/analysis.rs"
+      ],
       "url": "https://llvm.org/docs/Vectorizers.html"
     },
     "llvm_o2_pipeline_and_overflow_intrinsics": {
       "summary": "-O2 provides the release sweet spot (IPSCCP, Inliner, SROA, InstCombine, IndVarSimplify, LoopVectorize) without -O3 icache bloat; @llvm.sadd/ssub/smul.with.overflow.i64 provides deterministic overflow checking without signed-overflow UB.",
-      "applied_in": ["src/codegen/expr.rs", "src/codegen/memory.rs", "src/main.rs"],
+      "applied_in": [
+        "src/codegen/expr.rs",
+        "src/codegen/memory.rs",
+        "src/main.rs"
+      ],
       "url": "https://llvm.org/docs/LangRef.html#arithmetic-with-overflow-intrinsics"
     },
     "windows_msvc_ucrt_printf": {
       "summary": "On x86_64-pc-windows-msvc, UCRT moves classic printf/sprintf wrappers into legacy_stdio_definitions.lib; linking raw LLVM IR calling @printf via clang on MSVC Windows requires -llegacy_stdio_definitions.",
-      "applied_in": ["src/main.rs", "docs/Workaround.md"],
+      "applied_in": [
+        "src/main.rs",
+        "docs/Workaround.md"
+      ],
       "url": "https://learn.microsoft.com/en-us/cpp/porting/visual-cpp-change-history-2003-2015#stdio_and_conio"
+    },
+    "python_pep709_inlined_comprehensions_and_pep695_generics": {
+      "summary": "Python 3.12 PEP 709 inlines list/dict/set comprehensions into the enclosing frame while isolating loop variables; PEP 695 introduces `def fn[T](...)` and `class Box[T]:` scoped type parameter syntax. Archx compiles both ahead-of-time via single-allocation pre-sizing and full AST monomorphization.",
+      "applied_in": [
+        "src/parser.rs",
+        "src/codegen/comprehensions.rs",
+        "src/codegen/generics.rs"
+      ],
+      "url": "https://peps.python.org/pep-0695/"
+    },
+    "branchless_filter_compaction_vs_rust_filter_collect": {
+      "summary": "Rust's `std::iter::Filter` cannot implement `TrustedLen` and emits a conditional branch per item, incurring 15-20 cycle CPU branch-misprediction stalls (~3-4x slowdown on ~50%-selectivity shuffled data). Pre-allocating upper-bound N once and emitting unconditional `out[w] = val; w += zext i1 cond` eliminates reallocs, capacity checks, and mispredicted branches.",
+      "applied_in": [
+        "src/codegen/comprehensions.rs"
+      ],
+      "url": "https://lemire.me/blog/2019/10/15/mispredicted-branches-can-multiply-your-running-times/"
+    },
+    "llvm_loop_vectorize_metadata_and_noalias": {
+      "summary": "Attaching distinct `!llvm.loop` metadata (`llvm.loop.mustprogress` + `llvm.loop.vectorize.enable`) onto single-exit counted comprehension/reduction latches alongside `noalias align 16` output buffers enables LLVM LoopVectorize to emit wide SIMD vector loops.",
+      "applied_in": [
+        "src/codegen/comprehensions.rs",
+        "src/codegen/mod.rs"
+      ],
+      "url": "https://llvm.org/docs/LangRef.html#llvm-loop"
+    },
+    "inline_pdqsort_and_planar_schwartzian_key_sort_vs_qsort": {
+      "summary": "libc `qsort` performs O(N log N) indirect function-pointer calls that prevent inlining and register passing, Pythons `sorted` boxes a `key` tuple per element, and Rust `sort_unstable_by_key` recomputes key(x) O(N log N) times while swapping full-width structs. Archx instead emits an inline `fastcc` **stable bottom-up merge sort**: O(N log N) compares and moves with no quadratic worst case (so no heapsort fallback and no recursion depth guard, unlike PDQSort/introsort), runs of 16 insertion-sorted first, then log2(N) ping-pong merge passes; `key=...` uses a **Planar Schwartzian transform** that evaluates the inlined key exactly N times into `{ key, orig_idx }` records and applies the resulting permutation as a raw byte gather, so owned payloads are moved rather than cloned and stability holds even for `reverse=True`.",
+      "applied_in": [
+        "src/codegen/sort.rs"
+      ],
+      "url": "https://travisdowns.github.io/blog/2019/05/22/sorting.html"
+    },
+    "inbounds_getelementptr_poison_hoisting": {
+      "summary": "An `inbounds` getelementptr whose result lands outside the allocated object is immediate poison, even when the address is never loaded from. Computing base[j-1] before testing j > lo therefore lets LLVM fold the enclosing function into arbitrary behavior: at -O1/-O2 the stable insertion-sort pass collapsed into `free(): invalid pointer` plus corrupted output, at -O0 it happened to work. Fix is structural, not a hint - the sentinel/bounds test becomes its own basic block that branches around the address and load, so the gep is never speculative. Diagnosed by bisecting the emitted IR (`getelementptr inbounds` -> `getelementptr` made the same IR correct) and then re-hoisting the guard in src/codegen/sort.rs.",
+      "applied_in": [
+        "src/codegen/sort.rs",
+        "internals/skills/llvm_ir_optimization.md",
+        "tests/cli.rs"
+      ],
+      "url": "https://llvm.org/docs/LangRef.html#getelementptr-instruction"
     }
   }
 }

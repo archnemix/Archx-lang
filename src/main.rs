@@ -133,6 +133,11 @@ fn run(args: &[String]) -> Result<i32, String> {
     clang_cmd
         .arg(&ir_path)
         .arg("-O2")
+        // One IEEE-754 operation per source operation. Recent clang makes contraction
+        // (`a*b+c` -> `fma`) the default even at `-O2`, which changes the *last bits* of any
+        // floating-point result versus Python, Rust, and the interpreter-style evaluation this
+        // language promises. Pinning it off keeps every edition bit-identical.
+        .arg("-ffp-contract=off")
         .arg("-Wno-override-module")
         .arg("-o")
         .arg(&output);

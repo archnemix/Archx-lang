@@ -113,6 +113,15 @@ impl Codegen {
                         span,
                     ));
                 }
+                Type::GenericInst { .. } => {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "`print` does not format generic `{}` automatically; print its fields or an f-string",
+                            ty.name()
+                        ),
+                        span,
+                    ));
+                }
             }
         }
 
@@ -257,6 +266,15 @@ impl Codegen {
                     span,
                 ));
             }
+            Type::GenericInst { .. } => {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`print` does not format generic `{}` automatically; print its fields or an f-string",
+                        ty.name()
+                    ),
+                    span,
+                ));
+            }
         }
         Ok(())
     }
@@ -269,7 +287,7 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<()> {
-        if matches!(elem_ty, Type::Struct(_)) {
+        if matches!(elem_ty, Type::Struct(_) | Type::GenericInst { .. }) {
             return Err(Diagnostic::new(
                 "`print` does not format lists of structs automatically; print fields in a loop",
                 span,
@@ -350,6 +368,12 @@ impl Codegen {
         if let Some(Type::Struct(sname)) = v_ty {
             return Err(Diagnostic::new(
                 format!("`print` does not format dict values of struct `{sname}` automatically"),
+                span,
+            ));
+        }
+        if matches!(v_ty, Some(Type::GenericInst { .. })) {
+            return Err(Diagnostic::new(
+                "`print` does not format dict values of a generic class automatically",
                 span,
             ));
         }

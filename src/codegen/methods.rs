@@ -50,6 +50,7 @@ impl Codegen {
         self.terminated = false;
         self.is_main = false;
         self.allocas.clear();
+        self.sort_tmp_slot = None;
         self.current_ret = sig.ret.clone();
 
         let ir_ret = ir_ret_type(sig.ret.as_ref());
@@ -181,6 +182,7 @@ impl Codegen {
             if let Some(entry) = self.lookup_var(vname).cloned() {
                 if let Type::Array(elem_ty) = &entry.ty {
                     return match method {
+                        "sort" => self.gen_list_sort(target, args, &[], span, out),
                         "append" => {
                             if args.len() != 1 {
                                 return Err(Diagnostic::new(
@@ -699,6 +701,57 @@ impl Codegen {
                 span,
             )),
         }
+    }
+
+    /// `xs.m(k=...)` — method calls carrying keyword arguments (`xs.sort(key=..., reverse=...)`).
+    pub(super) fn gen_method_call_kw(
+        &mut self,
+        target: &Expr,
+        method: &str,
+        pos_args: &[Expr],
+        kw_args: &[(String, Expr, Span)],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if let ExprKind::Var(vname) = &target.kind {
+            if let Some(entry) = self.lookup_var(vname).cloned() {
+                if let Type::Array(_) = &entry.ty {
+                    return match method {
+                        "sort" => self.gen_list_sort(target, pos_args, kw_args, span, out),
+                        other => Err(Diagnostic::new(
+                            format!(
+                                "`{}` has no method `{other}` accepting keyword arguments",
+                                entry.ty.name()
+                            ),
+                            span,
+                        )),
+                    };
+                }
+                if let Type::Struct(sname) = &entry.ty {
+                    let sig = self
+                        .methods
+                        .get(&(sname.clone(), method.to_string()))
+                        .cloned()
+                        .ok_or_else(|| {
+                            Diagnostic::new(
+                                format!("class/struct `{sname}` has no method `{method}`"),
+                                span,
+                            )
+                        })?;
+                    let _ = sig;
+                    return Err(Diagnostic::new(
+                        format!(
+                            "`{sname}.{method}()` does not accept keyword arguments; pass them positionally"
+                        ),
+                        span,
+                    ));
+                }
+            }
+        }
+        Err(Diagnostic::new(
+            format!("`{method}()` does not accept keyword arguments here"),
+            span,
+        ))
     }
 
     pub(super) fn gen_any_method(

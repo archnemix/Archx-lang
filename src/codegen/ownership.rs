@@ -25,10 +25,13 @@ impl Codegen {
                     .iter()
                     .any(|(_, fs, _)| fs.iter().any(|t| self.type_needs_drop(t)))
             }),
+            // Monomorphized before codegen; a surviving instantiation is treated as owning.
+            Type::GenericInst { .. } => true,
         }
     }
 
     pub(super) fn claim_stmt_temp(&mut self, val: &str) -> bool {
+
         if let Some(pos) = self.stmt_temps.iter().rposition(|t| t.val == val) {
             self.stmt_temps.remove(pos);
             true

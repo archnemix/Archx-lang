@@ -323,6 +323,74 @@ ret_false:
             );
         }
 
+        if self.used_str_cmp {
+            // Three-way SSO-aware string compare. Each operand is materialized
+            // independently: short strings are unpacked from their inline bytes
+            // (`w0[32..]` then `w1`), long strings are indexed from the heap base.
+            // The first differing byte decides; a pure prefix compares by length.
+            out.push_str(
+                r#"
+define private fastcc i32 @archx_str_cmp(%ArchxStr %a, %ArchxStr %b) alwaysinline nounwind {
+entry:
+  %aw0 = extractvalue %ArchxStr %a, 0
+  %bw0 = extractvalue %ArchxStr %b, 0
+  %alen = and i64 %aw0, 4294967295
+  %blen = and i64 %bw0, 4294967295
+  %abuf = alloca [16 x i8], align 8
+  %bbuf = alloca [16 x i8], align 8
+  %ashort = icmp ule i64 %alen, 12
+  br i1 %ashort, label %a_sso, label %a_long
+a_sso:
+  %aw1 = extractvalue %ArchxStr %a, 1
+  %ap4 = lshr i64 %aw0, 32
+  %ap4_32 = trunc i64 %ap4 to i32
+  store i32 %ap4_32, ptr %abuf, align 8
+  %abuf4 = getelementptr inbounds i8, ptr %abuf, i64 4
+  store i64 %aw1, ptr %abuf4, align 4
+  br label %a_done
+a_long:
+  %aw1l = extractvalue %ArchxStr %a, 1
+  %araw = and i64 %aw1l, -4
+  %aptr = inttoptr i64 %araw to ptr
+  br label %a_done
+a_done:
+  %ap = phi ptr [ %abuf, %a_sso ], [ %aptr, %a_long ]
+  %bshort = icmp ule i64 %blen, 12
+  br i1 %bshort, label %b_sso, label %b_long
+b_sso:
+  %bw1 = extractvalue %ArchxStr %b, 1
+  %bp4 = lshr i64 %bw0, 32
+  %bp4_32 = trunc i64 %bp4 to i32
+  store i32 %bp4_32, ptr %bbuf, align 8
+  %bbuf4 = getelementptr inbounds i8, ptr %bbuf, i64 4
+  store i64 %bw1, ptr %bbuf4, align 4
+  br label %b_done
+b_long:
+  %bw1l = extractvalue %ArchxStr %b, 1
+  %braw = and i64 %bw1l, -4
+  %bptr = inttoptr i64 %braw to ptr
+  br label %b_done
+b_done:
+  %bp = phi ptr [ %bbuf, %b_sso ], [ %bptr, %b_long ]
+  %alt = icmp ult i64 %alen, %blen
+  %n = select i1 %alt, i64 %alen, i64 %blen
+  %m = call i32 @memcmp(ptr nonnull %ap, ptr nonnull %bp, i64 %n)
+  %nz = icmp ne i32 %m, 0
+  br i1 %nz, label %ret_m, label %ret_len
+ret_m:
+  ret i32 %m
+ret_len:
+  %gt = icmp ugt i64 %alen, %blen
+  %neg = select i1 %alt, i32 -1, i32 0
+  %pos = select i1 %gt, i32 1, i32 0
+  %res = or i32 %neg, %pos
+  ret i32 %res
+}
+
+"#,
+            );
+        }
+
         if self.used_str_print {
             emit_cstr_global(out, "@.fmt.pstr.nl", "%.*s\n");
             emit_cstr_global(out, "@.fmt.pstr", "%.*s");
@@ -650,7 +718,7 @@ entry:
         if self.used_smul_ovf {
             out.push_str("declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable\n");
         }
-        if self.used_str_eq {
+        if self.used_str_eq || self.used_str_cmp {
             out.push_str("declare i32 @memcmp(ptr nocapture, ptr nocapture, i64) nounwind readonly\n");
         }
         if self.used_str_print {

@@ -5,7 +5,10 @@ mod analysis;
 mod any;
 mod calls;
 mod collections;
+mod comprehensions;
+mod sort;
 mod expr;
+mod generics;
 mod io;
 mod loops;
 mod memory;
@@ -17,10 +20,12 @@ mod runtime_hash_any;
 mod runtime_py;
 mod stmt;
 mod tuples_enums;
+mod zip_loops;
 #[cfg(test)]
 mod tests;
 
 use self::analysis::*;
+use self::generics::*;
 use self::tuples_enums::*;
 use crate::ast::{EnumDef, Func, Param, Program, StructDef, Type};
 use crate::diag::{Diagnostic, Result, Span};
@@ -41,10 +46,33 @@ pub(super) const MAX_NESTING: usize = 128;
 /// - Escape-checked `region:` / `with region:` bump-pointer arenas with slab reuse
 pub fn lower(raw_program: &Program) -> Result<String> {
     let enum_names: HashSet<String> = raw_program.enums.iter().map(|e| e.name.clone()).collect();
-    let program = resolve_program_types(raw_program, &enum_names);
+    let resolved = resolve_program_types(raw_program, &enum_names);
+    // `v0.9.0`: PEP 695 monomorphization + zero-heap closure lifting run as one
+    // deterministic AST pass so the rest of the backend only ever sees concrete types.
+    let program = expand_generics_and_lambdas(&resolved)?;
 
     let mut struct_map: HashMap<String, Vec<Param>> = HashMap::new();
     let mut struct_spans: HashMap<String, Span> = HashMap::new();
+
+    // PEP 695: generic declarations exist only as templates. `expand_generics_and_lambdas`
+    // already emitted a concrete, type-substituted copy for every *used* instantiation, so the
+    // templates themselves are absent from the layout tables and must not be validated against
+    // them (their fields are spelled with type parameters like `T`).
+    let program: Program = Program {
+        structs: program
+            .structs
+            .iter()
+            .filter(|s| s.type_params.is_empty())
+            .cloned()
+            .collect(),
+        enums: program.enums.clone(),
+        funcs: program
+            .funcs
+            .iter()
+            .filter(|f| f.type_params.is_empty())
+            .cloned()
+            .collect(),
+    };
 
     for sdef in &program.structs {
         if BUILTINS.contains(&sdef.name.as_str()) || PRIMITIVE_TYPES.contains(&sdef.name.as_str()) {
@@ -122,7 +150,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
 
     let mut sigs = HashMap::new();
     let mut methods: HashMap<(String, String), MethodSig> = HashMap::new();
-    let mut mutating_method_names: HashSet<String> = ["append", "pop", "clear"]
+    let mut mutating_method_names: HashSet<String> = ["append", "pop", "clear", "sort", "reverse", "extend"]
         .into_iter()
         .map(String::from)
         .collect();
@@ -402,6 +430,8 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_str_split_sep: false,
         used_str_replace: false,
         used_str_byte_at: false,
+        used_str_cmp: false,
+        sort_tmp_slot: None,
         used_pow_f64: false,
         used_floor_f64: false,
         used_fabs_f64: false,
@@ -451,6 +481,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         || cg.used_str_split_sep
         || cg.used_str_replace
         || cg.used_str_byte_at
+        || cg.used_str_cmp
         || cg.used_assert_fail
     {
         cg.used_str_type = true;
@@ -595,7 +626,30 @@ pub(super) fn validate_type<V>(
                 Err(Diagnostic::new(format!("unknown enum `{name}`"), span))
             }
         }
+        Type::GenericInst { name, args } => {
+            for a in args {
+                validate_type(a, structs, enums, span)?;
+            }
+            if structs.contains_key(name) || structs.contains_key(&generic_inst_name(name, args)) {
+                Ok(())
+            } else {
+                Err(Diagnostic::new(
+                    format!(
+                        "generic type `{}` is not defined (define `class {}[...]:`)",
+                        ty.name(),
+                        name
+                    ),
+                    span,
+                ))
+            }
+        }
     }
+}
+
+/// Canonical monomorphized name of a generic instantiation (`Box[int]` -> `Box__i`).
+pub(super) fn generic_inst_name(name: &str, args: &[Type]) -> String {
+    let keys: Vec<String> = args.iter().map(type_mangle_key).collect();
+    format!("{name}__{}", keys.join("_"))
 }
 
 pub(super) fn mark_type_usage(
@@ -627,6 +681,11 @@ pub(super) fn mark_type_usage(
             *used_dict = true;
             mark_type_usage(inner, used_vec, used_str, used_dict, used_any);
         }
+        Type::GenericInst { args, .. } => {
+            for a in args {
+                mark_type_usage(a, used_vec, used_str, used_dict, used_any);
+            }
+        }
         Type::Any => {
             *used_any = true;
             *used_str = true;
@@ -641,6 +700,12 @@ pub(super) fn mark_type_usage(
 fn collect_struct_deps(ty: &Type, out: &mut Vec<String>) {
     match ty {
         Type::Struct(dep) => out.push(dep.clone()),
+        Type::GenericInst { name, args } => {
+            out.push(generic_inst_name(name, args));
+            for t in args {
+                collect_struct_deps(t, out);
+            }
+        }
         Type::Optional(inner) => collect_struct_deps(inner, out),
         Type::Tuple(items) => {
             for t in items {
@@ -905,6 +970,8 @@ pub(super) struct Codegen {
     pub(super) used_str_split_sep: bool,
     pub(super) used_str_replace: bool,
     pub(super) used_str_byte_at: bool,
+    pub(super) used_str_cmp: bool,
+    pub(super) sort_tmp_slot: Option<String>,
     pub(super) used_pow_f64: bool,
     pub(super) used_floor_f64: bool,
     pub(super) used_fabs_f64: bool,
@@ -960,6 +1027,8 @@ impl Codegen {
         self.terminated = false;
         self.is_main = func.name == "main";
         self.allocas.clear();
+        // The 16-byte sort scratch slot is per function (it lives in `allocas`).
+        self.sort_tmp_slot = None;
 
         let ir_ret = if self.is_main {
             "i32".to_string()
@@ -1214,6 +1283,10 @@ pub(super) fn type_mangle_key(ty: &Type) -> String {
         }
         Type::Dict(k, v) => format!("D_{}_{}", type_mangle_key(k), type_mangle_key(v)),
         Type::Set(inner) => format!("E_{}", type_mangle_key(inner)),
+        Type::GenericInst { name, args } => {
+            let parts: Vec<String> = args.iter().map(type_mangle_key).collect();
+            format!("G{}_{}_{}", name.len(), name, parts.join("_"))
+        }
     }
 }
 
@@ -1236,6 +1309,9 @@ pub(super) fn ir_type(ty: &Type) -> String {
                 format!("{{ {} }}", parts.join(", "))
             }
         }
+        Type::GenericInst { name, args } => {
+            format!("%ArchxStruct_{}", generic_inst_name(name, args))
+        }
         Type::Void => "void".to_string(),
     }
 }
@@ -1254,7 +1330,8 @@ pub(super) fn ir_align(ty: &Type) -> u32 {
         | Type::Dict(_, _)
         | Type::Set(_)
         | Type::Struct(_)
-        | Type::Enum(_) => 8,
+        | Type::Enum(_)
+        | Type::GenericInst { .. } => 8,
         Type::Void => 1,
     }
 }

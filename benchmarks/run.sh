@@ -8,6 +8,7 @@
 #   4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 #   5. Planar SIMD Dict vs Python dict vs C AoS vs Rust HashMap + Adaptive Static/Dynamic (benchmarks/dict_*)
 #   6. 5-Way Full-Feature Tour (examples/comparison/full_tour.*: Python 3 vs Archx 1:1 Pythonic vs Archx Speed vs C vs Rust)
+#   7. Comprehensions, Generator Folds, zip & Inline Sorting (benchmarks/pipelines.*)
 #
 # Usage: bash benchmarks/run.sh [native_runs] [python_runs]
 
@@ -33,38 +34,49 @@ if ! cmp -s examples/comparison/full_tour.py examples/comparison/full_tour_pytho
   exit 1
 fi
 
+echo "== verifying 1:1 source identity of pipelines.py and pipelines.archx.lang =="
+if ! cmp -s benchmarks/pipelines.py benchmarks/pipelines.archx.lang; then
+  echo "MISMATCH: pipelines.py and pipelines.archx.lang must be byte-for-byte identical!"
+  exit 1
+fi
+
 echo "== building Archx compiler (release) =="
 cargo build --release >/dev/null 2>&1 || { echo "archx build failed"; exit 1; }
 
 echo "== building Suite 1: scalar benchmark (primes) =="
-clang -O2 -o "$TMP/primes_c" benchmarks/primes.c || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/primes_c" benchmarks/primes.c || exit 1
 rustc -O -o "$TMP/primes_rs" benchmarks/primes.rs || exit 1
 ./target/release/archx benchmarks/primes.archx.lang -o "$TMP/primes_ax" || exit 1
 
 echo "== building Suite 2: array benchmark (arrays) =="
-clang -O2 -o "$TMP/arrays_c_raw" benchmarks/arrays_raw.c || exit 1
-clang -O2 -o "$TMP/arrays_c_chk" benchmarks/arrays_checked.c || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/arrays_c_raw" benchmarks/arrays_raw.c || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/arrays_c_chk" benchmarks/arrays_checked.c || exit 1
 rustc -O -o "$TMP/arrays_rs" benchmarks/arrays.rs || exit 1
 ./target/release/archx benchmarks/arrays.archx.lang -o "$TMP/arrays_ax" || exit 1
 
 echo "== building Suite 3: composite Milestone 5 benchmark (composite) =="
-clang -O2 -o "$TMP/comp_c" benchmarks/composite.c || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/comp_c" benchmarks/composite.c || exit 1
 rustc -O -o "$TMP/comp_rs" benchmarks/composite.rs || exit 1
 ./target/release/archx benchmarks/composite.archx.lang -o "$TMP/comp_ax" || exit 1
 
 echo "== building Suite 4: Pythonic floating-point N-body benchmark (nbody_float) =="
-clang -O2 -o "$TMP/nbody_c" benchmarks/nbody_float.c -lm || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/nbody_c" benchmarks/nbody_float.c -lm || exit 1
 rustc -O -o "$TMP/nbody_rs" benchmarks/nbody_float.rs || exit 1
 ./target/release/archx benchmarks/nbody_float.archx.lang -o "$TMP/nbody_ax" || exit 1
 
 echo "== building Suite 5: Planar SIMD dict + Adaptive Static vs Dynamic (dict_bench) =="
-clang -O2 -o "$TMP/dict_c" benchmarks/dict_bench.c || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/dict_c" benchmarks/dict_bench.c || exit 1
 rustc -O -o "$TMP/dict_rs" benchmarks/dict_bench.rs || exit 1
 ./target/release/archx benchmarks/dict_bench.archx.lang -o "$TMP/dict_ax" || exit 1
 ./target/release/archx benchmarks/dict_dynamic.archx.lang -o "$TMP/dict_ax_dyn" || exit 1
 
+echo "== building Suite 7: comprehension/generator pipelines & inline sorting (pipelines) =="
+clang -O2 -ffp-contract=off -o "$TMP/pipe_c" benchmarks/pipelines.c || exit 1
+rustc -O -o "$TMP/pipe_rs" benchmarks/pipelines.rs || exit 1
+./target/release/archx benchmarks/pipelines.archx.lang -o "$TMP/pipe_ax" || exit 1
+
 echo "== building Suite 6: 5-Way Full-Feature Tour (examples/comparison/full_tour.*) =="
-clang -O2 -o "$TMP/tour_c" examples/comparison/full_tour.c -lm || exit 1
+clang -O2 -ffp-contract=off -o "$TMP/tour_c" examples/comparison/full_tour.c -lm || exit 1
 rustc -O -o "$TMP/tour_rs" examples/comparison/full_tour.rs || exit 1
 ./target/release/archx examples/comparison/full_tour_pythonic.archx.lang -o "$TMP/tour_ax_py" || exit 1
 ./target/release/archx examples/comparison/full_tour_speed.archx.lang -o "$TMP/tour_ax_spd" || exit 1
@@ -166,6 +178,24 @@ if ! cmp -s "$TMP/out_dc" "$TMP/out_dpy" \
 fi
 
 echo
+echo "== verifying Suite 7 (pipelines) outputs match (Python 3, C, Rust, Archx) =="
+python3 benchmarks/pipelines.py > "$TMP/out_ppy7" || exit 1
+"$TMP/pipe_c"  > "$TMP/out_pc7"  || exit 1
+"$TMP/pipe_rs" > "$TMP/out_pr7"  || exit 1
+"$TMP/pipe_ax" > "$TMP/out_pa7"  || exit 1
+cat "$TMP/out_pc7"
+if ! cmp -s "$TMP/out_pc7" "$TMP/out_ppy7" \
+   || ! cmp -s "$TMP/out_pc7" "$TMP/out_pr7" \
+   || ! cmp -s "$TMP/out_pc7" "$TMP/out_pa7"; then
+  echo "MISMATCH in pipelines benchmark"
+  echo "--- python3 ---"; cat "$TMP/out_ppy7"
+  echo "--- c ---";       cat "$TMP/out_pc7"
+  echo "--- rust ---";    cat "$TMP/out_pr7"
+  echo "--- archx ---";   cat "$TMP/out_pa7"
+  exit 1
+fi
+
+echo
 echo "== verifying Suite 6 (full_tour 5-way showcase) outputs match =="
 python3 examples/comparison/full_tour.py > "$TMP/out_tpy" || exit 1
 "$TMP/tour_ax_py"  > "$TMP/out_tap" || exit 1
@@ -185,7 +215,7 @@ if ! cmp -s "$TMP/out_tc" "$TMP/out_tpy" \
   echo "--- rust ---";             cat "$TMP/out_tr"
   exit 1
 fi
-echo "all implementations across all 6 suites agree!"
+echo "all implementations across all 7 suites agree!"
 
 time_ms() {
   local bin="$1" count="${2:-$RUNS}" i start end ms
@@ -261,6 +291,12 @@ read -r DR_BEST  DR_MEAN  <<<"$(time_ms "$TMP/dict_rs")"
 read -r DA_BEST  DA_MEAN  <<<"$(time_ms "$TMP/dict_ax")"
 read -r DAD_BEST DAD_MEAN <<<"$(time_ms "$TMP/dict_ax_dyn")"
 
+echo "== timing Suite 7 (pipelines): Python best of $PY_RUNS, native best of $RUNS (ms) =="
+read -r PPY_BEST PPY_MEAN <<<"$(time_py_ms benchmarks/pipelines.py)"
+read -r PC7_BEST PC7_MEAN <<<"$(time_ms "$TMP/pipe_c")"
+read -r PR7_BEST PR7_MEAN <<<"$(time_ms "$TMP/pipe_rs")"
+read -r PA7_BEST PA7_MEAN <<<"$(time_ms "$TMP/pipe_ax")"
+
 echo "== timing Suite 6 (5-Way Full-Feature Tour): Python best of $PY_RUNS, native best of $RUNS (ms) =="
 read -r TPY_BEST TPY_MEAN <<<"$(time_py_ms examples/comparison/full_tour.py)"
 read -r TAP_BEST TAP_MEAN <<<"$(time_ms "$TMP/tour_ax_py")"
@@ -290,13 +326,17 @@ read -r DR_KB  DR_SKB  <<<"$(measure_sizes "$TMP/dict_rs")"
 read -r DA_KB  DA_SKB  <<<"$(measure_sizes "$TMP/dict_ax")"
 read -r DAD_KB DAD_SKB <<<"$(measure_sizes "$TMP/dict_ax_dyn")"
 
+read -r PC7_KB PC7_SKB <<<"$(measure_sizes "$TMP/pipe_c")"
+read -r PR7_KB PR7_SKB <<<"$(measure_sizes "$TMP/pipe_rs")"
+read -r PA7_KB PA7_SKB <<<"$(measure_sizes "$TMP/pipe_ax")"
+
 read -r TAP_KB TAP_SKB <<<"$(measure_sizes "$TMP/tour_ax_py")"
 read -r TAS_KB TAS_SKB <<<"$(measure_sizes "$TMP/tour_ax_spd")"
 read -r TC_KB  TC_SKB  <<<"$(measure_sizes "$TMP/tour_c")"
 read -r TR_KB  TR_SKB  <<<"$(measure_sizes "$TMP/tour_rs")"
 
 REPORT=$(cat <<EOF
-Archx vs Python 3 vs C vs Rust -- head-to-head benchmarks (v0.8.0)
+Archx vs Python 3 vs C vs Rust -- head-to-head benchmarks (v0.9.0)
 ==================================================================
 
 Toolchain
@@ -304,8 +344,8 @@ Toolchain
 $(python3 --version)
 $(clang --version | head -1)
 $(rustc --version)
-archx v0.8.0 (this repo, cargo build --release)
-optimisation: python3 (CPython), clang -O2 for C, rustc -O (= opt-level 2) for Rust, clang -O2 for Archx
+archx v0.9.0 (this repo, cargo build --release)
+optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= opt-level 2) for Rust, clang -O2 -ffp-contract=off for Archx
 
 1. Scalar loops (benchmarks/primes.*)
 -------------------------------------
@@ -364,9 +404,9 @@ optimisation: python3 (CPython), clang -O2 for C, rustc -O (= opt-level 2) for R
   Archx Static   (Planar SIMD + region)   ${DA_BEST} (${DA_MEAN})        $(speedup_str "$DPY_BEST" "$DA_BEST")          ${DA_KB}          ${DA_SKB}
   Archx Dynamic  (%ArchxAny dict[any])    ${DAD_BEST} (${DAD_MEAN})        $(speedup_str "$DPY_BEST" "$DAD_BEST")          ${DAD_KB}          ${DAD_SKB}
 
-6. 5-Way Full-Feature Tour (examples/comparison/full_tour.* -- v0.1.0 through v0.8.0)
+6. 5-Way Full-Feature Tour (examples/comparison/full_tour.* -- v0.1.0 through v0.9.0)
 -------------------------------------------------------------------------------------
-  - N-body physics + Planar SIMD dict/set + slicing + tuples + T | None + enum/match-case
+  - N-body physics + Planar SIMD dict/set + slicing + tuples + T | None + enum/match-case + v0.9.0 pipelines
   Output: $(paste -sd ' | ' "$TMP/out_tc")
 
   Language                                 Best ms (mean)   vs Python 3   Raw KB   Stripped KB
@@ -375,6 +415,18 @@ optimisation: python3 (CPython), clang -O2 for C, rustc -O (= opt-level 2) for R
   Archx Speed       (SoA + region + enum -O2)  ${TAS_BEST} (${TAS_MEAN})        $(speedup_str "$TPY_BEST" "$TAS_BEST")          ${TAS_KB}          ${TAS_SKB}
   Clang C           (full_tour.c -O2 -lm)      ${TC_BEST} (${TC_MEAN})        $(speedup_str "$TPY_BEST" "$TC_BEST")          ${TC_KB}          ${TC_SKB}
   Rust              (full_tour.rs rustc -O)    ${TR_BEST} (${TR_MEAN})        $(speedup_str "$TPY_BEST" "$TR_BEST")        ${TR_KB}         ${TR_SKB}
+
+7. Comprehensions, Generator Folds, zip & Inline Sorting (benchmarks/pipelines.* -- v0.9.0)
+-------------------------------------------------------------------------------------------
+  - 9 stages: comprehension build/filter, generator folds (sum/min/max/any/all), zip pairing,
+    sorted + sorted(key=...) + reverse, nested comprehension flatten, and dict keys/items folds
+  Output: $(paste -sd ', ' "$TMP/out_pc7")
+
+  Language                                 Best ms (mean)   vs Python 3   Raw KB   Stripped KB
+  Python 3          (pipelines.py)             ${PPY_BEST} (${PPY_MEAN})        1.0x          n/a         n/a
+  Archx Pythonic    (1:1 == pipelines.py -O2)  ${PA7_BEST} (${PA7_MEAN})        $(speedup_str "$PPY_BEST" "$PA7_BEST")          ${PA7_KB}          ${PA7_SKB}
+  Clang C           (pipelines.c -O2)          ${PC7_BEST} (${PC7_MEAN})        $(speedup_str "$PPY_BEST" "$PC7_BEST")          ${PC7_KB}          ${PC7_SKB}
+  Rust              (pipelines.rs rustc -O)    ${PR7_BEST} (${PR7_MEAN})        $(speedup_str "$PPY_BEST" "$PR7_BEST")        ${PR7_KB}         ${PR7_SKB}
 EOF
 )
 

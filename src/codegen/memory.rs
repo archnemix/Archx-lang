@@ -28,7 +28,11 @@ impl Codegen {
             Type::Int | Type::Float | Type::Dict(_, _) | Type::Set(_) => "8".to_string(),
             Type::Str => "16".to_string(),
             Type::Array(_) | Type::Any => "24".to_string(),
-            Type::Struct(_) | Type::Enum(_) | Type::Tuple(_) | Type::Optional(_) => {
+            Type::Struct(_)
+            | Type::Enum(_)
+            | Type::GenericInst { .. }
+            | Type::Tuple(_)
+            | Type::Optional(_) => {
                 let mem_ty = elem_mem_ir_type(elem_ty);
                 let gp = self.next_tmp();
                 let _ = writeln!(
@@ -755,6 +759,60 @@ impl Codegen {
             ExprKind::ArrayRepeat { value, count } => {
                 self.scan_expr_for_iv_arrays(iv, loop_body, value, out);
                 self.scan_expr_for_iv_arrays(iv, loop_body, count, out);
+            }
+            ExprKind::MethodCallKw {
+                target,
+                pos_args,
+                kw_args,
+                ..
+            } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, target, out);
+                for a in pos_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+                for (_, v, _) in kw_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, v, out);
+                }
+            }
+            ExprKind::CallGeneric {
+                pos_args, kw_args, ..
+            } => {
+                for a in pos_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+                for (_, v, _) in kw_args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, v, out);
+                }
+            }
+            ExprKind::CallExpr { callee, args } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, callee, out);
+                for a in args {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, a, out);
+                }
+            }
+            ExprKind::ListComp { elt, clauses }
+            | ExprKind::SetComp { elt, clauses }
+            | ExprKind::GenExpr { elt, clauses } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, elt, out);
+                for c in clauses {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, &c.iter, out);
+                    for cond in &c.conds {
+                        self.scan_expr_for_iv_arrays(iv, loop_body, cond, out);
+                    }
+                }
+            }
+            ExprKind::DictComp { key, val, clauses } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, key, out);
+                self.scan_expr_for_iv_arrays(iv, loop_body, val, out);
+                for c in clauses {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, &c.iter, out);
+                    for cond in &c.conds {
+                        self.scan_expr_for_iv_arrays(iv, loop_body, cond, out);
+                    }
+                }
+            }
+            ExprKind::Lambda { body, .. } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, body, out);
             }
             ExprKind::Int(_)
             | ExprKind::Float(_)

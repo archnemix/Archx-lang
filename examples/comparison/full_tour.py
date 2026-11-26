@@ -2,10 +2,12 @@
 #   - `full_tour.py`                  (Python 3.10+)
 #   - `full_tour_pythonic.archx.lang` (Archx 1:1 Pythonic — byte-for-byte identical source!)
 #
-# Exercises every milestone (v0.1.0 - v0.8.0):
+# Exercises every milestone (v0.1.0 - v0.9.0):
 #   classes & float N-body physics, strings & slicing, lists/dicts/sets,
 #   adaptive dynamic rebinding, multiple-return tuples, `T | None` optionals
-#   with flow-sensitive narrowing, and `match`/`case` with `|` & `if` guards.
+#   with flow-sensitive narrowing, `match`/`case` with `|` & `if` guards,
+#   comprehensions & generator folds, PEP 695 generics, zero-heap `lambda`,
+#   `zip(...)`, and inline monomorphized `sorted`/`sort(key=...)`/`reverse=True`.
 
 
 class Body:
@@ -122,6 +124,37 @@ def dispatch_events(total_events: int) -> int:
     return acc
 
 
+def pipeline_tour(n: int) -> int:
+    # v0.9.0: comprehensions, generator folds, zip, and inline monomorphized sorting.
+    squares = [x * x for x in range(n)]
+    evens = [x for x in squares if x % 2 == 0]
+    acc = sum(evens)
+    acc += sum(x for x in range(n) if x % 3 == 0)
+    acc += max(x * 2 for x in range(n))
+    acc += min(x * 3 + 1 for x in range(n))
+    if any(x > n for x in range(n)):
+        acc += 1
+    if all(x >= 0 for x in range(n)):
+        acc += 2
+
+    left = [i for i in range(n)]
+    right = [n - i for i in range(n)]
+    for a, b in zip(left, right):
+        acc += a * b
+
+    raw = [(i * 37) % 997 for i in range(n)]
+    asc = sorted(raw)
+    desc = sorted(raw, reverse=True)
+    by_neg = sorted(raw, key=lambda v: -v)
+    inplace = [x for x in raw]
+    inplace.sort()
+    for i in range(8):
+        acc += asc[i] + desc[i] + by_neg[i] + inplace[i]
+    for v in by_neg:
+        acc += v % 7
+    return acc
+
+
 def main():
     # Adaptive dynamic variable (valid Python + Archx Tier-2 `%ArchxAny`)
     mode = "initializing"
@@ -146,11 +179,13 @@ def main():
             miss_label = f"val_{v}"
 
     dispatch_score = dispatch_events(200000)
+    pipeline_score = pipeline_tour(2000)
 
     print(f"sim={sim_score}")
     print(f"dict_slice={dict_score},{rev_banner}")
     print(f"tuple_opt={lo},{hi},{total},{hit_out},{miss_label}")
     print(f"match_dispatch={dispatch_score}")
+    print(f"pipeline={pipeline_score}")
 
 
 if __name__ == "__main__":

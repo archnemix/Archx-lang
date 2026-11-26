@@ -1,5 +1,5 @@
 # GitHub Actions CI pipeline: runs unit & integration tests across Linux, macOS, and Windows (3 runners <= 5 cap),
-# verifies ASan+LSan zero-leak safety, runs 6-suite Python 3 / C / Rust / Archx benchmarks, and commits logs + versioned test history into `ci/`.
+# verifies ASan+LSan zero-leak safety, runs 7-suite Python 3 / C / Rust / Archx benchmarks, and commits logs + versioned test history into `ci/`.
 
 name: CI
 

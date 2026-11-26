@@ -17,6 +17,10 @@ pub enum Type {
     Optional(Box<Type>),
     Struct(String),
     Enum(String),
+    GenericInst {
+        name: String,
+        args: Vec<Type>,
+    },
 }
 
 impl Type {
@@ -37,6 +41,10 @@ impl Type {
             ),
             Type::Optional(inner) => format!("{} | None", inner.name()),
             Type::Struct(name) | Type::Enum(name) => name.clone(),
+            Type::GenericInst { name, args } => format!(
+                "{name}[{}]",
+                args.iter().map(|t| t.name()).collect::<Vec<_>>().join(", ")
+            ),
         }
     }
 
@@ -73,6 +81,7 @@ pub struct EnumVariant {
 #[derive(Debug, Clone)]
 pub struct StructDef {
     pub name: String,
+    pub type_params: Vec<String>,
     pub fields: Vec<Param>,
     pub methods: Vec<Func>,
     pub span: Span,
@@ -81,6 +90,7 @@ pub struct StructDef {
 #[derive(Debug, Clone)]
 pub struct Func {
     pub name: String,
+    pub type_params: Vec<String>,
     pub params: Vec<Param>,
     pub ret: Option<Type>,
     pub body: Vec<Stmt>,
@@ -160,6 +170,16 @@ pub enum StmtKind {
         dict: Expr,
         body: Vec<Stmt>,
     },
+    ForZip {
+        vars: Vec<String>,
+        iters: Vec<Expr>,
+        body: Vec<Stmt>,
+    },
+    ForTupleUnpack {
+        vars: Vec<String>,
+        iter: Expr,
+        body: Vec<Stmt>,
+    },
     TupleAssign {
         targets: Vec<String>,
         value: Expr,
@@ -237,6 +257,14 @@ pub struct Expr {
 }
 
 #[derive(Debug, Clone)]
+pub struct CompClause {
+    pub vars: Vec<String>,
+    pub iter: Expr,
+    pub conds: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExprKind {
     Int(i64),
     Float(f64),
@@ -253,6 +281,27 @@ pub enum ExprKind {
     DictLit(Vec<(Expr, Expr)>),
     SetLit(Vec<Expr>),
     TupleLit(Vec<Expr>),
+    ListComp {
+        elt: Box<Expr>,
+        clauses: Vec<CompClause>,
+    },
+    DictComp {
+        key: Box<Expr>,
+        val: Box<Expr>,
+        clauses: Vec<CompClause>,
+    },
+    SetComp {
+        elt: Box<Expr>,
+        clauses: Vec<CompClause>,
+    },
+    GenExpr {
+        elt: Box<Expr>,
+        clauses: Vec<CompClause>,
+    },
+    Lambda {
+        params: Vec<Param>,
+        body: Box<Expr>,
+    },
     Index {
         target: Box<Expr>,
         index: Box<Expr>,
@@ -272,6 +321,12 @@ pub enum ExprKind {
         method: String,
         args: Vec<Expr>,
     },
+    MethodCallKw {
+        target: Box<Expr>,
+        method: String,
+        pos_args: Vec<Expr>,
+        kw_args: Vec<(String, Expr, Span)>,
+    },
     Call {
         name: String,
         args: Vec<Expr>,
@@ -280,6 +335,16 @@ pub enum ExprKind {
         name: String,
         pos_args: Vec<Expr>,
         kw_args: Vec<(String, Expr, Span)>,
+    },
+    CallGeneric {
+        name: String,
+        type_args: Vec<Type>,
+        pos_args: Vec<Expr>,
+        kw_args: Vec<(String, Expr, Span)>,
+    },
+    CallExpr {
+        callee: Box<Expr>,
+        args: Vec<Expr>,
     },
     IfExpr {
         then_expr: Box<Expr>,

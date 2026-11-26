@@ -412,6 +412,7 @@ impl<'a> Lexer<'a> {
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
+            "lambda" => TokenKind::Lambda,
             "True" | "true" => TokenKind::Bool(true),
             "False" | "false" => TokenKind::Bool(false),
             "None" => TokenKind::NoneLit,

@@ -44,13 +44,18 @@ Each milestone must be **100% implemented, leak-checked, and tested across Linux
 - [x] **Algebraic `enum` sum types & exhaustive Pythonic `match` / `case`**: unit & payload-carrying `enum`s (`%ArchxEnum_Name = type { i64, [W x i64] }`) with recursive RAII & `with region:` promotion, `match`/`case` with literals, bindings, `_`, tuple & `Enum.Variant(...)` destructuring, `|` OR-patterns, `if` guards, and compile-time `enum` exhaustiveness verification, plus Python `def __init__(self, ...):` field inference & constructor dispatch
 - [x] **6-Suite `python3` / `C` / `Rust` / `Archx` Benchmarks & 5-Way Comparison Showcase (`examples/comparison/`)**: `full_tour.py` == `full_tour_pythonic.archx.lang` (`13 ms` vs `298 ms` Python 3.14 = **22.9× faster**, tying `rustc -O` `13 ms`!) + `full_tour_speed.archx.lang` (`12 ms` = **24.8× faster**), `0` ASan+LSan leaks across 11 targets, and 37 unit + 23 CLI e2e tests green across Linux, macOS, and Windows
 
+### Milestone 9 (`v0.9.0`) — Comprehensions, Generator Reductions, PEP 695 Generics, Zero-Heap Lambdas, `zip` & Inline Sorting [DONE]
+- [x] **Comprehensions (`src/codegen/comprehensions.rs`)**: list / set / dict comprehensions, tuple targets, multiple `for` clauses and multiple `if` filters (`[(x, y) for x in range(n) for y in range(n) if ...]`), nested comprehensions (`[[r * c for c in range(k)] for r in range(n)]`), and `range(...)` iterables — each lowered to a synthesized `Stmt` loop nest over a single **pre-sized** buffer, so an unfiltered map never reallocates (filters only shrink).
+- [x] **Generator reductions with no container**: `sum`/`min`/`max`/`any`/`all`/`len` over `(... for ... if ...)` fold in one pass with the element expression evaluated exactly once (`min`/`max` are a branch-free `select` scan; `any`/`all` short-circuit out of the loop).
+- [x] **PEP 695 monomorphized generics (`src/codegen/generics.rs`)**: `def f[T](...)`, `class Box[T]`, stack-allocated zero-heap `lambda` closures (captures become leading `fastcc` arguments), plus **implicit instantiation** — `add(3, 4)` resolves `T = int` from the argument types, while `add[int](7, 8)` stays available as the explicit form.
+- [x] **`zip(...)` (`src/codegen/zip_loops.rs`)**: a fused index-zipped loop header (`for a, b in zip(xs, ys)`), tuple unpacking (`for k, v in pairs`), `enumerate(x, start)`, `dict.items()`, and `zip(...)` materialized as `list[tuple[...]]` in one pre-sized buffer.
+- [x] **Inline monomorphized sorting (`src/codegen/sort.rs`)**: `sorted(xs)`, `sorted(xs, reverse=True)`, `sorted(xs, key=lambda ...)` and `xs.sort(...)` compile to an inline stable bottom-up merge sort — `O(N log N)` compares and moves with no quadratic worst case, no recursion, and no heapsort fallback; `key=` is inlined into the record-fill loop with a planar `{ key, orig_idx }` Schwartzian transform (exactly `N` key evaluations) whose permutation is applied back as a raw byte gather, so owned payloads are *moved* rather than cloned and `reverse=True` stays stable.
+- [x] **Suite 7 `benchmarks/pipelines.{py,c,rs,archx.lang}`** (`pipelines.py` == `pipelines.archx.lang`, byte-for-byte identical) + a v0.9.0 stage in every `examples/comparison/full_tour.*` edition (`18 ms` 1:1 Pythonic Archx & `16 ms` Speed Archx vs `464 ms` Python 3, `25 ms` clang C, `19 ms` Rust), `0` ASan+LSan leaks, and 37 unit + 27 CLI e2e tests green across Linux, macOS, and Windows.
+- [x] **Bit-identical floating point**: `archx` now passes `-ffp-contract=off` to `clang`, because clang >= 18 contracts `a*b+c` into `fma` **even at `-O2`**, which silently changes the last bits of every `float` result versus Python / Rust / the interpreter semantics Archx promises.
+
 ---
 
 ## Next Logical Steps (Ordered Implementation Plan)
-
-### Milestone 9 (`v0.9.0`) — Comprehensions, Monomorphized Generics & First-Class Lambdas **[NEXT STEP]**
-- [ ] Pre-sized single-allocation list/dict/set comprehensions (`[x * 2 for x in xs if x > 0]`, `{k: v for k, v in pairs}`).
-- [ ] Monomorphized generic functions & classes (`def first[T](xs: list[T]) -> T:`) + stack-allocated closures/lambdas (`xs.sort(key=...)`).
 
 ### Milestone 10 (`v1.0.0`) — Multi-File Modules (`import`) & Standard Library (`sys`, `os`, `fs`, `math`, `time`)
 - [ ] `import mod` / `from mod import fn` whole-program resolver + file I/O (`open` / `read_text` / `write_text`), CLI `sys.argv`, and `time.monotonic_ns()`.

@@ -200,6 +200,13 @@ impl Codegen {
                 ),
                 span,
             )),
+            Type::GenericInst { .. } => Err(Diagnostic::new(
+                format!(
+                    "cannot box `{}` into dynamic `any`; keep it statically typed",
+                    ty.name()
+                ),
+                span,
+            )),
             Type::Any => unreachable!(),
         }
     }
@@ -782,7 +789,9 @@ impl Codegen {
                 Type::Dict(_, _) => "dict",
                 Type::Set(_) => "set",
                 Type::Struct(s) | Type::Enum(s) => s.as_str(),
-                _ => "object",
+                Type::GenericInst { .. } | Type::Any | Type::Optional(_) | Type::Void => {
+                    "object"
+                }
             };
             let (_, s_some) = self.eval_str_lit(inner_tname);
             let (_, s_none) = self.eval_str_lit("NoneType");
@@ -804,6 +813,7 @@ impl Codegen {
             Type::Dict(_, _) => "dict",
             Type::Set(_) => "set",
             Type::Struct(sname) | Type::Enum(sname) => sname.as_str(),
+            Type::GenericInst { .. } => "object",
             Type::Optional(_) | Type::Any => unreachable!(),
         };
         Ok(self.eval_str_lit(tname))
@@ -881,6 +891,7 @@ impl Codegen {
                 | (Type::Dict(_, _), "dict")
                 | (Type::Set(_), "set") => true,
                 (Type::Struct(s), cname) | (Type::Enum(s), cname) => s == cname,
+                (Type::GenericInst { .. }, _) => false,
                 _ => false,
             };
             return Ok((
@@ -904,6 +915,7 @@ impl Codegen {
             (Type::Dict(_, _), "dict") => true,
             (Type::Set(_), "set") => true,
             (Type::Struct(s), cname) | (Type::Enum(s), cname) => s == cname,
+            (Type::GenericInst { .. }, _) => false,
             _ => false,
         };
         Ok((Type::Bool, if static_match { "true" } else { "false" }.to_string()))

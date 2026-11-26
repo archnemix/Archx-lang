@@ -24,6 +24,7 @@ pub enum TokenKind {
     And,
     Or,
     Not,
+    Lambda,
     NoneLit,
 
     // Literals
@@ -99,6 +100,7 @@ impl TokenKind {
             TokenKind::And => "`and`".to_string(),
             TokenKind::Or => "`or`".to_string(),
             TokenKind::Not => "`not`".to_string(),
+            TokenKind::Lambda => "`lambda`".to_string(),
             TokenKind::NoneLit => "`None`".to_string(),
             TokenKind::Ident(name) => format!("identifier `{name}`"),
             TokenKind::Int(n) => format!("integer `{n}`"),

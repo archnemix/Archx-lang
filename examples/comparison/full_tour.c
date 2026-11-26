@@ -272,6 +272,80 @@ static int64_t dispatch_events(int64_t total_events) {
     return acc;
 }
 
+static int cmp_i64(const void *pa, const void *pb) {
+    int64_t a = *(const int64_t *)pa, b = *(const int64_t *)pb;
+    return (a > b) - (a < b);
+}
+
+static int cmp_i64_rev(const void *pa, const void *pb) { return cmp_i64(pb, pa); }
+
+/* v0.9.0 stage: comprehensions, generator folds, `zip`, and sorted stages. */
+static int64_t pipeline_tour(int64_t n) {
+    int64_t *squares = malloc((size_t)n * sizeof(int64_t));
+    for (int64_t i = 0; i < n; i++) squares[i] = i * i;
+    int64_t acc = 0;
+    for (int64_t i = 0; i < n; i++)
+        if (squares[i] % 2 == 0) acc += squares[i];
+    for (int64_t i = 0; i < n; i++)
+        if (i % 3 == 0) acc += i;
+    int64_t mx = -1;
+    for (int64_t i = 0; i < n; i++) {
+        int64_t v = i * 2;
+        if (v > mx) mx = v;
+    }
+    acc += mx;
+    int64_t mn = 1;
+    for (int64_t i = 1; i < n; i++) {
+        int64_t v = i * 3 + 1;
+        if (v < mn) mn = v;
+    }
+    acc += mn;
+    int big = 0, all_pos = 1;
+    for (int64_t i = 0; i < n; i++) {
+        if (i > n) big = 1;
+        if (i < 0) all_pos = 0;
+    }
+    if (big) acc += 1;
+    if (all_pos) acc += 2;
+
+    int64_t *left = malloc((size_t)n * sizeof(int64_t));
+    int64_t *right = malloc((size_t)n * sizeof(int64_t));
+    for (int64_t i = 0; i < n; i++) {
+        left[i] = i;
+        right[i] = n - i;
+    }
+    for (int64_t i = 0; i < n; i++) acc += left[i] * right[i];
+    free(left);
+    free(right);
+
+    int64_t *raw = malloc((size_t)n * sizeof(int64_t));
+    for (int64_t i = 0; i < n; i++) raw[i] = (i * 37) % 997;
+    int64_t *asc = malloc((size_t)n * sizeof(int64_t));
+    int64_t *desc = malloc((size_t)n * sizeof(int64_t));
+    int64_t *by_neg = malloc((size_t)n * sizeof(int64_t));
+    int64_t *inplace = malloc((size_t)n * sizeof(int64_t));
+    memcpy(asc, raw, (size_t)n * sizeof(int64_t));
+    memcpy(desc, raw, (size_t)n * sizeof(int64_t));
+    memcpy(by_neg, raw, (size_t)n * sizeof(int64_t));
+    memcpy(inplace, raw, (size_t)n * sizeof(int64_t));
+    qsort(asc, (size_t)n, sizeof(int64_t), cmp_i64);
+    qsort(desc, (size_t)n, sizeof(int64_t), cmp_i64_rev);
+    qsort(by_neg, (size_t)n, sizeof(int64_t), cmp_i64_rev);
+    qsort(inplace, (size_t)n, sizeof(int64_t), cmp_i64);
+    for (int64_t i = 0; i < 8; i++) acc += asc[i] + desc[i] + by_neg[i] + inplace[i];
+    for (int64_t i = 0; i < n; i++) {
+        int64_t r = by_neg[i] % 7;
+        acc += (r < 0) ? r + 7 : r; /* Python `%` floors toward -inf */
+    }
+    free(squares);
+    free(raw);
+    free(asc);
+    free(desc);
+    free(by_neg);
+    free(inplace);
+    return acc;
+}
+
 int main(void) {
     int64_t mode = 8;
     int64_t sim_score = simulate_field(40000, 30);
@@ -301,5 +375,6 @@ int main(void) {
            (long long)st.lo, (long long)st.hi, (long long)st.total,
            (long long)hit_out, miss_label);
     printf("match_dispatch=%lld\n", (long long)dispatch_score);
+    printf("pipeline=%lld\n", (long long)pipeline_tour(2000));
     return 0;
 }

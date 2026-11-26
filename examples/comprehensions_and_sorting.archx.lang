@@ -1,0 +1,96 @@
+# Milestone 9 (`v0.9.0`) — comprehensions, generator folds, PEP 695 generics, zero-heap
+# `lambda`, `zip(...)`, and inline monomorphized sorting.
+#
+# Every construct below is plain Python 3.10+ and runs unchanged through CPython; `archx` lowers
+# it straight to LLVM IR with one pre-sized allocation per comprehension, no intermediate
+# container for a generator fold, and an inline stable merge sort for every `sorted(...)`.
+
+
+def add[T](a: T, b: T) -> T:
+    return a + b
+
+
+def total[T](xs: list[T]) -> list[T]:
+    return xs
+
+
+class Box[T]:
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+
+def sum_of_squares(n: int) -> int:
+    return sum(x * x for x in range(n))
+
+
+def show(words: list[str]):
+    # Archx prints `str` elements of a container without quotes (there is no `repr` layer),
+    # so render them by hand to keep this file byte-identical to CPython output.
+    line = ""
+    for i, w in enumerate(words):
+        if i > 0:
+            line += ", "
+        line += "'" + w + "'"
+    print("[" + line + "]")
+
+
+def main():
+    # ---- Comprehensions (single pre-sized allocation each) --------------------------------
+    squares = [x * x for x in range(10)]
+    evens = [x for x in squares if x % 2 == 0]
+    grid = [[r * c for c in range(4)] for r in range(4)]
+    print(squares)
+    print(evens)
+    print(grid)
+    print({x % 5 for x in range(20)})
+    print({k: k * k for k in range(5)})
+
+    # ---- Generator folds (no intermediate list at all) ------------------------------------
+    print(sum_of_squares(101))
+    print(sum(x for x in range(1000) if x % 3 == 0))
+    print(min(x * 2 + 1 for x in range(50)))
+    print(max(x * 2 for x in range(50)))
+    print(any(x > 99 for x in range(100)))
+    print(all(x >= 0 for x in range(100)))
+
+    # ---- PEP 695 generics: implicit and explicit instantiation -----------------------------
+    print(add(3, 4))
+    print(add("a", "b"))
+    print(add[int](7, 8))
+    print(total([1, 2, 3]))
+    box = Box[int](41)
+    print(box.get() + 1)
+
+    # ---- Zero-heap lambda -----------------------------------------------------------------
+    double = lambda x: x * 2
+    print(double(21))
+
+    # ---- zip(...) as a loop header and as a value -----------------------------------------
+    acc = 0
+    for a, b in zip([1, 2, 3], [4, 5, 6]):
+        acc += a * b
+    print(acc)
+    print(list(zip([1, 2], [3, 4])))
+
+    # ---- Inline stable monomorphized sorting ----------------------------------------------
+    nums = [5, 3, 9, 1, 7, 2, 8, 4, 6, 0]
+    print(sorted(nums))
+    print(sorted(nums, reverse=True))
+    print(sorted(nums, key=lambda v: -v))
+
+    words = ["pear", "apple", "fig", "banana", "a", "cherry"]
+    show(sorted(words))
+    show(sorted(words, key=lambda w: len(w)))
+    show(sorted(words, key=lambda w: len(w), reverse=True))
+
+    nums.sort()
+    print(nums)
+    nums.sort(reverse=True)
+    print(nums)
+
+
+if __name__ == "__main__":
+    main()

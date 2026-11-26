@@ -349,6 +349,14 @@ impl Codegen {
                 body,
             } => self.gen_for_dict_items(key_var, val_var, dict, body, stmt.span, out),
 
+            StmtKind::ForZip { vars, iters, body } => {
+                self.gen_for_zip(vars, iters, body, stmt.span, out)
+            }
+
+            StmtKind::ForTupleUnpack { vars, iter, body } => {
+                self.gen_for_tuple_unpack(vars, iter, body, stmt.span, out)
+            }
+
             StmtKind::Region { body } => self.gen_region(body, out),
 
             StmtKind::Break => {

@@ -7,7 +7,7 @@ All user-facing guides, architectural specifications, and engineering tracking f
 ## User & Language Documentation
 - [`USAGE.md`](USAGE.md) — **Start here**: complete guide to everything built so far (`v0.8.0`) and how to use every CLI option and language construct.
 - [`FUNDAMENTALS.md`](FUNDAMENTALS.md) — Core language philosophy, memory model, binary size, readability, and safety principles.
-- [`OPTIMIZATION.md`](OPTIMIZATION.md) — Optimization strategy, `-O2` LLVM IR proofs (`SoA`, `region:`, `16B SSO`, Planar SIMD `dict`/`set`, zero-heap tuples/`T | None`/`enum`), and 6-suite `Python 3` / `C` / `Rust` / `Archx` CI timings.
+- [`OPTIMIZATION.md`](OPTIMIZATION.md) — Optimization strategy, `-O2` LLVM IR proofs (`SoA`, `region:`, `16B SSO`, Planar SIMD `dict`/`set`, zero-heap tuples/`T | None`/`enum`), and 7-suite `Python 3` / `C` / `Rust` / `Archx` CI timings.
 
 ## Architecture & Roadmap
 - [`Architecture.md`](Architecture.md) — End-to-end compiler pipeline, runtime ABI layouts, and `src/` module map (`v0.8.0`).

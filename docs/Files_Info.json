@@ -1,176 +1,372 @@
 {
   "_comment": "Fast-lookup index of every key file in the Archx repository: inputs, outputs, and single responsibility.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "files": {
     "Cargo.toml": {
-      "purpose": "Rust crate manifest for the zero-dependency archx compiler (v0.8.0).",
+      "purpose": "Rust crate manifest for the zero-dependency archx compiler (v0.9.0).",
       "inputs": [],
-      "outputs": ["target/release/archx"]
+      "outputs": [
+        "target/release/archx"
+      ]
     },
     "src/main.rs": {
       "purpose": "CLI driver: flag parsing, extension/clobber checks, temp .ll handling, cross-platform clang invocation (-lm / MSVC), and --run execution.",
-      "inputs": ["CLI args", ".archx.lang source file"],
-      "outputs": ["Native executable", "--emit-ir LLVM IR stdout", "Process exit code"]
+      "inputs": [
+        "CLI args",
+        ".archx.lang source file"
+      ],
+      "outputs": [
+        "Native executable",
+        "--emit-ir LLVM IR stdout",
+        "Process exit code"
+      ]
     },
     "src/diag.rs": {
       "purpose": "1-based source Span and Diagnostic error type.",
-      "inputs": ["line: usize, col: usize, message: String"],
-      "outputs": ["Span", "Diagnostic", "Result<T>"]
+      "inputs": [
+        "line: usize, col: usize, message: String"
+      ],
+      "outputs": [
+        "Span",
+        "Diagnostic",
+        "Result<T>"
+      ]
     },
     "src/token.rs": {
       "purpose": "Lexical token enum (including Pipe, FStrPart, Float, SlashSlash, StarStar, Is, Assert, Pass, With, NoneLit) and token descriptions.",
-      "inputs": ["TokenKind, Span"],
-      "outputs": ["Token", "TokenKind::describe()"]
+      "inputs": [
+        "TokenKind, Span"
+      ],
+      "outputs": [
+        "Token",
+        "TokenKind::describe()"
+      ]
     },
     "src/lexer.rs": {
       "purpose": "4-space indentation-aware UTF-8 lexer with f-string interpolation, float/underscore numbers, Pipe `|`, and Python keywords.",
-      "inputs": ["source: &str"],
-      "outputs": ["Result<Vec<Token>>"]
+      "inputs": [
+        "source: &str"
+      ],
+      "outputs": [
+        "Result<Vec<Token>>"
+      ]
     },
     "src/ast.rs": {
       "purpose": "AST definitions for Program, StructDef, EnumDef, Func, Stmt, Pattern, Expr, CallArg, AssignTarget, and Type.",
-      "inputs": ["Parsed nodes and Spans"],
-      "outputs": ["ast::Program"]
+      "inputs": [
+        "Parsed nodes and Spans"
+      ],
+      "outputs": [
+        "ast::Program"
+      ]
     },
     "src/parser.rs": {
       "purpose": "Bounded-depth parser supporting 1:1 Python syntax (def, class + __init__, enum, match/case, tuples, T | None, dict/set/slice, script main) and classic syntax.",
-      "inputs": ["Vec<Token>"],
-      "outputs": ["Result<Program>"]
+      "inputs": [
+        "Vec<Token>"
+      ],
+      "outputs": [
+        "Result<Program>"
+      ]
     },
     "src/codegen/mod.rs": {
       "purpose": "LLVM IR module orchestrator, enum/struct/method/__init__ layout resolution, Codegen state, function frames, and runtime flag finalization.",
-      "inputs": ["&ast::Program"],
-      "outputs": ["Result<String> (textual LLVM IR)"]
+      "inputs": [
+        "&ast::Program"
+      ],
+      "outputs": [
+        "Result<String> (textual LLVM IR)"
+      ]
     },
     "src/codegen/analysis.rs": {
       "purpose": "Pure AST static analyses: Two-Tier Adaptive Type Engine, SoA escape detection, monotonic while stride verification, mutation sets, and constant folding.",
-      "inputs": ["&[Stmt]", "&Expr"],
-      "outputs": ["AdaptiveHints", "bool", "HashSet<String>", "Option<i64>"]
+      "inputs": [
+        "&[Stmt]",
+        "&Expr"
+      ],
+      "outputs": [
+        "AdaptiveHints",
+        "bool",
+        "HashSet<String>",
+        "Option<i64>"
+      ]
     },
     "src/codegen/tuples_enums.rs": {
       "purpose": "Zero-heap tuples, stack-inline T | None optionals + flow-sensitive narrowing, algebraic enum sum types, tuple unpacking, and composite RAII/region promotion.",
-      "inputs": ["Tuple / Optional / Enum AST nodes"],
-      "outputs": ["Appended LLVM IR instructions"]
+      "inputs": [
+        "Tuple / Optional / Enum AST nodes"
+      ],
+      "outputs": [
+        "Appended LLVM IR instructions"
+      ]
     },
     "src/codegen/pattern_match.rs": {
       "purpose": "Pythonic match / case structural pattern matching (OR-patterns, guards, destructuring, T | None unwrapping, and compile-time enum exhaustiveness).",
-      "inputs": ["&Expr", "&[MatchCase]"],
-      "outputs": ["Appended LLVM IR basic blocks"]
+      "inputs": [
+        "&Expr",
+        "&[MatchCase]"
+      ],
+      "outputs": [
+        "Appended LLVM IR basic blocks"
+      ]
     },
     "src/codegen/any.rs": {
       "purpose": "Unboxed 24-byte %ArchxAny boxing/unboxing, runtime type guards, dynamic operations, indexing, and dynamic calls.",
-      "inputs": ["&Type", "%ArchxAny SSA values"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "&Type",
+        "%ArchxAny SSA values"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/collections.rs": {
       "purpose": "Planar <16 x i8> SIMD SwissTable dict[K, V] & set[T] lowering, per-type clone/drop helpers, Pythonic slicing, and negative indexing.",
-      "inputs": ["Dict / Set / Slice AST nodes"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "Dict / Set / Slice AST nodes"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/stmt.rs": {
       "purpose": "Statement, Pythonic implicit variable binding, with region:, int/bool/float SoA setup, assert/pass, and assignment lowering.",
-      "inputs": ["&Stmt", "rest_in_block: &[Stmt]"],
-      "outputs": ["Appended LLVM IR instructions"]
+      "inputs": [
+        "&Stmt",
+        "rest_in_block: &[Stmt]"
+      ],
+      "outputs": [
+        "Appended LLVM IR instructions"
+      ]
     },
     "src/codegen/loops.rs": {
       "purpose": "while, range/a..b, for x in arr, for a, b in pairs, for k, v in d.items(), for ch in s, and enumerate lowering.",
-      "inputs": ["Loop AST nodes"],
-      "outputs": ["Appended LLVM IR basic blocks"]
+      "inputs": [
+        "Loop AST nodes"
+      ],
+      "outputs": [
+        "Appended LLVM IR basic blocks"
+      ]
     },
     "src/codegen/expr.rs": {
       "purpose": "Expression lowering: scalars, tuples, dicts, sets, indexing/slicing, fields/Enum.Variant, // and ** math, ternary with T | None narrowing, and SSO strings.",
-      "inputs": ["&Expr", "Option<&Type>"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "&Expr",
+        "Option<&Type>"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/calls.rs": {
       "purpose": "User fastcc calls, __init__ & positional/keyword constructors, int/float/str/bool conversions, and LEGB soft built-ins.",
-      "inputs": ["name: &str", "args: &[CallArg]"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "name: &str",
+        "args: &[CallArg]"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/io.rs": {
       "purpose": "Pythonic console I/O & formatting lowering: print(*args, sep=..., end=...), input([prompt]), str(x), and f-strings.",
-      "inputs": ["I/O & FStr AST nodes"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "I/O & FStr AST nodes"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/methods.rs": {
       "purpose": "class/struct self method definitions & dispatch, dict/set/list/any methods, and SSO-aware string methods.",
-      "inputs": ["&Func / receiver &Expr + method"],
-      "outputs": ["Result<(Type, String)>"]
+      "inputs": [
+        "&Func / receiver &Expr + method"
+      ],
+      "outputs": [
+        "Result<(Type, String)>"
+      ]
     },
     "src/codegen/ownership.rs": {
       "purpose": "Deterministic RAII ownership: statement temporaries, recursive drops, deep clones, and region return heap promotion.",
-      "inputs": ["&Type", "SSA value / Scope"],
-      "outputs": ["Appended RAII LLVM IR calls/instructions"]
+      "inputs": [
+        "&Type",
+        "SSA value / Scope"
+      ],
+      "outputs": [
+        "Appended RAII LLVM IR calls/instructions"
+      ]
     },
     "src/codegen/memory.rs": {
       "purpose": "Checked malloc/calloc/realloc (align 16, 2^47 cap), element store/load/fill loops, and bounds-check elision proofs.",
-      "inputs": ["&Type", "count/index SSA values"],
-      "outputs": ["Checked pointer / bounds-check IR"]
+      "inputs": [
+        "&Type",
+        "count/index SSA values"
+      ],
+      "outputs": [
+        "Checked pointer / bounds-check IR"
+      ]
     },
     "src/codegen/runtime.rs": {
       "purpose": "Core on-demand LLVM IR runtime helpers (@archx_region_*, @archx_str_*, panic handlers) and core declarations.",
-      "inputs": ["Codegen used_* flags"],
-      "outputs": ["Private LLVM IR helper functions and declares"]
+      "inputs": [
+        "Codegen used_* flags"
+      ],
+      "outputs": [
+        "Private LLVM IR helper functions and declares"
+      ]
     },
     "src/codegen/runtime_py.rs": {
       "purpose": "On-demand Pythonic LLVM IR runtime helpers (@archx_input, float formatting, string conversions/methods, and assertion/step panics).",
-      "inputs": ["Codegen Pythonic used_* flags"],
-      "outputs": ["Private LLVM IR helper functions and declares"]
+      "inputs": [
+        "Codegen Pythonic used_* flags"
+      ],
+      "outputs": [
+        "Private LLVM IR helper functions and declares"
+      ]
     },
     "src/codegen/runtime_hash_any.rs": {
       "purpose": "On-demand Planar <16 x i8> SIMD SwissTable runtime, slice bounds/str slice helpers, and %ArchxAny dynamic runtime helpers.",
-      "inputs": ["Codegen dict/any used_* flags"],
-      "outputs": ["Private LLVM IR helper functions"]
+      "inputs": [
+        "Codegen dict/any used_* flags"
+      ],
+      "outputs": [
+        "Private LLVM IR helper functions"
+      ]
     },
     "src/codegen/tests.rs": {
       "purpose": "Unit tests for LLVM IR codegen, tuples/optionals/enums/match, adaptive typing, Pythonic float SoA, SSO strings, and region escape checking.",
-      "inputs": ["Archx source snippets"],
-      "outputs": ["cargo test --bin archx pass/fail"]
+      "inputs": [
+        "Archx source snippets"
+      ],
+      "outputs": [
+        "cargo test --bin archx pass/fail"
+      ]
     },
     "examples/enums_matching.archx.lang": {
       "purpose": "Runnable v0.8.0 showcase of tuples, T | None optionals, algebraic enums with region-allocated strings, and exhaustive match/case.",
       "inputs": [],
-      "outputs": ["ci/out/enums_matching.txt"]
+      "outputs": [
+        "ci/out/enums_matching.txt"
+      ]
     },
     "examples/comparison/full_tour.py": {
       "purpose": "Python 3.10+ reference edition of the 5-way v0.1.0-v0.8.0 full-feature tour (byte-identical to full_tour_pythonic.archx.lang).",
       "inputs": [],
-      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+      "outputs": [
+        "sim=7684989 ... match_dispatch=33780000"
+      ]
     },
     "examples/comparison/full_tour_pythonic.archx.lang": {
       "purpose": "1:1 Pythonic Archx edition (byte-for-byte identical to full_tour.py), compiling ahead-of-time to run 22.9x faster than Python 3.",
       "inputs": [],
-      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+      "outputs": [
+        "sim=7684989 ... match_dispatch=33780000"
+      ]
     },
     "examples/comparison/full_tour_speed.archx.lang": {
       "purpose": "Speed/Systems Archx edition using [Body(...); n] SIMD SoA, with region: Planar SIMD dict/set, and stack enum Event (24.8x faster than Python 3).",
       "inputs": [],
-      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+      "outputs": [
+        "sim=7684989 ... match_dispatch=33780000"
+      ]
     },
     "examples/comparison/full_tour.c": {
       "purpose": "Clang C (-O2 -lm) edition of the 5-way full-feature comparison showcase.",
       "inputs": [],
-      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+      "outputs": [
+        "sim=7684989 ... match_dispatch=33780000"
+      ]
     },
     "examples/comparison/full_tour.rs": {
       "purpose": "Rust (rustc -O) edition of the 5-way full-feature comparison showcase.",
       "inputs": [],
-      "outputs": ["sim=7684989 ... match_dispatch=33780000"]
+      "outputs": [
+        "sim=7684989 ... match_dispatch=33780000"
+      ]
     },
     "tests/cli.rs": {
-      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests including v0.8.0 tuples/enums/match and full_tour parity.",
-      "inputs": ["CARGO_BIN_EXE_archx", "Temp .archx.lang programs"],
-      "outputs": ["cargo test --test cli pass/fail"]
+      "purpose": "Cross-platform (Linux, macOS, Windows) end-to-end CLI and execution integration tests, now covering v0.9.0 comprehensions, generators, PEP 695 generics, lambdas, zip, and the inline-sort UB regression.",
+      "inputs": [
+        "CARGO_BIN_EXE_archx",
+        "Temp .archx.lang programs"
+      ],
+      "outputs": [
+        "cargo test --test cli pass/fail"
+      ]
     },
     "benchmarks/run.sh": {
       "purpose": "Builds, verifies byte-identical stdout via cmp, and times Python 3 vs C vs Rust vs Archx across all 6 benchmark suites.",
-      "inputs": ["benchmarks/*.{py,c,rs,archx.lang}", "examples/comparison/full_tour.*"],
-      "outputs": ["ci/out/benchmarks.txt"]
+      "inputs": [
+        "benchmarks/*.{py,c,rs,archx.lang}",
+        "examples/comparison/full_tour.*"
+      ],
+      "outputs": [
+        "ci/out/benchmarks.txt"
+      ]
     },
     ".github/workflows/ci.yml": {
       "purpose": "3-OS GitHub Actions CI workflow (Linux, macOS, Windows), 11-target ASan+LSan verification, 6-suite Python 3/C/Rust/Archx benchmarks, and repo-committed logs/test-history.",
-      "inputs": ["Git push or workflow_dispatch"],
-      "outputs": ["ci/logs/*", "ci/out/*", "ci/test-history/v<VERSION>/*"]
+      "inputs": [
+        "Git push or workflow_dispatch"
+      ],
+      "outputs": [
+        "ci/logs/*",
+        "ci/out/*",
+        "ci/test-history/v<VERSION>/*"
+      ]
+    },
+    "examples/comprehensions_and_sorting.archx.lang": {
+      "purpose": "v0.9.0 tour: comprehensions (list/set/dict/nested), generator reductions, PEP 695 generics with implicit & explicit instantiation, zero-heap lambdas, zip, and inline stable sorting. Output verified byte-identical to CPython.",
+      "inputs": [],
+      "outputs": []
+    },
+    "src/codegen/generics.rs": {
+      "purpose": "PEP 695 monomorphizer: struct/function specialization, implicit type-argument inference, and zero-heap lambda lifting with captures as leading fastcc arguments.",
+      "inputs": [],
+      "outputs": []
+    },
+    "src/codegen/comprehensions.rs": {
+      "purpose": "Fused list/set/dict comprehension lowering over a single pre-sized buffer, plus single-pass generator reductions (sum/min/max/any/all/len).",
+      "inputs": [],
+      "outputs": []
+    },
+    "src/codegen/sort.rs": {
+      "purpose": "Inline stable bottom-up merge sort for sorted()/list.sort(): planar Schwartzian key records, branch-free stability, no recursion or comparator callbacks.",
+      "inputs": [],
+      "outputs": []
+    },
+    "src/codegen/zip_loops.rs": {
+      "purpose": "zip(...) as a fused index-zipped loop header and as a pre-sized list[tuple[...]] value.",
+      "inputs": [],
+      "outputs": []
+    },
+    "benchmarks/pipelines.py": {
+      "purpose": "Suite 7 reference (v0.9.0): 9 comprehension/generator/zip/sorting stages over n=20000; prints 5333140919445. Byte-for-byte identical to pipelines.archx.lang.",
+      "inputs": [],
+      "outputs": [
+        "5333140919445"
+      ]
+    },
+    "benchmarks/pipelines.archx.lang": {
+      "purpose": "Suite 7 Archx 1:1 Pythonic edition: an exact copy of pipelines.py, compiled with clang -O2 -ffp-contract=off.",
+      "inputs": [],
+      "outputs": [
+        "5333140919445"
+      ]
+    },
+    "benchmarks/pipelines.c": {
+      "purpose": "Suite 7 hand-written C edition: explicit loops, scratch buffers, qsort with an index tie-break for stability, and a floored-mod helper to match Python.",
+      "inputs": [],
+      "outputs": [
+        "5333140919445"
+      ]
+    },
+    "benchmarks/pipelines.rs": {
+      "purpose": "Suite 7 Rust edition built with rustc -O, using iterator pipelines and sort/sort_by_key.",
+      "inputs": [],
+      "outputs": [
+        "5333140919445"
+      ]
     }
   }
 }

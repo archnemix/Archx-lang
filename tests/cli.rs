@@ -1226,9 +1226,293 @@ sim=7684989
 dict_slice=2307705,nohtyp_smetsys_xhcra
 tuple_opt=8,104,3543,10099,empty
 match_dispatch=33780000
+pipeline=2665359250
 ";
     assert_eq!(out_py, expected, "1:1 Pythonic edition output mismatch");
     assert_eq!(out_spd, expected, "Speed edition output mismatch");
 }
 
+#[test]
+fn comprehensions_generators_zip_and_inline_sort_work() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
 
+    let out = build_and_run(
+        "v9_features",
+        r#"squares = [x * x for x in range(10)]
+print(squares)
+print([x for x in range(20) if x % 3 == 0])
+print([[r * c for c in range(3)] for r in range(3)])
+print({x * 2 for x in range(5)})
+print({k: k * k for k in range(4)})
+
+print(sum(x for x in range(101)))
+print(any(x > 9 for x in range(10)))
+print(all(x < 10 for x in range(10)))
+print(len(x for x in range(7)))
+print(min(x for x in range(3, 9)))
+print(max(x for x in range(5)))
+
+for a, b in zip([1, 2, 3], [4, 5, 6]):
+    print(a + b)
+print(zip([1, 2], [3, 4]))
+
+xs = [5, 3, 9, 1, 7, 2, 8, 4, 6, 0]
+print(sorted(xs))
+print(sorted(xs, reverse=True))
+xs.sort()
+print(xs)
+ys = [5, 3, 9, 1]
+ys.sort(reverse=True)
+print(ys)
+
+words = ["pear", "apple", "fig", "banana", "a"]
+print(sorted(words))
+print(sorted(words, key=lambda w: len(w)))
+print(sorted(words, key=lambda w: len(w), reverse=True))
+nums = [5, 1, 4, 2]
+print(sorted(nums, key=lambda v: -v))
+print(sorted([3.5, -1.25, 2.0, 0.5]))
+big = [i for i in range(40)]
+print(sorted(big, reverse=True))
+"#,
+    );
+
+    assert_eq!(
+        out,
+        "\
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+[0, 3, 6, 9, 12, 15, 18]
+[[0, 0, 0], [0, 1, 2], [0, 2, 4]]
+{0, 2, 4, 6, 8}
+{0: 0, 1: 1, 2: 4, 3: 9}
+5050
+false
+true
+7
+3
+4
+5
+7
+9
+[(1, 3), (2, 4)]
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+[9, 5, 3, 1]
+[a, apple, banana, fig, pear]
+[a, fig, pear, apple, banana]
+[banana, apple, pear, fig, a]
+[5, 4, 2, 1]
+[-1.25, 0.5, 2.0, 3.5]
+[39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+"
+    );
+}
+
+#[test]
+fn pep695_generics_and_inline_lambdas_are_monomorphized() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "v9_generics",
+        r#"def add[T](a: T, b: T) -> T:
+    return a + b
+
+
+def total[T](xs: list[T]) -> int:
+    t = 0
+    for x in xs:
+        t += x
+    return t
+
+
+class Box[T]:
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+
+print(add(3, 4))
+print(add(1.5, 2.5))
+print(add("a", "b"))
+print(add[int](7, 8))
+print(total([1, 2, 3]))
+print(total[int]([4, 5]))
+
+b = Box[int](41)
+print(b.get() + 1)
+s = Box[str]("hi")
+print(s.get())
+
+double = lambda x: x * 2
+print(double(21))
+bump = 10
+add_bump = lambda x: x + bump
+print(add_bump(5))
+print(sorted([5, 1, 4, 2], key=lambda v: -v))
+"#,
+    );
+
+    assert_eq!(
+        out,
+        "7\n4.0\nab\n15\n6\n9\n42\nhi\n42\n15\n[5, 4, 2, 1]\n"
+    );
+}
+
+#[test]
+fn comprehension_and_sorting_example_matches_expected_output() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let out = build_and_run(
+        "v9_example_comprehensions",
+        r#"def add[T](a: T, b: T) -> T:
+    return a + b
+
+
+class Box[T]:
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+
+def show(words: list[str]):
+    line = ""
+    for i, w in enumerate(words):
+        if i > 0:
+            line += ", "
+        line += "'" + w + "'"
+    print("[" + line + "]")
+
+
+def main():
+    squares = [x * x for x in range(10)]
+    print(squares)
+    print([x for x in squares if x % 2 == 0])
+    print([[r * c for c in range(3)] for r in range(2)])
+    print(sum_of_squares(101))
+    print(sum(x for x in range(1000) if x % 3 == 0))
+    print(max(x * 2 for x in range(50)))
+    print(any(x > 99 for x in range(100)))
+    print(all(x >= 0 for x in range(100)))
+    print(add(3, 4))
+    print(add("a", "b"))
+    print(add[int](7, 8))
+    b = Box[int](41)
+    print(b.get() + 1)
+    double = lambda x: x * 2
+    print(double(21))
+    bump = 10
+    add_bump = lambda x: x + bump
+    print(add_bump(5))
+    print(list(zip([1, 2], [3, 4])))
+    nums = [5, 3, 9, 1, 7, 2, 8, 4, 6, 0]
+    print(sorted(nums))
+    print(sorted(nums, reverse=True))
+    print(sorted(nums, key=lambda v: -v))
+    words = ["pear", "apple", "fig", "banana", "a", "cherry"]
+    show(sorted(words))
+    show(sorted(words, key=lambda w: len(w)))
+    show(sorted(words, key=lambda w: len(w), reverse=True))
+    nums.sort()
+    print(nums)
+    nums.sort(reverse=True)
+    print(nums)
+
+
+def sum_of_squares(n: int) -> int:
+    return sum(x * x for x in range(n))
+
+
+if __name__ == "__main__":
+    main()
+"#,
+    );
+
+    assert_eq!(
+        out,
+        "[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]\n\
+         [0, 4, 16, 36, 64]\n\
+         [[0, 0, 0], [0, 1, 2]]\n\
+         338350\n\
+         166833\n\
+         98\n\
+         false\n\
+         true\n\
+         7\n\
+         ab\n\
+         15\n\
+         42\n\
+         42\n\
+         15\n\
+         [(1, 3), (2, 4)]\n\
+         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n\
+         [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]\n\
+         [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]\n\
+         ['a', 'apple', 'banana', 'cherry', 'fig', 'pear']\n\
+         ['a', 'fig', 'pear', 'apple', 'banana', 'cherry']\n\
+         ['banana', 'cherry', 'apple', 'pear', 'fig', 'a']\n\
+         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n\
+         [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]\n"
+    );
+}
+
+/// Regression: the insertion-sort scan used to fetch `base[j - 1]` *before* testing `j == lo`.
+/// `base[j - 1]` is then an `inbounds` gep one element before the run, i.e. poison, and clang
+/// -O1/-O2 miscompiled the whole function (`free(): invalid pointer`, corrupt output). The
+/// short-circuit must come first; this test exercises every run length around the 16-element
+/// insertion/merge boundary.
+#[test]
+fn inline_sort_is_ub_free_across_run_lengths_and_keeps_stability() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    for n in range(0, 70):
+        raw = [0] * n
+        for i in range(n):
+            raw[i] = (i * 37 + 11) % 101
+        asc = sorted(raw)
+        desc = sorted(raw, reverse=True)
+        keyed = sorted(raw, key=lambda v: -v)
+        inplace = [x for x in raw]
+        inplace.sort()
+        ok = 1
+        for i in range(n):
+            if asc[i] != inplace[i]:
+                ok = 0
+            if i > 0 and asc[i - 1] > asc[i]:
+                ok = 0
+            if i > 0 and desc[i - 1] < desc[i]:
+                ok = 0
+            if keyed[i] != desc[i]:
+                ok = 0
+        if ok == 0:
+            print(f"FAIL n={n}")
+            return
+    print("all sizes ok")
+    print(sorted([5, 3, 9, 1, 7, 2, 8, 4, 6, 0]))
+    print(sorted([9, 1, 8, 2, 7, 3, 6, 4, 5], reverse=True))
+main()
+"#;
+
+    let out = build_and_run("v9_sort_ub_free", src);
+    assert_eq!(
+        out,
+        "all sizes ok\n[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n[9, 8, 7, 6, 5, 4, 3, 2, 1]\n"
+    );
+}

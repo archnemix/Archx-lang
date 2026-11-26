@@ -168,6 +168,44 @@ fn dispatch_events(total_events: i64) -> i64 {
     acc
 }
 
+// v0.9.0 stage: comprehension/generator pipelines, `zip`, and sorted stages.
+fn pipeline_tour(n: i64) -> i64 {
+    let squares: Vec<i64> = (0..n).map(|x| x * x).collect();
+    let mut acc: i64 = squares.iter().copied().filter(|x| x % 2 == 0).sum();
+    acc += (0..n).filter(|x| x % 3 == 0).sum::<i64>();
+    acc += (0..n).map(|x| x * 2).max().unwrap();
+    acc += (0..n).map(|x| x * 3 + 1).min().unwrap();
+    if (0..n).any(|x| x > n) {
+        acc += 1;
+    }
+    if (0..n).all(|x| x >= 0) {
+        acc += 2;
+    }
+
+    let left: Vec<i64> = (0..n).collect();
+    let right: Vec<i64> = (0..n).map(|x| n - x).collect();
+    for (a, b) in left.iter().zip(right.iter()) {
+        acc += a * b;
+    }
+
+    let raw: Vec<i64> = (0..n).map(|i| (i * 37) % 997).collect();
+    let mut asc = raw.clone();
+    asc.sort_unstable();
+    let mut desc = raw.clone();
+    desc.sort_unstable_by(|a, b| b.cmp(a));
+    let mut by_neg = raw.clone();
+    by_neg.sort_by_key(|v| -v);
+    let mut inplace = raw.clone();
+    inplace.sort_unstable();
+    for i in 0..8 {
+        acc += asc[i] + desc[i] + by_neg[i] + inplace[i];
+    }
+    for v in &by_neg {
+        acc += v % 7;
+    }
+    acc
+}
+
 fn main() {
     let mode: i64 = 8;
     let sim_score = simulate_field(40_000, 30);
@@ -196,4 +234,5 @@ fn main() {
     println!("dict_slice={dict_score},{rev_banner}");
     println!("tuple_opt={lo},{hi},{total},{hit_out},{miss_label}");
     println!("match_dispatch={dispatch_score}");
+    println!("pipeline={}", pipeline_tour(2000));
 }

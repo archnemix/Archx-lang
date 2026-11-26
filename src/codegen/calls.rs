@@ -18,6 +18,19 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
+        // v0.9.0 — zero-allocation generator folds (`sum`/`any`/`all`/`len`/`min`/`max` over a
+        // `GenExpr`) and inline `zip(...)` materialization, before any normal dispatch.
+        if !self.sigs.contains_key(name) {
+            if let Some(v) = self.try_gen_reduction(name, args, span, out)? {
+                return Ok(v);
+            }
+            if name == "zip" {
+                return self.eval_zip_value(args, None, span, out);
+            }
+            if name == "sorted" {
+                return self.gen_sorted(args, &[], span, out);
+            }
+        }
         match name {
             "print" => return self.gen_builtin_print(args, None, None, span, out),
             "input" => return self.gen_builtin_input(args, span, out),
@@ -322,6 +335,11 @@ impl Codegen {
                 });
             }
             return Ok((sty, agg));
+        }
+
+        // v0.9.0 — inline monomorphized `sorted(list, key=..., reverse=...)`.
+        if !self.sigs.contains_key(name) && name == "sorted" {
+            return self.gen_sorted(pos_args, kw_args, span, out);
         }
 
         Err(Diagnostic::new(

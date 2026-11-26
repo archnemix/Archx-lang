@@ -24,6 +24,7 @@ pub(super) fn resolve_program_types(raw: &Program, enum_names: &HashSet<String>)
             .iter()
             .map(|s| StructDef {
                 name: s.name.clone(),
+                type_params: s.type_params.clone(),
                 fields: s
                     .fields
                     .iter()
@@ -68,6 +69,7 @@ pub(super) fn resolve_program_types(raw: &Program, enum_names: &HashSet<String>)
 fn resolve_func(f: &Func, enum_names: &HashSet<String>) -> Func {
     Func {
         name: f.name.clone(),
+        type_params: f.type_params.clone(),
         params: f
             .params
             .iter()
@@ -99,6 +101,10 @@ fn resolve_ty(ty: &Type, enum_names: &HashSet<String>) -> Type {
             Box::new(resolve_ty(v, enum_names)),
         ),
         Type::Set(inner) => Type::Set(Box::new(resolve_ty(inner, enum_names))),
+        Type::GenericInst { name, args } => Type::GenericInst {
+            name: name.clone(),
+            args: args.iter().map(|t| resolve_ty(t, enum_names)).collect(),
+        },
         other => other.clone(),
     }
 }
@@ -168,6 +174,16 @@ fn resolve_stmt(stmt: &Stmt, enum_names: &HashSet<String>) -> Stmt {
             key_var: key_var.clone(),
             val_var: val_var.clone(),
             dict: dict.clone(),
+            body: body.iter().map(|s| resolve_stmt(s, enum_names)).collect(),
+        },
+        StmtKind::ForZip { vars, iters, body } => StmtKind::ForZip {
+            vars: vars.clone(),
+            iters: iters.clone(),
+            body: body.iter().map(|s| resolve_stmt(s, enum_names)).collect(),
+        },
+        StmtKind::ForTupleUnpack { vars, iter, body } => StmtKind::ForTupleUnpack {
+            vars: vars.clone(),
+            iter: iter.clone(),
             body: body.iter().map(|s| resolve_stmt(s, enum_names)).collect(),
         },
         StmtKind::Region { body } => StmtKind::Region {
@@ -246,6 +262,9 @@ pub(super) fn compute_enum_layouts(
                 build_enum(ename, structs, enum_defs, state, layouts)?;
                 Ok(1 + layouts[ename].payload_words)
             }
+            // Generic instantiations are monomorphized into concrete structs before
+            // code generation, so a surviving `GenericInst` is treated as opaque.
+            Type::GenericInst { .. } => Ok(1),
         }
     }
 

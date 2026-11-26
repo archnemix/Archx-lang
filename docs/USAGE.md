@@ -383,3 +383,110 @@ def score(ev: Event) -> float:
 ### Python `def __init__(self, ...):` Constructors
 Classes can declare fields either PEP-526 style (`x: float`) or standard Python `def __init__(self, x: float, y: float): self.x = x; self.y = y` (or both). See [`examples/comparison/`](../examples/comparison/README.md) for a complete **byte-for-byte identical** Python 3.10+ vs Archx 1:1 Pythonic vs Archx Speed vs C vs Rust comparison!
 
+## 13. Comprehensions, Generator Folds, Generics, `lambda` & Inline Sorting (`v0.9.0`)
+
+### List / set / dict comprehensions & nested comprehensions
+Each comprehension lowers to a fused loop nest over a **single pre-sized buffer**, so an
+unfiltered map never reallocates (`range(...)` is resolved to a length before the buffer is
+allocated) and filters only ever shrink the result:
+
+```python
+squares = [x * x for x in range(10)]                    # one allocation, no growth
+evens = [x for x in squares if x % 2 == 0]
+flat = [v for row in grid for v in row]                 # multiple `for` clauses
+pairs = [(a, b) for a in range(n) for b in range(n) if (a + b) % 7 == 0]
+tags = {x % 5 for x in range(100)}                      # set comprehension
+table = {k: k * k for k in range(16)}                   # dict comprehension
+grid = [[r * c for c in range(4)] for r in range(4)]    # nested comprehension
+```
+
+### Generator reductions — no intermediate list at all
+`sum`, `min`, `max`, `any`, `all`, and `len` accept a generator expression and fold it in a
+**single pass**, evaluating the element expression exactly once. `any`/`all` short-circuit;
+`min`/`max` are a branch-free `select` scan with no calls:
+
+```python
+print(sum(x * x for x in range(101)))                    # 338350
+print(sum(x for x in range(1000) if x % 3 == 0))
+print(max(x * 2 for x in range(50)))
+print(any(x > 99 for x in xs))
+print(all(x >= 0 for x in xs))
+```
+
+### PEP 695 generic functions & classes
+Type parameters are **monomorphized**: one concrete function or struct is emitted per set of
+type arguments, so a generic is exactly as fast as a hand-specialized copy. Instantiation can be
+**explicit** (`add[int](7, 8)`) or **implicit** — the type arguments are resolved from the
+static types of the arguments (`add(3, 4)` → `T = int`):
+
+```python
+def add[T](a: T, b: T) -> T:
+    return a + b
+
+def total[T](xs: list[T]) -> list[T]:  # works for every element type
+    ...
+
+class Box[T]:
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+print(add(3, 4))              # 7        (implicit T = int)
+print(add("a", "b"))          # ab       (implicit T = str)
+print(add[int](7, 8))         # 15       (explicit)
+b = Box[int](41)
+print(b.get() + 1)            # 42
+```
+
+### Zero-heap `lambda`
+A `lambda` is lifted to a `fastcc` function whose captures become leading scalar arguments — no
+heap-allocated closure object, no indirect call — and is used either bound to a name or inlined
+as `key=`:
+
+```python
+double = lambda x: x * 2
+print(double(21))                                  # 42
+print(sorted(xs, key=lambda v: -v))
+```
+
+### `zip(...)`
+`zip` is a fused loop header (`for a, b in zip(xs, ys)`) *and* a value materialized as
+`list[tuple[...]]` in one pre-sized buffer:
+
+```python
+for a, b in zip([1, 2, 3], [4, 5, 6]):
+    print(a + b)
+
+print(list(zip([1, 2], [3, 4])))                  # [(1, 3), (2, 4)]
+```
+
+### Inline monomorphized sorting: `sorted(...)` and `list.sort(...)`
+Both forms compile to an inline **stable bottom-up merge sort**: `O(N log N)` compares and moves
+with no quadratic worst case, no recursion, and no comparator callback. `key=` is inlined into
+the record-fill loop (evaluated exactly `N` times) with a planar `{ key, orig_idx }` Schwartzian
+transform, and `reverse=True` stays **stable** — only the key ordering is inverted:
+
+```python
+xs = [5, 3, 9, 1, 7]
+print(sorted(xs))                          # [1, 3, 5, 7, 9]
+print(sorted(xs, reverse=True))            # [9, 7, 5, 3, 1]
+print(sorted(words, key=lambda w: len(w)))
+print(sorted(fs, key=lambda v: -v))        # descending without `reverse=`
+xs.sort()                                  # in place
+xs.sort(key=lambda v: v % 3, reverse=True)
+```
+
+Supported keyless element types are `int`, `float`, `bool`, and `str` (strings compare through
+an SSO-aware three-way compare, so short strings cost no heap traffic). Any other element type
+needs a `key=` that returns one of those four.
+
+> **Printing note.** Archx has no `repr` layer: `print` on a container renders `str` elements
+> unquoted (`[a, apple]`) whereas CPython prints `['a', 'apple']`. Iterate and quote explicitly if
+> you need byte-identical output. Everything else — ordering, `zip` contents, `sorted` results —
+> matches CPython exactly.
+
+See [`examples/comprehensions_and_sorting.archx.lang`](../examples/comprehensions_and_sorting.archx.lang)
+for a complete file whose output is verified byte-identical to CPython in the test suite.
+
