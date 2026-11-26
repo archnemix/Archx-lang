@@ -166,8 +166,12 @@ impl Codegen {
     ///   %ok = load i1, ptr %flag
     ///   br i1 %ok, label %else, label %done
     /// ```
-    pub(super) fn gen_for_else(
+    /// `for x in iterable: ... else: ...` — the `else` body runs only when the loop finished
+    /// without a `break`, so the loop's label entry carries a one-shot completion flag.
+    pub(super) fn gen_foreach_else(
         &mut self,
+        var: &str,
+        iter: &Expr,
         body: &[Stmt],
         else_body: &[Stmt],
         span: Span,
@@ -176,14 +180,9 @@ impl Codegen {
         let flag = self.next_slot("forelse.flag");
         let _ = writeln!(self.allocas, "  {flag} = alloca i1, align 8");
         let _ = writeln!(out, "  store i1 true, ptr {flag}, align 8");
-
-        // `gen_for_else` is reached through `gen_stmt`, so the flag has to be visible to the
-        // loop's own `LoopLabels`. The simplest correct encoding: compile the loop with a
-        // one-shot "pending break flag" that the next pushed loop entry consumes.
         self.pending_break_flag = Some(flag.clone());
-        self.gen_block(body, out)?;
-        let _ = span;
-
+        self.gen_foreach(var, iter, body, span, out)?;
+        // A `break` already cleared the flag and jumped past the body; anything else flows here.
         let ok = self.next_tmp();
         let _ = writeln!(out, "  {ok} = load i1, ptr {flag}, align 8");
         let else_lbl = self.fresh_label("forelse.then");
@@ -195,6 +194,54 @@ impl Codegen {
             self.emit_br(&done_lbl, out);
         }
         self.start_block(&done_lbl, out);
+        Ok(())
+    }
+
+    /// `for i in start..end: ... else: ...` — the `else` body runs only when the loop ran to
+    /// completion without a `break`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn gen_for_else(
+        &mut self,
+        var: &str,
+        start: &Expr,
+        end: &Expr,
+        step: Option<&Expr>,
+        body: &[Stmt],
+        else_body: &[Stmt],
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        let needs_flag = stmts_contain_break(body);
+        let flag = if needs_flag {
+            let f = self.next_slot("forelse.flag");
+            let _ = writeln!(self.allocas, "  {f} = alloca i1, align 8");
+            let _ = writeln!(out, "  store i1 true, ptr {f}, align 8");
+            self.pending_break_flag = Some(f.clone());
+            Some(f)
+        } else {
+            None
+        };
+        self.gen_for(var, start, end, step, body, span, out)?;
+        // Every path that reaches here either fell out of the loop's `end` label (the body never
+        // breaks, so `end` is a normal-completion point) or is already a loop end.
+        match &flag {
+            Some(f) => {
+                let ok = self.next_tmp();
+                let _ = writeln!(out, "  {ok} = load i1, ptr {f}, align 8");
+                let else_lbl = self.fresh_label("forelse.then");
+                let done_lbl = self.fresh_label("forelse.done");
+                self.emit_cond_br(&ok, &else_lbl, &done_lbl, out);
+                self.start_block(&else_lbl, out);
+                self.gen_block(else_body, out)?;
+                if !self.terminated {
+                    self.emit_br(&done_lbl, out);
+                }
+                self.start_block(&done_lbl, out);
+            }
+            None => {
+                self.gen_block(else_body, out)?;
+            }
+        }
         Ok(())
     }
 

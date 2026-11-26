@@ -1009,6 +1009,7 @@ impl Parser {
                         end,
                         step,
                         body,
+                        else_body: None,
                     },
                     span,
                 });
@@ -1066,6 +1067,7 @@ impl Parser {
                         end,
                         step,
                         body,
+                        else_body: None,
                     },
                     span,
                 });
@@ -1084,6 +1086,7 @@ impl Parser {
                     var,
                     iter: first,
                     body,
+                    else_body: None,
                 },
                 span,
             });
@@ -1509,7 +1512,9 @@ impl Parser {
 
     /// `for ...: <body> else: <else_body>` — wraps the loop so codegen can run the `else` only
     /// when the loop left through normal completion (Python's `for/else`).
-    fn maybe_parse_loop_else(&mut self, loop_stmt: Stmt) -> Result<Stmt> {
+    /// Parses the optional `else:` block of a `for` loop and attaches it to the loop itself,
+    /// so the loop stays a loop for every later pass (scope, returns, mutation analysis).
+    fn maybe_parse_loop_else(&mut self, mut loop_stmt: Stmt) -> Result<Stmt> {
         self.skip_newlines();
         if !matches!(&self.peek().kind, TokenKind::Else) {
             return Ok(loop_stmt);
@@ -1524,13 +1529,18 @@ impl Parser {
         if else_body.is_empty() {
             return Err(Diagnostic::new("`else` body cannot be empty", span));
         }
-        Ok(Stmt {
-            kind: StmtKind::ForElse {
-                body: vec![loop_stmt],
-                else_body,
-            },
-            span,
-        })
+        match &mut loop_stmt.kind {
+            StmtKind::For { else_body: slot, .. } | StmtKind::ForEach { else_body: slot, .. } => {
+                *slot = Some(else_body)
+            }
+            _ => {
+                return Err(Diagnostic::new(
+                    "`else` is only supported on `for` loops",
+                    span,
+                ))
+            }
+        }
+        Ok(loop_stmt)
     }
 
     fn parse_block_body(&mut self) -> Result<Vec<Stmt>> {
@@ -2732,10 +2742,10 @@ impl Parser {
 fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
     for s in stmts {
         match &mut s.kind {
-        StmtKind::ForElse { body, else_body } => {
-            rewrite_main_calls_in_stmts(body);
-            rewrite_main_calls_in_stmts(else_body);
-        }
+            StmtKind::ForElse { body, else_body } => {
+                rewrite_main_calls_in_stmts(body);
+                rewrite_main_calls_in_stmts(else_body);
+            }
             StmtKind::Let { value, .. } => rewrite_main_calls_in_expr(value),
             StmtKind::Assign { target, value, .. } => {
                 match target {
@@ -2775,6 +2785,7 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 end,
                 step,
                 body,
+                else_body,
                 ..
             } => {
                 rewrite_main_calls_in_expr(start);
@@ -2783,10 +2794,21 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                     rewrite_main_calls_in_expr(se);
                 }
                 rewrite_main_calls_in_stmts(body);
+                if let Some(e) = else_body {
+                    rewrite_main_calls_in_stmts(e);
+                }
             }
-            StmtKind::ForEach { iter, body, .. } => {
+            StmtKind::ForEach {
+                iter,
+                body,
+                else_body,
+                ..
+            } => {
                 rewrite_main_calls_in_expr(iter);
                 rewrite_main_calls_in_stmts(body);
+                if let Some(e) = else_body {
+                    rewrite_main_calls_in_stmts(e);
+                }
             }
             StmtKind::ForEnumerate {
                 iter, start, body, ..
@@ -2853,8 +2875,6 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
                 }
             }
             StmtKind::While { body, .. }
-            | StmtKind::For { body, .. }
-            | StmtKind::ForEach { body, .. }
             | StmtKind::ForEnumerate { body, .. }
             | StmtKind::ForDictItems { body, .. }
             | StmtKind::ForZip { body, .. }
@@ -2862,6 +2882,26 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
             | StmtKind::Region { body } => {
                 if stmts_have_value_return(body) {
                     return true;
+                }
+            }
+            StmtKind::ForElse { body, else_body } => {
+                if stmts_have_value_return(body) || stmts_have_value_return(else_body) {
+                    return true;
+                }
+            }
+            StmtKind::For {
+                body, else_body, ..
+            }
+            | StmtKind::ForEach {
+                body, else_body, ..
+            } => {
+                if stmts_have_value_return(body) {
+                    return true;
+                }
+                if let Some(e) = else_body {
+                    if stmts_have_value_return(e) {
+                        return true;
+                    }
                 }
             }
             _ => {}

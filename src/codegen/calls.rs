@@ -188,6 +188,7 @@ impl Codegen {
             "dict" => return self.gen_builtin_dict_ctor(args, span, out),
             "set" => return self.gen_builtin_set_ctor(args, span, out),
             "list" => return self.gen_builtin_list_ctor(args, span, out),
+            "map" | "filter" => return self.eval_map_filter(name, args, span, out),
             _ => {}
         }
 
@@ -345,6 +346,59 @@ impl Codegen {
         // v0.9.0 — inline monomorphized `sorted(list, key=..., reverse=...)`.
         if !self.sigs.contains_key(name) && name == "sorted" {
             return self.gen_sorted(pos_args, kw_args, span, out);
+        }
+
+        // User functions: match keywords to declared parameter names, then fill any remaining
+        // slots from `def f(a: int, b: int = 3)` defaults (Python's call semantics).
+        if let Some(sig) = self.sigs.get(name).cloned() {
+            if kw_args.is_empty() {
+                return self.emit_user_fn_call(name, &sig, pos_args, span, out);
+            }
+            let mut slots: Vec<Option<Expr>> = vec![None; sig.params.len()];
+            if pos_args.len() > sig.params.len() {
+                return Err(Diagnostic::new(
+                    format!(
+                        "function `{name}` expects {} argument(s), but {} were supplied",
+                        sig.params.len(),
+                        pos_args.len()
+                    ),
+                    span,
+                ));
+            }
+            for (i, arg) in pos_args.iter().enumerate() {
+                slots[i] = Some(arg.clone());
+            }
+            for (kw, val, kw_span) in kw_args {
+                let Some(idx) = sig.param_names.iter().position(|p| p == kw) else {
+                    return Err(Diagnostic::new(
+                        format!("function `{name}` has no parameter named `{kw}`"),
+                        *kw_span,
+                    ));
+                };
+                if slots[idx].is_some() {
+                    return Err(Diagnostic::new(
+                        format!("function `{name}` got multiple values for parameter `{kw}`"),
+                        *kw_span,
+                    ));
+                }
+                slots[idx] = Some(val.clone());
+            }
+            let mut ordered = Vec::with_capacity(sig.params.len());
+            for (i, slot) in slots.into_iter().enumerate() {
+                match slot.or_else(|| sig.defaults[i].clone()) {
+                    Some(e) => ordered.push(e),
+                    None => {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "function `{name}` is missing a value for parameter `{}`",
+                                sig.param_names[i]
+                            ),
+                            span,
+                        ))
+                    }
+                }
+            }
+            return self.emit_user_fn_call(name, &sig, &ordered, span, out);
         }
 
         Err(Diagnostic::new(

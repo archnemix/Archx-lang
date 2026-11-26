@@ -143,17 +143,29 @@ fn resolve_stmt(stmt: &Stmt, enum_names: &HashSet<String>) -> Stmt {
             end,
             step,
             body,
+            else_body,
         } => StmtKind::For {
             var: var.clone(),
             start: start.clone(),
             end: end.clone(),
             step: step.clone(),
             body: body.iter().map(|s| resolve_stmt(s, enum_names)).collect(),
+            else_body: else_body.as_ref().map(|eb| {
+                eb.iter().map(|s| resolve_stmt(s, enum_names)).collect()
+            }),
         },
-        StmtKind::ForEach { var, iter, body } => StmtKind::ForEach {
+        StmtKind::ForEach {
+            var,
+            iter,
+            body,
+            else_body,
+        } => StmtKind::ForEach {
             var: var.clone(),
             iter: iter.clone(),
             body: body.iter().map(|s| resolve_stmt(s, enum_names)).collect(),
+            else_body: else_body.as_ref().map(|eb| {
+                eb.iter().map(|s| resolve_stmt(s, enum_names)).collect()
+            }),
         },
         StmtKind::ForEnumerate {
             idx_var,

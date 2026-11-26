@@ -1614,3 +1614,59 @@ main()
          true false\n"
     );
 }
+
+/// v0.9.1 — default parameters, `for ... else`, Python loop-variable scope, keyword arguments,
+/// `map`/`filter` (with inline and named callables) and keyless tuple sorting.
+#[test]
+fn pythonic_defaults_else_keywords_and_map_filter() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def greet(name: str, punct: str = "!", loud: bool = false) -> str:
+    if loud:
+        return name + punct + punct
+    return name + punct
+
+def rect(w: int, h: int = 2) -> int:
+    return w * h
+
+def sq(x: int) -> int:
+    return x * x
+
+def odd(x: int) -> bool:
+    return x % 2 == 1
+
+def find(target: int) -> str:
+    for i in range(4):
+        if i == target:
+            return "found"
+    else:
+        return "missing"
+
+def main():
+    print(greet("hi"), greet("hi", punct="?"), greet(loud=true, name="hey"))
+    print(rect(5), rect(h=3, w=4))
+    print(find(2), find(9))
+    for j in range(2):
+        pass
+    print(j)
+    nums = [1, 2, 3, 4, 5]
+    print(list(map(sq, nums)))
+    print(list(filter(odd, nums)))
+    print(list(map(lambda x: x * 2, nums)))
+    print(list(map(str, nums)))
+    print(sorted([("b", 2), ("a", 1), ("a", 0)]))
+    print(sorted([3, 1, 2], reverse=True))
+main()
+"#;
+
+    let out = build_and_run("v11_defaults_else_map", src);
+    assert_eq!(
+        out,
+        "hi! hi? hey!!\n10 12\nfound missing\n2\n\
+         [1, 4, 9, 16, 25]\n[1, 3, 5]\n[2, 4, 6, 8, 10]\n[1, 2, 3, 4, 5]\n\
+         [(a, 0), (a, 1), (b, 2)]\n[3, 2, 1]\n"
+    );
+}

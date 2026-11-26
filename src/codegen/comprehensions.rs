@@ -129,6 +129,13 @@ impl Codegen {
                     "set" => Some(Type::Set(Box::new(Type::Any))),
                     "sorted" | "reversed" if args.len() == 1 => self.infer_ty(&args[0]),
                     "zip" => Some(Type::Array(Box::new(Type::Any))),
+                    "map" if args.len() == 2 => self
+                        .infer_ty(&args[1])
+                        .map(|t| match t {
+                            Type::Array(_) | Type::Set(_) | Type::Str | Type::Dict(_, _) => t,
+                            _ => Type::Array(Box::new(Type::Any)),
+                        }),
+                    "filter" if args.len() == 2 => self.infer_ty(&args[1]),
                     "range" | "enumerate" => Some(Type::Array(Box::new(Type::Int))),
                     _ => None,
                 }
@@ -547,6 +554,146 @@ impl Codegen {
         self.eval_list_comp(elt, clauses, expected, span, out)
     }
 
+    /// `list(map(f, xs))` / `list(filter(p, xs))` (and `map`/`filter` used directly) lower to a
+    /// comprehension over `xs`: the callable becomes the element expression, so a named function
+    /// collapses to a direct `fastcc` call and an inline `lambda` is inlined the same way
+    /// `key=lambda` is elsewhere. No boxed function values, no allocations beyond the result.
+    pub(super) fn eval_map_filter(
+        &mut self,
+        which: &str,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.len() != 2 {
+            return Err(Diagnostic::new(
+                format!("`{which}()` takes exactly 2 arguments: `{which}(func, iterable)`"),
+                span,
+            ));
+        }
+        let src_ty = self.infer_ty(&args[1]).ok_or_else(|| {
+            Diagnostic::new(
+                format!("cannot infer the element type of the iterable passed to `{which}()`"),
+                args[1].span,
+            )
+        })?;
+        let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
+            Type::Array(t) => (t.as_ref().clone(), Vec::new()),
+            Type::Set(t) => (t.as_ref().clone(), Vec::new()),
+            Type::Str => (Type::Str, Vec::new()),
+            Type::Dict(k, _) => ((**k).clone(), Vec::new()),
+            Type::Tuple(items) => {
+                let vars: Vec<String> = (0..items.len())
+                    .map(|i| format!("__map_t{}", i))
+                    .collect();
+                (src_ty.clone(), vars)
+            }
+            other => {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`{which}()` expects a `list`, `set`, `dict` or `str`, found `{}`",
+                        other.name()
+                    ),
+                    args[1].span,
+                ))
+            }
+        };
+
+        // The comprehension's induction variable is either the element itself or, for a tuple
+        // element, one variable per component.
+        let (elem_var, vars): (Expr, Vec<String>) = if tuple_vars.is_empty() {
+            let v = "__map_elem".to_string();
+            (Expr { kind: ExprKind::Var(v.clone()), span }, vec![v])
+        } else {
+            (
+                Expr {
+                    kind: ExprKind::TupleLit(
+                        tuple_vars
+                            .iter()
+                            .map(|v| Expr {
+                                kind: ExprKind::Var(v.clone()),
+                                span,
+                            })
+                            .collect(),
+                    ),
+                    span,
+                },
+                tuple_vars.clone(),
+            )
+        };
+
+        let callable = match &args[0].kind {
+            ExprKind::Var(f) => {
+                // Soft builtins (`map(str, xs)`, `map(len, words)`) are callable the same way.
+                const SOFT_BUILTINS: [&str; 11] = [
+                    "str", "int", "float", "bool", "len", "abs", "ord", "chr", "sqrt", "type",
+                    "isinstance",
+                ];
+                match self.sigs.get(f).cloned() {
+                    Some(sig) => {
+                        if sig.params.len() != 1 {
+                            return Err(Diagnostic::new(
+                                format!(
+                                    "`{which}()` passes 1 element, but `{f}` takes {} parameter(s)",
+                                    sig.params.len()
+                                ),
+                                args[0].span,
+                            ));
+                        }
+                    }
+                    None if SOFT_BUILTINS.contains(&f.as_str()) => {}
+                    None => {
+                        return Err(Diagnostic::new(
+                            format!("`{which}()` expects a top-level function name or a `lambda`"),
+                            args[0].span,
+                        ))
+                    }
+                }
+                Expr {
+                    kind: ExprKind::Call {
+                        name: f.clone(),
+                        args: vec![elem_var.clone()],
+                    },
+                    span: args[0].span,
+                }
+            }
+            ExprKind::Lambda { params, body } => {
+                if params.len() != 1 {
+                    return Err(Diagnostic::new(
+                        format!("a `lambda` passed to `{which}()` takes exactly 1 parameter"),
+                        args[0].span,
+                    ));
+                }
+                // Rename the lambda parameter to the induction variable so the inlined body
+                // resolves (`lambda x: x * x` becomes `__map_elem * __map_elem`).
+                let mut renamed = (**body).clone();
+                rename_var(&mut renamed, &params[0].name, &elem_var);
+                renamed
+            }
+            _ => {
+                return Err(Diagnostic::new(
+                    format!("`{which}()` expects a top-level function name or a `lambda`"),
+                    args[0].span,
+                ))
+            }
+        };
+
+        let mut clauses = vec![CompClause {
+            vars,
+            iter: args[1].clone(),
+            conds: Vec::new(),
+            span,
+        }];
+        match which {
+            "map" => self.eval_list_comp(&callable, &clauses, None, span, out),
+            _ => {
+                // `filter`: keep the element when the predicate holds.
+                clauses[0].conds.push(callable);
+                self.eval_list_comp(&elem_var, &clauses, None, span, out)
+            }
+        }
+    }
+
     // ---------------- Nested loop nest --------------------------------------
 
     /// Builds `clauses[i..]` as nested `for` statements ending in `body`.
@@ -599,6 +746,7 @@ impl Codegen {
                 };
                 return Stmt {
                     kind: StmtKind::For {
+                        else_body: None,
                         var: clause.vars[0].clone(),
                         start,
                         end,
@@ -612,6 +760,7 @@ impl Codegen {
         if clause.vars.len() == 1 {
             Stmt {
                 kind: StmtKind::ForEach {
+                    else_body: None,
                     var: clause.vars[0].clone(),
                     iter,
                     body: inner,
@@ -1109,4 +1258,76 @@ enum FoldKind {
     Count,
     Any,
     All,
+}
+
+/// Clones a clause list so it can be consumed by `eval_list_comp`.
+fn clauses_carry(clauses: Vec<CompClause>) -> Vec<CompClause> {
+    clauses
+}
+
+/// `lambda x: ...` parameter -> the `Expr` naming it inside the inlined body.
+fn param_as_expr(param: &Param, span: Span) -> Expr {
+    Expr {
+        kind: ExprKind::Var(param.name.clone()),
+        span,
+    }
+}
+
+/// Textually renames a variable inside an inlined `lambda` body (no shadowing analysis needed:
+/// the body came from a single-parameter lambda).
+fn rename_var(expr: &mut Expr, from: &str, to: &Expr) {
+    match &mut expr.kind {
+        ExprKind::Var(n) if n == from => {
+            let span = expr.span;
+            *expr = to.clone();
+            expr.span = span;
+        }
+        ExprKind::Var(_)
+        | ExprKind::Int(_)
+        | ExprKind::Float(_)
+        | ExprKind::Bool(_)
+        | ExprKind::Str(_)
+        | ExprKind::NoneLit => {}
+        ExprKind::Binary { lhs, rhs, .. } => {
+            rename_var(lhs, from, to);
+            rename_var(rhs, from, to);
+        }
+        ExprKind::Unary { expr: inner, .. } => rename_var(inner, from, to),
+        ExprKind::CompareChain(operands) => {
+            for (e, _) in operands.iter_mut() {
+                rename_var(e, from, to);
+            }
+        }
+        ExprKind::IfExpr {
+            then_expr,
+            cond,
+            else_expr,
+        } => {
+            rename_var(then_expr, from, to);
+            rename_var(cond, from, to);
+            rename_var(else_expr, from, to);
+        }
+        ExprKind::Call { args, .. } => {
+            for a in args.iter_mut() {
+                rename_var(a, from, to);
+            }
+        }
+        ExprKind::MethodCall { target, args, .. } => {
+            rename_var(target, from, to);
+            for a in args.iter_mut() {
+                rename_var(a, from, to);
+            }
+        }
+        ExprKind::Index { target, index } => {
+            rename_var(target, from, to);
+            rename_var(index, from, to);
+        }
+        ExprKind::TupleLit(es) | ExprKind::ArrayLit(es) | ExprKind::SetLit(es) => {
+            for e in es.iter_mut() {
+                rename_var(e, from, to);
+            }
+        }
+        ExprKind::PercentFormat { args, .. } => rename_var(args, from, to),
+        _ => {}
+    }
 }

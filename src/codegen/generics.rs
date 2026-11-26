@@ -529,6 +529,7 @@ impl<'a> Monomorphizer<'a> {
                 end,
                 step,
                 body,
+                else_body,
             } => {
                 let start = self.rewrite_expr(start)?;
                 let end = self.rewrite_expr(end)?;
@@ -538,6 +539,10 @@ impl<'a> Monomorphizer<'a> {
                 };
                 let saved_env = self.env_types.insert(var.clone(), Type::Int);
                 let body = self.rewrite_block(body)?;
+                let else_body = match else_body {
+                    Some(eb) => Some(self.rewrite_block(eb)?),
+                    None => None,
+                };
                 restore_env(&mut self.env_types, var, saved_env);
                 StmtKind::For {
                     var: var.clone(),
@@ -545,9 +550,15 @@ impl<'a> Monomorphizer<'a> {
                     end,
                     step,
                     body,
+                    else_body,
                 }
             }
-            StmtKind::ForEach { var, iter, body } => {
+            StmtKind::ForEach {
+                var,
+                iter,
+                body,
+                else_body,
+            } => {
                 let iter = self.rewrite_expr(iter)?;
                 let saved_env = match self.infer_iter_elem(&iter) {
                     Some(t) => self.env_types.insert(var.clone(), t),
@@ -555,10 +566,15 @@ impl<'a> Monomorphizer<'a> {
                 };
                 let body = self.rewrite_block(body)?;
                 restore_env(&mut self.env_types, var, saved_env);
+                let else_body = match else_body {
+                    Some(eb) => Some(self.rewrite_block(eb)?),
+                    None => None,
+                };
                 StmtKind::ForEach {
                     var: var.clone(),
                     iter,
                     body,
+                    else_body,
                 }
             }
             StmtKind::ForEnumerate {
@@ -1028,6 +1044,21 @@ impl<'a> Monomorphizer<'a> {
                 kw_args: self.rewrite_kw_args(kw_args)?,
             },
             ExprKind::Call { name, args } => {
+                // `map(lambda x: ..., xs)` / `filter(lambda x: ..., xs)` are inlined by the
+                // caller (see `eval_map_filter`), so the lambda travels untouched.
+                if (name == "map" || name == "filter")
+                    && args.len() == 2
+                    && matches!(args[0].kind, ExprKind::Lambda { .. })
+                {
+                    let iter = self.rewrite_expr(&args[1])?;
+                    return Ok(Expr {
+                        kind: ExprKind::Call {
+                            name: name.clone(),
+                            args: vec![args[0].clone(), iter],
+                        },
+                        span,
+                    });
+                }
                 let args: Vec<Expr> = args
                     .iter()
                     .map(|a| self.rewrite_expr(a))

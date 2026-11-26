@@ -113,6 +113,7 @@ pub(super) fn stmt_escapes_soa(
             end,
             step,
             body,
+            else_body,
             ..
         } => {
             expr_escapes_soa(start, var, mutating_methods)
@@ -121,11 +122,22 @@ pub(super) fn stmt_escapes_soa(
                     .as_ref()
                     .map_or(false, |se| expr_escapes_soa(se, var, mutating_methods))
                 || var_escapes_soa(body, var, mutating_methods)
+                || else_body
+                    .as_ref()
+                    .map_or(false, |b| var_escapes_soa(b, var, mutating_methods))
         }
-        StmtKind::ForEach { iter, body, .. } => {
+        StmtKind::ForEach {
+            iter,
+            body,
+            else_body,
+            ..
+        } => {
             let direct = matches!(&iter.kind, ExprKind::Var(n) if n == var);
             (!direct && expr_escapes_soa(iter, var, mutating_methods))
                 || var_escapes_soa(body, var, mutating_methods)
+                || else_body
+                    .as_ref()
+                    .map_or(false, |b| var_escapes_soa(b, var, mutating_methods))
         }
         StmtKind::ForEnumerate {
             iter, start, body, ..
@@ -642,6 +654,7 @@ pub(super) fn walk_mutations(
                 end,
                 step,
                 body,
+                else_body,
             } => {
                 mutated.insert(var.clone());
                 walk_expr_mutations(start, mutated, mutating_methods);
@@ -652,12 +665,30 @@ pub(super) fn walk_mutations(
                 let mut inner = bound.clone();
                 inner.insert(var.clone());
                 walk_mutations(body, &mut inner, mutated, mutating_methods);
+                if let Some(e) = else_body {
+                    let mut eb_bound = inner.clone();
+                    walk_mutations(e, &mut eb_bound, mutated, mutating_methods);
+                }
             }
-            StmtKind::ForEach { var, iter, body } => {
+            StmtKind::ForEach {
+                var,
+                iter,
+                body,
+                else_body,
+            } => {
                 walk_expr_mutations(iter, mutated, mutating_methods);
                 let mut inner = bound.clone();
-                inner.insert(var.clone());
-                walk_mutations(body, &mut inner, mutated, mutating_methods);
+                // Python loop variables leak out of the loop, so keep them bound afterwards.
+                if bound.contains(var) {
+                    walk_mutations(body, bound, mutated, mutating_methods);
+                } else {
+                    inner.insert(var.clone());
+                    walk_mutations(body, &mut inner, mutated, mutating_methods);
+                }
+                if let Some(e) = else_body {
+                    let mut eb_bound = inner.clone();
+                    walk_mutations(e, &mut eb_bound, mutated, mutating_methods);
+                }
             }
             StmtKind::ForEnumerate {
                 idx_var,
@@ -1104,6 +1135,7 @@ pub(super) fn compute_adaptive_hints(
                     end,
                     step,
                     body,
+                    ..
                 } => {
                     walk_expr_hints(start, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                     walk_expr_hints(end, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
@@ -1113,7 +1145,7 @@ pub(super) fn compute_adaptive_hints(
                     env.insert(var.clone(), Type::Int);
                     walk(body, env, explicitly_typed, dynamic_vars, empty_inits, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                 }
-                StmtKind::ForEach { var, iter, body } => {
+                StmtKind::ForEach { var, iter, body, .. } => {
                     walk_expr_hints(iter, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                     let et = match quick_infer(iter, env, structs, sigs) {
                         Some(Type::Array(inner)) | Some(Type::Set(inner)) => *inner,
@@ -1905,4 +1937,37 @@ pub(super) fn eval_const_int(expr: &Expr) -> Option<i64> {
         }
         _ => None,
     }
+}
+
+/// True when the block contains a `break` that would exit the enclosing loop (nested loops are
+/// skipped: their `break`s bind to themselves).
+pub(super) fn stmts_contain_break(stmts: &[Stmt]) -> bool {
+    stmts.iter().any(|s| match &s.kind {
+        StmtKind::Break => true,
+        StmtKind::If {
+            then_body,
+            else_body,
+            ..
+        } => {
+            stmts_contain_break(then_body)
+                || else_body.as_ref().map_or(false, |b| stmts_contain_break(b))
+        }
+        StmtKind::For { body, else_body, .. } | StmtKind::ForEach { body, else_body, .. } => {
+            else_body.as_ref().map_or(false, |b| stmts_contain_break(b)) && {
+                let _ = body;
+                false
+            }
+        }
+        StmtKind::While { body, .. }
+        | StmtKind::ForEnumerate { body, .. }
+        | StmtKind::ForDictItems { body, .. }
+        | StmtKind::ForZip { body, .. }
+        | StmtKind::ForTupleUnpack { body, .. } => {
+            let _ = body;
+            false
+        }
+        StmtKind::Match { cases, .. } => cases.iter().any(|c| stmts_contain_break(&c.body)),
+        StmtKind::Region { body } => stmts_contain_break(body),
+        _ => false,
+    })
 }

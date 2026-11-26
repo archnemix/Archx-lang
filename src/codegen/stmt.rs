@@ -37,6 +37,12 @@ impl Codegen {
         match &stmt.kind {
             StmtKind::Pass => Ok(()),
 
+            // `for ... else` is carried by `ForEach` now; a bare wrapper cannot be reached.
+            StmtKind::ForElse { .. } => Err(Diagnostic::new(
+                "internal error: unwrapped `for ... else`",
+                stmt.span,
+            )),
+
             StmtKind::Assert { cond, msg } => {
                 let cond_val = self.eval_cond_bool(cond, "assert", out)?;
                 let ok_lbl = self.fresh_label("assert.ok");
@@ -320,11 +326,25 @@ impl Codegen {
                 end,
                 step,
                 body,
-            } => self.gen_for(var, start, end, step.as_ref(), body, stmt.span, out),
+                else_body,
+            } => match else_body {
+                Some(eb) => {
+                    self.gen_for_else(var, start, end, step.as_ref(), body, eb, stmt.span, out)
+                }
+                None => self.gen_for(var, start, end, step.as_ref(), body, stmt.span, out),
+            },
 
-            StmtKind::ForEach { var, iter, body } => {
+            StmtKind::ForEach {
+                var,
+                iter,
+                body,
+                else_body,
+            } => {
                 let _ = rest_in_block;
-                self.gen_foreach(var, iter, body, stmt.span, out)
+                match else_body {
+                    Some(eb) => self.gen_foreach_else(var, iter, body, eb, stmt.span, out),
+                    None => self.gen_foreach(var, iter, body, stmt.span, out),
+                }
             }
 
             StmtKind::ForEnumerate {
@@ -359,10 +379,6 @@ impl Codegen {
             }
 
             StmtKind::Region { body } => self.gen_region(body, out),
-
-            StmtKind::ForElse { body, else_body } => {
-                self.gen_for_else(body, else_body, stmt.span, out)
-            }
 
             StmtKind::Break => {
                 let (label, sdepth, rdepth, flag) = self

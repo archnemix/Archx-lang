@@ -324,6 +324,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
             func.name.clone(),
             FuncSig {
                 params: func.params.iter().map(|p| p.ty.clone()).collect(),
+                param_names: func.params.iter().map(|p| p.name.clone()).collect(),
                 defaults: func.params.iter().map(|p| p.default.clone()).collect(),
                 ret,
             },
@@ -780,6 +781,8 @@ pub(super) fn topo_sort_structs(
 #[derive(Clone)]
 pub(super) struct FuncSig {
     pub(super) params: Vec<Type>,
+    /// Declared parameter names, so `f(b=2)` can be matched to its slot.
+    pub(super) param_names: Vec<String>,
     /// `def f(a: int, b: int = 3)` — the defaults are evaluated at the call site when the trailing
     /// arguments are omitted.
     pub(super) defaults: Vec<Option<Expr>>,

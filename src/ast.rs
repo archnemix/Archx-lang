@@ -154,11 +154,15 @@ pub enum StmtKind {
         end: Expr,
         step: Option<Expr>,
         body: Vec<Stmt>,
+        /// `for i in 0..n: ... else: ...` — runs only when the loop was not exited by `break`.
+        else_body: Option<Vec<Stmt>>,
     },
     ForEach {
         var: String,
         iter: Expr,
         body: Vec<Stmt>,
+        /// `for ...: ... else: ...` — runs only when the loop was not exited by `break`.
+        else_body: Option<Vec<Stmt>>,
     },
     ForEnumerate {
         idx_var: String,
