@@ -51,6 +51,7 @@ impl Codegen {
         self.is_main = false;
         self.allocas.clear();
         self.sort_tmp_slot = None;
+        self.sort_tmp_bytes = 0;
         self.current_ret = sig.ret.clone();
 
         let ir_ret = ir_ret_type(sig.ret.as_ref());

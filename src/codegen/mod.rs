@@ -434,6 +434,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_str_byte_at: false,
         used_str_cmp: false,
         sort_tmp_slot: None,
+        sort_tmp_bytes: 0,
         used_pow_f64: false,
         used_floor_f64: false,
         used_fabs_f64: false,
@@ -996,6 +997,8 @@ pub(super) struct Codegen {
     pub(super) used_str_byte_at: bool,
     pub(super) used_str_cmp: bool,
     pub(super) sort_tmp_slot: Option<String>,
+    /// Size in bytes of the allocated `sort_tmp_slot` scratch record.
+    pub(super) sort_tmp_bytes: i64,
     pub(super) used_pow_f64: bool,
     pub(super) used_floor_f64: bool,
     pub(super) used_fabs_f64: bool,
@@ -1061,6 +1064,7 @@ impl Codegen {
         self.allocas.clear();
         // The 16-byte sort scratch slot is per function (it lives in `allocas`).
         self.sort_tmp_slot = None;
+        self.sort_tmp_bytes = 0;
 
         let ir_ret = if self.is_main {
             "i32".to_string()

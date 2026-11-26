@@ -35,7 +35,7 @@ use super::*;
 /// Size of the insertion-sorted runs the first pass produces.
 const RUN_LEN: i64 = 16;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 enum KeyKind {
     Int,
     Float,
@@ -44,21 +44,26 @@ enum KeyKind {
     /// First component of a tuple; `nested` describes the tail.
     TupleInt,
     TupleStr,
+    /// A tuple component whose own first field is a tuple; carries the element type so the
+    /// field can be loaded as an aggregate before recursing.
+    Aggregate(Type),
     /// Anything with no comparable first component: `key_before` is always false.
     Opaque,
 }
 
 impl KeyKind {
-    fn size(self) -> i64 {
+    fn size(&self) -> i64 {
         match self {
+            KeyKind::Aggregate(ref ty) => static_tuple_size(ty).unwrap_or(8),
             KeyKind::Str | KeyKind::TupleStr => 16,
             KeyKind::Bool => 1,
             _ => 8,
         }
     }
 
-    fn ir(self) -> &'static str {
+    fn ir(&self) -> &'static str {
         match self {
+            KeyKind::Aggregate(_) => "{ i64 }",
             KeyKind::Str | KeyKind::TupleStr => "%ArchxStr",
             KeyKind::Float => "double",
             KeyKind::Bool => "i8",
@@ -385,7 +390,7 @@ impl Codegen {
         let elem_val = self.emit_elem_load(elem_ty, &ep, out);
         // Bind the lambda parameter to the loaded element by *reference* (no clone).
         self.bind_probe(&spec.param, elem_ty.clone(), elem_val);
-        let key_val = self.eval_key_expr(&spec.body, kind, out)?;
+        let key_val = self.eval_key_expr(&spec.body, kind.clone(), out)?;
         self.restore_probe(&spec.param, saved.clone());
 
         let pad = self.next_tmp();
@@ -530,6 +535,7 @@ impl Codegen {
 
     fn eval_key_expr(&mut self, expr: &Expr, kind: KeyKind, out: &mut String) -> Result<String> {
         let (ty, val) = self.eval_expr(expr, out)?;
+        let kind_ir = kind.ir();
         Ok(match (kind, &ty) {
             (KeyKind::Bool, Type::Bool) => {
                 let z = self.next_tmp();
@@ -554,7 +560,7 @@ impl Codegen {
                     format!(
                         "sort `key=` returns `{}` but the key record holds `{}`",
                         ty.name(),
-                        kind.ir()
+                        kind_ir
                     ),
                     expr.span,
                 ))
@@ -763,7 +769,7 @@ impl Codegen {
         // One 16-byte stack scratch holds the record being inserted: shifting *roots* by
         // `memcpy` on overlapping ranges would clobber data, so every shift moves the stack
         // copy instead and writes the copy out once when the slot is found.
-        let hold_slot = self.scratch_16();
+        let hold_slot = self.scratch_16(cfg.stride);
         let curptr = self.record_ptr(cfg, buf, &cur, out);
         let _ = writeln!(
             out,
@@ -1032,17 +1038,20 @@ impl Codegen {
 
     // ---------------- Record helpers ---------------------------------------
 
-    /// Lazily allocates a single 16-byte stack scratch slot (`%ArchxStr`-sized and
-    /// 8-byte aligned), reused by every record move in the function.
-    fn scratch_16(&mut self) -> String {
+    /// Lazily allocates the stack scratch record the insertion sort uses to hold one element
+    /// while it shifts its neighbours. Sized for `stride` bytes (a `str` pads a two-field tuple
+    /// to 24 bytes, and nested tuples are larger still) and reused by every record move.
+    fn scratch_16(&mut self, stride: i64) -> String {
+        let want = stride.max(16);
         if let Some(s) = &self.sort_tmp_slot {
-            return s.clone();
+            if self.sort_tmp_bytes >= want {
+                return s.clone();
+            }
         }
         let slot = self.next_slot("sort.tmp");
-        // Sized for the largest record the merge sort moves (a `str` field padding to 24 bytes
-        // for `tuple[str, int]` and friends), not just two words.
-        let _ = writeln!(self.allocas, "  {slot} = alloca [32 x i8], align 8");
+        let _ = writeln!(self.allocas, "  {slot} = alloca [{want} x i8], align 8");
         self.sort_tmp_slot = Some(slot.clone());
+        self.sort_tmp_bytes = want;
         slot
     }
 
@@ -1061,13 +1070,24 @@ impl Codegen {
         off: i64,
         out: &mut String,
     ) -> String {
-        self.load_field_of(cfg.kind, rec, off, out)
+        self.load_field_of(cfg.kind.clone(), rec, off, out)
     }
 
     /// Loads one component of a record at a byte offset, with an explicit component kind.
     fn load_field_of(&mut self, kind: KeyKind, rec: &str, off: i64, out: &mut String) -> String {
         let p = self.next_tmp();
         let _ = writeln!(out, "  {p} = getelementptr inbounds i8, ptr {rec}, i64 {off}");
+        // Aggregate kinds (a tuple holding a tuple) load with the aggregate's own type.
+        if let KeyKind::Aggregate(ty) = kind {
+            let v = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {v} = load {}, ptr {p}, align {}",
+                ir_type(&ty),
+                ir_align(&ty)
+            );
+            return v;
+        }
         let v = self.next_tmp();
         let align = if kind.size() == 1 { 1 } else { 8 };
         let _ = writeln!(out, "  {v} = load {}, ptr {p}, align {align}", kind.ir());
@@ -1103,16 +1123,16 @@ impl Codegen {
         // order), so their "key" is whatever the walk below produces.
         if cfg.idx_off.is_none() {
             if let Some(ty) = &cfg.elem_ty {
-                if matches!(ty, Type::Tuple(_)) {
+                if matches!(ty, Type::Tuple(_) | Type::Array(_)) {
                     return self.key_before_tuple(cfg, ty, a_rec, b_rec, asc, out);
                 }
             }
         }
-        let strict = self.emit_less(cfg.kind, a_key, b_key, asc, out);
+        let strict = self.emit_less(&cfg.kind, a_key, b_key, asc, out);
         let Some(idx_off) = cfg.idx_off else {
             return strict;
         };
-        let eq = self.emit_eq(cfg.kind, a_key, b_key, out);
+        let eq = self.emit_eq(&cfg.kind, a_key, b_key, out);
         let a_idx = self.load_i64_field(a_rec, idx_off, out);
         let b_idx = self.load_i64_field(b_rec, idx_off, out);
         let lower = self.next_tmp();
@@ -1131,34 +1151,44 @@ impl Codegen {
     /// unreachable in Python's ordering anyway (component 0 decides whenever it differs).
     fn key_before_tuple(
         &mut self,
-        cfg: &SortCfg,
+        _cfg: &SortCfg,
         ty: &Type,
         a_rec: &str,
         b_rec: &str,
         asc: bool,
         out: &mut String,
     ) -> String {
+        // A `list[T]` element compares element-wise, then by length. The record pointer points at
+        // the inline `%ArchxVec`, so load it before walking the payload.
+        if let Type::Array(inner) = ty {
+            let a_vec = self.load_vec_field(a_rec, 0, out);
+            let b_vec = self.load_vec_field(b_rec, 0, out);
+            return self.cmp_list_payload(inner, &a_vec, &b_vec, asc, out).0;
+        }
         let Type::Tuple(items) = ty else {
             return "false".to_string();
         };
         let mut off: i64 = 0;
         let mut cmps: Vec<(String, String)> = Vec::new();
         for item in items {
-            let kind = match item {
-                Type::Int => KeyKind::Int,
-                Type::Str => KeyKind::Str,
+            match item {
+                Type::Int
+                | Type::Str
+                | Type::Float
+                | Type::Bool
+                | Type::Tuple(_)
+                | Type::Array(_) => {}
                 _ => break,
-            };
+            }
+            // `cmp_component` recurses into nested tuples and list payloads; the whole record is
+            // available, so nested components are addressed by offset from the record pointer.
             let align = ir_align(item) as i64;
             if align > 1 {
                 off = (off + align - 1) / align * align;
             }
-            let ak = self.load_field_of(kind, a_rec, off, out);
-            let bk = self.load_field_of(kind, b_rec, off, out);
-            let less = self.emit_less(kind, &ak, &bk, asc, out);
-            let eq = self.emit_eq(kind, &ak, &bk, out);
+            let (less, eq) = self.cmp_component(item, a_rec, b_rec, off, asc, out);
             cmps.push((less, eq));
-            off += kind.size();
+            off += static_tuple_size(item).unwrap_or(0);
         }
         let Some((last_less, _)) = cmps.pop() else {
             return "false".to_string();
@@ -1174,7 +1204,171 @@ impl Codegen {
         running
     }
 
-    fn emit_eq(&mut self, kind: KeyKind, a: &str, b: &str, out: &mut String) -> String {
+    /// "component `a` sorts before component `b`" plus "they are equal" for one element of a
+    /// lexicographic tuple/list comparison. Nested tuples recurse; `list[T]` compares like Python
+    /// (element-wise, then by length, so a prefix is smaller than its extension).
+    fn cmp_component(
+        &mut self,
+        ty: &Type,
+        a_rec: &str,
+        b_rec: &str,
+        off: i64,
+        asc: bool,
+        out: &mut String,
+    ) -> (String, String) {
+        let scalar = match ty {
+            Type::Int => Some(KeyKind::Int),
+            Type::Str => Some(KeyKind::Str),
+            Type::Float => Some(KeyKind::Float),
+            Type::Bool => Some(KeyKind::Bool),
+            _ => None,
+        };
+        if let Some(kind) = scalar {
+            let ak = self.load_field_of(kind.clone(), a_rec, off, out);
+            let bk = self.load_field_of(kind.clone(), b_rec, off, out);
+            let less = self.emit_less(&kind, &ak, &bk, asc, out);
+            let eq = self.emit_eq(&kind, &ak, &bk, out);
+            return (less, eq);
+        }
+        match ty {
+            Type::Tuple(items) => {
+                // Lexicographic: `less = less_i or (equal_so_far and less_i+1)`, accumulated
+                // left to right so a later component only decides when all earlier ones tie.
+                let mut running_less = "false".to_string();
+                let mut all_eq = "true".to_string();
+                let mut foff = off;
+                for item in items {
+                    let align = ir_align(item) as i64;
+                    if align > 1 {
+                        foff = (foff + align - 1) / align * align;
+                    }
+                    let (less, eq) = self.cmp_component(item, a_rec, b_rec, foff, asc, out);
+                    let tied = self.next_tmp();
+                    let _ = writeln!(out, "  {tied} = and i1 {all_eq}, {less}");
+                    let next_less = self.next_tmp();
+                    let _ = writeln!(out, "  {next_less} = or i1 {running_less}, {tied}");
+                    running_less = next_less;
+                    let next_eq = self.next_tmp();
+                    let _ = writeln!(out, "  {next_eq} = and i1 {all_eq}, {eq}");
+                    all_eq = next_eq;
+                    foff += static_tuple_size(item).unwrap_or(0);
+                }
+                (running_less, all_eq)
+            }
+            Type::Array(inner) => {
+                let a_vec = self.load_vec_field(a_rec, off, out);
+                let b_vec = self.load_vec_field(b_rec, off, out);
+                self.cmp_list_payload(inner, &a_vec, &b_vec, asc, out)
+            }
+            _ => ("false".to_string(), "false".to_string()),
+        }
+    }
+
+    /// Loads an inline `%ArchxVec` out of a record field.
+    fn load_vec_field(&mut self, rec: &str, off: i64, out: &mut String) -> String {
+        let p = self.next_tmp();
+        let _ = writeln!(out, "  {p} = getelementptr inbounds i8, ptr {rec}, i64 {off}");
+        let v = self.next_tmp();
+        let _ = writeln!(out, "  {v} = load %ArchxVec, ptr {p}, align 8");
+        v
+    }
+
+    /// Python list comparison: lexicographic over the payload, then shorter-is-smaller.
+    fn cmp_list_payload(
+        &mut self,
+        inner: &Type,
+        a_vec: &str,
+        b_vec: &str,
+        asc: bool,
+        out: &mut String,
+    ) -> (String, String) {
+        let a_len = self.next_tmp();
+        let _ = writeln!(out, "  {a_len} = extractvalue %ArchxVec {a_vec}, 0");
+        let b_len = self.next_tmp();
+        let _ = writeln!(out, "  {b_len} = extractvalue %ArchxVec {b_vec}, 0");
+        let a_data = self.next_tmp();
+        let _ = writeln!(out, "  {a_data} = extractvalue %ArchxVec {a_vec}, 2");
+        let b_data = self.next_tmp();
+        let _ = writeln!(out, "  {b_data} = extractvalue %ArchxVec {b_vec}, 2");
+        let stride = self.elem_stride(inner, out);
+
+        let i_slot = self.next_slot("sort.cmp.i");
+        let less_slot = self.next_slot("sort.cmp.less");
+        let eq_slot = self.next_slot("sort.cmp.eq");
+        let _ = writeln!(self.allocas, "  {i_slot} = alloca i64, align 8");
+        let _ = writeln!(self.allocas, "  {less_slot} = alloca i1, align 1");
+        let _ = writeln!(self.allocas, "  {eq_slot} = alloca i1, align 1");
+        let _ = writeln!(out, "  store i64 0, ptr {i_slot}, align 8");
+        let _ = writeln!(out, "  store i1 false, ptr {less_slot}, align 1");
+        let _ = writeln!(out, "  store i1 true, ptr {eq_slot}, align 1");
+
+        let cond = self.fresh_label("sort.cmp.cond");
+        let body = self.fresh_label("sort.cmp.body");
+        let tail = self.fresh_label("sort.cmp.tail");
+        let done = self.fresh_label("sort.cmp.done");
+        self.emit_br(&cond, out);
+        self.start_block(&cond, out);
+        let i = self.next_tmp();
+        let _ = writeln!(out, "  {i} = load i64, ptr {i_slot}, align 8");
+        let a_has = self.next_tmp();
+        let _ = writeln!(out, "  {a_has} = icmp slt i64 {i}, {a_len}");
+        let b_has = self.next_tmp();
+        let _ = writeln!(out, "  {b_has} = icmp slt i64 {i}, {b_len}");
+        let both = self.next_tmp();
+        let _ = writeln!(out, "  {both} = and i1 {a_has}, {b_has}");
+        self.emit_cond_br(&both, &body, &tail, out);
+
+        self.start_block(&body, out);
+        let a_off = self.next_tmp();
+        let _ = writeln!(out, "  {a_off} = mul nuw nsw i64 {i}, {stride}");
+        let ap = self.next_tmp();
+        let _ = writeln!(out, "  {ap} = getelementptr inbounds i8, ptr {a_data}, i64 {a_off}");
+        let b_off = self.next_tmp();
+        let _ = writeln!(out, "  {b_off} = mul nuw nsw i64 {i}, {stride}");
+        let bp = self.next_tmp();
+        let _ = writeln!(out, "  {bp} = getelementptr inbounds i8, ptr {b_data}, i64 {b_off}");
+        let (elem_less, elem_eq) = self.cmp_component(inner, &ap, &bp, 0, asc, out);
+        // Extend the running result only while every earlier element was equal.
+        let prev_eq = self.next_tmp();
+        let _ = writeln!(out, "  {prev_eq} = load i1, ptr {eq_slot}, align 1");
+        let prev_less = self.next_tmp();
+        let _ = writeln!(out, "  {prev_less} = load i1, ptr {less_slot}, align 1");
+        let new_less = self.next_tmp();
+        let _ = writeln!(out, "  {new_less} = and i1 {prev_eq}, {elem_less}");
+        let merged_less = self.next_tmp();
+        let _ = writeln!(out, "  {merged_less} = or i1 {prev_less}, {new_less}");
+        let _ = writeln!(out, "  store i1 {merged_less}, ptr {less_slot}, align 1");
+        let new_eq = self.next_tmp();
+        let _ = writeln!(out, "  {new_eq} = and i1 {prev_eq}, {elem_eq}");
+        let _ = writeln!(out, "  store i1 {new_eq}, ptr {eq_slot}, align 1");
+        let i_next = self.next_tmp();
+        let _ = writeln!(out, "  {i_next} = add nsw i64 {i}, 1");
+        let _ = writeln!(out, "  store i64 {i_next}, ptr {i_slot}, align 8");
+        self.emit_br(&cond, out);
+
+        self.start_block(&tail, out);
+        // One list ran out of elements: the shorter one sorts first while ascending.
+        let len_less = self.next_tmp();
+        let pred = if asc { "slt" } else { "sgt" };
+        let _ = writeln!(out, "  {len_less} = icmp {pred} i64 {a_len}, {b_len}");
+        let prev_eq2 = self.next_tmp();
+        let _ = writeln!(out, "  {prev_eq2} = load i1, ptr {eq_slot}, align 1");
+        let prev_less2 = self.next_tmp();
+        let _ = writeln!(out, "  {prev_less2} = load i1, ptr {less_slot}, align 1");
+        let tied = self.next_tmp();
+        let _ = writeln!(out, "  {tied} = and i1 {prev_eq2}, {len_less}");
+        let final_less = self.next_tmp();
+        let _ = writeln!(out, "  {final_less} = or i1 {prev_less2}, {tied}");
+        let len_eq = self.next_tmp();
+        let _ = writeln!(out, "  {len_eq} = icmp eq i64 {a_len}, {b_len}");
+        let final_eq = self.next_tmp();
+        let _ = writeln!(out, "  {final_eq} = and i1 {prev_eq2}, {len_eq}");
+        self.emit_br(&done, out);
+        self.start_block(&done, out);
+        (final_less, final_eq)
+    }
+
+    fn emit_eq(&mut self, kind: &KeyKind, a: &str, b: &str, out: &mut String) -> String {
         let r = self.next_tmp();
         match kind {
             KeyKind::Float => {
@@ -1190,7 +1384,7 @@ impl Codegen {
             KeyKind::Int | KeyKind::TupleInt => {
                 let _ = writeln!(out, "  {r} = icmp eq i64 {a}, {b}");
             }
-            KeyKind::Opaque => {
+            KeyKind::Opaque | KeyKind::Aggregate(_) => {
                 let _ = writeln!(out, "  {r} = and i1 true, false");
             }
             KeyKind::Bool => {
@@ -1200,7 +1394,7 @@ impl Codegen {
         r
     }
 
-    fn emit_less(&mut self, kind: KeyKind, a: &str, b: &str, asc: bool, out: &mut String) -> String {
+    fn emit_less(&mut self, kind: &KeyKind, a: &str, b: &str, asc: bool, out: &mut String) -> String {
         let r = self.next_tmp();
         match kind {
             KeyKind::Float => {
@@ -1221,7 +1415,7 @@ impl Codegen {
                 let pred = if asc { "slt" } else { "sgt" };
                 let _ = writeln!(out, "  {r} = icmp {pred} i64 {a}, {b}");
             }
-            KeyKind::Opaque => {
+            KeyKind::Opaque | KeyKind::Aggregate(_) => {
                 let _ = writeln!(out, "  {r} = and i1 true, false");
             }
             KeyKind::Bool => {
@@ -1271,12 +1465,17 @@ fn keyless_kind(elem_ty: &Type, span: Span) -> Result<KeyKind> {
         Type::Float => KeyKind::Float,
         Type::Bool => KeyKind::Bool,
         Type::Str => KeyKind::Str,
-        // Tuples compare lexicographically on their first comparable component.
+        // Tuples and lists are compared component by component (see `key_before_tuple`), so the
+        // scalar "key kind" only has to describe the record's leading field.
         Type::Tuple(items) => match items.first() {
-            Some(Type::Int) => KeyKind::TupleInt,
             Some(Type::Str) => KeyKind::TupleStr,
-            Some(Type::Float) | Some(Type::Bool) | None | Some(_) => KeyKind::Opaque,
-            Some(Type::Void) => KeyKind::Opaque,
+            Some(inner @ Type::Tuple(_)) => KeyKind::Aggregate(inner.clone()),
+            Some(Type::Void) | None => KeyKind::Opaque,
+            Some(_) => KeyKind::TupleInt,
+        },
+        Type::Array(inner) => match inner.as_ref() {
+            Type::Str => KeyKind::TupleStr,
+            _ => KeyKind::TupleInt,
         },
         other => {
             return Err(Diagnostic::new(

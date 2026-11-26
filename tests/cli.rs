@@ -1670,3 +1670,38 @@ main()
          [(a, 0), (a, 1), (b, 2)]\n[3, 2, 1]\n"
     );
 }
+
+/// v0.9.2 — keyless sorting of nested collections: tuples with tuple payloads and lists of ints
+/// compare exactly like CPython (lexicographic, then length for lists).
+#[test]
+fn pythonic_nested_collection_sorting_matches_cpython() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    rows = [[3, 1], [1, 2], [2, 5], [1, 1]]
+    print(sorted(rows))
+    print(sorted(rows, reverse=True))
+    print(sorted([[1, 2], [1, 2, 0], [1]]))
+    tagged = [(3, "x", 9), (1, "z", 2), (2, "a", 5)]
+    print(sorted(tagged))
+    nested = [("a", (2, "y")), ("a", (1, "z")), ("b", (0, "q"))]
+    print(sorted(nested))
+    pairs = [("b", 2), ("a", 1), ("a", 0)]
+    print(sorted(pairs))
+main()
+"#;
+
+    let out = build_and_run("v12_nested_sort", src);
+    assert_eq!(
+        out,
+        "[[1, 1], [1, 2], [2, 5], [3, 1]]\n\
+         [[3, 1], [2, 5], [1, 2], [1, 1]]\n\
+         [[1], [1, 2], [1, 2, 0]]\n\
+         [(1, z, 2), (2, a, 5), (3, x, 9)]\n\
+         [(a, (1, z)), (a, (2, y)), (b, (0, q))]\n\
+         [(a, 0), (a, 1), (b, 2)]\n"
+    );
+}
