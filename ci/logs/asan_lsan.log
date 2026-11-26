@@ -9,14 +9,16 @@ CLEAN: examples/collections_dynamic.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: examples/enums_matching.archx.lang ==
 CLEAN: examples/enums_matching.archx.lang (0 leaks, 0 invalid accesses)
 == ASan + LSan check: examples/comparison/full_tour_pythonic.archx.lang ==
-CLEAN: examples/comparison/full_tour_pythonic.archx.lang (0 leaks, 0 invalid accesses)
-== ASan + LSan check: examples/comparison/full_tour_speed.archx.lang ==
-CLEAN: examples/comparison/full_tour_speed.archx.lang (0 leaks, 0 invalid accesses)
-== ASan + LSan check: benchmarks/composite.archx.lang ==
-CLEAN: benchmarks/composite.archx.lang (0 leaks, 0 invalid accesses)
-== ASan + LSan check: benchmarks/nbody_float.archx.lang ==
-CLEAN: benchmarks/nbody_float.archx.lang (0 leaks, 0 invalid accesses)
-== ASan + LSan check: benchmarks/dict_bench.archx.lang ==
-CLEAN: benchmarks/dict_bench.archx.lang (0 leaks, 0 invalid accesses)
-== ASan + LSan check: benchmarks/dict_dynamic.archx.lang ==
-CLEAN: benchmarks/dict_dynamic.archx.lang (0 leaks, 0 invalid accesses)
+
+=================================================================
+==2834==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 16000 byte(s) in 1 object(s) allocated from:
+    #0 0x5d14fad646b8 in malloc (/tmp/asan_target+0x10f6b8) (BuildId: 901aff6198ad15ff5fdbd2712438ee620eae604f)
+    #1 0x5d14fadacf8f in archx_fn___archx_user_main asan_target.ll
+
+Direct leak of 16000 byte(s) in 1 object(s) allocated from:
+    #0 0x5d14fad646b8 in malloc (/tmp/asan_target+0x10f6b8) (BuildId: 901aff6198ad15ff5fdbd2712438ee620eae604f)
+    #1 0x5d14fadace49 in archx_fn___archx_user_main asan_target.ll
+
+SUMMARY: AddressSanitizer: 32000 byte(s) leaked in 2 allocation(s).
