@@ -37,10 +37,15 @@ impl Codegen {
         match &stmt.kind {
             StmtKind::Pass => Ok(()),
 
-            // `del x` frees the value now, then forgets the binding. A later `x = ...` introduces
-            // a fresh variable (Python's `del` removes the name from the scope), and a read before
-            // that reports `undefined variable`, matching `UnboundLocalError`. Returned values are
-            // promoted to the heap instead of dropped because the caller may still own them.
+            // `global NAME` is resolved at variable lookup (see `Codegen::gen_func`); the
+            // statement itself emits nothing.
+            StmtKind::Global { .. } => Ok(()),
+
+            // `del x` drops the value now and forgets the binding. A later `x = ...` introduces a
+            // fresh variable (Python removes the name from the scope) and a read before that
+            // reports `undefined variable`, mirroring `UnboundLocalError`. Names that are ever
+            // deleted never get a typed slot (see `collect_deleted_vars`), so the drop happens on
+            // the immediate and scope exit has nothing left to free.
             StmtKind::Del { name } => {
                 let Some(entry) = self.lookup_var(name).cloned() else {
                     return Err(Diagnostic::new(
@@ -48,31 +53,11 @@ impl Codegen {
                         stmt.span,
                     ));
                 };
-                if self.returned_vars.contains(name) {
-                    return Ok(());
-                }
-                if self.type_needs_drop(&entry.ty) {
-                    match &entry.storage {
-                        VarStorage::Imm(val) => {
-                            let val = val.clone();
-                            self.emit_drop_value(&entry.ty, &val, out);
-                        }
-                        VarStorage::Slot(ptr) => {
-                            let ptr = ptr.clone();
-                            self.forget_drop_target(&ptr);
-                            let loaded = self.next_tmp();
-                            let _ = writeln!(
-                                out,
-                                "  {loaded} = load {}, ptr {ptr}, align {}",
-                                ir_type(&entry.ty),
-                                ir_align(&entry.ty)
-                            );
-                            self.emit_drop_value(&entry.ty, &loaded, out);
-                        }
-                        VarStorage::Soa { .. } => {
-                            // A deleted SoA array cannot reach here: binding one for deletion is
-                            // treated as an escape by the layout pass, so it stays a plain vector.
-                        }
+                // A returned value is owned by the caller, so it must not be freed here.
+                if self.type_needs_drop(&entry.ty) && !self.returned_vars.contains(name) {
+                    if let VarStorage::Imm(val) = &entry.storage {
+                        let val = val.clone();
+                        self.emit_drop_value(&entry.ty, &val, out);
                     }
                 }
                 for scope in self.scopes.iter_mut().rev() {
@@ -342,7 +327,12 @@ impl Codegen {
             StmtKind::Assign { target, op, value } => {
                 if op.is_none() {
                     if let AssignTarget::Var(name) = target {
-                        if self.lookup_var(name).is_none() {
+                        if self.lookup_var(name).is_none() && !self.global_slots.contains_key(name) {
+                            // A name deleted earlier keeps `del` semantics: rebinding it exposes
+                            // the new value and leaves nothing for scope exit to free.
+                            if !self.deleted_vars.contains(name) {
+                                self.deleted_vars.insert(name.clone());
+                            }
                             return self.gen_let_binding(
                                 name,
                                 None,
@@ -926,6 +916,52 @@ impl Codegen {
         Ok(())
     }
 
+    /// Adds the value to an `init_globals` body derived from this function's own statements.
+    /// Values are cloned into slots owned by the module, so the local temporary is released (or
+    /// dropped) exactly as usual and the slot gets its own copy.
+    pub(super) fn gen_global_store(
+        &mut self,
+        name: &str,
+        value: &Expr,
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        let Some((slot_ty, sym)) = self.global_slots.get(name).cloned() else {
+            return Err(Diagnostic::new(
+                format!("internal error: `{name}` has no module slot"),
+                span,
+            ));
+        };
+        let (vty, val) = self.eval_expr(value, out)?;
+        if vty != slot_ty {
+            return Err(Diagnostic::new(
+                format!(
+                    "module-level `{name}` is `{}` but this assignment stores `{}`",
+                    slot_ty.name(),
+                    vty.name()
+                ),
+                span,
+            ));
+        }
+        let owned = if self.type_needs_drop(&slot_ty) {
+            if self.claim_stmt_temp(&val) {
+                val
+            } else {
+                self.emit_clone_value(&slot_ty, &val, out)
+            }
+        } else {
+            val
+        };
+        let _ = writeln!(
+            out,
+            "  store {} {owned}, ptr {sym}, align {}",
+            ir_type(&slot_ty),
+            ir_align(&slot_ty)
+        );
+        self.flush_stmt_temps(out);
+        Ok(())
+    }
+
     pub(super) fn gen_assign(
         &mut self,
         target: &AssignTarget,
@@ -936,6 +972,13 @@ impl Codegen {
     ) -> Result<()> {
         match target {
             AssignTarget::Var(name) => {
+                // `global NAME` (or a name that is only a module-level binding) assigns the module
+                // slot; no local variable is introduced.
+                if self.global_slots.contains_key(name) {
+                    if self.lookup_var(name).is_none() || self.declared_globals.contains(name) {
+                        return self.gen_global_store(name, value, span, out);
+                    }
+                }
                 let entry = self.lookup_var(name).cloned().ok_or_else(|| {
                     Diagnostic::new(format!("undefined variable `{name}`"), span)
                 })?;

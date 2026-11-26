@@ -92,8 +92,9 @@ pub(super) fn stmt_escapes_soa(
                     .as_ref()
                     .map_or(false, |m| expr_escapes_soa(m, var, mutating_methods))
         }
-        // `del x` frees the value; it never lets SoA planes escape.
-        StmtKind::Del { .. } => false,
+        // `del x` frees the value and `global x` only names a module constant; neither lets SoA
+        // planes escape.
+        StmtKind::Del { .. } | StmtKind::Global { .. } => false,
         StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => false,
         StmtKind::If {
             cond,
@@ -634,6 +635,8 @@ pub(super) fn walk_mutations(
             StmtKind::Del { name } => {
                 bound.remove(name);
             }
+            // A module-level constant is never a local mutation target.
+            StmtKind::Global { .. } => {}
             StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
             StmtKind::If {
                 cond,
@@ -1125,6 +1128,16 @@ pub(super) fn compute_adaptive_hints(
                     dict_keys.remove(name);
                     dict_vals.remove(name);
                     set_elems.remove(name);
+                }
+                // `global` names bind to module constants that carry their own literal type.
+                StmtKind::Global { names } => {
+                    for name in names {
+                        env.remove(name);
+                        list_elems.remove(name);
+                        dict_keys.remove(name);
+                        dict_vals.remove(name);
+                        set_elems.remove(name);
+                    }
                 }
                 StmtKind::If {
                     cond,
@@ -1982,4 +1995,47 @@ pub(super) fn stmts_contain_break(stmts: &[Stmt]) -> bool {
         StmtKind::Region { body } => stmts_contain_break(body),
         _ => false,
     })
+}
+
+/// Names that a `del` removes from a function's scope. Codegen never gives a deleted name a slot
+/// (or the pointer type would flip between `str` and `list[int]` on rebinding), and `del` is a
+/// no-op for them: they exist only to make the name undefined again.
+pub(super) fn collect_deleted_vars(stmts: &[Stmt]) -> HashSet<String> {
+    let mut out = HashSet::new();
+    for s in stmts {
+        match &s.kind {
+            StmtKind::Del { name } => {
+                out.insert(name.clone());
+            }
+            StmtKind::If {
+                then_body,
+                else_body,
+                ..
+            } => {
+                out.extend(collect_deleted_vars(then_body));
+                if let Some(eb) = else_body {
+                    out.extend(collect_deleted_vars(eb));
+                }
+            }
+            StmtKind::ForElse { body, else_body } => {
+                out.extend(collect_deleted_vars(body));
+                out.extend(collect_deleted_vars(else_body));
+            }
+            StmtKind::While { body, .. }
+            | StmtKind::For { body, .. }
+            | StmtKind::ForEach { body, .. }
+            | StmtKind::ForEnumerate { body, .. }
+            | StmtKind::ForDictItems { body, .. }
+            | StmtKind::ForZip { body, .. }
+            | StmtKind::ForTupleUnpack { body, .. }
+            | StmtKind::Region { body } => out.extend(collect_deleted_vars(body)),
+            StmtKind::Match { cases, .. } => {
+                for c in cases {
+                    out.extend(collect_deleted_vars(&c.body));
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }

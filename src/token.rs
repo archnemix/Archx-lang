@@ -13,6 +13,8 @@ pub enum TokenKind {
     Assert,
     /// `del x` — ends a binding's lifetime early.
     Del,
+    /// `global NAME` — bind a name to the module-level constants.
+    Global,
     Let,
     Return,
     If,
@@ -95,6 +97,7 @@ impl TokenKind {
             TokenKind::Pass => "`pass`".to_string(),
             TokenKind::Assert => "`assert`".to_string(),
             TokenKind::Del => "`del`".to_string(),
+            TokenKind::Global => "`global`".to_string(),
             TokenKind::Let => "`let`".to_string(),
             TokenKind::Return => "`return`".to_string(),
             TokenKind::If => "`if`".to_string(),

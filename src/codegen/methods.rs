@@ -37,8 +37,12 @@ impl Codegen {
         for dvar in &self.adaptive_hints.dynamic_vars {
             mutated.insert(dvar.clone());
         }
-        self.mutated_vars = mutated;
+        self.deleted_vars = collect_deleted_vars(&func.body);
+        for name in self.deleted_vars.clone() {
+            mutated.remove(&name);
+        }
         self.returned_vars = collect_returned_vars(&func.body);
+        self.mutated_vars = mutated;
         self.loop_stack.clear();
         self.loop_bounds.clear();
         self.region_stack.clear();
@@ -52,6 +56,7 @@ impl Codegen {
         self.allocas.clear();
         self.sort_tmp_slot = None;
         self.sort_tmp_bytes = 0;
+        self.declared_globals = func.globals.iter().cloned().collect();
         self.current_ret = sig.ret.clone();
 
         let ir_ret = ir_ret_type(sig.ret.as_ref());

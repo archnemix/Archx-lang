@@ -418,6 +418,7 @@ impl<'a> Lexer<'a> {
             "pass" => TokenKind::Pass,
             "assert" => TokenKind::Assert,
             "del" => TokenKind::Del,
+            "global" => TokenKind::Global,
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
             "if" => TokenKind::If,

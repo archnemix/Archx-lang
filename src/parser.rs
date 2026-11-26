@@ -29,6 +29,8 @@ impl Parser {
         let mut enums = Vec::new();
         let mut funcs = Vec::new();
         let mut top_stmts = Vec::new();
+        let mut consts: Vec<GlobalConst> = Vec::new();
+        let mut module_entries: Vec<ModuleEntry> = Vec::new();
         self.skip_newlines();
 
         while !self.check(&TokenKind::Eof) {
@@ -42,9 +44,86 @@ impl Parser {
             } else if self.check(&TokenKind::Func) {
                 funcs.push(self.parse_func()?);
             } else {
-                top_stmts.push(self.parse_stmt()?);
+                let mut stmt = self.parse_stmt()?;
+                // Strip `global` declarations now that they are collected per function.
+                if let StmtKind::Global { .. } = stmt.kind {
+                    stmt.kind = StmtKind::Pass;
+                }
+                let binding = script_binding_kind(&stmt);
+                match binding {
+                    Some((name, ty, value, span)) => {
+                        module_entries.push(ModuleEntry::Const(GlobalConst {
+                            name,
+                            ty,
+                            value,
+                            span,
+                        }));
+                    }
+                    None => module_entries.push(ModuleEntry::Stmt(stmt)),
+                }
             }
             self.skip_newlines();
+        }
+
+        // A module-level literal becomes a compile-time constant when it can be evaluated in
+        // place: it appears before the first script statement, nothing later rebinds the name, and
+        // it has no second literal declaration. Everything else keeps its in-order runtime value
+        // as part of the script `main` (module statements and their bindings share source order).
+        for (idx, entry) in module_entries.iter().enumerate() {
+            let ModuleEntry::Const(c) = entry else { continue };
+            let before_first_stmt = module_entries[..idx]
+                .iter()
+                .all(|e| matches!(e, ModuleEntry::Const(_)));
+            let rebound_later = module_entries[idx + 1..].iter().any(|e| match e {
+                ModuleEntry::Const(o) => o.name == c.name,
+                ModuleEntry::Stmt(st) => stmt_binds_name(st, &c.name),
+            });
+            // A constant lambda initializer is a first-class value, not a literal the module can
+            // fold, so it stays part of the script and its captures resolve as before.
+            let is_lambda = matches!(c.value.kind, ExprKind::Lambda { .. });
+            if before_first_stmt && !rebound_later && !is_lambda {
+                consts.push(c.clone());
+            }
+        }
+
+        // Script statements keep their source order. A folded constant is removed; a binding that
+        // had to keep its in-order runtime value is re-materialized as a statement, and only the
+        // *first* binding of a name introduces it (later ones are plain assignments).
+        let mut bound = std::collections::HashSet::new();
+        for e in module_entries {
+            match e {
+                ModuleEntry::Stmt(st) => {
+                    if let StmtKind::Let { name, .. }
+                    | StmtKind::Assign {
+                        target: AssignTarget::Var(name),
+                        ..
+                    } = &st.kind
+                    {
+                        bound.insert(name.clone());
+                    }
+                    top_stmts.push(st);
+                }
+                ModuleEntry::Const(c) => {
+                    if consts.iter().any(|f| f.name == c.name) {
+                        continue;
+                    }
+                    let span = c.span;
+                    let kind = if bound.insert(c.name.clone()) {
+                        StmtKind::Let {
+                            name: c.name,
+                            ty: c.ty,
+                            value: c.value,
+                        }
+                    } else {
+                        StmtKind::Assign {
+                            target: AssignTarget::Var(c.name),
+                            op: None,
+                            value: c.value,
+                        }
+                    };
+                    top_stmts.push(Stmt { kind, span });
+                }
+            }
         }
 
         if !top_stmts.is_empty() {
@@ -69,6 +148,7 @@ impl Parser {
                 params: Vec::new(),
                 ret: None,
                 body: top_stmts,
+                globals: Vec::new(),
                 span: script_span,
             });
         }
@@ -77,6 +157,7 @@ impl Parser {
             structs,
             enums,
             funcs,
+            consts,
         })
     }
 
@@ -347,12 +428,14 @@ impl Parser {
             ret = Some(Type::Any);
         }
 
+        let globals = collect_global_decls(&body);
         Ok(Func {
             name,
             type_params,
             params,
             ret,
             body,
+            globals,
             span,
         })
     }
@@ -426,12 +509,14 @@ impl Parser {
             ret = Some(Type::Any);
         }
 
+        let globals = collect_global_decls(&body);
         Ok(Func {
             name,
             type_params,
             params,
             ret,
             body,
+            globals,
             span,
         })
     }
@@ -717,6 +802,20 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `assert`")?;
             return Ok(Stmt {
                 kind: StmtKind::Assert { cond, msg },
+                span,
+            });
+        }
+
+        if self.check(&TokenKind::Global) {
+            self.bump();
+            let mut names = vec![self.expect_ident("a variable name")?];
+            while self.check(&TokenKind::Comma) {
+                self.bump();
+                names.push(self.expect_ident("a variable name")?);
+            }
+            self.expect(TokenKind::Newline, "a newline after `global`")?;
+            return Ok(Stmt {
+                kind: StmtKind::Global { names },
                 span,
             });
         }
@@ -2769,7 +2868,7 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 rewrite_main_calls_in_expr(value);
             }
             StmtKind::Return(Some(e)) | StmtKind::Expr(e) => rewrite_main_calls_in_expr(e),
-            StmtKind::Del { .. } => {}
+            StmtKind::Del { .. } | StmtKind::Global { .. } => {}
             StmtKind::Assert { cond, msg } => {
                 rewrite_main_calls_in_expr(cond);
                 if let Some(m) = msg {
@@ -3291,3 +3390,106 @@ def run(ev: Event) -> (int, int) | None:
     }
 }
 
+
+/// One module-level entry in source order: a foldable constant or an ordinary script statement.
+enum ModuleEntry {
+    Const(GlobalConst),
+    Stmt(Stmt),
+}
+
+/// Collects `global name` declarations so codegen can resolve those names to module-level
+/// constants. The declaration itself is a no-op statement (see `StmtKind::Global`).
+/// Parses a module-level literal binding (``NAME = 10``) into a constant so it does not run as part
+/// of the script `main`. Module statements and their bindings keep their source order, so a name is
+/// only constant-folded once nothing later depends on the in-order value.
+fn script_binding_kind(stmt: &Stmt) -> Option<(String, Option<Type>, Expr, Span)> {
+    fn is_literal(e: &Expr) -> bool {
+        matches!(
+            e.kind,
+            ExprKind::Int(_)
+                | ExprKind::Float(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Str(_)
+                | ExprKind::NoneLit
+        )
+    }
+    match &stmt.kind {
+        StmtKind::Let { name, ty, value } if is_literal(value) => {
+            Some((name.clone(), ty.clone(), value.clone(), stmt.span))
+        }
+        StmtKind::Assign {
+            target: AssignTarget::Var(name),
+            op: None,
+            value,
+        } if is_literal(value) => Some((name.clone(), None, value.clone(), stmt.span)),
+        _ => None,
+    }
+}
+
+/// Conservative "could this statement bind `name`" check used to decide whether a module-level
+/// literal can be constant-folded.
+fn stmt_binds_name(stmt: &Stmt, name: &str) -> bool {
+    match &stmt.kind {
+        StmtKind::Let { name: n, .. } | StmtKind::Del { name: n } => n == name,
+        StmtKind::Assign { target, .. } => matches!(target, AssignTarget::Var(n) if n == name),
+        StmtKind::TupleAssign { targets, .. } => targets.iter().any(|t| t == name),
+        StmtKind::Global { names } => names.iter().any(|n| n == name),
+        StmtKind::If {
+            then_body,
+            else_body,
+            ..
+        } => {
+            then_body.iter().any(|s| stmt_binds_name(s, name))
+                || else_body
+                    .as_ref()
+                    .map_or(false, |b| b.iter().any(|s| stmt_binds_name(s, name)))
+        }
+        StmtKind::While { body, .. }
+        | StmtKind::For { body, .. }
+        | StmtKind::ForEach { body, .. }
+        | StmtKind::ForEnumerate { body, .. }
+        | StmtKind::ForDictItems { body, .. }
+        | StmtKind::ForZip { body, .. }
+        | StmtKind::ForTupleUnpack { body, .. }
+        | StmtKind::Region { body } => body.iter().any(|s| stmt_binds_name(s, name)),
+        StmtKind::Match { cases, .. } => cases
+            .iter()
+            .any(|c| c.body.iter().any(|s| stmt_binds_name(s, name))),
+        _ => false,
+    }
+}
+
+fn collect_global_decls(stmts: &[Stmt]) -> Vec<String> {
+    let mut out = Vec::new();
+    for s in stmts {
+        match &s.kind {
+            StmtKind::Global { names } => {
+                for n in names {
+                    if !out.contains(n) {
+                        out.push(n.clone());
+                    }
+                }
+            }
+            StmtKind::If {
+                then_body,
+                else_body,
+                ..
+            } => {
+                out.extend(collect_global_decls(then_body));
+                if let Some(eb) = else_body {
+                    out.extend(collect_global_decls(eb));
+                }
+            }
+            StmtKind::While { body, .. }
+            | StmtKind::For { body, .. }
+            | StmtKind::ForEach { body, .. }
+            | StmtKind::ForEnumerate { body, .. }
+            | StmtKind::ForDictItems { body, .. }
+            | StmtKind::ForZip { body, .. }
+            | StmtKind::ForTupleUnpack { body, .. }
+            | StmtKind::Region { body } => out.extend(collect_global_decls(body)),
+            _ => {}
+        }
+    }
+    out
+}

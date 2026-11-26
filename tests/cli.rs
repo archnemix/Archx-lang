@@ -1738,3 +1738,49 @@ main()
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("undefined variable `x`"), "stderr was: {err}");
 }
+
+/// v0.9.2 — module-level constants and `global`: literal bindings fold to compile-time constants
+/// readable from any function, and `global NAME` assignment mutates one shared module slot.
+#[test]
+fn module_constants_and_global_rebinding_match_python() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"LIMIT = 10
+NAME = "archx"
+count = 0
+
+def bump():
+    global count
+    count = count + 1
+
+def show():
+    print(count)
+
+def limit() -> int:
+    return LIMIT
+
+def banner() -> str:
+    return "hi " + NAME
+
+def main():
+    bump()
+    bump()
+    print(count, limit(), banner())
+    count = 10
+    bump()
+    print(count)
+main()
+"#;
+    assert_eq!(build_and_run("v12_globals", src), "2 10 hi archx\n11\n");
+
+    // The in-order case: a module binding that is *not* hoisted keeps its runtime value.
+    let ordered = r#"total = 0
+for i in range(4):
+    total += i
+print(total)
+"#;
+    assert_eq!(build_and_run("v12_globals_order", ordered), "6\n");
+}

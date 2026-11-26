@@ -62,6 +62,19 @@ pub struct Program {
     pub structs: Vec<StructDef>,
     pub enums: Vec<EnumDef>,
     pub funcs: Vec<Func>,
+    /// Module-level `CONST: int = 3` bindings: compile-time constants readable from every
+    /// function, compiled to SSA immediates with no global storage.
+    pub consts: Vec<GlobalConst>,
+}
+
+/// One module-level binding. Only initializers that fold to a literal (or a literal container of
+/// literals) are accepted, which keeps the value free of runtime storage and drops.
+#[derive(Debug, Clone)]
+pub struct GlobalConst {
+    pub name: String,
+    pub ty: Option<Type>,
+    pub value: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +107,9 @@ pub struct Func {
     pub params: Vec<Param>,
     pub ret: Option<Type>,
     pub body: Vec<Stmt>,
+    /// `global name` declarations: names in this list resolve to the module-level `consts`
+    /// binding instead of a local variable.
+    pub globals: Vec<String>,
     pub span: Span,
 }
 
@@ -206,6 +222,10 @@ pub enum StmtKind {
     /// the way Python raises `UnboundLocalError`.
     Del {
         name: String,
+    },
+    /// `global NAME` — resolve `NAME` against the module-level constants rather than a local.
+    Global {
+        names: Vec<String>,
     },
     Pass,
     Break,

@@ -27,7 +27,9 @@ mod tests;
 use self::analysis::*;
 use self::generics::*;
 use self::tuples_enums::*;
-use crate::ast::{EnumDef, Expr, Func, Param, Program, StructDef, Type};
+use crate::ast::{
+    AssignTarget, EnumDef, Expr, ExprKind, Func, Param, Program, Stmt, StmtKind, StructDef, Type,
+};
 use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -72,6 +74,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
             .filter(|f| f.type_params.is_empty())
             .cloned()
             .collect(),
+        consts: program.consts.clone(),
     };
 
     for sdef in &program.structs {
@@ -361,6 +364,83 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         }
     }
 
+    let mut const_map: HashMap<String, (Type, Expr)> = HashMap::new();
+    for c in &program.consts {
+        let inferred = match (&c.ty, &c.value.kind) {
+            (Some(t), _) => Some(t.clone()),
+            (None, ExprKind::Int(_)) => Some(Type::Int),
+            (None, ExprKind::Float(_)) => Some(Type::Float),
+            (None, ExprKind::Bool(_)) => Some(Type::Bool),
+            (None, ExprKind::Str(_)) => Some(Type::Str),
+            (None, ExprKind::NoneLit) => Some(Type::Void),
+            _ => None,
+        };
+        let Some(ty) = inferred else {
+            return Err(Diagnostic::new(
+                format!(
+                    "module-level `{}` must be initialized with a literal or a `let` annotation",
+                    c.name
+                ),
+                c.span,
+            ));
+        };
+        // A later literal re-binding wins, matching module execution order.
+        const_map.insert(c.name.clone(), (ty, c.value.clone()));
+    }
+
+    // Module-level `global` bindings: a constant whose value is *assigned* inside a function gains
+    // a zero-initialized module slot. The assignments are replayed in module order from a
+    // synthesized `init` function that `main` runs first, so plain reads see the value regardless
+    // of which function ran first (Python's module-execution order).
+    let mut global_assigns: Vec<(String, Expr, Option<Type>)> = Vec::new();
+    fn find_global_assigns(stmts: &[Stmt], globals: &[String], out: &mut Vec<(String, Expr, Option<Type>)>) {
+        for s in stmts {
+            match &s.kind {
+                StmtKind::Assign {
+                    target: AssignTarget::Var(name),
+                    op: None,
+                    value,
+                } if globals.contains(name) => out.push((name.clone(), value.clone(), None)),
+                StmtKind::If {
+                    then_body,
+                    else_body,
+                    ..
+                } => {
+                    find_global_assigns(then_body, globals, out);
+                    if let Some(eb) = else_body {
+                        find_global_assigns(eb, globals, out);
+                    }
+                }
+                StmtKind::While { body, .. }
+                | StmtKind::For { body, .. }
+                | StmtKind::ForEach { body, .. }
+                | StmtKind::ForEnumerate { body, .. }
+                | StmtKind::ForDictItems { body, .. }
+                | StmtKind::ForZip { body, .. }
+                | StmtKind::ForTupleUnpack { body, .. }
+                | StmtKind::Region { body }
+                | StmtKind::ForElse { body, .. } => find_global_assigns(body, globals, out),
+                StmtKind::Match { cases, .. } => {
+                    for c in cases {
+                        find_global_assigns(&c.body, globals, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut globals_assigned: Vec<String> = Vec::new();
+    for func in &program.funcs {
+        let mut found = Vec::new();
+        find_global_assigns(&func.body, &func.globals, &mut found);
+        for (name, value, ty) in found {
+            if !globals_assigned.contains(&name) {
+                globals_assigned.push(name.clone());
+            }
+            global_assigns.push((name, value, ty));
+        }
+    }
+
     let mut cg = Codegen {
         strings: StringTable::new(),
         structs: struct_map,
@@ -433,6 +513,11 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_str_replace: false,
         used_str_byte_at: false,
         used_str_cmp: false,
+        consts: const_map.clone(),
+        declared_globals: HashSet::new(),
+        global_slots: HashMap::new(),
+        module_global_seeds: Vec::new(),
+        deleted_vars: HashSet::new(),
         sort_tmp_slot: None,
         sort_tmp_bytes: 0,
         used_pow_f64: false,
@@ -466,6 +551,25 @@ pub fn lower(raw_program: &Program) -> Result<String> {
             cg.gen_method(&sdef.name, m, &mut bodies)?;
         }
     }
+    for name in &globals_assigned {
+        let ty = match const_map.get(name) {
+            Some((ty, _)) => ty.clone(),
+            None => Type::Int,
+        };
+        let sym = format!("@g.{}", sanitize_symbol(name));
+        cg.global_slots.insert(name.clone(), (ty, sym));
+        if let Some((_, value)) = const_map.get(name) {
+            cg.module_global_seeds.push((name.clone(), value.clone()));
+        }
+    }
+    // `del`-free module storage: each slot is defined once below.
+    let mut global_slot_defs = String::new();
+    for (name, (ty, sym)) in cg.global_slots.iter().map(|(n, v)| (n.clone(), v.clone())) {
+        let _ = name;
+        let _ = writeln!(global_slot_defs, "{sym} = global {} zeroinitializer", ir_type(&ty));
+    }
+
+    // `main` seeds the slots from their module-level literal (see `gen_module_globals_init`).
     for func in &program.funcs {
         cg.gen_func(func, &mut bodies)?;
     }
@@ -582,6 +686,10 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         emit_cstr_global_aligned(&mut out, &format!("@.str.{i}"), value, 4);
     }
     out.push('\n');
+    out.push_str(&global_slot_defs);
+    if !cg.global_slots.is_empty() {
+        out.push('\n');
+    }
 
     out.push_str(&bodies);
     out.push_str(&cg.extra_helpers);
@@ -996,6 +1104,17 @@ pub(super) struct Codegen {
     pub(super) used_str_replace: bool,
     pub(super) used_str_byte_at: bool,
     pub(super) used_str_cmp: bool,
+    /// Module-level literal constants (`LIMIT = 10`) and the `global` names that may see them.
+    pub(super) consts: HashMap<String, (Type, Expr)>,
+    pub(super) declared_globals: HashSet<String>,
+    /// Module-level `global`-declared bindings that are assigned inside functions: `name ->
+    /// (type, "@g.<name>" slot)`. Emitted as zero-initialized module globals and assigned by
+    /// `global` functions in module order from `main`'s prologue.
+    pub(super) global_slots: HashMap<String, (Type, String)>,
+    /// `(global name, literal initializer)` pairs seeded at the top of `main`.
+    pub(super) module_global_seeds: Vec<(String, Expr)>,
+    /// Names a `del` statement removes: never slotted, never dropped at scope exit.
+    pub(super) deleted_vars: HashSet<String>,
     pub(super) sort_tmp_slot: Option<String>,
     /// Size in bytes of the allocated `sort_tmp_slot` scratch record.
     pub(super) sort_tmp_bytes: i64,
@@ -1049,8 +1168,15 @@ impl Codegen {
         for dvar in &self.adaptive_hints.dynamic_vars {
             mutated.insert(dvar.clone());
         }
-        self.mutated_vars = mutated;
+        // A name that is ever `del`-ed cannot keep a typed slot: `del x` then `x = "s"` would
+        // have to store a `str` into a `list[int]` slot. Such names stay immediates and `del`
+        // only forgets the binding, which `gen_del` handles.
+        self.deleted_vars = collect_deleted_vars(&func.body);
+        for name in self.deleted_vars.clone() {
+            mutated.remove(&name);
+        }
         self.returned_vars = collect_returned_vars(&func.body);
+        self.mutated_vars = mutated;
         self.loop_stack.clear();
         self.loop_bounds.clear();
         self.region_stack.clear();
@@ -1061,6 +1187,7 @@ impl Codegen {
         self.next_label = 0;
         self.terminated = false;
         self.is_main = func.name == "main";
+        self.declared_globals = func.globals.iter().cloned().collect();
         self.allocas.clear();
         // The 16-byte sort scratch slot is per function (it lives in `allocas`).
         self.sort_tmp_slot = None;
@@ -1143,6 +1270,12 @@ impl Codegen {
             );
         }
 
+        // `main` is the module entry point, so module-level `global` assignments run here first,
+        // in source order, before any user statement (Python's module-execution order).
+        if self.is_main {
+            self.gen_module_globals_init(&mut body)?;
+        }
+
         self.gen_block(&func.body, &mut body)?;
 
         if !self.terminated {
@@ -1176,6 +1309,29 @@ impl Codegen {
         out.push_str(&self.allocas);
         out.push_str(&body);
         let _ = writeln!(out, "}}\n");
+        Ok(())
+    }
+
+    /// Emits the module-level `global` assignments at the top of `main`'s body. They are compiled
+    /// as a throwaway "function" so the expression evaluator sees a clean scope.
+    /// Seeds every module-level `global` slot from its declaration's literal, in declaration order,
+    /// at the top of `main`. Later assignments happen where they are written, so a `bump()` before
+    /// any assignment still sees the declared value.
+    fn gen_module_globals_init(&mut self, out: &mut String) -> Result<()> {
+        let seeds = std::mem::take(&mut self.module_global_seeds);
+        for (name, value) in &seeds {
+            let Some((ty, sym)) = self.global_slots.get(name).cloned() else {
+                continue;
+            };
+            let (_, val) = self.eval_expr(value, out)?;
+            let _ = writeln!(
+                out,
+                "  store {} {val}, ptr {sym}, align {}",
+                ir_type(&ty),
+                ir_align(&ty)
+            );
+        }
+        self.module_global_seeds = seeds;
         Ok(())
     }
 
@@ -1405,4 +1561,17 @@ pub(super) fn emit_cstr_global_aligned(out: &mut String, name: &str, value: &str
         }
     }
     let _ = writeln!(out, "\\00\", align {align}");
+}
+
+/// A quoted-free `[A-Za-z0-9_.]` spelling for a module-level symbol.
+fn sanitize_symbol(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }

@@ -35,6 +35,18 @@ pub(super) const ENV_PARAM: &str = "__env";
 /// Runs the `v0.9.0` generic + closure pipeline over a type-resolved program.
 pub(super) fn expand_generics_and_lambdas(program: &Program) -> Result<Program> {
     let mut m = Monomorphizer::new(program);
+    // Module-level constants are visible to every function, so lambdas may capture them.
+    for c in &program.consts {
+        let ty = match (&c.ty, &c.value.kind) {
+            (Some(t), _) => t.clone(),
+            (None, ExprKind::Int(_)) => Type::Int,
+            (None, ExprKind::Float(_)) => Type::Float,
+            (None, ExprKind::Bool(_)) => Type::Bool,
+            (None, ExprKind::Str(_)) => Type::Str,
+            _ => continue,
+        };
+        m.module_const_types.insert(c.name.clone(), ty);
+    }
     let rewritten = m.rewrite_module(program)?;
 
     let mut structs = rewritten.structs;
@@ -48,6 +60,7 @@ pub(super) fn expand_generics_and_lambdas(program: &Program) -> Result<Program> 
         structs,
         enums: rewritten.enums,
         funcs,
+        consts: rewritten.consts,
     })
 }
 
@@ -69,6 +82,9 @@ struct Monomorphizer<'a> {
     bound: HashMap<String, Lifted>,
     /// Visible variable types, used to type closure captures and lambda parameters.
     env_types: HashMap<String, Type>,
+    /// Types of module-level constants: visible inside every function body, so they must survive
+    /// the per-function `env_types` reset and are re-seeded on entry.
+    module_const_types: HashMap<String, Type>,
     /// Closure name -> how to call it (leading capture args).
     call_shapes: HashMap<String, CallShape>,
     /// Lambdas already lifted, keyed by source position.
@@ -117,6 +133,7 @@ impl<'a> Monomorphizer<'a> {
             queued_funcs: HashSet::new(),
             bound: HashMap::new(),
             env_types: HashMap::new(),
+            module_const_types: HashMap::new(),
             call_shapes: HashMap::new(),
             lifted_by_span: HashMap::new(),
             next_id: 0,
@@ -300,12 +317,24 @@ impl<'a> Monomorphizer<'a> {
             structs,
             enums: program.enums.clone(),
             funcs,
+            consts: program.consts.clone(),
         })
+    }
+
+    /// Module-level constants are visible from any function, so they are re-seeded whenever a
+    /// function or method body starts a fresh `env_types`.
+    fn seed_module_consts(&mut self) {
+        for (name, ty) in &self.module_const_types {
+            self.env_types
+                .entry(name.clone())
+                .or_insert_with(|| ty.clone());
+        }
     }
 
     fn rewrite_struct_body(&mut self, sdef: &StructDef) -> Result<StructDef> {
         let saved_env = std::mem::take(&mut self.env_types);
         let saved_bound = std::mem::take(&mut self.bound);
+        self.seed_module_consts();
 
         let mut out = StructDef {
             name: sdef.name.clone(),
@@ -347,6 +376,7 @@ impl<'a> Monomorphizer<'a> {
     fn rewrite_func(&mut self, f: &Func) -> Result<Func> {
         let saved_env = std::mem::take(&mut self.env_types);
         let saved_bound = std::mem::take(&mut self.bound);
+        self.seed_module_consts();
 
         let mut params = Vec::with_capacity(f.params.len());
         for p in &f.params {
@@ -378,6 +408,7 @@ impl<'a> Monomorphizer<'a> {
             params,
             ret,
             body,
+            globals: f.globals.clone(),
             span: f.span,
         })
     }
@@ -451,6 +482,10 @@ impl<'a> Monomorphizer<'a> {
                 };
                 if let Some(lift) = self.try_lift(value)? {
                     self.bind_closure(name, lift);
+                    // The bare `x` placeholder below carries no variable of its own, so make the
+                    // module-level constants visible again before any later body statement reads
+                    // one.
+                    self.seed_module_consts();
                     // The name itself carries no runtime value: it is a compile-time
                     // alias for the lifted closure, so a 1-byte placeholder keeps the
                     // slot layout trivial and fully optimized away.
@@ -466,16 +501,25 @@ impl<'a> Monomorphizer<'a> {
                         span,
                     });
                 }
+                // Track the binding's type so a later `lambda` can capture it (module-level
+                // script variables included, e.g. `bump = 10` then `lambda x: x + bump`).
+                let rewritten = self.rewrite_expr(value)?;
+                let bound_ty = declared
+                    .clone()
+                    .or_else(|| infer_expr_ty(&rewritten, &self.env_types))
+                    .unwrap_or(Type::Int);
+                self.env_types.insert(name.clone(), bound_ty);
                 StmtKind::Let {
                     name: name.clone(),
                     ty: declared,
-                    value: self.rewrite_expr(value)?,
+                    value: rewritten,
                 }
             }
             StmtKind::Assign { target, op, value } => {
                 if let (AssignTarget::Var(name), None) = (target, op) {
                     if let Some(lift) = self.try_lift(value)? {
                         self.bind_closure(name, lift);
+                        self.seed_module_consts();
                         return Ok(Stmt {
                             kind: StmtKind::Assign {
                                 target: AssignTarget::Var(name.clone()),
@@ -690,6 +734,9 @@ impl<'a> Monomorphizer<'a> {
                 },
             },
             StmtKind::Del { name } => StmtKind::Del { name: name.clone() },
+            StmtKind::Global { names } => StmtKind::Global {
+                names: names.clone(),
+            },
             StmtKind::Pass => StmtKind::Pass,
             StmtKind::Break => StmtKind::Break,
             StmtKind::Continue => StmtKind::Continue,
@@ -831,6 +878,7 @@ impl<'a> Monomorphizer<'a> {
                     kind: StmtKind::Return(Some(new_body)),
                     span: expr.span,
                 }],
+                globals: Vec::new(),
                 span: expr.span,
             },
         );
@@ -1254,6 +1302,7 @@ struct Rewritten {
     structs: Vec<StructDef>,
     enums: Vec<EnumDef>,
     funcs: Vec<Func>,
+    consts: Vec<GlobalConst>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1276,6 +1325,7 @@ fn subst_func(f: &Func, new_name: &str, subst: &HashMap<String, Type>) -> Func {
             .collect(),
         ret: f.ret.as_ref().map(|t| subst_ty(t, subst)),
         body: f.body.clone(),
+        globals: f.globals.clone(),
         span: f.span,
     }
 }

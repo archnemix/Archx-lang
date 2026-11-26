@@ -350,9 +350,48 @@ impl Codegen {
             }
 
             ExprKind::Var(name) => {
-                let entry = self.lookup_var(name).cloned().ok_or_else(|| {
-                    Diagnostic::new(format!("undefined variable `{name}`"), expr.span)
-                })?;
+                // A `global` name resolves to a module-level constant and compiles to the same
+                // literal immediate the declaration produced.
+                let entry = match self.lookup_var(name).cloned() {
+                    Some(e) => e,
+                    // A module-level constant is visible from every function without a
+                    // declaration, exactly like Python's module scope (only *assignment* needs
+                    // `global`).
+                    None => match self.global_slots.get(name).cloned() {
+                        Some((ty, sym)) => {
+                            let reg = self.next_tmp();
+                            let _ = writeln!(
+                                out,
+                                "  {reg} = load {}, ptr {sym}, align {}",
+                                ir_type(&ty),
+                                ir_align(&ty)
+                            );
+                            VarEntry {
+                                ty,
+                                storage: VarStorage::Imm(reg),
+                                is_param: false,
+                                region_depth: 0,
+                            }
+                        }
+                        None => match self.consts.get(name).cloned() {
+                            Some((ty, value)) => {
+                                let (_, val) = self.eval_expr(&value, out)?;
+                                VarEntry {
+                                    ty,
+                                    storage: VarStorage::Imm(val),
+                                    is_param: false,
+                                    region_depth: 0,
+                                }
+                            }
+                            None => {
+                                return Err(Diagnostic::new(
+                                    format!("undefined variable `{name}`"),
+                                    expr.span,
+                                ));
+                            }
+                        },
+                    },
+                };
                 let (raw_ty, raw_val) = match entry.storage {
                     VarStorage::Imm(val) => (entry.ty, val),
                     VarStorage::Slot(ptr) => {

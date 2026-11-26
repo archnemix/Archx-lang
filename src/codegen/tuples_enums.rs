@@ -64,6 +64,16 @@ pub(super) fn resolve_program_types(raw: &Program, enum_names: &HashSet<String>)
             .iter()
             .map(|f| resolve_func(f, enum_names))
             .collect(),
+        consts: raw
+            .consts
+            .iter()
+            .map(|c| GlobalConst {
+                name: c.name.clone(),
+                ty: c.ty.as_ref().map(|t| resolve_ty(t, enum_names)),
+                value: c.value.clone(),
+                span: c.span,
+            })
+            .collect(),
     }
 }
 
@@ -87,6 +97,7 @@ fn resolve_func(f: &Func, enum_names: &HashSet<String>) -> Func {
             .iter()
             .map(|s| resolve_stmt(s, enum_names))
             .collect(),
+        globals: f.globals.clone(),
         span: f.span,
     }
 }
