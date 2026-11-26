@@ -667,6 +667,17 @@ impl Parser {
     fn parse_stmt(&mut self) -> Result<Stmt> {
         let span = self.peek().span;
 
+        // A bare string expression is a Python docstring / no-op statement: parse it, then drop
+        // it. (`"..."` on its own line has no runtime effect in Python.)
+        if matches!(self.peek().kind, TokenKind::Str(_)) {
+            let expr = self.parse_expr()?;
+            self.expect(TokenKind::Newline, "a newline after the string literal")?;
+            return Ok(Stmt {
+                kind: StmtKind::Pass,
+                span: expr.span,
+            });
+        }
+
         if self.check(&TokenKind::Pass) {
             self.bump();
             self.expect(TokenKind::Newline, "a newline after `pass`")?;
@@ -1749,7 +1760,10 @@ impl Parser {
     }
 
     fn parse_comparison(&mut self) -> Result<Expr> {
-        let mut lhs = self.parse_additive()?;
+        let mut lhs = self.parse_bitor()?;
+
+        // Whether `lhs` is already one comparison (and therefore can be extended into a chain).
+        let mut first_seen = false;
 
         loop {
             let span = self.peek().span;
@@ -1798,7 +1812,95 @@ impl Parser {
                 }
                 _ => break,
             };
-            let rhs = self.parse_additive()?;
+            let rhs = self.parse_bitor()?;
+            // A *single* comparison stays a plain `Binary` node — `if x is not None:` narrowing
+            // and the optional-comparison rules key off that shape. Only a genuine chain
+            // (`a < b < c`) becomes a `CompareChain`.
+            // Only a *previous comparison* can start a chain; a `Binary` node from an arithmetic
+            // operator (`i % 2`) must not be mistaken for one.
+            match lhs.kind {
+                ExprKind::CompareChain(mut operands) => {
+                    // The previous tail's operator was a placeholder; this link supplies it.
+                    if let Some(last) = operands.last_mut() {
+                        last.1 = op;
+                    }
+                    operands.push((Box::new(rhs), BinOp::Eq));
+                    lhs = Expr {
+                        kind: ExprKind::CompareChain(operands),
+                        span: lhs.span,
+                    };
+                }
+                ExprKind::Binary {
+                    op: first_op,
+                    lhs: first_lhs,
+                    rhs: first_rhs,
+                } if first_seen => {
+                    lhs = Expr {
+                        kind: ExprKind::CompareChain(vec![
+                            (first_lhs, first_op),
+                            (first_rhs, op),
+                            (Box::new(rhs), BinOp::Eq),
+                        ]),
+                        span: lhs.span,
+                    };
+                }
+                _ => {
+                    lhs = Expr {
+                        kind: ExprKind::Binary {
+                            op,
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        },
+                        span,
+                    };
+                    first_seen = true;
+                }
+            }
+        }
+
+        Ok(lhs)
+    }
+
+    // Python precedence, loosest to tightest:
+    //   or < and < not < comparison < | < ^ < & < << >> < + - < * / // % < unary < **
+    fn parse_bitor(&mut self) -> Result<Expr> {
+        self.parse_bit_level(Self::parse_bitxor, &[(TokenKind::Pipe, BinOp::BitOr)])
+    }
+
+    fn parse_bitxor(&mut self) -> Result<Expr> {
+        self.parse_bit_level(Self::parse_bitand, &[(TokenKind::Caret, BinOp::BitXor)])
+    }
+
+    fn parse_bitand(&mut self) -> Result<Expr> {
+        self.parse_bit_level(Self::parse_shift, &[(TokenKind::Amp, BinOp::BitAnd)])
+    }
+
+    fn parse_shift(&mut self) -> Result<Expr> {
+        self.parse_bit_level(
+            Self::parse_additive,
+            &[(TokenKind::Shl, BinOp::Shl), (TokenKind::Shr, BinOp::Shr)],
+        )
+    }
+
+    /// One left-associative bitwise precedence level.
+    fn parse_bit_level(
+        &mut self,
+        next: fn(&mut Self) -> Result<Expr>,
+        ops: &[(TokenKind, BinOp)],
+    ) -> Result<Expr> {
+        let mut lhs = next(self)?;
+        loop {
+            let mut matched = None;
+            for (tok, op) in ops {
+                if self.peek().kind == *tok {
+                    matched = Some(*op);
+                    break;
+                }
+            }
+            let Some(op) = matched else { break };
+            let span = self.peek().span;
+            self.bump();
+            let rhs = next(self)?;
             lhs = Expr {
                 kind: ExprKind::Binary {
                     op,
@@ -1808,7 +1910,6 @@ impl Parser {
                 span,
             };
         }
-
         Ok(lhs)
     }
 
@@ -1851,6 +1952,20 @@ impl Parser {
             let span = self.peek().span;
             self.bump();
             let rhs = self.parse_unary()?;
+
+            // `"..." % values` is printf-style formatting, not a numeric modulus.
+            if op == BinOp::Mod {
+                if let ExprKind::Str(template) = &lhs.kind {
+                    lhs = Expr {
+                        kind: ExprKind::PercentFormat {
+                            template: template.clone(),
+                            args: Box::new(rhs),
+                        },
+                        span,
+                    };
+                    continue;
+                }
+            }
 
             // Python list repetition `[val] * n` or `n * [val]` -> zero-overhead `ArrayRepeat`
             if op == BinOp::Mul {
@@ -1909,6 +2024,19 @@ impl Parser {
             if is_neg {
                 ops.push(span);
             }
+        }
+        // `~x` (bitwise complement) sits at the same level as unary `-`.
+        if self.check(&TokenKind::Tilde) {
+            let span = self.peek().span;
+            self.bump();
+            let inner = self.parse_unary()?;
+            return Ok(Expr {
+                kind: ExprKind::Unary {
+                    op: UnOp::BitNot,
+                    expr: Box::new(inner),
+                },
+                span,
+            });
         }
         let mut expr = self.parse_power()?;
         for span in ops.into_iter().rev() {
@@ -2182,6 +2310,11 @@ impl Parser {
                     if !is_expr {
                         parts.push(FStrPart::Lit(text));
                     } else {
+                        let (body, spec) = match text.find('\u{1}') {
+                            Some(i) => (text[..i].to_string(), Some(text[i + 1..].to_string())),
+                            None => (text.clone(), None),
+                        };
+                        let text = body;
                         let sub_tokens = crate::lexer::Lexer::new(&text).tokenize().map_err(|d| {
                             Diagnostic::new(format!("in f-string: {}", d.message), span)
                         })?;
@@ -2200,7 +2333,12 @@ impl Parser {
                                 span,
                             ));
                         }
-                        parts.push(FStrPart::Expr(expr));
+                        match spec {
+                            Some(spec) if !spec.is_empty() => {
+                                parts.push(FStrPart::Spec { expr, spec })
+                            }
+                            _ => parts.push(FStrPart::Expr(expr)),
+                        }
                     }
                 }
                 Ok(Expr {
@@ -2480,8 +2618,15 @@ impl Parser {
 
     fn expect(&mut self, kind: TokenKind, what: &str) -> Result<Token> {
         if self.check(&kind) {
-            Ok(self.bump())
-        } else {
+            return Ok(self.bump());
+        }
+        // Python allows `;` as a simple-statement terminator (`a = 1; b = 2`), so a required
+        // newline is satisfied by a semicolon followed by one. The following newline is left in
+        // place, which collapses the extra blank statement harmlessly.
+        if kind == TokenKind::Newline && self.check(&TokenKind::Semicolon) {
+            return Ok(self.bump());
+        }
+        {
             Err(self.error(format!(
                 "expected {what}, found {}",
                 self.peek().kind.describe()
@@ -2674,6 +2819,12 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
 
 fn rewrite_main_calls_in_expr(expr: &mut Expr) {
     match &mut expr.kind {
+        ExprKind::CompareChain(operands) => {
+            for (e, _) in operands {
+                rewrite_main_calls_in_expr(e);
+            }
+        }
+        ExprKind::PercentFormat { args, .. } => rewrite_main_calls_in_expr(args),
         ExprKind::Call { name, args } => {
             if name == "main" {
                 *name = "__archx_user_main".to_string();

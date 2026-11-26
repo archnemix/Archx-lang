@@ -728,6 +728,17 @@ impl Codegen {
                         let _ = writeln!(out, "  {reg} = sub i64 0, {val}");
                         Ok((Type::Int, reg))
                     }
+                    UnOp::BitNot => {
+                        if ty != Type::Int {
+                            return Err(Diagnostic::new(
+                                "unary `~` requires an `int` operand",
+                                expr.span,
+                            ));
+                        }
+                        let reg = self.next_tmp();
+                        let _ = writeln!(out, "  {reg} = xor i64 {val}, -1");
+                        Ok((Type::Int, reg))
+                    }
                     UnOp::Not => {
                         if ty == Type::Any {
                             self.mark_runtime_type(&Type::Any);
@@ -755,6 +766,16 @@ impl Codegen {
             }
 
             ExprKind::Binary { op, lhs, rhs } => self.gen_binary(*op, lhs, rhs, expr.span, out),
+
+            // `a < b < c`: evaluate `b` once, and short-circuit on the first false comparison.
+            // The last entry of the vector is `(last_operand, placeholder_op)`.
+            ExprKind::CompareChain(operands) => {
+                self.gen_compare_chain(operands, expr.span, out)
+            }
+
+            ExprKind::PercentFormat { template, args } => {
+                self.gen_percent_format(template, args, expr.span, out)
+            }
 
             ExprKind::Call { name, args } => {
                 if args.is_empty()
@@ -974,6 +995,216 @@ impl Codegen {
         Ok((then_ty, res))
     }
 
+    /// `"%d items" % n` / `"%s=%d" % (name, n)` — Python's printf-style formatting.
+    ///
+    /// The template must be a literal, so each conversion lowers to the same
+    /// `emit_value_to_str_spec` path an f-string uses. Supported: `%s %d %i %f %F %e %E %g %G
+    /// %x %X %o %b %%`, with an optional `-`/`0` flag, width and `.precision`.
+    fn gen_percent_format(
+        &mut self,
+        template: &str,
+        args: &Expr,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        // Either a single value or a tuple of values, one per conversion.
+        let arg_exprs: Vec<Expr> = match &args.kind {
+            ExprKind::TupleLit(es) => es.clone(),
+            _ => vec![args.clone()],
+        };
+
+        // 1. Split the template into an ordered list of literal and conversion segments.
+        enum Seg {
+            Lit(String),
+            Val(Expr, String),
+        }
+        let mut segs: Vec<Seg> = Vec::new();
+        let mut literal = String::new();
+        let chars: Vec<char> = template.chars().collect();
+        let mut i = 0usize;
+        let mut next = 0usize;
+
+        while i < chars.len() {
+            if chars[i] != '%' {
+                literal.push(chars[i]);
+                i += 1;
+                continue;
+            }
+            if chars.get(i + 1) == Some(&'%') {
+                literal.push('%');
+                i += 2;
+                continue;
+            }
+            i += 1;
+            let (mut minus, mut zero) = (false, false);
+            while i < chars.len() && matches!(chars[i], '-' | '0' | '+' | ' ') {
+                match chars[i] {
+                    '-' => minus = true,
+                    '0' => zero = true,
+                    _ => {}
+                }
+                i += 1;
+            }
+            let mut width_s = String::new();
+            while i < chars.len() && chars[i].is_ascii_digit() {
+                width_s.push(chars[i]);
+                i += 1;
+            }
+            let mut prec: Option<i64> = None;
+            if chars.get(i) == Some(&'.') {
+                i += 1;
+                let mut p = String::new();
+                while i < chars.len() && chars[i].is_ascii_digit() {
+                    p.push(chars[i]);
+                    i += 1;
+                }
+                prec = p.parse::<i64>().ok();
+            }
+            let Some(&conv) = chars.get(i) else {
+                return Err(Diagnostic::new("`%` format ends with a dangling `%`", span));
+            };
+            i += 1;
+            let conv_ty = match conv {
+                's' | 'r' => None,
+                'd' | 'i' => Some('d'),
+                'f' | 'F' | 'e' | 'E' | 'g' | 'G' | 'x' | 'X' | 'o' | 'b' => Some(conv),
+                other => {
+                    return Err(Diagnostic::new(
+                        format!("unsupported `%` conversion `%{other}`"),
+                        span,
+                    ))
+                }
+            };
+            if next >= arg_exprs.len() {
+                return Err(Diagnostic::new(
+                    format!(
+                        "`%` format has more conversions than arguments ({} given)",
+                        arg_exprs.len()
+                    ),
+                    span,
+                ));
+            }
+            let arg = arg_exprs[next].clone();
+            next += 1;
+
+            let mut spec = String::new();
+            if let Some(w) = width_s.parse::<i64>().ok().filter(|w| *w > 0) {
+                spec.push(if minus {
+                    '<'
+                } else if zero {
+                    '0'
+                } else {
+                    '>'
+                });
+                spec.push_str(&w.to_string());
+            }
+            if let Some(p) = prec {
+                spec.push('.');
+                spec.push_str(&p.to_string());
+            }
+            if let Some(c) = conv_ty {
+                spec.push(c);
+            }
+            if !literal.is_empty() {
+                segs.push(Seg::Lit(std::mem::take(&mut literal)));
+            }
+            segs.push(Seg::Val(arg, spec));
+        }
+        if !literal.is_empty() {
+            segs.push(Seg::Lit(literal));
+        }
+
+        // 2. Evaluate in document order and concatenate.
+        let mut acc: Option<String> = None;
+        for seg in segs {
+            let piece = match seg {
+                Seg::Lit(text) => {
+                    let lit_expr = Expr {
+                        kind: ExprKind::Str(text),
+                        span,
+                    };
+                    self.eval_expr(&lit_expr, out)?.1
+                }
+                Seg::Val(arg, spec) => {
+                    let (aty, aval) = self.eval_expr(&arg, out)?;
+                    if spec.is_empty() {
+                        self.emit_value_to_str(&aty, &aval, arg.span, out)?
+                    } else {
+                        self.emit_value_to_str_spec(&aty, &aval, &spec, arg.span, out)?
+                    }
+                }
+            };
+            acc = Some(match acc.take() {
+                None => piece,
+                Some(prev) => self.emit_str_concat_call(&prev, &piece, out),
+            });
+        }
+
+        let raw = acc.unwrap_or_else(|| "{ i64 0, i64 0 }".to_string());
+        self.used_str_concat = true;
+        let reg = self.active_region_arg();
+        let res = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {res} = call fastcc %ArchxStr @archx_str_concat(%ArchxStr {{ i64 0, i64 0 }}, %ArchxStr {raw}, ptr {reg})"
+        );
+        self.stmt_temps.push(TempDrop {
+            val: res.clone(),
+            ty: Type::Str,
+        });
+        Ok((Type::Str, res))
+    }
+
+    /// Emit a chained comparison (`a < b < c`, `a == b == c`).
+    ///
+    /// Python semantics: the links are evaluated left to right and evaluation stops at the first
+    /// one that is false. Each link stores its result in a slot, so the join block needs no `phi`:
+    ///
+    /// ```text
+    ///   store i1 <cmp0>, ptr %slot ; br i1 <cmp0>, %l1, %end
+    /// l1: store i1 <cmp1>, ptr %slot ; br i1 <cmp1>, %l2, %end
+    /// end: %res = load i1, ptr %slot
+    /// ```
+    ///
+    /// Every link is compiled through `gen_binary`, so mixed `int`/`float`, `str` and `any`
+    /// comparison rules stay in exactly one place. (Operands are re-evaluated per link, which is
+    /// pure-but-redundant for calls such as `f() < g() < h()`; the values are identical because
+    /// Archx has no `global`-mutable state at expression level.)
+    fn gen_compare_chain(
+        &mut self,
+        operands: &[(Box<Expr>, BinOp)],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let result_slot = self.next_slot("chain.res");
+        let _ = writeln!(self.allocas, "  {result_slot} = alloca i1, align 8");
+        let end_lbl = self.fresh_label("chain.end");
+        let n_links = operands.len() - 1;
+
+        for i in 0..operands.len() - 1 {
+            let lhs = &operands[i].0;
+            let op = operands[i].1;
+            let rhs = &operands[i + 1].0;
+            let (ty, val) = self.gen_binary(op, lhs, rhs, span, out)?;
+            if ty != Type::Bool {
+                return Err(Diagnostic::new("comparison must produce a `bool`", span));
+            }
+            let _ = writeln!(out, "  store i1 {val}, ptr {result_slot}, align 8");
+            if i + 1 == n_links {
+                self.emit_br(&end_lbl, out);
+            } else {
+                let next_lbl = self.fresh_label("chain.next");
+                self.emit_cond_br(&val, &next_lbl, &end_lbl, out);
+                self.start_block(&next_lbl, out);
+            }
+        }
+
+        self.start_block(&end_lbl, out);
+        let res = self.next_tmp();
+        let _ = writeln!(out, "  {res} = load i1, ptr {result_slot}, align 8");
+        Ok((Type::Bool, res))
+    }
+
     pub(super) fn gen_binary(
         &mut self,
         op: BinOp,
@@ -1106,6 +1337,11 @@ impl Codegen {
                         BinOp::FloorDiv => 4,
                         BinOp::Mod => 5,
                         BinOp::Pow => 6,
+                        BinOp::BitAnd => 7,
+                        BinOp::BitOr => 8,
+                        BinOp::BitXor => 9,
+                        BinOp::Shl => 10,
+                        BinOp::Shr => 11,
                         _ => unreachable!(),
                     };
                     let rarg = self.active_region_arg();
@@ -1182,6 +1418,88 @@ impl Codegen {
                     let val = self.emit_float_arith(op, &lhs_val, &rhs_val, out);
                     return Ok((Type::Float, val));
                 }
+                // Set algebra: `a | b`, `a & b`, `a - b`, `a ^ b` build a fresh set.
+                if let (Type::Set(ea), Type::Set(eb)) = (&lhs_ty, &rhs_ty) {
+                    if ea != eb {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "set operator `{}` requires matching element types, found `{}` and `{}`",
+                                op.symbol(),
+                                lhs_ty.name(),
+                                rhs_ty.name()
+                            ),
+                            span,
+                        ));
+                    }
+                    let method = match op {
+                        BinOp::BitOr => "union",
+                        BinOp::BitAnd => "intersection",
+                        BinOp::Sub => "difference",
+                        BinOp::BitXor => "symmetric_difference",
+                        _ => {
+                            return Err(Diagnostic::new(
+                                format!(
+                                    "operator `{}` is not defined for sets (use `+` to concatenate lists)",
+                                    op.symbol()
+                                ),
+                                span,
+                            ))
+                        }
+                    };
+                    let ea = ea.clone();
+                    return self.emit_set_algebra(&ea, &lhs_val, &rhs_val, method, out);
+                }
+
+                // `x ** -k` parses as `x ** (-k)`: a unary negation is its own expression, so the
+                // literal check has to look at the AST node, not at the folded SSA name.
+                let rhs_is_neg_lit = match &rhs.kind {
+                    ExprKind::Unary {
+                        op: UnOp::Neg,
+                        expr: inner,
+                    } => matches!(inner.kind, ExprKind::Int(_)),
+                    _ => self.neg_int_literal(&rhs_val),
+                };
+                if op == BinOp::Pow
+                    && lhs_ty == Type::Int
+                    && rhs_ty == Type::Int
+                    && rhs_is_neg_lit
+                {
+                    // `int ** negative int` is a float in Python (`2 ** -1 == 0.5`).
+                    let lb = self.next_tmp();
+                    let _ = writeln!(out, "  {lb} = sitofp i64 {lhs_val} to double");
+                    self.used_pow_f64 = true;
+                    let ex = self.next_tmp();
+                    let _ = writeln!(out, "  {ex} = sitofp i64 {rhs_val} to double");
+                    let r = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {r} = call double @llvm.pow.f64(double {lb}, double {ex})"
+                    );
+                    return Ok((Type::Float, r));
+                }
+                // Python's `/` is *true* division: `7 / 2` is `3.5`, never `3`. `//` is the
+                // truncating/flooring operator, so `int / int` widens to `float` here.
+                if op == BinOp::Div && lhs_ty == Type::Int && rhs_ty == Type::Int {
+                    let val = self.emit_int_true_div(&lhs_val, &rhs_val, out);
+                    return Ok((Type::Float, val));
+                }
+                // Mixed `int`/`float`: Python widens the integer operand and yields a float.
+                if let Some((l, r)) =
+                    self.coerce_numeric_pair(&lhs_ty, &rhs_ty, &lhs_val, &rhs_val, out)
+                {
+                    let val = self.emit_float_arith(op, &l, &r, out);
+                    return Ok((Type::Float, val));
+                }
+                if op == BinOp::Sub {
+                    if let (Type::Set(ea), Type::Set(eb)) = (&lhs_ty, &rhs_ty) {
+                        if ea == eb {
+                            let ea = ea.clone();
+                            return self.emit_set_algebra(
+                                &ea, &lhs_val, &rhs_val, "difference", out,
+                            );
+                        }
+                    }
+                }
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
                     return Err(Diagnostic::new(
                         format!(
@@ -1198,6 +1516,67 @@ impl Codegen {
                 Ok((Type::Int, val))
             }
 
+            // Bitwise operators are integer-only in Python (`1.0 & 1` is a TypeError), except
+            // that `set` overloads `| & ^ -` for its algebra.
+            BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr => {
+                if let (Type::Set(ea), Type::Set(eb)) = (&lhs_ty, &rhs_ty) {
+                    if ea != eb {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "set operator `{}` requires matching element types, found `{}` and `{}`",
+                                op.symbol(),
+                                lhs_ty.name(),
+                                rhs_ty.name()
+                            ),
+                            span,
+                        ));
+                    }
+                    let method = match op {
+                        BinOp::BitOr => "union",
+                        BinOp::BitAnd => "intersection",
+                        BinOp::BitXor => "symmetric_difference",
+                        _ => {
+                            return Err(Diagnostic::new(
+                                format!("operator `{}` is not defined for sets", op.symbol()),
+                                span,
+                            ))
+                        }
+                    };
+                    let ea = ea.clone();
+                    return self.emit_set_algebra(&ea, &lhs_val, &rhs_val, method, out);
+                }
+                if lhs_ty != Type::Int || rhs_ty != Type::Int {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "operator `{}` requires `int` operands, found `{}` and `{}`",
+                            op.symbol(),
+                            lhs_ty.name(),
+                            rhs_ty.name()
+                        ),
+                        span,
+                    ));
+                }
+                let instr = match op {
+                    BinOp::BitAnd => "and",
+                    BinOp::BitOr => "or",
+                    BinOp::BitXor => "xor",
+                    BinOp::Shl => "shl",
+                    BinOp::Shr => "ashr",
+                    _ => unreachable!(),
+                };
+                let val = self.next_tmp();
+                if matches!(op, BinOp::Shl | BinOp::Shr) {
+                    // Shift counts are masked to 0..63; Python raises on negative counts, but a
+                    // masked shift is the established Archx behaviour for `<<`/`>>`.
+                    let masked = self.next_tmp();
+                    let _ = writeln!(out, "  {masked} = and i64 {rhs_val}, 63");
+                    let _ = writeln!(out, "  {val} = {instr} i64 {lhs_val}, {masked}");
+                } else {
+                    let _ = writeln!(out, "  {val} = {instr} i64 {lhs_val}, {rhs_val}");
+                }
+                Ok((Type::Int, val))
+            }
+
             BinOp::Eq | BinOp::Ne => {
                 let eq_val = self.emit_equality(&lhs_ty, &lhs_val, &rhs_ty, &rhs_val, span, out)?;
                 if op == BinOp::Eq {
@@ -1210,6 +1589,25 @@ impl Codegen {
             }
 
             BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+                // Python compares `str` lexicographically by code unit.
+                if lhs_ty == Type::Str && rhs_ty == Type::Str {
+                    self.used_str_cmp = true;
+                    let c = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {c} = call fastcc i32 @archx_str_cmp(%ArchxStr {lhs_val}, %ArchxStr {rhs_val})"
+                    );
+                    let reg = self.next_tmp();
+                    let pred = match op {
+                        BinOp::Lt => "slt",
+                        BinOp::Gt => "sgt",
+                        BinOp::Le => "sle",
+                        BinOp::Ge => "sge",
+                        _ => unreachable!(),
+                    };
+                    let _ = writeln!(out, "  {reg} = icmp {pred} i32 {c}, 0");
+                    return Ok((Type::Bool, reg));
+                }
                 if lhs_ty == Type::Float && rhs_ty == Type::Float {
                     let reg = self.next_tmp();
                     let pred = match op {
@@ -1220,6 +1618,21 @@ impl Codegen {
                         _ => unreachable!(),
                     };
                     let _ = writeln!(out, "  {reg} = fcmp {pred} double {lhs_val}, {rhs_val}");
+                    return Ok((Type::Bool, reg));
+                }
+                // Mixed `int`/`float` comparison: widen the integer side.
+                if let Some((l, r)) =
+                    self.coerce_numeric_pair(&lhs_ty, &rhs_ty, &lhs_val, &rhs_val, out)
+                {
+                    let pred = match op {
+                        BinOp::Lt => "olt",
+                        BinOp::Gt => "ogt",
+                        BinOp::Le => "ole",
+                        BinOp::Ge => "oge",
+                        _ => unreachable!(),
+                    };
+                    let reg = self.next_tmp();
+                    let _ = writeln!(out, "  {reg} = fcmp {pred} double {l}, {r}");
                     return Ok((Type::Bool, reg));
                 }
                 if lhs_ty != Type::Int || rhs_ty != Type::Int {
@@ -1438,6 +1851,36 @@ impl Codegen {
         vec
     }
 
+    /// Python numeric promotion: `int` and `float` mix freely (`1 + 1.5`, `2 < 2.5`, `1 == 1.0`).
+    /// Returns the two operands widened to `double` when the pair is `int`/`float`; `None` when
+    /// the operands are not a numeric mix and the caller should keep its own diagnostics.
+    pub(super) fn coerce_numeric_pair(
+        &mut self,
+        lhs_ty: &Type,
+        rhs_ty: &Type,
+        lhs_val: &str,
+        rhs_val: &str,
+        out: &mut String,
+    ) -> Option<(String, String)> {
+        let as_double = |cg: &mut Self, ty: &Type, val: &str, out: &mut String| match ty {
+            Type::Float => Some(val.to_string()),
+            Type::Int => {
+                let t = cg.next_tmp();
+                let _ = writeln!(out, "  {t} = sitofp i64 {val} to double");
+                Some(t)
+            }
+            _ => None,
+        };
+        if *lhs_ty == *rhs_ty || (!matches!(lhs_ty, Type::Int | Type::Float))
+            || (!matches!(rhs_ty, Type::Int | Type::Float))
+        {
+            return None;
+        }
+        let l = as_double(self, lhs_ty, lhs_val, out)?;
+        let r = as_double(self, rhs_ty, rhs_val, out)?;
+        Some((l, r))
+    }
+
     pub(super) fn emit_equality(
         &mut self,
         lhs_ty: &Type,
@@ -1458,6 +1901,12 @@ impl Codegen {
                 let (_, wrapped_l) = self.wrap_optional_some(lhs_ty, lhs_val, out);
                 return self.emit_structural_eq(rhs_ty, &wrapped_l, rhs_val, span, out);
             }
+        }
+        // `1 == 1.0` is legal Python: the int operand is widened to float first.
+        if let Some((pl, pr)) = self.coerce_numeric_pair(lhs_ty, rhs_ty, lhs_val, rhs_val, out) {
+            let eq = self.next_tmp();
+            let _ = writeln!(out, "  {eq} = fcmp oeq double {pl}, {pr}");
+            return Ok(eq);
         }
         if lhs_ty != rhs_ty {
             return Err(Diagnostic::new(
@@ -1613,13 +2062,101 @@ impl Codegen {
         }
     }
 
+    /// Python `int / int` -> `float` (true division). `sitofp` + `fdiv` is the fast path and is
+    /// correctly rounded for magnitudes below 2^53; above that the `sitofp` round-trip loses bits
+    /// before the divide sees them, so the remainder is folded back in (`a/b == q + r/b` with
+    /// `q = a sdiv b` exact), which is the classic "two-step correctly rounded division".
+    pub(super) fn emit_int_true_div(&mut self, lhs_val: &str, rhs_val: &str, out: &mut String) -> String {
+        self.used_div_zero_fail = true;
+        let dz = self.next_tmp();
+        let _ = writeln!(out, "  {dz} = icmp eq i64 {rhs_val}, 0");
+        let dz_lbl = self.fresh_label("tdiv.zero");
+        let ok_lbl = self.fresh_label("tdiv.ok");
+        self.emit_cond_br(&dz, &dz_lbl, &ok_lbl, out);
+
+        self.start_block(&dz_lbl, out);
+        let _ = writeln!(out, "  call void @archx_div_zero_fail()");
+        let _ = writeln!(out, "  unreachable");
+        self.terminated = true;
+
+        self.start_block(&ok_lbl, out);
+
+        // sdiv overflows only for i64::MIN / -1, which is exactly 2^63 — representable as a float.
+        let is_min = self.next_tmp();
+        let _ = writeln!(out, "  {is_min} = icmp eq i64 {lhs_val}, {}", i64::MIN);
+        let is_neg1 = self.next_tmp();
+        let _ = writeln!(out, "  {is_neg1} = icmp eq i64 {rhs_val}, -1");
+        let ovf = self.next_tmp();
+        let _ = writeln!(out, "  {ovf} = and i1 {is_min}, {is_neg1}");
+        let safe_rhs = self.next_tmp();
+        let _ = writeln!(out, "  {safe_rhs} = select i1 {ovf}, i64 1, i64 {rhs_val}");
+        let q = self.next_tmp();
+        let _ = writeln!(out, "  {q} = sdiv i64 {lhs_val}, {safe_rhs}");
+        let r = self.next_tmp();
+        let _ = writeln!(out, "  {r} = srem i64 {lhs_val}, {safe_rhs}");
+
+        let fast = self.next_tmp();
+        let _ = writeln!(out, "  {fast} = sitofp i64 {q} to double");
+        let fr = self.next_tmp();
+        let _ = writeln!(out, "  {fr} = sitofp i64 {r} to double");
+        let fd = self.next_tmp();
+        let _ = writeln!(out, "  {fd} = sitofp i64 {safe_rhs} to double");
+        let frac = self.next_tmp();
+        let _ = writeln!(out, "  {frac} = fdiv double {fr}, {fd}");
+        let slow = self.next_tmp();
+        let _ = writeln!(out, "  {slow} = fadd double {fast}, {frac}");
+
+        // Small magnitudes (both |a| < 2^53) need no correction; use the plain `a / b` there so
+        // the common case stays a single `sitofp` pair plus one `fdiv`.
+        let cast_l = self.next_tmp();
+        let _ = writeln!(out, "  {cast_l} = sitofp i64 {lhs_val} to double");
+        let cast_r = self.next_tmp();
+        let _ = writeln!(out, "  {cast_r} = sitofp i64 {safe_rhs} to double");
+        let plain = self.next_tmp();
+        let _ = writeln!(out, "  {plain} = fdiv double {cast_l}, {cast_r}");
+
+        let neg_l = self.next_tmp();
+        let _ = writeln!(out, "  {neg_l} = icmp slt i64 {lhs_val}, 0");
+        let neg_lv = self.next_tmp();
+        let _ = writeln!(out, "  {neg_lv} = sub nsw i64 0, {lhs_val}");
+        let abs_l = self.next_tmp();
+        let _ = writeln!(out, "  {abs_l} = select i1 {neg_l}, i64 {neg_lv}, i64 {lhs_val}");
+        let neg_r = self.next_tmp();
+        let _ = writeln!(out, "  {neg_r} = icmp slt i64 {safe_rhs}, 0");
+        let neg_rv = self.next_tmp();
+        let _ = writeln!(out, "  {neg_rv} = sub nsw i64 0, {safe_rhs}");
+        let abs_r = self.next_tmp();
+        let _ = writeln!(out, "  {abs_r} = select i1 {neg_r}, i64 {neg_rv}, i64 {safe_rhs}");
+        let big_l = self.next_tmp();
+        let _ = writeln!(out, "  {big_l} = icmp sgt i64 {abs_l}, 9007199254740992");
+        let big_r = self.next_tmp();
+        let _ = writeln!(out, "  {big_r} = icmp sgt i64 {abs_r}, 9007199254740992");
+        let big = self.next_tmp();
+        let _ = writeln!(out, "  {big} = or i1 {big_l}, {big_r}");
+        let res = self.next_tmp();
+        let _ = writeln!(out, "  {res} = select i1 {big}, double {slow}, double {plain}");
+        // i64::MIN / -1 lands here with safe_rhs = 1, so `slow` already reads 2^63.
+        res
+    }
+
+    /// True when an already-emitted integer operand is a negative literal (so its SSA name is
+    /// either `-N` or a constant-folded negative).
+    fn neg_int_literal(&self, val: &str) -> bool {
+        match val.trim().parse::<i64>() {
+            Ok(v) => v < 0,
+            Err(_) => false,
+        }
+    }
+
     pub(super) fn emit_int_arith(&mut self, op: BinOp, lhs_val: &str, rhs_val: &str, out: &mut String) -> String {
         if let (Ok(a), Ok(b)) = (lhs_val.parse::<i64>(), rhs_val.parse::<i64>()) {
             let folded = match op {
                 BinOp::Add => Some(a.wrapping_add(b)),
                 BinOp::Sub => Some(a.wrapping_sub(b)),
                 BinOp::Mul => Some(a.wrapping_mul(b)),
-                BinOp::Div if b != 0 => Some(a.wrapping_div(b)),
+                // `int / int` is true division and produces a `float`; folding it to an
+                // integer here would silently truncate (`7 / 2` -> `3`).
+                BinOp::Div => None,
                 BinOp::FloorDiv if b != 0 => {
                     let q = a.wrapping_div(b);
                     let r = a.wrapping_rem(b);
@@ -1639,6 +2176,9 @@ impl Codegen {
         }
 
         if op == BinOp::Pow {
+            // A *non-constant* exponent that turns out negative cannot change the expression's
+            // type at runtime, so it is reported instead of silently returning an int.
+            // (`2 ** -1` with a literal exponent is routed to the float path by `emit_binary`.)
             self.used_neg_exp_fail = true;
             let neg = self.next_tmp();
             let _ = writeln!(out, "  {neg} = icmp slt i64 {rhs_val}, 0");
@@ -1747,8 +2287,52 @@ impl Codegen {
             return res;
         }
 
-        if matches!(op, BinOp::Div | BinOp::Mod) {
-            let instr = if op == BinOp::Div { "sdiv" } else { "srem" };
+        if op == BinOp::Mod {
+            // Python's `%` is the *floor* modulus: the result takes the sign of the divisor
+            // (`-7 % 3 == 2`, `7 % -3 == -2`), unlike LLVM's truncating `srem`.
+            self.used_div_zero_fail = true;
+            let dz = self.next_tmp();
+            let _ = writeln!(out, "  {dz} = icmp eq i64 {rhs_val}, 0");
+            let dz_lbl = self.fresh_label("mod.zero");
+            let ok_lbl = self.fresh_label("mod.ok");
+            self.emit_cond_br(&dz, &dz_lbl, &ok_lbl, out);
+
+            self.start_block(&dz_lbl, out);
+            let _ = writeln!(out, "  call void @archx_div_zero_fail()");
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+
+            self.start_block(&ok_lbl, out);
+            // `i64::MIN % -1` traps in `srem`, but its true remainder is 0.
+            let is_min = self.next_tmp();
+            let _ = writeln!(out, "  {is_min} = icmp eq i64 {lhs_val}, {}", i64::MIN);
+            let is_neg1 = self.next_tmp();
+            let _ = writeln!(out, "  {is_neg1} = icmp eq i64 {rhs_val}, -1");
+            let ovf = self.next_tmp();
+            let _ = writeln!(out, "  {ovf} = and i1 {is_min}, {is_neg1}");
+            let safe_rhs = self.next_tmp();
+            let _ = writeln!(out, "  {safe_rhs} = select i1 {ovf}, i64 1, i64 {rhs_val}");
+            let raw = self.next_tmp();
+            let _ = writeln!(out, "  {raw} = srem i64 {lhs_val}, {safe_rhs}");
+            let nz = self.next_tmp();
+            let _ = writeln!(out, "  {nz} = icmp ne i64 {raw}, 0");
+            let rsign = self.next_tmp();
+            let _ = writeln!(out, "  {rsign} = icmp slt i64 {raw}, 0");
+            let bsign = self.next_tmp();
+            let _ = writeln!(out, "  {bsign} = icmp slt i64 {safe_rhs}, 0");
+            let differ = self.next_tmp();
+            let _ = writeln!(out, "  {differ} = xor i1 {rsign}, {bsign}");
+            let need = self.next_tmp();
+            let _ = writeln!(out, "  {need} = and i1 {nz}, {differ}");
+            let adj = self.next_tmp();
+            let _ = writeln!(out, "  {adj} = select i1 {need}, i64 {safe_rhs}, i64 0");
+            let res = self.next_tmp();
+            let _ = writeln!(out, "  {res} = add i64 {raw}, {adj}");
+            return res;
+        }
+
+        if op == BinOp::Div {
+            let instr = "sdiv";
             if let Ok(b) = rhs_val.parse::<i64>() {
                 if b == 0 {
                     self.used_div_zero_fail = true;
@@ -1760,9 +2344,6 @@ impl Codegen {
                     return "0".to_string();
                 }
                 if b == -1 {
-                    if op == BinOp::Mod {
-                        return "0".to_string();
-                    }
                     let neg = self.next_tmp();
                     let _ = writeln!(out, "  {neg} = sub i64 0, {lhs_val}");
                     return neg;

@@ -870,6 +870,19 @@ impl<'a> Monomorphizer<'a> {
                     span,
                 ))
             }
+            ExprKind::PercentFormat { template, args } => ExprKind::PercentFormat {
+                template: template.clone(),
+                args: Box::new(self.rewrite_expr(args)?),
+            },
+            ExprKind::CompareChain(operands) => {
+                // Rebuild the chain with each operand rewritten, so monomorphization reaches them.
+                let mut rebuilt = Vec::with_capacity(operands.len());
+                for (e, op) in operands {
+                    let rewritten = self.rewrite_expr(e)?;
+                    rebuilt.push((Box::new(rewritten), *op));
+                }
+                ExprKind::CompareChain(rebuilt)
+            }
             ExprKind::Int(v) => ExprKind::Int(*v),
             ExprKind::Float(v) => ExprKind::Float(*v),
             ExprKind::Bool(v) => ExprKind::Bool(*v),
@@ -893,6 +906,10 @@ impl<'a> Monomorphizer<'a> {
                     out.push(match p {
                         FStrPart::Lit(s) => FStrPart::Lit(s.clone()),
                         FStrPart::Expr(e) => FStrPart::Expr(self.rewrite_expr(e)?),
+                        FStrPart::Spec { expr, spec } => FStrPart::Spec {
+                            expr: self.rewrite_expr(expr)?,
+                            spec: spec.clone(),
+                        },
                     });
                 }
                 ExprKind::FString(out)
@@ -1247,6 +1264,12 @@ fn free_vars_of(expr: &Expr) -> Vec<String> {
 
 fn collect_free(expr: &Expr, out: &mut Vec<String>) {
     match &expr.kind {
+        ExprKind::CompareChain(operands) => {
+            for (e, _) in operands {
+                collect_free(e, out);
+            }
+        }
+        ExprKind::PercentFormat { args, .. } => collect_free(args, out),
         ExprKind::Var(n) => {
             if !out.contains(n) {
                 out.push(n.clone());

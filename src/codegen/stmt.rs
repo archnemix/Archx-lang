@@ -957,6 +957,28 @@ impl Codegen {
                     let old_val = self.next_tmp();
                     let _ = writeln!(out, "  {old_val} = load i64, ptr {ptr}, align 8");
                     let (rhs_ty, raw_rhs) = self.eval_expr(value, out)?;
+                    // Python: `x += 0.25` on an int variable rebinds `x` to a float. Rewriting it
+                    // as `x = x + 0.25` reuses the (now promoting) binary-operator path instead of
+                    // rejecting the mix.
+                    if rhs_ty == Type::Float {
+                        let widened = self.next_tmp();
+                        let _ = writeln!(out, "  {widened} = sitofp i64 {old_val} to double");
+                        let promoted = self.emit_float_arith(bin_op, &widened, &raw_rhs, out);
+                        let slot = self.next_slot(&format!("promote.{name}"));
+                        let _ = writeln!(self.allocas, "  {slot} = alloca double, align 8");
+                        let _ = writeln!(out, "  store double {promoted}, ptr {slot}, align 8");
+                        self.clear_narrowed_optional(name);
+                        let replaced = VarEntry {
+                            ty: Type::Float,
+                            storage: VarStorage::Slot(slot),
+                            is_param: false,
+                            region_depth: self.region_stack.len(),
+                        };
+                        if let Some(scope) = self.scopes.last_mut() {
+                            scope.vars.insert(name.clone(), replaced);
+                        }
+                        return Ok(());
+                    }
                     let rhs_val = if rhs_ty == Type::Int {
                         raw_rhs
                     } else if rhs_ty == Type::Any {

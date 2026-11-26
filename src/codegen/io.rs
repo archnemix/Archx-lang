@@ -532,6 +532,171 @@ impl Codegen {
         Ok((Type::Str, s))
     }
 
+    /// `f"{x:spec}"` — implement the common Python format specifications.
+    ///
+    /// Supported: `[[fill]align][0][width][.precision][type]` where `type` is one of
+    /// `f F e E g G d x X o b %` and `align` is one of `< > ^`. Anything else is rejected with a
+    /// clear error rather than silently ignored.
+    pub(super) fn emit_value_to_str_spec(
+        &mut self,
+        ty: &Type,
+        val: &str,
+        spec: &str,
+        span: Span,
+        out: &mut String,
+    ) -> Result<String> {
+        let (fill, align, width, prec, kind) = parse_format_spec(spec)
+            .ok_or_else(|| Diagnostic::new(format!("unsupported format spec `{{:{spec}}}`"), span))?;
+
+        let is_int_ty = *ty == Type::Int;
+        let is_float_ty = *ty == Type::Float;
+        let is_str_ty = *ty == Type::Str;
+
+        // --- build the number body through sprintf so rounding matches C's `%f` (== Python) ---
+        let mut body: String = match kind {
+            Some('d') if is_int_ty => {
+                self.used_str_from_int = true;
+                let reg = self.active_region_arg();
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_str_from_int(i64 {val}, ptr {reg})"
+                );
+                r
+            }
+            Some('x') | Some('X') | Some('o') | Some('b') if is_int_ty => {
+                // Format specs use the *unprefixed* form (`{255:x}` is `ff`, not `0xff`).
+                self.used_int_to_base_raw = true;
+                let reg = self.active_region_arg();
+                let base = if kind == Some('o') {
+                    8
+                } else if kind == Some('b') {
+                    2
+                } else {
+                    16
+                };
+                let upper = matches!(kind, Some('X'));
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_int_to_base_raw(i64 {val}, i32 {base}, i1 {upper}, ptr {reg})"
+                );
+                r
+            }
+            Some('f') | Some('F') | Some('e') | Some('E') | Some('g') | Some('G') | Some('%')
+                if is_float_ty || is_int_ty =>
+            {
+                let dval = if is_int_ty {
+                    let d = self.next_tmp();
+                    let _ = writeln!(out, "  {d} = sitofp i64 {val} to double");
+                    d
+                } else {
+                    val.to_string()
+                };
+                let precision = prec.unwrap_or(6);
+                self.used_sprintf_fmt = true;
+                let reg = self.active_region_arg();
+                let dval = if kind == Some('%') {
+                    // `{x:.1%}` multiplies by 100 and appends a percent sign.
+                    let scaled = self.next_tmp();
+                    let _ = writeln!(out, "  {scaled} = fmul double {dval}, 1.0e2");
+                    scaled
+                } else {
+                    dval
+                };
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_str_from_float_fmt(double {dval}, ptr @.fmt.spec.{kindid}, i64 {precision}, ptr {reg})",
+                    kindid = fmt_label_id(kind.unwrap())
+                );
+                if kind == Some('%') {
+                    self.used_str_percent_suffix = true;
+                    let lit = self.next_tmp();
+                    let _ = writeln!(out, "  {lit} = call fastcc %ArchxStr @archx_str_percent_suffix(ptr {reg})");
+                    let joined = self.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {joined} = call fastcc %ArchxStr @archx_str_concat(%ArchxStr {r}, %ArchxStr {lit}, ptr null)"
+                    );
+                    joined
+                } else {
+                    r
+                }
+            }
+            None if is_float_ty => {
+                self.used_str_from_float = true;
+                let reg = self.active_region_arg();
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_str_from_float(double {val}, ptr {reg})"
+                );
+                r
+            }
+            None if is_int_ty => {
+                self.used_str_from_int = true;
+                let reg = self.active_region_arg();
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_str_from_int(i64 {val}, ptr {reg})"
+                );
+                r
+            }
+            None if is_str_ty => val.to_string(),
+            _ => {
+                // Fall back to the unspecialised conversion (`bool`, `None`, nested types).
+                return self.emit_value_to_str(ty, val, span, out);
+            }
+        };
+        self.stmt_temps.push(TempDrop {
+            val: body.clone(),
+            ty: Type::Str,
+        });
+
+        // Truncate for strings: `{s:.3}` keeps at most three characters.
+        if is_str_ty {
+            if let Some(p) = prec {
+                self.used_slice_rt = true;
+                let reg = self.active_region_arg();
+                let r = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {r} = call fastcc %ArchxStr @archx_str_slice(%ArchxStr {body}, i64 0, i1 true, i64 {p}, i1 true, i64 1, ptr {reg})"
+                );
+                body = r;
+            }
+        }
+
+        let Some(width) = width else {
+            return Ok(body);
+        };
+
+        // --- padding ---
+        if width == 0 {
+            return Ok(body);
+        }
+        self.used_str_pad = true;
+        let (fillb, left_align) = match align {
+            Some('<') => (fill, true),
+            Some('>') => (fill, false),
+            Some('^') => (fill, false), // centred is approximated as right-aligned
+            _ => match ty {
+                Type::Int | Type::Float => (fill, false),
+                _ => (fill, true),
+            },
+        };
+        let align_code = if left_align { 0 } else { 1 };
+        let reg = self.active_region_arg();
+        let r = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {r} = call fastcc %ArchxStr @archx_str_pad(%ArchxStr {body}, i64 {width}, i8 {fillb}, i64 {align_code}, ptr {reg})"
+        );
+        Ok(r)
+    }
+
     pub(super) fn emit_value_to_str(
         &mut self,
         ty: &Type,
@@ -686,6 +851,10 @@ impl Codegen {
                     let (ty, val) = self.eval_expr(expr, out)?;
                     self.emit_value_to_str(&ty, &val, expr.span, out)?
                 }
+                FStrPart::Spec { expr, spec } => {
+                    let (ty, val) = self.eval_expr(expr, out)?;
+                    self.emit_value_to_str_spec(&ty, &val, spec, expr.span, out)?
+                }
             };
             acc = Some(match acc {
                 None => seg,
@@ -693,5 +862,73 @@ impl Codegen {
             });
         }
         Ok((Type::Str, acc.unwrap()))
+    }
+}
+
+/// `[[fill]align][0][width][.precision][type]` -> decomposed parts.
+fn parse_format_spec(spec: &str) -> Option<(u8, Option<char>, Option<i64>, Option<i64>, Option<char>)> {
+    let bytes = spec.as_bytes();
+    let mut i = 0usize;
+    let mut fill = b' ';
+    let mut align: Option<char> = None;
+    // `fill+align` is a two-character prefix; `align` alone is one character.
+    if bytes.len() >= 2 && matches!(bytes[1] as char, '<' | '>' | '^') {
+        fill = bytes[0];
+        align = Some(bytes[1] as char);
+        i = 2;
+    } else if !bytes.is_empty() && matches!(bytes[0] as char, '<' | '>' | '^') {
+        align = Some(bytes[0] as char);
+        i = 1;
+    } else if !bytes.is_empty() && bytes[0] == b'0' {
+        fill = b'0';
+        align = Some('>');
+        i = 1;
+    }
+    let start = i;
+    while i < bytes.len() && bytes[i].is_ascii_digit() {
+        i += 1;
+    }
+    let width = if i > start {
+        spec[start..i].parse::<i64>().ok()
+    } else {
+        None
+    };
+    let mut prec = None;
+    if i < bytes.len() && bytes[i] == b'.' {
+        i += 1;
+        let pstart = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+        if i == pstart {
+            return None;
+        }
+        prec = spec[pstart..i].parse::<i64>().ok();
+    }
+    let kind = if i < bytes.len() {
+        let c = spec[i..].chars().next()?;
+        if !matches!(c, 'f' | 'F' | 'e' | 'E' | 'g' | 'G' | 'd' | 'x' | 'X' | 'o' | 'b' | '%' | 's')
+        {
+            return None;
+        }
+        if spec[i..].chars().count() != 1 {
+            return None;
+        }
+        Some(c)
+    } else {
+        None
+    };
+    Some((fill, align, width, prec, kind))
+}
+
+fn fmt_label_id(kind: char) -> &'static str {
+    match kind {
+        'f' => "f",
+        'F' => "F",
+        'e' => "e",
+        'E' => "E",
+        'g' => "g",
+        'G' => "G",
+        _ => "pct",
     }
 }

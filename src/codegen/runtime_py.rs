@@ -18,6 +18,11 @@ impl Codegen {
             || self.used_str_replace
             || self.used_slice_rt
             || self.used_any_rt
+            || self.used_int_to_base_str
+            || self.used_str_pad
+            || self.used_sprintf_fmt
+            || self.used_int_to_base_raw
+            || self.used_str_percent_suffix
     }
 
     pub(super) fn finalize_runtime_flags(&mut self) {
@@ -158,12 +163,27 @@ copy_long:
                 r#"
 define private fastcc i64 @archx_fmt_float_buf(double %x, ptr %buf) nounwind {
 entry:
-  %n32 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  ; Python prints the shortest decimal that round-trips back to the same double. Start at 15
+  ; significant digits and widen to 16 then 17 until `strtod` agrees again.
+  %n15 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  %back15 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq15 = fcmp oeq double %back15, %x
+  br i1 %eq15, label %done, label %try16
+try16:
+  %n16 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g16, double %x)
+  %back16 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq16 = fcmp oeq double %back16, %x
+  br i1 %eq16, label %done, label %try17
+try17:
+  %n17 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g17, double %x)
+  br label %done
+done:
+  %n32 = phi i32 [ %n15, %entry ], [ %n16, %try16 ], [ %n17, %try17 ]
   %n = sext i32 %n32 to i64
   %pos = icmp sgt i64 %n, 0
   br i1 %pos, label %scan, label %ret_orig
 scan:
-  %i = phi i64 [ 0, %entry ], [ %inext, %scan_step ]
+  %i = phi i64 [ 0, %done ], [ %inext, %scan_step ]
   %cp = getelementptr inbounds i8, ptr %buf, i64 %i
   %ch = load i8, ptr %cp, align 1
   %is_dot = icmp eq i8 %ch, 46
@@ -242,6 +262,164 @@ entry:
   %buf = alloca [32 x i8], align 8
   %n32 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.i64s, i64 %n)
   %len = sext i32 %n32 to i64
+  %s = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %buf, i64 %len, ptr %reg)
+  ret %ArchxStr %s
+}
+
+"#,
+            );
+        }
+
+        if self.used_int_to_base_raw {
+            out.push_str(
+                r#"
+; `hex`/`oct`/`bin` digits only (no `0x` prefix), as Python's format specs require.
+define private fastcc %ArchxStr @archx_int_to_base_raw(i64 %n, i32 %base, i1 %upper, ptr %reg) {
+entry:
+  %buf = alloca [80 x i8], align 8
+  %end = getelementptr inbounds i8, ptr %buf, i64 80
+  %neg = icmp slt i64 %n, 0
+  %mag0 = sub nsw i64 0, %n
+  %mag = select i1 %neg, i64 %mag0, i64 %n
+  %zerocase = icmp eq i64 %mag, 0
+  br i1 %zerocase, label %zero, label %loop
+zero:
+  %zd = getelementptr inbounds i8, ptr %buf, i64 79
+  store i8 48, ptr %zd, align 1
+  br label %sign
+loop:
+  %p = phi ptr [ %end, %entry ], [ %pnext, %step ]
+  %v = phi i64 [ %mag, %entry ], [ %vnext, %step ]
+  %b64 = sext i32 %base to i64
+  %rem = urem i64 %v, %b64
+  %dec = icmp ult i64 %rem, 10
+  %digit0 = add i64 %rem, 48
+  %lower_a = add i64 %rem, 87
+  %upper_a = add i64 %rem, 55
+  %alpha = select i1 %upper, i64 %upper_a, i64 %lower_a
+  %dig = select i1 %dec, i64 %digit0, i64 %alpha
+  %d8 = trunc i64 %dig to i8
+  %pnext = getelementptr inbounds i8, ptr %p, i64 -1
+  store i8 %d8, ptr %pnext, align 1
+  %vnext = udiv i64 %v, %b64
+  %done = icmp eq i64 %vnext, 0
+  br i1 %done, label %sign, label %step
+step:
+  br label %loop
+sign:
+  %start = phi ptr [ %zd, %zero ], [ %pnext, %loop ]
+  %psign = getelementptr inbounds i8, ptr %start, i64 -1
+  store i8 45, ptr %psign, align 1
+  %pstart = select i1 %neg, ptr %psign, ptr %start
+  %lenp = ptrtoint ptr %end to i64
+  %leni = ptrtoint ptr %pstart to i64
+  %len = sub i64 %lenp, %leni
+  %res = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %pstart, i64 %len, ptr %reg)
+  ret %ArchxStr %res
+}
+
+"#,
+            );
+        }
+
+        if self.used_str_percent_suffix {
+            emit_cstr_global(out, "@.fmt.pctsign", "%");
+            out.push_str(
+                r#"
+define private fastcc %ArchxStr @archx_str_percent_suffix(ptr %reg) {
+entry:
+  %s = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull @.fmt.pctsign, i64 1, ptr null)
+  ret %ArchxStr %s
+}
+
+"#,
+            );
+        }
+
+        if self.used_str_pad {
+            out.push_str(
+                r#"
+; Left- or right-pad `s` to `width` bytes using `fill`.
+define private fastcc %ArchxStr @archx_str_pad(%ArchxStr %s, i64 %width, i8 %fill, i64 %align, ptr %reg) {
+entry:
+  %sbuf = alloca [12 x i8], align 4
+  %w0 = extractvalue %ArchxStr %s, 0
+  %w1 = extractvalue %ArchxStr %s, 1
+  %len = and i64 %w0, 4294967295
+  %room = sub nsw i64 %width, %len
+  %fits = icmp sle i64 %room, 0
+  br i1 %fits, label %ret_raw, label %build
+ret_raw:
+  ret %ArchxStr %s
+build:
+  %short = icmp ule i64 %len, 12
+  br i1 %short, label %mat_short, label %mat_long
+mat_short:
+  %p4 = lshr i64 %w0, 32
+  %p4_32 = trunc i64 %p4 to i32
+  store i32 %p4_32, ptr %sbuf, align 4
+  %sbuf4 = getelementptr inbounds i8, ptr %sbuf, i64 4
+  store i64 %w1, ptr %sbuf4, align 4
+  br label %mat_done
+mat_long:
+  %raw = and i64 %w1, -4
+  %lptr = inttoptr i64 %raw to ptr
+  br label %mat_done
+mat_done:
+  %sptr = phi ptr [ %sbuf, %mat_short ], [ %lptr, %mat_long ]
+  ; Allocate the padded buffer, then copy the fill in on the correct side.
+  %tot = add nuw nsw i64 %width, 1
+  %buf = call ptr @malloc(i64 %tot)
+  %isnull = icmp eq ptr %buf, null
+  br i1 %isnull, label %oom, label %fill_left
+oom:
+  call void @archx_oom_fail()
+  unreachable
+fill_left:
+  ; `align == 0` means left-align (content first, fill after).
+  %lalign = icmp eq i64 %align, 0
+  br i1 %lalign, label %pad_right, label %pad_left
+pad_right:
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %buf, ptr align 1 %sptr, i64 %len, i1 false)
+  %rbase = getelementptr inbounds i8, ptr %buf, i64 %len
+  call void @llvm.memset.p0.i64(ptr align 1 %rbase, i8 %fill, i64 %room, i1 false)
+  br label %done
+pad_left:
+  call void @llvm.memset.p0.i64(ptr align 1 %buf, i8 %fill, i64 %room, i1 false)
+  %lbase = getelementptr inbounds i8, ptr %buf, i64 %room
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %lbase, ptr align 1 %sptr, i64 %len, i1 false)
+  br label %done
+done:
+  %res = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %buf, i64 %width, ptr %reg)
+  ret %ArchxStr %res
+}
+
+"#,
+            );
+        }
+
+        if self.used_sprintf_fmt {
+            for (label, spec) in [
+                ("f", "%.*f"),
+                ("F", "%.*f"),
+                ("e", "%.*e"),
+                ("E", "%.*E"),
+                ("g", "%.*g"),
+                ("G", "%.*G"),
+                ("pct", "%.*f"),
+            ] {
+                emit_cstr_global(out, &format!("@.fmt.spec.{label}"), spec);
+            }
+            // `printf` needs a variadic declaration for these (not `sprintf`), because the
+            // precision is passed as an `int` argument rather than baked into the format.
+            out.push_str(
+                r#"
+define private fastcc %ArchxStr @archx_str_from_float_fmt(double %x, ptr %fmt, i64 %prec, ptr %reg) {
+entry:
+  %buf = alloca [512 x i8], align 8
+  %prec32 = trunc i64 %prec to i32
+  %n = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr nonnull %fmt, i32 %prec32, double %x)
+  %len = sext i32 %n to i64
   %s = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %buf, i64 %len, ptr %reg)
   ret %ArchxStr %s
 }
@@ -1470,6 +1648,25 @@ entry:
             );
         }
 
+        if self.used_value_missing_fail {
+            emit_cstr_global(
+                out,
+                "@.err.valmissing",
+                "archx runtime panic: ValueError: list.remove(x): x not in list\n",
+            );
+            out.push_str(
+                r#"
+define private void @archx_value_missing_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.valmissing)
+  call void @exit(i32 101)
+  unreachable
+}
+
+"#,
+            );
+        }
+
         if self.used_assert_fail {
             emit_cstr_global(
                 out,
@@ -1501,15 +1698,94 @@ no_msg:
             );
         }
 
-        if self.used_print_float || self.used_str_from_float || self.used_str_from_int {
+        if self.used_print_float
+            || self.used_str_from_float
+            || self.used_str_from_int
+            || self.used_sprintf_fmt
+        {
             out.push_str("declare i32 @sprintf(ptr nocapture writeonly, ptr nocapture readonly, ...) nounwind\n");
         }
-        if self.used_float_from_str {
+        // `strtod` is used both for `float("...")` and for the round-trip probe in the shortest
+        // float formatter, so one declaration covers both.
+        if self.used_float_from_str || self.used_print_float || self.used_str_from_float {
             out.push_str("declare double @strtod(ptr nocapture readonly, ptr nocapture writeonly) nounwind\n");
         }
         if self.used_input {
             out.push_str("declare i32 @getchar()\n");
             out.push_str("declare i32 @fflush(ptr)\n");
+        }
+        if self.used_rint_f64 {
+            out.push_str("declare double @llvm.rint.f64(double) nounwind readnone speculatable\n");
+        }
+        if self.used_copysign_f64 {
+            out.push_str("declare double @llvm.copysign.f64(double, double) nounwind readnone speculatable\n");
+        }
+        if self.used_int_to_base_str {
+            emit_cstr_global(out, "@.fmt.hexp", "0x%llx");
+            emit_cstr_global(out, "@.fmt.octp", "0o%llo");
+            emit_cstr_global(out, "@.fmt.binp", "0b%llb");
+            out.push_str(
+                r#"
+; Python renders hex/oct/bin of a negative int with a leading `-` and the magnitude in
+; base, which is what the `%llx`-style specifiers cannot express, so build it by hand.
+define private fastcc %ArchxStr @archx_int_to_base_str(i64 %n, i32 %base, ptr %reg) {
+entry:
+  %buf = alloca [80 x i8], align 8
+  %end = getelementptr inbounds i8, ptr %buf, i64 80
+  %neg = icmp slt i64 %n, 0
+  %mag0 = sub nsw i64 0, %n
+  %mag = select i1 %neg, i64 %mag0, i64 %n
+  %zerocase = icmp eq i64 %mag, 0
+  br i1 %zerocase, label %zero, label %loop
+zero:
+  %zd = getelementptr inbounds i8, ptr %buf, i64 79
+  store i8 48, ptr %zd, align 1
+  br label %sign
+loop:
+  %p = phi ptr [ %end, %entry ], [ %pnext, %step ]
+  %v = phi i64 [ %mag, %entry ], [ %vnext, %step ]
+  %b64 = sext i32 %base to i64
+  %rem = urem i64 %v, %b64
+  %ishex = icmp eq i32 %base, 16
+  %dig10 = add i64 %rem, 48
+  %digalpha = add i64 %rem, 87
+  %dig = select i1 %ishex, i64 %digalpha, i64 %dig10
+  %d8 = trunc i64 %dig to i8
+  %pnext = getelementptr inbounds i8, ptr %p, i64 -1
+  store i8 %d8, ptr %pnext, align 1
+  %vnext = udiv i64 %v, %b64
+  %done = icmp eq i64 %vnext, 0
+  br i1 %done, label %sign, label %step
+step:
+  br label %loop
+sign:
+  %start = phi ptr [ %zd, %zero ], [ %pnext, %loop ]
+  ; Ascending addresses must read  ['0'] [letter] ['-'] digits, i.e. `-0xff` rather than
+  ; `0x-ff`. Write the sign first, then let the prefix overwrite it when the value is
+  ; non-negative (the letter lands exactly where the '-' would have been).
+  ; The prefix is always `0` + letter in the two bytes below the digits; a negative value
+  ; additionally puts its `-` in front of them.
+  %psign = getelementptr inbounds i8, ptr %start, i64 -3
+  store i8 45, ptr %psign, align 1
+  %iz = icmp eq i32 %base, 16
+  %io = icmp eq i32 %base, 8
+  %pzf = select i1 %iz, i8 120, i8 98
+  %pletter = select i1 %io, i8 111, i8 %pzf
+  %pzptr = getelementptr inbounds i8, ptr %start, i64 -2
+  store i8 48, ptr %pzptr, align 1
+  %plptr = getelementptr inbounds i8, ptr %start, i64 -1
+  store i8 %pletter, ptr %plptr, align 1
+  %pneg2 = getelementptr inbounds i8, ptr %start, i64 -3
+  %pstart = select i1 %neg, ptr %pneg2, ptr %pzptr
+  %lenp = ptrtoint ptr %end to i64
+  %leni = ptrtoint ptr %pstart to i64
+  %len = sub i64 %lenp, %leni
+  %res = call fastcc %ArchxStr @archx_str_from_slice(ptr nonnull %pstart, i64 %len, ptr %reg)
+  ret %ArchxStr %res
+}
+
+"#,
+            );
         }
         if self.used_pow_f64 {
             out.push_str("declare double @llvm.pow.f64(double, double) nounwind readnone speculatable\n");

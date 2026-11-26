@@ -210,6 +210,9 @@ impl<'a> Lexer<'a> {
                     if self.peek() == Some(b'=') {
                         self.bump();
                         tokens.push(Token::new(TokenKind::Le, span));
+                    } else if self.peek() == Some(b'<') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::Shl, span));
                     } else {
                         tokens.push(Token::new(TokenKind::Lt, span));
                     }
@@ -219,6 +222,9 @@ impl<'a> Lexer<'a> {
                     if self.peek() == Some(b'=') {
                         self.bump();
                         tokens.push(Token::new(TokenKind::Ge, span));
+                    } else if self.peek() == Some(b'>') {
+                        self.bump();
+                        tokens.push(Token::new(TokenKind::Shr, span));
                     } else {
                         tokens.push(Token::new(TokenKind::Gt, span));
                     }
@@ -239,6 +245,18 @@ impl<'a> Lexer<'a> {
                 b'|' => {
                     self.bump();
                     tokens.push(Token::new(TokenKind::Pipe, span));
+                }
+                b'&' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Amp, span));
+                }
+                b'^' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Caret, span));
+                }
+                b'~' => {
+                    self.bump();
+                    tokens.push(Token::new(TokenKind::Tilde, span));
                 }
                 b'"' | b'\'' => {
                     let value = self.lex_string(c)?;
@@ -599,7 +617,46 @@ impl<'a> Lexer<'a> {
                         expr_span,
                     ));
                 }
-                parts.push((true, expr_src));
+                // Split `expr:spec` at the first top-level `:` so `{x:>8}` and `{d['a']}` both work.
+                // The colon is encoded as a leading `:` on the payload, which the parser splits.
+                let mut split_at: Option<usize> = None;
+                {
+                    let bytes = expr_src.as_bytes();
+                    let mut depth = 0i32;
+                    let mut quote: Option<u8> = None;
+                    let mut i = 0usize;
+                    while i < bytes.len() {
+                        let b = bytes[i];
+                        if let Some(q) = quote {
+                            if b == b'\\' {
+                                i += 1;
+                            } else if b == q {
+                                quote = None;
+                            }
+                        } else {
+                            match b {
+                                b'\'' | b'"' => quote = Some(b),
+                                b'(' | b'[' | b'{' => depth += 1,
+                                b')' | b']' | b'}' => depth -= 1,
+                                b':' if depth == 0 => {
+                                    split_at = Some(i);
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+                        i += 1;
+                    }
+                }
+                const SEP: char = '\u{1}';
+                match split_at {
+                    Some(i) => {
+                        let body = expr_src[..i].to_string();
+                        let spec = expr_src[i + 1..].to_string();
+                        parts.push((true, format!("{body}{SEP}{spec}")));
+                    }
+                    None => parts.push((true, expr_src)),
+                }
                 continue;
             }
             if c == b'}' {
@@ -643,7 +700,14 @@ impl<'a> Lexer<'a> {
 
     fn lex_string(&mut self, quote: u8) -> Result<String> {
         let start_span = self.span();
-        self.bump(); // opening quote
+        // Triple-quoted strings (`"""..."""` / `'''...'''`) may span lines; they are lexed by
+        // the same loop, with the terminator being three quotes instead of one.
+        let triple = self.src.get(self.pos + 1) == Some(&quote)
+            && self.src.get(self.pos + 2) == Some(&quote);
+        let quotes = if triple { 3 } else { 1 };
+        for _ in 0..quotes {
+            self.bump();
+        }
 
         let mut value = String::new();
         loop {
@@ -651,7 +715,7 @@ impl<'a> Lexer<'a> {
                 return Err(Diagnostic::new("unterminated string literal", start_span));
             };
 
-            if c == b'\n' {
+            if c == b'\n' && !triple {
                 return Err(Diagnostic::new(
                     "unterminated string literal (newline inside string)",
                     start_span,
@@ -659,8 +723,21 @@ impl<'a> Lexer<'a> {
             }
 
             if c == quote {
+                if !triple {
+                    self.bump();
+                    return Ok(value);
+                }
+                let rest = self.src.get(self.pos..self.pos + 3);
+                if rest == Some(&[quote, quote, quote][..]) {
+                    for _ in 0..3 {
+                        self.bump();
+                    }
+                    return Ok(value);
+                }
+                // A lone quote inside a triple-quoted string is just a character.
                 self.bump();
-                return Ok(value);
+                value.push(quote as char);
+                continue;
             }
 
             if c == b'\\' {

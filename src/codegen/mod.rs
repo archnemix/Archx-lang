@@ -444,6 +444,14 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_neg_exp_fail: false,
         used_zero_step_fail: false,
         used_parse_fail: false,
+        used_value_missing_fail: false,
+        used_copysign_f64: false,
+        used_rint_f64: false,
+        used_sprintf_fmt: false,
+        used_int_to_base_raw: false,
+        used_str_percent_suffix: false,
+        used_str_pad: false,
+        used_int_to_base_str: false,
         used_assert_fail: false,
         used_oom_fail: false,
     };
@@ -562,6 +570,8 @@ pub fn lower(raw_program: &Program) -> Result<String> {
     }
     if cg.used_print_float || cg.used_str_from_float {
         emit_cstr_global(&mut out, "@.fmt.g15", "%.15g");
+        emit_cstr_global(&mut out, "@.fmt.g16", "%.16g");
+        emit_cstr_global(&mut out, "@.fmt.g17", "%.17g");
     }
     for (i, value) in cg.strings.values.iter().enumerate() {
         // `align 4` guarantees low 2 tag bits == 00 (`STATIC` tag) on all targets.
@@ -984,6 +994,14 @@ pub(super) struct Codegen {
     pub(super) used_neg_exp_fail: bool,
     pub(super) used_zero_step_fail: bool,
     pub(super) used_parse_fail: bool,
+    pub(super) used_value_missing_fail: bool,
+    pub(super) used_copysign_f64: bool,
+    pub(super) used_rint_f64: bool,
+    pub(super) used_sprintf_fmt: bool,
+    pub(super) used_int_to_base_raw: bool,
+    pub(super) used_str_percent_suffix: bool,
+    pub(super) used_str_pad: bool,
+    pub(super) used_int_to_base_str: bool,
     pub(super) used_assert_fail: bool,
     pub(super) used_oom_fail: bool,
 }

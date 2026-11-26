@@ -493,7 +493,7 @@ fn safe_division_panics_on_zero_and_handles_int_min_neg_one() {
         "int_min_div",
         "\
 func safe_ops(a: int, b: int) -> int:
-    let q = a / b
+    let q = a // b
     let r = a % b
     if q == a and r == 0:
         return 99
@@ -512,7 +512,7 @@ func main():
     let src = dir.join("divz.archx.lang");
     fs::write(
         &src,
-        "func divide(a: int, b: int) -> int:\n    return a / b\n\nfunc main():\n    print(divide(10, 0))\n",
+        "func divide(a: int, b: int) -> int:\n    return a // b\n\nfunc main():\n    print(divide(10, 0))\n",
     )
     .unwrap();
     let exe = exe_path(&dir, "divz");
@@ -1514,5 +1514,103 @@ main()
     assert_eq!(
         out,
         "all sizes ok\n[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n[9, 8, 7, 6, 5, 4, 3, 2, 1]\n"
+    );
+}
+
+/// Math semantics that CPython defines and that are easy to get subtly wrong: floored `%`,
+/// `int ** negative` returning a float, `round()`'s round-half-to-even, and `hex/oct/bin`
+/// sign placement.
+#[test]
+fn pythonic_int_float_semantics_match_cpython() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    print(7 % 3, -7 % 3, 7 % -3, -7 % -3)
+    print(-7 // 2, 7 // -2)
+    print(2 ** 10, 2 ** 0, 2 ** -2)
+    print(round(2.5), round(3.5), round(-2.5), round(2.567, 2))
+    print(hex(255), oct(8), bin(5), hex(-255), bin(0))
+    print(divmod(7, 3), divmod(-7, 3))
+    print('a' < 'b', 'Z' < 'a', 'ab' < 'abc', 'abc' == 'abc')
+main()
+"#;
+
+    let out = build_and_run("v10_int_float_semantics", src);
+    assert_eq!(
+        out,
+        "1 2 -2 -1\n-4 -4\n1024 1 0.25\n2 4 -2 2.57\n0xff 0o10 0b101 -0xff 0b0\n(2, 1) (-3, 2)\ntrue true true true\n"
+    );
+}
+
+/// The coll/str additions from Milestone 10: list mutation, `str.join`, bitwise operators,
+/// docstrings, triple-quoted strings and `;`-separated statements.
+#[test]
+fn pythonic_list_mutation_join_bitwise_and_docstrings() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    """Module docstring."""
+    xs = [1, 2, 3]
+    xs.reverse(); xs.extend([4, 5])
+    xs.insert(0, 0)
+    xs.remove(4)
+    print(xs, xs.index(3), xs.count(4))
+    ys = [1]
+    ys.clear()
+    print(len(ys))
+    print('-'.join(['a', 'b', 'c']))
+    print(' '.join([]))
+    print(12 & 10, 12 | 10, 12 ^ 10, 1 << 4, 64 >> 2, ~5)
+    print('x' * 3, len("""multi
+line"""))
+main()
+"#;
+
+    let out = build_and_run("v10_list_join_bitwise", src);
+    assert_eq!(
+        out,
+        "[0, 1, 2, 3, 5] 3 0\n0\na-b-c\n\n8 14 6 16 16 -6\nxxx 11\n"
+    );
+}
+
+/// String formatting and set algebra — the parts of Python that a program hits immediately but
+/// that need real runtime support (format specs, set union/intersection).
+#[test]
+fn pythonic_formatting_and_set_algebra_match_cpython() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    a = {1, 2, 3, 4}
+    b = {3, 4, 5, 6}
+    print(sorted(list(a | b)))
+    print(sorted(list(a & b)))
+    print(sorted(list(a - b)))
+    print(sorted(list(a ^ b)))
+    p = 3.14159
+    print(f"{p:.2f} {p:10.2f}| {42:05d}")
+    print("{}-{} {:.3f} {{}}".format(1, 'two', p))
+    print("%d items, %.1f%%" % (5, 12.5))
+    x = 5
+    print(1 < x < 10, 1 < x < 3)
+main()
+"#;
+
+    let out = build_and_run("v10_format_and_sets", src);
+    assert_eq!(
+        out,
+        "[1, 2, 3, 4, 5, 6]\n[3, 4]\n[1, 2]\n[1, 2, 5, 6]\n\
+         3.14       3.14| 00042\n\
+         1-two 3.142 {}\n\
+         5 items, 12.5%\n\
+         true false\n"
     );
 }

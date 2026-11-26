@@ -172,6 +172,11 @@ impl Codegen {
         // Python soft builtins (shadowable by user `def`):
         match name {
             "abs" => return self.gen_builtin_abs(args, span, out),
+            "divmod" => return self.gen_builtin_divmod(args, span, out),
+            "round" => return self.gen_builtin_round(args, span, out),
+            "hex" => return self.gen_builtin_base_str(args, 16, span, out),
+            "oct" => return self.gen_builtin_base_str(args, 8, span, out),
+            "bin" => return self.gen_builtin_base_str(args, 2, span, out),
             "min" => return self.gen_builtin_minmax(args, true, span, out),
             "max" => return self.gen_builtin_minmax(args, false, span, out),
             "sum" => return self.gen_builtin_sum(args, span, out),
@@ -580,6 +585,165 @@ impl Codegen {
                 args[0].span,
             )),
         }
+    }
+
+    /// `round(x)` / `round(x, ndigits)`. Python rounds half to even; this shifts by a
+    /// sign-aware half, floors, then undoes the shift, which is exact for the common cases.
+    fn gen_builtin_round(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.is_empty() || args.len() > 2 {
+            return Err(Diagnostic::new(
+                "`round()` takes 1 or 2 arguments: `round(x)` or `round(x, ndigits)`",
+                span,
+            ));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        let ndigits: Option<i64> = if args.len() == 2 {
+            match self.eval_expr(&args[1], out)? {
+                (Type::Int, v) => v.parse::<i64>().ok(),
+                (t, _) => {
+                    return Err(Diagnostic::new(
+                        format!("`round()` ndigits must be `int`, found `{}`", t.name()),
+                        args[1].span,
+                    ))
+                }
+            }
+        } else {
+            None
+        };
+        match ty {
+            Type::Int => match ndigits {
+                None => Ok((Type::Int, val)),
+                Some(d) if d >= 0 => Ok((Type::Int, val)),
+                _ => {
+                    let f = self.next_tmp();
+                    let _ = writeln!(out, "  {f} = sitofp i64 {val} to double");
+                    let r = self.emit_round_digits(&f, ndigits, out);
+                    let back = self.next_tmp();
+                    let _ = writeln!(out, "  {back} = fptosi double {r} to i64");
+                    Ok((Type::Int, back))
+                }
+            },
+            Type::Float => {
+                let r = self.emit_round_digits(&val, ndigits, out);
+                if ndigits.is_none() {
+                    let back = self.next_tmp();
+                    let _ = writeln!(out, "  {back} = fptosi double {r} to i64");
+                    Ok((Type::Int, back))
+                } else {
+                    Ok((Type::Float, r))
+                }
+            }
+            other => Err(Diagnostic::new(
+                format!("`round()` expects `int` or `float`, found `{}`", other.name()),
+                args[0].span,
+            )),
+        }
+    }
+
+    /// Round-half-away-from-zero at `ndigits` decimal places (then `floor` corrects the scale).
+    fn emit_round_digits(&mut self, x: &str, ndigits: Option<i64>, out: &mut String) -> String {
+        let scale = match ndigits {
+            None => "1.0".to_string(),
+            Some(d) => {
+                let e = self.next_tmp();
+                let _ = writeln!(out, "  {e} = sitofp i64 {d} to double");
+                self.used_pow_f64 = true;
+                let p = self.next_tmp();
+                let _ = writeln!(out, "  {p} = call double @llvm.pow.f64(double 1.0e1, double {e})");
+                p
+            }
+        };
+        let scaled = self.next_tmp();
+        let _ = writeln!(out, "  {scaled} = fmul double {x}, {scale}");
+        // `llvm.rint.f64` is round-half-to-even in the default FP environment, which is exactly
+        // CPython's `round()` tie rule (`round(2.5) == 2`, `round(3.5) == 4`, `round(-2.5) == -2`).
+        self.used_rint_f64 = true;
+        let rounded = self.next_tmp();
+        let _ = writeln!(out, "  {rounded} = call double @llvm.rint.f64(double {scaled})");
+        let back = self.next_tmp();
+        let _ = writeln!(out, "  {back} = fdiv double {rounded}, {scale}");
+        back
+    }
+
+    /// `hex(n)`, `oct(n)`, `bin(n)` — Python's prefixed two's-complement representation.
+    fn gen_builtin_base_str(
+        &mut self,
+        args: &[Expr],
+        base: u32,
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        let name = match base {
+            16 => "hex",
+            8 => "oct",
+            _ => "bin",
+        };
+        if args.len() != 1 {
+            return Err(Diagnostic::new(
+                format!("`{name}()` takes exactly 1 argument"),
+                span,
+            ));
+        }
+        let (ty, val) = self.eval_expr(&args[0], out)?;
+        if ty != Type::Int {
+            return Err(Diagnostic::new(
+                format!("`{name}()` expects an `int`, found `{}`", ty.name()),
+                args[0].span,
+            ));
+        }
+        self.used_int_to_base_str = true;
+        let reg_arg = self.active_region_arg();
+        let r = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {r} = call fastcc %ArchxStr @archx_int_to_base_str(i64 {val}, i32 {base}, ptr {reg_arg})"
+        );
+        self.stmt_temps.push(TempDrop {
+            val: r.clone(),
+            ty: Type::Str,
+        });
+        Ok((Type::Str, r))
+    }
+
+    /// `divmod(a, b)` — Python's floored quotient/remainder pair.
+    fn gen_builtin_divmod(
+        &mut self,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if args.len() != 2 {
+            return Err(Diagnostic::new("`divmod()` takes exactly 2 arguments", span));
+        }
+        let (aty, av) = self.eval_expr(&args[0], out)?;
+        let (bty, bv) = self.eval_expr(&args[1], out)?;
+        if aty != Type::Int || bty != Type::Int {
+            return Err(Diagnostic::new(
+                format!(
+                    "`divmod()` expects two `int`s, found `{}` and `{}`",
+                    aty.name(),
+                    bty.name()
+                ),
+                span,
+            ));
+        }
+        // Reuse the operator implementations so the semantics stay in exactly one place.
+        let qv = self.emit_int_arith(BinOp::FloorDiv, &av, &bv, out);
+        self.used_vec_type = true;
+        let tuple_ty = Type::Tuple(vec![Type::Int, Type::Int]);
+        self.mark_runtime_type(&tuple_ty);
+        let rv = self.emit_int_arith(BinOp::Mod, &av, &bv, out);
+        let tir = ir_type(&tuple_ty);
+        let raw = self.next_tmp();
+        let _ = writeln!(out, "  {raw} = insertvalue {tir} undef, i64 {qv}, 0");
+        let full = self.next_tmp();
+        let _ = writeln!(out, "  {full} = insertvalue {tir} {raw}, i64 {rv}, 1");
+        Ok((tuple_ty, full))
     }
 
     fn gen_builtin_abs(
@@ -1093,7 +1257,21 @@ impl Codegen {
         };
 
         let val = self.eval_owned_for_slot(&elem_ty, val_expr, out)?;
+        self.emit_list_push_raw(arr_name, &slot_ptr, &elem_ty, &val, out)?;
+        Ok((Type::Void, String::new()))
+    }
 
+    /// Append an already-evaluated, already-owned value to `arr_name`'s buffer.
+    /// Shared by `append`/`push`, `extend`, and `insert`.
+    pub(super) fn emit_list_push_raw(
+        &mut self,
+        arr_name: &str,
+        slot_ptr: &str,
+        elem_ty: &Type,
+        val: &str,
+        out: &mut String,
+    ) -> Result<()> {
+        let val = val.to_string();
         let vec = self.next_tmp();
         let _ = writeln!(out, "  {vec} = load %ArchxVec, ptr {slot_ptr}, align 8");
         let len = self.next_tmp();
@@ -1217,8 +1395,7 @@ impl Codegen {
             "  {vec3} = insertvalue %ArchxVec {vec2}, i64 {next_len}, 0"
         );
         let _ = writeln!(out, "  store %ArchxVec {vec3}, ptr {slot_ptr}, align 8");
-
-        Ok((Type::Void, String::new()))
+        Ok(())
     }
 
     pub(super) fn gen_builtin_pop(

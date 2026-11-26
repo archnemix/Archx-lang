@@ -693,6 +693,14 @@ impl Codegen {
                 self.scan_expr_for_iv_arrays(iv, loop_body, lhs, out);
                 self.scan_expr_for_iv_arrays(iv, loop_body, rhs, out);
             }
+            ExprKind::CompareChain(operands) => {
+                for (e, _) in operands {
+                    self.scan_expr_for_iv_arrays(iv, loop_body, e, out);
+                }
+            }
+            ExprKind::PercentFormat { args, .. } => {
+                self.scan_expr_for_iv_arrays(iv, loop_body, args, out);
+            }
             ExprKind::Call { args, .. }
             | ExprKind::ArrayLit(args)
             | ExprKind::SetLit(args)

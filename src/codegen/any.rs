@@ -724,7 +724,12 @@ impl Codegen {
             | BinOp::Div
             | BinOp::FloorDiv
             | BinOp::Mod
-            | BinOp::Pow => {
+            | BinOp::Pow
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor
+            | BinOp::Shl
+            | BinOp::Shr => {
                 let la = self.eval_expr_as_any(lhs, out)?;
                 let ra = self.eval_expr_as_any(rhs, out)?;
                 let code = match op {
@@ -735,6 +740,11 @@ impl Codegen {
                     BinOp::FloorDiv => 4,
                     BinOp::Mod => 5,
                     BinOp::Pow => 6,
+                    BinOp::BitAnd => 7,
+                    BinOp::BitOr => 8,
+                    BinOp::BitXor => 9,
+                    BinOp::Shl => 10,
+                    BinOp::Shr => 11,
                     _ => unreachable!(),
                 };
                 let rarg = self.active_region_arg();

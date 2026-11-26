@@ -248,6 +248,11 @@ impl Pattern {
 pub enum FStrPart {
     Lit(String),
     Expr(Expr),
+    /// `{expr:spec}` — the format specification after the colon.
+    Spec {
+        expr: Expr,
+        spec: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -301,6 +306,14 @@ pub enum ExprKind {
     Lambda {
         params: Vec<Param>,
         body: Box<Expr>,
+    },
+    /// A chained comparison (`a < b < c`). Python evaluates each operand once and short-circuits.
+    CompareChain(Vec<(Box<Expr>, BinOp)>),
+    /// `"fmt" % args` — Python's printf-style formatting. Only a literal template is supported;
+    /// the right-hand side is a single value or a tuple of values.
+    PercentFormat {
+        template: String,
+        args: Box<Expr>,
     },
     Index {
         target: Box<Expr>,
@@ -381,6 +394,11 @@ pub enum BinOp {
     NotIn,
     And,
     Or,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 impl BinOp {
@@ -403,6 +421,11 @@ impl BinOp {
             BinOp::NotIn => "not in",
             BinOp::And => "and",
             BinOp::Or => "or",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::BitXor => "^",
+            BinOp::Shl => "<<",
+            BinOp::Shr => ">>",
         }
     }
 }
@@ -411,4 +434,5 @@ impl BinOp {
 pub enum UnOp {
     Neg,
     Not,
+    BitNot,
 }

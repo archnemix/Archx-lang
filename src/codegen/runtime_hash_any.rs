@@ -1978,9 +1978,39 @@ i_fdiv:
 i_mod:
   %radj = add i64 %r, %safe_b
   %vmd = select i1 %need_adj, i64 %radj, i64 %r
+  br label %ret_int_bw
+ret_int_bw:
+  %op_and = icmp eq i64 %op, 7
+  br i1 %op_and, label %i_and, label %ic_or
+i_and:
+  %vand = and i64 %wa1, %wb1
+  br label %ret_int
+ic_or:
+  %op_or = icmp eq i64 %op, 8
+  br i1 %op_or, label %i_or, label %ic_xor
+i_or:
+  %vor = or i64 %wa1, %wb1
+  br label %ret_int
+ic_xor:
+  %op_xor = icmp eq i64 %op, 9
+  br i1 %op_xor, label %i_xor, label %ic_shl
+i_xor:
+  %vxor = xor i64 %wa1, %wb1
+  br label %ret_int
+ic_shl:
+  %op_shl = icmp eq i64 %op, 10
+  br i1 %op_shl, label %i_shl, label %i_shr
+i_shl:
+  ; shift counts are taken modulo 64, like LLVM's masked shift
+  %shl_clamped = and i64 %wb1, 63
+  %vshl = shl i64 %wa1, %shl_clamped
+  br label %ret_int
+i_shr:
+  %shr_clamped = and i64 %wb1, 63
+  %vshr = ashr i64 %wa1, %shr_clamped
   br label %ret_int
 ret_int:
-  %ival = phi i64 [ %va, %i_add ], [ %vs, %i_sub ], [ %vm, %i_mul ], [ %pacc, %ret_int_pow ], [ %vd, %i_div ], [ %vfd, %i_fdiv ], [ %vmd, %i_mod ]
+  %ival = phi i64 [ %va, %i_add ], [ %vs, %i_sub ], [ %vm, %i_mul ], [ %pacc, %ret_int_pow ], [ %vd, %i_div ], [ %vfd, %i_fdiv ], [ %vmd, %i_mod ], [ %vand, %i_and ], [ %vor, %i_or ], [ %vxor, %i_xor ], [ %vshl, %i_shl ], [ %vshr, %i_shr ]
   %ri = insertvalue %ArchxAny {{ i64 2, i64 0, i64 0 }}, i64 %ival, 1
   ret %ArchxAny %ri
 

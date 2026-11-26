@@ -1282,6 +1282,36 @@ impl Codegen {
         }
     }
 
+    /// The IR spelling of the `{ key, present }` pair the dict entry points take.
+    pub(super) fn dict_pack_ty(k_ty: &Type) -> String {
+        format!("{{ {}, i1 }}", Self::dict_key_storage_ir(k_ty))
+    }
+
+    /// Re-wrap a loaded key value back into the `{ {ty}, i1 }` pair the
+    /// `archx_dict_{find,upsert}_*` entry points take.
+    pub(super) fn emit_pack_dict_key(&mut self, k_ty: &Type, val: &str, out: &mut String) -> String {
+        // The pair aggregate needs a name to be usable as a call argument.
+        let kir = Self::dict_key_storage_ir(k_ty);
+        let pair_ty = format!("{{ {kir}, i1 }}");
+        let tyreg = self.next_tmp();
+        let _ = writeln!(out, "  {tyreg} = insertvalue {pair_ty} undef, {kir} {val}, 0");
+        let full = self.next_tmp();
+        let _ = writeln!(out, "  {full} = insertvalue {pair_ty} {tyreg}, i1 true, 1");
+        full
+    }
+
+    /// The inverse of `emit_pack_dict_key`, for values loaded straight out of the keys plane.
+    /// A value loaded straight out of the keys plane is already the raw key: no unpacking needed.
+    pub(super) fn emit_unpack_dict_key(
+        &mut self,
+        k_ty: &Type,
+        _packed_ty: &str,
+        val: &str,
+        _out: &mut String,
+    ) -> (String, String) {
+        (Self::dict_key_storage_ir(k_ty).to_string(), val.to_string())
+    }
+
     pub(super) fn gen_set_method(
         &mut self,
         elem_ty: &Type,
@@ -1382,14 +1412,251 @@ impl Codegen {
                 self.emit_clear_dict_or_set(elem_ty, None, s_val, out);
                 Ok((Type::Void, String::new()))
             }
+            "union" | "intersection" | "difference" | "symmetric_difference" => {
+                if args.len() != 1 {
+                    return Err(Diagnostic::new(
+                        format!("`set.{method}` expects exactly 1 argument"),
+                        span,
+                    ));
+                }
+                let (oty, oval) = self.eval_expr(&args[0], out)?;
+                let Type::Set(oelem) = &oty else {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "`set.{method}` expects another `set`, found `{}`",
+                            oty.name()
+                        ),
+                        args[0].span,
+                    ));
+                };
+                if **oelem != *elem_ty {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "`set.{method}` requires matching element types, found `{}` and `{}`",
+                            Type::Set(Box::new(elem_ty.clone())).name(),
+                            oty.name()
+                        ),
+                        args[0].span,
+                    ));
+                }
+                self.emit_set_algebra(elem_ty, s_val, &oval, method, out)
+            }
             _ => Err(Diagnostic::new(
                 format!(
-                    "`{}` has no method `{method}` (supported: `add`, `remove`, `discard`, `clear`)",
+                    "`{}` has no method `{method}` (supported: `add`, `remove`, `discard`, `clear`, `union`, `intersection`, `difference`, `symmetric_difference`)",
                     Type::Set(Box::new(elem_ty.clone())).name()
                 ),
                 span,
             )),
         }
+    }
+
+    /// `a | b`, `a & b`, `a - b`, `a ^ b` for sets: build a fresh set and fold the operands in.
+    ///
+    /// `op` is `union`, `intersection`, `difference`, or `symmetric_difference`.
+    pub(super) fn emit_set_algebra(
+        &mut self,
+        elem_ty: &Type,
+        a_val: &str,
+        b_val: &str,
+        op: &str,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        self.used_dict_rt = true;
+        let set_ty = Type::Set(Box::new(elem_ty.clone()));
+        let res = self.emit_new_empty_dict_or_set(elem_ty, None, out);
+        let fam = Self::dict_family_suffix(elem_ty);
+        let kstore = Self::dict_key_storage_ir(elem_ty);
+
+        // Load an element from `set` at `idx` through the keys plane.
+        let load_key = |cg: &mut Self,
+                        set_val: &str,
+                        idx: &str,
+                        _packed_ty: &str,
+                        out: &mut String|
+         -> (String, String) {
+            let raw = cg.next_tmp();
+            let _ = writeln!(out, "  {raw} = and i64 {set_val}, -4");
+            let hdr = cg.next_tmp();
+            let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+            let kg = cg.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {kg} = getelementptr inbounds %ArchxDictHdr, ptr {hdr}, i32 0, i32 5"
+            );
+            let kp = cg.next_tmp();
+            let _ = writeln!(out, "  {kp} = load ptr, ptr {kg}, align 8");
+            let kep = cg.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {kep} = getelementptr inbounds {kstore}, ptr {kp}, i64 {idx}"
+            );
+            let k = cg.emit_load_dict_key(elem_ty, &kep, out);
+            (hdr.to_string(), k)
+        };
+
+        let packed_ty = Self::dict_pack_ty(elem_ty);
+
+        // Iterate the *dense* side: keys and values are stored 0..len, and the control plane only
+        // maps buckets to those dense indices, so every index below `len` is live.
+        let mut iterate_operand = |cg: &mut Self,
+                                   src: &str,
+                                   body: &dyn Fn(&mut Self, &str, &str, &mut String),
+                                   out: &mut String| {
+            let raw = cg.next_tmp();
+            let _ = writeln!(out, "  {raw} = and i64 {src}, -4");
+            let hdr = cg.next_tmp();
+            let _ = writeln!(out, "  {hdr} = inttoptr i64 {raw} to ptr");
+            let len = cg.next_tmp();
+            let _ = writeln!(out, "  {len} = load i64, ptr {hdr}, align 8");
+            let i_slot = cg.next_slot("setalg.i");
+            let _ = writeln!(cg.allocas, "  {i_slot} = alloca i64, align 8");
+            let _ = writeln!(out, "  store i64 0, ptr {i_slot}, align 8");
+            let cond = cg.fresh_label("setalg.cond");
+            let body_lbl = cg.fresh_label("setalg.body");
+            let step = cg.fresh_label("setalg.step");
+            let done = cg.fresh_label("setalg.done");
+            cg.emit_br(&cond, out);
+            cg.start_block(&cond, out);
+            let i = cg.next_tmp();
+            let _ = writeln!(out, "  {i} = load i64, ptr {i_slot}, align 8");
+            let more = cg.next_tmp();
+            let _ = writeln!(out, "  {more} = icmp slt i64 {i}, {len}");
+            cg.emit_cond_br(&more, &body_lbl, &done, out);
+            cg.start_block(&body_lbl, out);
+            let (_hdr, key) = load_key(cg, src, &i, &packed_ty, out);
+            body(cg, src, &key, out);
+            cg.emit_br(&step, out);
+            cg.start_block(&step, out);
+            let ni = cg.next_tmp();
+            let _ = writeln!(out, "  {ni} = add nuw nsw i64 {i}, 1");
+            let _ = writeln!(out, "  store i64 {ni}, ptr {i_slot}, align 8");
+            cg.emit_br(&cond, out);
+            cg.start_block(&done, out);
+        };
+
+        let insert_into_res = |cg: &mut Self, key: &str, out: &mut String| -> String {
+            let up = cg.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {up} = call fastcc {{ i64, i1 }} @archx_dict_upsert_{fam}(i64 {res}, {kstore} {key})"
+            );
+            up
+        };
+
+        match op {
+            "union" => {
+                let r = res.clone();
+                iterate_operand(self, a_val, &|cg, _s, k, out| {
+                    insert_into_res(cg, k, out);
+                }, out);
+                let _ = r;
+                iterate_operand(self, b_val, &|cg, _s, k, out| {
+                    insert_into_res(cg, k, out);
+                }, out);
+            }
+            "intersection" => {
+                iterate_operand(self, a_val, &|cg, _s, k, out| {
+                    let (kir, kval) = cg.emit_unpack_dict_key(elem_ty, &packed_ty, k, out);
+                    let pair = cg.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {pair} = call fastcc {{ i64, i64 }} @archx_dict_find_{fam}(i64 {b_val}, {kir} {kval})"
+                    );
+                    let didx = cg.next_tmp();
+                    let _ = writeln!(out, "  {didx} = extractvalue {{ i64, i64 }} {pair}, 0");
+                    let has = cg.next_tmp();
+                    let _ = writeln!(out, "  {has} = icmp sge i64 {didx}, 0");
+                    let yes = cg.fresh_label("iset.yes");
+                    let no = cg.fresh_label("iset.no");
+                    cg.emit_cond_br(&has, &yes, &no, out);
+                    cg.start_block(&no, out);
+                    let skip = cg.fresh_label("iset.skip");
+                    cg.emit_br(&skip, out);
+                    cg.start_block(&yes, out);
+                    insert_into_res(cg, k, out);
+                    let after = cg.fresh_label("iset.after");
+                    cg.emit_br(&after, out);
+                    cg.start_block(&skip, out);
+                    cg.emit_br(&after, out);
+                    cg.start_block(&after, out);
+                }, out);
+            }
+            "difference" => {
+                iterate_operand(self, a_val, &|cg, _s, k, out| {
+                    let (kir, kval) = cg.emit_unpack_dict_key(elem_ty, &packed_ty, k, out);
+                    let pair = cg.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {pair} = call fastcc {{ i64, i64 }} @archx_dict_find_{fam}(i64 {b_val}, {kir} {kval})"
+                    );
+                    let didx = cg.next_tmp();
+                    let _ = writeln!(out, "  {didx} = extractvalue {{ i64, i64 }} {pair}, 0");
+                    let has = cg.next_tmp();
+                    let _ = writeln!(out, "  {has} = icmp slt i64 {didx}, 0");
+                    let yes = cg.fresh_label("dset.yes");
+                    let no = cg.fresh_label("dset.no");
+                    cg.emit_cond_br(&has, &yes, &no, out);
+                    cg.start_block(&no, out);
+                    let skip = cg.fresh_label("dset.skip");
+                    cg.emit_br(&skip, out);
+                    cg.start_block(&yes, out);
+                    insert_into_res(cg, k, out);
+                    let after = cg.fresh_label("dset.after");
+                    cg.emit_br(&after, out);
+                    cg.start_block(&skip, out);
+                    cg.emit_br(&after, out);
+                    cg.start_block(&after, out);
+                }, out);
+            }
+            _ => {
+                // symmetric_difference: (a - b) | (b - a)
+                iterate_operand(self, a_val, &|cg, _s, k, out| {
+                    let (kir, kval) = cg.emit_unpack_dict_key(elem_ty, &packed_ty, k, out);
+                    let pair = cg.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {pair} = call fastcc {{ i64, i64 }} @archx_dict_find_{fam}(i64 {b_val}, {kir} {kval})"
+                    );
+                    let didx = cg.next_tmp();
+                    let _ = writeln!(out, "  {didx} = extractvalue {{ i64, i64 }} {pair}, 0");
+                    let has = cg.next_tmp();
+                    let _ = writeln!(out, "  {has} = icmp slt i64 {didx}, 0");
+                    let yes = cg.fresh_label("xset.yes");
+                    let after = cg.fresh_label("xset.after");
+                    cg.emit_cond_br(&has, &yes, &after, out);
+                    cg.start_block(&yes, out);
+                    insert_into_res(cg, k, out);
+                    cg.emit_br(&after, out);
+                    cg.start_block(&after, out);
+                }, out);
+                iterate_operand(self, b_val, &|cg, _s, k, out| {
+                    let (kir, kval) = cg.emit_unpack_dict_key(elem_ty, &packed_ty, k, out);
+                    let pair = cg.next_tmp();
+                    let _ = writeln!(
+                        out,
+                        "  {pair} = call fastcc {{ i64, i64 }} @archx_dict_find_{fam}(i64 {a_val}, {kir} {kval})"
+                    );
+                    let didx = cg.next_tmp();
+                    let _ = writeln!(out, "  {didx} = extractvalue {{ i64, i64 }} {pair}, 0");
+                    let has = cg.next_tmp();
+                    let _ = writeln!(out, "  {has} = icmp slt i64 {didx}, 0");
+                    let yes = cg.fresh_label("yset.yes");
+                    let after = cg.fresh_label("yset.after");
+                    cg.emit_cond_br(&has, &yes, &after, out);
+                    cg.start_block(&yes, out);
+                    insert_into_res(cg, k, out);
+                    cg.emit_br(&after, out);
+                    cg.start_block(&after, out);
+                }, out);
+            }
+        }
+
+        self.stmt_temps.push(TempDrop {
+            val: res.clone(),
+            ty: set_ty.clone(),
+        });
+        Ok((set_ty, res))
     }
 
     fn emit_load_dict_val_at(

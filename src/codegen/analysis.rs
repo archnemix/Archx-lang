@@ -171,6 +171,10 @@ pub(super) fn expr_escapes_soa(
 ) -> bool {
     match &expr.kind {
         ExprKind::Var(n) => n == var,
+        ExprKind::CompareChain(operands) => operands
+            .iter()
+            .any(|(e, _)| expr_escapes_soa(e, var, mutating_methods)),
+        ExprKind::PercentFormat { args, .. } => expr_escapes_soa(args, var, mutating_methods),
         ExprKind::Index { target, index } => {
             let direct = matches!(&target.kind, ExprKind::Var(n) if n == var);
             (!direct && expr_escapes_soa(target, var, mutating_methods))
@@ -231,7 +235,9 @@ pub(super) fn expr_escapes_soa(
         }
         ExprKind::FString(parts) => parts.iter().any(|p| match p {
             FStrPart::Lit(_) => false,
-            FStrPart::Expr(e) => expr_escapes_soa(e, var, mutating_methods),
+            FStrPart::Expr(e) | FStrPart::Spec { expr: e, .. } => {
+                expr_escapes_soa(e, var, mutating_methods)
+            }
         }),
         ExprKind::IfExpr {
             then_expr,
@@ -732,6 +738,12 @@ pub(super) fn walk_expr_mutations(
     mutating_methods: &HashSet<String>,
 ) {
     match &expr.kind {
+        ExprKind::CompareChain(operands) => {
+            for (e, _) in operands {
+                walk_expr_mutations(e, set, mutating_methods);
+            }
+        }
+        ExprKind::PercentFormat { args, .. } => walk_expr_mutations(args, set, mutating_methods),
         ExprKind::Call { name, args } => {
             if (name == "push" || name == "pop") && !args.is_empty() {
                 if let ExprKind::Var(arr_name) = &args[0].kind {
@@ -1590,6 +1602,8 @@ fn quick_infer(
         ExprKind::NoneLit => Some(Type::Any),
         ExprKind::Str(_) | ExprKind::FString(_) => Some(Type::Str),
         ExprKind::Var(name) => env.get(name).cloned(),
+        ExprKind::CompareChain(_) => Some(Type::Bool),
+        ExprKind::PercentFormat { .. } => Some(Type::Str),
         ExprKind::ArrayLit(es) => {
             if es.is_empty() {
                 Some(Type::Array(Box::new(Type::Any)))
@@ -1793,7 +1807,7 @@ fn quick_infer(
         }
         ExprKind::Unary { op, expr: inner } => match op {
             UnOp::Not => Some(Type::Bool),
-            UnOp::Neg => quick_infer(inner, env, structs, sigs),
+            UnOp::Neg | UnOp::BitNot => quick_infer(inner, env, structs, sigs),
         },
         ExprKind::Binary { op, lhs, rhs } => match op {
             BinOp::Eq
