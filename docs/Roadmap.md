@@ -53,9 +53,19 @@ Each milestone must be **100% implemented, leak-checked, and tested across Linux
 - [x] **Suite 7 `benchmarks/pipelines.{py,c,rs,archx.lang}`** (`pipelines.py` == `pipelines.archx.lang`, byte-for-byte identical) + a v0.9.0 stage in every `examples/comparison/full_tour.*` edition (`18 ms` 1:1 Pythonic Archx & `16 ms` Speed Archx vs `464 ms` Python 3, `25 ms` clang C, `19 ms` Rust), `0` ASan+LSan leaks, and 37 unit + 27 CLI e2e tests green across Linux, macOS, and Windows.
 - [x] **Bit-identical floating point**: `archx` now passes `-ffp-contract=off` to `clang`, because clang >= 18 contracts `a*b+c` into `fma` **even at `-O2`**, which silently changes the last bits of every `float` result versus Python / Rust / the interpreter semantics Archx promises.
 
+### Milestone 9.1 (`v0.9.1`) — Pythonic Call & Loop Semantics [DONE]
+- [x] **Default parameters**: `def f(a: int, b: int = 3)` binds the declared default at the call site for every omitted trailing argument (including through keyword calls and generic instantiations).
+- [x] **Keyword arguments for user functions**: `f(b=2)`, `f(h=3, w=4)` — keywords are matched against the declared parameter names, duplicates and unknown names are diagnosed, and defaults fill whatever is still missing.
+- [x] **`for ... else`**: the `else` body runs only when the loop finished without `break`, for both `for i in 0..n:` and `for x in iterable:` forms (the flag is only materialized when the body can `break`), so `for ...: ... else: return ...` simplifies search loops without a sentinel variable.
+- [x] **Python loop-variable scope**: loop variables (`range`, list, `str`, `enumerate`, `dict.items`, `zip`) are bound at *function* scope and keep the last value the body saw, exactly like CPython — nested loops no longer lose the inner variable, and `for j in range(2): pass` then `print(j)` prints `1`.
+- [x] **`map` / `filter`**: `map(f, xs)`, `filter(p, xs)`, inline `lambda`s, and soft builtins (`map(str, xs)`) lower to pre-sized comprehension loops — a named function becomes a direct `fastcc` call and a lambda is inlined, so no function values, boxes, or per-element calls survive.
+- [x] **Keyless tuple sorting**: `sorted(pairs)` and `sorted(tuples, reverse=True)` compare tuples lexicographically component by component, with LLVM-padding-correct field offsets.
+- [x] Fixed the `archx_any_binop` runtime IR: bitwise/shift opcodes were unreachable behind the division guard and `%` fed a `phi` it was not a predecessor of, which clang rejected for whole programs using `%ArchxAny` arithmetic.
+
 ---
 
 ## Next Logical Steps (Ordered Implementation Plan)
 
 ### Milestone 10 (`v1.0.0`) — Multi-File Modules (`import`) & Standard Library (`sys`, `os`, `fs`, `math`, `time`)
 - [ ] `import mod` / `from mod import fn` whole-program resolver + file I/O (`open` / `read_text` / `write_text`), CLI `sys.argv`, and `time.monotonic_ns()`.
+- [ ] `try` / `except` / `finally` / `raise` (panic-style unwinding through the region/RAII drop machinery), `del`, `global`, `yield` generators, `class` inheritance, `*args` / `**kwargs`, nested `def` and first-class function values.

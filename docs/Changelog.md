@@ -2,6 +2,16 @@
 
 # Changelog
 
+## `v0.9.1` — Pythonic Call & Loop Semantics
+- **Added**:
+  - **Default parameters**: `def greet(name: str, punct: str = "!")` — omitted trailing arguments are filled from their declared defaults at the call site, for positional, keyword, and (monomorphized) generic calls alike.
+  - **Keyword arguments for user functions**: `rect(h=3, w=4)` matches keywords against declared parameter names, diagnoses unknown/duplicate keywords, and combines with defaults (`greet(loud=true, name="hey")`).
+  - **`for ... else`**: the `else` body runs only when the loop finished without `break` (`for i in 0..n:` and `for x in xs:`), so `for i in range(n): if hit: break` … `else: return None` works as in Python. The completion flag is only materialized when the body can actually break.
+  - **Function-scoped loop variables**: `range`, list, `str`, `enumerate`, `dict.items` and `zip` loop variables live at function scope and keep the last value the body saw — `for j in range(2): pass` then `print(j)` prints `1`, and nested loops no longer hide the inner variable.
+  - **`map` / `filter`**: `map(f, xs)`, `filter(p, xs)`, inline `lambda`s and soft builtins (`map(str, xs)`) lower to pre-sized comprehension loops; named functions become direct `fastcc` calls and lambdas are inlined, so no function values, boxes, or per-element indirect calls remain.
+  - **Keyless tuple sorting**: `sorted(pairs)` / `sorted(tuples, reverse=True)` compare tuples lexicographically component-by-component with LLVM-padding-correct offsets.
+- **Fixed**: the `archx_any_binop` runtime helper dispatched bitwise/shift opcodes behind an unreachable guard and gave `%` a `phi` predecessor it did not have, so clang rejected whole programs using `%ArchxAny` arithmetic (`pipelines`, `full_tour`). Also corrected two stale CLI expectations (list `reverse`/`insert`/`remove` order and triple-quoted `len`) that had never run because `clang` was missing from the test PATH.
+
 ## `v0.8.0` — Milestone 8: Zero-Heap Tuples, `T | None` Optionals, Algebraic `enum`s, Exhaustive `match`/`case`, `python3` Benchmarks & 5-Way Comparison Showcase (Current)
 - **Added**:
   - **Zero-Heap Value Tuples & Unpacking**: `(T1, T2, ...)` and `tuple[T1, T2, ...]` compiled directly to unboxed LLVM register/stack aggregates (`{ T1, T2, ... }`), bare tuple returns (`return lo, hi, total`), Python & systems tuple unpacking (`a, b = expr`, `let a, b = expr`, `(a, b) = expr`, `a, b = b, a` swap, `for k, v in pairs:`), constant positive/negative indexing (`t[0]`, `t[-1]`), `==`/`!=`/`<`/`<=`/`>`/`>=`, `len(t)`, `bool(t)`, and `print`/`str`/`f"{t}"`.

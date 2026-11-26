@@ -478,9 +478,10 @@ xs.sort()                                  # in place
 xs.sort(key=lambda v: v % 3, reverse=True)
 ```
 
-Supported keyless element types are `int`, `float`, `bool`, and `str` (strings compare through
-an SSO-aware three-way compare, so short strings cost no heap traffic). Any other element type
-needs a `key=` that returns one of those four.
+Keyless element types are `int`, `float`, `bool`, `str`, and **tuples of comparable components**
+(`sorted(pairs)` orders `(name, count)` tuples lexicographically, component by component, with
+`reverse=True` reversing that order). Strings compare through an SSO-aware three-way compare, so
+short strings cost no heap traffic. Any other element type needs a `key=` that returns one of those.
 
 > **Printing note.** Archx has no `repr` layer: `print` on a container renders `str` elements
 > unquoted (`[a, apple]`) whereas CPython prints `['a', 'apple']`. Iterate and quote explicitly if
@@ -490,3 +491,64 @@ needs a `key=` that returns one of those four.
 See [`examples/comprehensions_and_sorting.archx.lang`](../examples/comprehensions_and_sorting.archx.lang)
 for a complete file whose output is verified byte-identical to CPython in the test suite.
 
+
+---
+
+## 14. Pythonic Call & Loop Semantics (`v0.9.1`)
+
+### Default parameters and keyword arguments
+```python
+def greet(name: str, punct: str = "!", loud: bool = false) -> str:
+    return name + punct + punct if loud else name + punct
+
+def rect(w: int, h: int = 2) -> int:
+    return w * h
+
+print(greet("hi"))                     # hi!
+print(greet("hi", punct="?"))          # hi?
+print(greet(loud=true, name="hey"))    # hey!!
+print(rect(h=3, w=4), rect(5))         # 12 10
+```
+Defaults bind at the call site, keywords are matched against the declared parameter names,
+and unknown or duplicated keywords are compile errors.
+
+### `for ... else`
+The `else` body runs only when the loop finished **without** `break` — the idiomatic Python
+search loop needs no sentinel variable:
+
+```python
+def find(target: int) -> str:
+    for i in range(4):
+        if i == target:
+            return "found"
+    else:
+        return "missing"
+```
+Both `for i in 0..n:` and `for x in iterable:` forms accept `else:`. The completion flag is only
+materialized when the body can actually `break`, so the common loop pays nothing for it.
+
+### Loop variables are function-scoped, like CPython
+```python
+for j in range(2):
+    pass
+print(j)                                   # 1  (the last value the body saw)
+
+for row in range(2):
+    for col in range(3):
+        pass
+print(row, col)                            # 1 2
+```
+This holds for `range`, list, `str`, `enumerate`, `dict.items` and `zip` headers, including nested
+loops and `for c in "ab"`.
+
+### `map` / `filter`
+Both lower to a pre-sized comprehension loop: a named function becomes a direct `fastcc` call,
+an inline `lambda` is inlined, and soft builtins work too — no function values, no boxing.
+
+```python
+nums = [1, 2, 3, 4, 5]
+print(list(map(lambda x: x * x, nums)))     # [1, 4, 9, 16, 25]
+print(list(filter(lambda x: x % 2 == 1, nums)))  # [1, 3, 5]
+print(sum(map(sq, nums)))                   # named function, same inlining
+print(list(map(str, nums)))                 # ['1', ...] (printed unquoted)
+```
