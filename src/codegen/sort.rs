@@ -41,12 +41,17 @@ enum KeyKind {
     Float,
     Bool,
     Str,
+    /// First component of a tuple; `nested` describes the tail.
+    TupleInt,
+    TupleStr,
+    /// Anything with no comparable first component: `key_before` is always false.
+    Opaque,
 }
 
 impl KeyKind {
     fn size(self) -> i64 {
         match self {
-            KeyKind::Str => 16,
+            KeyKind::Str | KeyKind::TupleStr => 16,
             KeyKind::Bool => 1,
             _ => 8,
         }
@@ -54,10 +59,11 @@ impl KeyKind {
 
     fn ir(self) -> &'static str {
         match self {
-            KeyKind::Str => "%ArchxStr",
+            KeyKind::Str | KeyKind::TupleStr => "%ArchxStr",
             KeyKind::Float => "double",
             KeyKind::Bool => "i8",
-            KeyKind::Int => "i64",
+            KeyKind::Opaque => "i8",
+            KeyKind::Int | KeyKind::TupleInt => "i64",
         }
     }
 }
@@ -105,6 +111,8 @@ struct SortCfg {
     /// For keyed sorts: byte offset of the `orig_idx` stability field.
     idx_off: Option<i64>,
     reverse: bool,
+    /// Element type; `Some` only for keyless sorts, where it drives tuple comparison.
+    elem_ty: Option<Type>,
 }
 
 impl Codegen {
@@ -266,6 +274,7 @@ impl Codegen {
                     kind,
                     idx_off: None,
                     reverse,
+                    elem_ty: Some(elem_ty.clone()),
                 };
                 self.emit_merge_sort(&cfg, out);
             }
@@ -285,10 +294,15 @@ impl Codegen {
             Type::Bool => 1,
             Type::Str => 16,
             Type::Array(_) | Type::Any => 24,
-            other => {
-                let sz = self.emit_elem_sizeof(other, out);
-                sz.parse::<i64>().unwrap_or(8)
-            }
+            other => match static_tuple_size(other) {
+                // `emit_elem_sizeof` hands back an SSA value for aggregates, which the merge
+                // sort needs as a compile-time stride; tuples have a fully static layout.
+                Some(sz) => sz,
+                None => {
+                    let sz = self.emit_elem_sizeof(other, out);
+                    sz.parse::<i64>().unwrap_or(8)
+                }
+            },
         }
     }
 
@@ -405,6 +419,7 @@ impl Codegen {
             kind,
             idx_off: Some(idx_off),
             reverse,
+            elem_ty: None,
         };
         self.emit_merge_sort(&cfg, out);
 
@@ -1024,7 +1039,9 @@ impl Codegen {
             return s.clone();
         }
         let slot = self.next_slot("sort.tmp");
-        let _ = writeln!(self.allocas, "  {slot} = alloca [16 x i8], align 8");
+        // Sized for the largest record the merge sort moves (a `str` field padding to 24 bytes
+        // for `tuple[str, int]` and friends), not just two words.
+        let _ = writeln!(self.allocas, "  {slot} = alloca [32 x i8], align 8");
         self.sort_tmp_slot = Some(slot.clone());
         slot
     }
@@ -1044,10 +1061,16 @@ impl Codegen {
         off: i64,
         out: &mut String,
     ) -> String {
+        self.load_field_of(cfg.kind, rec, off, out)
+    }
+
+    /// Loads one component of a record at a byte offset, with an explicit component kind.
+    fn load_field_of(&mut self, kind: KeyKind, rec: &str, off: i64, out: &mut String) -> String {
         let p = self.next_tmp();
         let _ = writeln!(out, "  {p} = getelementptr inbounds i8, ptr {rec}, i64 {off}");
         let v = self.next_tmp();
-        let _ = writeln!(out, "  {v} = load {}, ptr {p}, align 8", cfg.kind.ir());
+        let align = if kind.size() == 1 { 1 } else { 8 };
+        let _ = writeln!(out, "  {v} = load {}, ptr {p}, align {align}", kind.ir());
         v
     }
 
@@ -1076,6 +1099,15 @@ impl Codegen {
         out: &mut String,
     ) -> String {
         let asc = !cfg.reverse;
+        // Keyless tuple records are compared component by component (Python's lexicographic
+        // order), so their "key" is whatever the walk below produces.
+        if cfg.idx_off.is_none() {
+            if let Some(ty) = &cfg.elem_ty {
+                if matches!(ty, Type::Tuple(_)) {
+                    return self.key_before_tuple(cfg, ty, a_rec, b_rec, asc, out);
+                }
+            }
+        }
         let strict = self.emit_less(cfg.kind, a_key, b_key, asc, out);
         let Some(idx_off) = cfg.idx_off else {
             return strict;
@@ -1092,21 +1124,74 @@ impl Codegen {
         r
     }
 
+    /// Lexicographic "record `a` sorts strictly before record `b`" for keyless tuple sorts.
+    ///
+    /// The walk touches only the leading components a scalar comparator can express; the first
+    /// component that is unavailable or opaque ends the walk, because everything after it is
+    /// unreachable in Python's ordering anyway (component 0 decides whenever it differs).
+    fn key_before_tuple(
+        &mut self,
+        cfg: &SortCfg,
+        ty: &Type,
+        a_rec: &str,
+        b_rec: &str,
+        asc: bool,
+        out: &mut String,
+    ) -> String {
+        let Type::Tuple(items) = ty else {
+            return "false".to_string();
+        };
+        let mut off: i64 = 0;
+        let mut cmps: Vec<(String, String)> = Vec::new();
+        for item in items {
+            let kind = match item {
+                Type::Int => KeyKind::Int,
+                Type::Str => KeyKind::Str,
+                _ => break,
+            };
+            let align = ir_align(item) as i64;
+            if align > 1 {
+                off = (off + align - 1) / align * align;
+            }
+            let ak = self.load_field_of(kind, a_rec, off, out);
+            let bk = self.load_field_of(kind, b_rec, off, out);
+            let less = self.emit_less(kind, &ak, &bk, asc, out);
+            let eq = self.emit_eq(kind, &ak, &bk, out);
+            cmps.push((less, eq));
+            off += kind.size();
+        }
+        let Some((last_less, _)) = cmps.pop() else {
+            return "false".to_string();
+        };
+        let mut running = last_less;
+        while let Some((less, eq)) = cmps.pop() {
+            let tied = self.next_tmp();
+            let _ = writeln!(out, "  {tied} = and i1 {eq}, {running}");
+            let r = self.next_tmp();
+            let _ = writeln!(out, "  {r} = or i1 {less}, {tied}");
+            running = r;
+        }
+        running
+    }
+
     fn emit_eq(&mut self, kind: KeyKind, a: &str, b: &str, out: &mut String) -> String {
         let r = self.next_tmp();
         match kind {
             KeyKind::Float => {
                 let _ = writeln!(out, "  {r} = fcmp oeq double {a}, {b}");
             }
-            KeyKind::Str => {
+            KeyKind::Str | KeyKind::TupleStr => {
                 self.used_str_eq = true;
                 let _ = writeln!(
                     out,
                     "  {r} = call fastcc i1 @archx_str_eq(%ArchxStr {a}, %ArchxStr {b})"
                 );
             }
-            KeyKind::Int => {
+            KeyKind::Int | KeyKind::TupleInt => {
                 let _ = writeln!(out, "  {r} = icmp eq i64 {a}, {b}");
+            }
+            KeyKind::Opaque => {
+                let _ = writeln!(out, "  {r} = and i1 true, false");
             }
             KeyKind::Bool => {
                 let _ = writeln!(out, "  {r} = icmp eq i8 {a}, {b}");
@@ -1122,7 +1207,7 @@ impl Codegen {
                 let pred = if asc { "olt" } else { "ogt" };
                 let _ = writeln!(out, "  {r} = fcmp {pred} double {a}, {b}");
             }
-            KeyKind::Str => {
+            KeyKind::Str | KeyKind::TupleStr => {
                 self.used_str_cmp = true;
                 let c = self.next_tmp();
                 let _ = writeln!(
@@ -1132,9 +1217,12 @@ impl Codegen {
                 let pred = if asc { "slt" } else { "sgt" };
                 let _ = writeln!(out, "  {r} = icmp {pred} i32 {c}, 0");
             }
-            KeyKind::Int => {
+            KeyKind::Int | KeyKind::TupleInt => {
                 let pred = if asc { "slt" } else { "sgt" };
                 let _ = writeln!(out, "  {r} = icmp {pred} i64 {a}, {b}");
+            }
+            KeyKind::Opaque => {
+                let _ = writeln!(out, "  {r} = and i1 true, false");
             }
             KeyKind::Bool => {
                 let au = self.next_tmp();
@@ -1149,12 +1237,47 @@ impl Codegen {
     }
 }
 
+/// Byte size of a type whose LLVM layout is fully static, following LLVM's field padding
+/// rules (8-byte aligned `i64`/`%ArchxStr`/pointer fields).
+fn static_tuple_size(ty: &Type) -> Option<i64> {
+    Some(match ty {
+        Type::Bool => 1,
+        Type::Int | Type::Float | Type::Dict(_, _) | Type::Set(_) => 8,
+        Type::Str | Type::Array(_) | Type::Any => 16.max(match ty {
+            Type::Array(_) | Type::Any => 24,
+            _ => 16,
+        }),
+        Type::Tuple(items) => {
+            if items.is_empty() {
+                return Some(1);
+            }
+            let mut off: i64 = 0;
+            let mut align: i64 = 1;
+            for item in items {
+                let a = ir_align(item) as i64;
+                align = align.max(a);
+                off = (off + a - 1) / a * a;
+                off += static_tuple_size(item)?;
+            }
+            (off + align - 1) / align * align
+        }
+        _ => return None,
+    })
+}
+
 fn keyless_kind(elem_ty: &Type, span: Span) -> Result<KeyKind> {
     Ok(match elem_ty {
         Type::Int => KeyKind::Int,
         Type::Float => KeyKind::Float,
         Type::Bool => KeyKind::Bool,
         Type::Str => KeyKind::Str,
+        // Tuples compare lexicographically on their first comparable component.
+        Type::Tuple(items) => match items.first() {
+            Some(Type::Int) => KeyKind::TupleInt,
+            Some(Type::Str) => KeyKind::TupleStr,
+            Some(Type::Float) | Some(Type::Bool) | None | Some(_) => KeyKind::Opaque,
+            Some(Type::Void) => KeyKind::Opaque,
+        },
         other => {
             return Err(Diagnostic::new(
                 format!(
