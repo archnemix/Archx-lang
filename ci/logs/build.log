@@ -36,26 +36,26 @@
     [1m[94m|[0m         [1m[33m^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_span`[0m
 
 [1m[33mwarning[0m[1m: unused variable: `arr_name`[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1005:9
+    [1m[94m--> [0msrc/codegen/methods.rs:1010:9
      [1m[94m|[0m
-[1m[94m1005[0m [1m[94m|[0m         arr_name: &str,
+[1m[94m1010[0m [1m[94m|[0m         arr_name: &str,
      [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_arr_name`[0m
 
 [1m[33mwarning[0m[1m: variable does not need to be mutable[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1113:13
+    [1m[94m--> [0msrc/codegen/methods.rs:1118:13
      [1m[94m|[0m
-[1m[94m1113[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
+[1m[94m1118[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
      [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^^^^^^[0m
      [1m[94m|[0m             [1m[94m|[0m
      [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
 
 [1m[33mwarning[0m[1m: variant `ForElse` is never constructed[0m
-   [1m[94m--> [0msrc/ast.rs:209:5
+   [1m[94m--> [0msrc/ast.rs:234:5
     [1m[94m|[0m
-[1m[94m129[0m [1m[94m|[0m pub enum StmtKind {
+[1m[94m145[0m [1m[94m|[0m pub enum StmtKind {
     [1m[94m|[0m          [1m[94m--------[0m [1m[94mvariant in this enum[0m
 [1m[94m...[0m
-[1m[94m209[0m [1m[94m|[0m     ForElse {
+[1m[94m234[0m [1m[94m|[0m     ForElse {
     [1m[94m|[0m     [1m[33m^^^^^^^[0m
     [1m[94m|[0m
     [1m[94m= [0m[1mnote[0m: `StmtKind` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
@@ -91,5 +91,14 @@
 [1m[94m578[0m [1m[94m|[0m     fn declare_loop_var_in_outer_scope(
     [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
 
-[1m[33mwarning[0m: `archx` (bin "archx") generated 12 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 31.96s
+[1m[33mwarning[0m[1m: method `forget_drop_target` is never used[0m
+   [1m[94m--> [0msrc/codegen/ownership.rs:535:19
+    [1m[94m|[0m
+[1m[94m 10[0m [1m[94m|[0m impl Codegen {
+    [1m[94m|[0m [1m[94m------------[0m [1m[94mmethod in this implementation[0m
+[1m[94m...[0m
+[1m[94m535[0m [1m[94m|[0m     pub(super) fn forget_drop_target(&mut self, slot: &str) {
+    [1m[94m|[0m                   [1m[33m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx") generated 13 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 26.92s
