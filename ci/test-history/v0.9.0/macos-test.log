@@ -31,22 +31,6 @@ InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDe
 [1m[94m580[0m [1m[94m|[0m         let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
     [1m[94m|[0m              [1m[33m^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_elem_ty`[0m
 
-[1m[33mwarning[0m[1m: unused variable: `cfg`[0m
-    [1m[94m--> [0msrc/codegen/sort.rs:1134:9
-     [1m[94m|[0m
-[1m[94m1134[0m [1m[94m|[0m         cfg: &SortCfg,
-     [1m[94m|[0m         [1m[33m^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_cfg`[0m
-
-[1m[33mwarning[0m[1m: unreachable pattern[0m
-    [1m[94m--> [0msrc/codegen/sort.rs:1279:13
-     [1m[94m|[0m
-[1m[94m1278[0m [1m[94m|[0m             Some(Type::Float) | Some(Type::Bool) | None | Some(_) => KeyKind::Opaque,
-     [1m[94m|[0m             [1m[94m-----------------------------------------------------[0m [1m[94mmatches all the relevant values[0m
-[1m[94m1279[0m [1m[94m|[0m             Some(Type::Void) => KeyKind::Opaque,
-     [1m[94m|[0m             [1m[33m^^^^^^^^^^^^^^^^[0m [1m[33mno value can reach this[0m
-     [1m[94m|[0m
-     [1m[94m= [0m[1mnote[0m: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
-
 [1m[33mwarning[0m[1m: unused variable: `span`[0m
    [1m[94m--> [0msrc/codegen/loops.rs:264:9
     [1m[94m|[0m
@@ -60,15 +44,15 @@ InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDe
     [1m[94m|[0m         [1m[33m^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_span`[0m
 
 [1m[33mwarning[0m[1m: unused variable: `arr_name`[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1004:9
+    [1m[94m--> [0msrc/codegen/methods.rs:1005:9
      [1m[94m|[0m
-[1m[94m1004[0m [1m[94m|[0m         arr_name: &str,
+[1m[94m1005[0m [1m[94m|[0m         arr_name: &str,
      [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_arr_name`[0m
 
 [1m[33mwarning[0m[1m: variable does not need to be mutable[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1112:13
+    [1m[94m--> [0msrc/codegen/methods.rs:1113:13
      [1m[94m|[0m
-[1m[94m1112[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
+[1m[94m1113[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
      [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^^^^^^[0m
      [1m[94m|[0m             [1m[94m|[0m
      [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
@@ -115,90 +99,91 @@ InstalledDir: /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDe
 [1m[94m578[0m [1m[94m|[0m     fn declare_loop_var_in_outer_scope(
     [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
 
-[1m[33mwarning[0m: `archx` (bin "archx" test) generated 14 warnings (14 duplicates)
-[1m[33mwarning[0m: `archx` (bin "archx") generated 14 warnings (run `cargo fix --bin "archx" -p archx` to apply 8 suggestions)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 10.32s
+[1m[33mwarning[0m: `archx` (bin "archx") generated 12 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
+[1m[33mwarning[0m: `archx` (bin "archx" test) generated 12 warnings (12 duplicates)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 13.92s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/1f7d289df38aec54/out/archx-1f7d289df38aec54)
 
 running 37 tests
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
 test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
+test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
-test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
 test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
-test codegen::tests::non_exhaustive_enum_match_and_oob_tuple_index_are_rejected ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
-test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
-test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
+test codegen::tests::non_exhaustive_enum_match_and_oob_tuple_index_are_rejected ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
 test lexer::tests::equality_operators ... ok
+test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::loop_tokens ... ok
-test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
 test lexer::tests::rejects_bad_unindent ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
-test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... ok
-test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
+test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
+test parser::tests::parses_elif_chain ... ok
+test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_enums_tuples_optionals_match_and_init_class ... ok
 test parser::tests::parses_functions_with_params ... ok
-test parser::tests::parses_for_and_break_continue ... ok
-test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_if_else ... ok
-test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
-test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
-test parser::tests::parses_structs_regions_step_and_foreach ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_while_and_assignment ... ok
-test parser::tests::rejects_invalid_assignment_target ... ok
-test tests::default_output_strips_archx_extensions ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
 test parser::tests::rejects_missing_colon ... ok
+test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
+test tests::default_output_strips_archx_extensions ... ok
 
-test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
 [1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/28497c80ec2e5687/out/cli-28497c80ec2e5687)
 
-running 31 tests
+running 32 tests
 test break_outside_loop_is_an_error ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
 test arrays_run ... ok
 test comprehension_and_sorting_example_matches_expected_output ... ok
 test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1312/key_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1312/key_err`
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1416/key_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1416/key_err`
 test elif_and_compound_assign_run ... ok
 test emit_ir_works ... ok
 test comprehensions_generators_zip_and_inline_sort_work ... ok
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1312/type_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1312/type_err`
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1416/type_err.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-v07panic-1416/type_err`
 test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
 test functions_run ... ok
 test hello_world_runs ... ok
 test if_else_runs ... ok
-test loops_run ... ok
 test inline_sort_is_ub_free_across_run_lengths_and_keeps_stability ... ok
+test loops_run ... ok
 test pep695_generics_and_inline_lambdas_are_monomorphized ... ok
 test out_of_bounds_panics_cleanly ... ok
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1312/fail_assert.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1312/fail_assert`
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1416/fail_assert.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1416/fail_assert`
 test planar_simd_dict_set_and_slicing_work ... ok
-compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1312/zero_step.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1312/zero_step`
+compiled `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1416/zero_step.archx.lang` -> `/var/folders/q2/p1t6rgxj5fj32g1dc7dmd49r0000gn/T/archx-pypanic-1416/zero_step`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
+test full_tour_pythonic_and_speed_editions_match_exactly ... ok
 test pythonic_defaults_else_keywords_and_map_filter ... ok
 test pythonic_int_float_semantics_match_cpython ... ok
-test pythonic_formatting_and_set_algebra_match_cpython ... ok
-test full_tour_pythonic_and_speed_editions_match_exactly ... ok
 test pythonic_list_mutation_join_bitwise_and_docstrings ... ok
+test pythonic_formatting_and_set_algebra_match_cpython ... ok
+test pythonic_nested_collection_sorting_matches_cpython ... ok
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
 test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
 test run_flag_default_output_and_str_alias_work ... ok
+test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
 test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
-test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test tuples_optionals_enums_and_pattern_matching_work ... ok
 
-test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.01s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.78s
 

@@ -23,22 +23,6 @@
 [1m[94m580[0m [1m[94m|[0m         let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
     [1m[94m|[0m              [1m[33m^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_elem_ty`[0m
 
-[1m[33mwarning[0m[1m: unused variable: `cfg`[0m
-    [1m[94m--> [0msrc/codegen/sort.rs:1134:9
-     [1m[94m|[0m
-[1m[94m1134[0m [1m[94m|[0m         cfg: &SortCfg,
-     [1m[94m|[0m         [1m[33m^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_cfg`[0m
-
-[1m[33mwarning[0m[1m: unreachable pattern[0m
-    [1m[94m--> [0msrc/codegen/sort.rs:1279:13
-     [1m[94m|[0m
-[1m[94m1278[0m [1m[94m|[0m             Some(Type::Float) | Some(Type::Bool) | None | Some(_) => KeyKind::Opaque,
-     [1m[94m|[0m             [1m[94m-----------------------------------------------------[0m [1m[94mmatches all the relevant values[0m
-[1m[94m1279[0m [1m[94m|[0m             Some(Type::Void) => KeyKind::Opaque,
-     [1m[94m|[0m             [1m[33m^^^^^^^^^^^^^^^^[0m [1m[33mno value can reach this[0m
-     [1m[94m|[0m
-     [1m[94m= [0m[1mnote[0m: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
-
 [1m[33mwarning[0m[1m: unused variable: `span`[0m
    [1m[94m--> [0msrc/codegen/loops.rs:264:9
     [1m[94m|[0m
@@ -52,15 +36,15 @@
     [1m[94m|[0m         [1m[33m^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_span`[0m
 
 [1m[33mwarning[0m[1m: unused variable: `arr_name`[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1004:9
+    [1m[94m--> [0msrc/codegen/methods.rs:1005:9
      [1m[94m|[0m
-[1m[94m1004[0m [1m[94m|[0m         arr_name: &str,
+[1m[94m1005[0m [1m[94m|[0m         arr_name: &str,
      [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_arr_name`[0m
 
 [1m[33mwarning[0m[1m: variable does not need to be mutable[0m
-    [1m[94m--> [0msrc/codegen/methods.rs:1112:13
+    [1m[94m--> [0msrc/codegen/methods.rs:1113:13
      [1m[94m|[0m
-[1m[94m1112[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
+[1m[94m1113[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
      [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^^^^^^[0m
      [1m[94m|[0m             [1m[94m|[0m
      [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
@@ -107,5 +91,5 @@
 [1m[94m578[0m [1m[94m|[0m     fn declare_loop_var_in_outer_scope(
     [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
 
-[1m[33mwarning[0m: `archx` (bin "archx") generated 14 warnings (run `cargo fix --bin "archx" -p archx` to apply 8 suggestions)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 22.55s
+[1m[33mwarning[0m: `archx` (bin "archx") generated 12 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 31.96s
