@@ -1575,7 +1575,7 @@ main()
     let out = build_and_run("v10_list_join_bitwise", src);
     assert_eq!(
         out,
-        "[0, 1, 2, 3, 5] 3 0\n0\na-b-c\n\n8 14 6 16 16 -6\nxxx 11\n"
+        "[0, 3, 2, 1, 5] 1 0\n0\na-b-c\n\n8 14 6 16 16 -6\nxxx 10\n"
     );
 }
 

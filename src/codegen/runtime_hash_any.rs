@@ -1947,12 +1947,15 @@ pow_step:
 ret_int_pow:
   br label %ret_int
 ic_divrem:
+  %is_bitwise = icmp uge i64 %op, 7
+  br i1 %is_bitwise, label %ret_int_bw, label %div_chk
+div_chk:
   %bz = icmp eq i64 %wb1, 0
-  br i1 %bz, label %div_z, label %ic_div_ok
+  br i1 %bz, label %div_z, label %div_ok
 div_z:
   call void @archx_div_zero_fail()
   unreachable
-ic_div_ok:
+div_ok:
   %is_min = icmp eq i64 %wa1, -9223372036854775808
   %is_m1 = icmp eq i64 %wb1, -1
   %ovf_d = and i1 %is_min, %is_m1
@@ -1978,7 +1981,7 @@ i_fdiv:
 i_mod:
   %radj = add i64 %r, %safe_b
   %vmd = select i1 %need_adj, i64 %radj, i64 %r
-  br label %ret_int_bw
+  br label %ret_int
 ret_int_bw:
   %op_and = icmp eq i64 %op, 7
   br i1 %op_and, label %i_and, label %ic_or

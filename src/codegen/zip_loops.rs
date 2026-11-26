@@ -153,14 +153,6 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<()> {
-        for v in vars {
-            if self.lookup_var(v).is_some() {
-                return Err(Diagnostic::new(
-                    format!("loop variable `{v}` is already defined"),
-                    span,
-                ));
-            }
-        }
         // `for a, b in zip(...)`: peel directly into the fused zip loop.
         if let ExprKind::Call { name, args } = &iter.kind {
             if name == "zip" {

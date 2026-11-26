@@ -276,12 +276,6 @@ impl Codegen {
         };
         self.flush_stmt_temps(out);
 
-        if self.lookup_var(var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{var}` is already defined"),
-                span,
-            ));
-        }
 
         let is_pos_const = matches!(step_dir, StepDir::PosConst);
         let iv_reassigned = stmts_assign_var(body, var);
@@ -475,16 +469,8 @@ impl Codegen {
         let outer_depth = self.scopes.len();
         let outer_rdepth = self.region_stack.len();
         // Python keeps the loop variable bound after the loop (`for i in ...` then `print(i)`),
-        // so it lives in the *enclosing* scope, not in the loop body's scope.
-        self.scopes.last_mut().unwrap().vars.insert(
-            var.to_string(),
-            VarEntry {
-                ty: Type::Int,
-                storage: VarStorage::Slot(slot.clone()),
-                is_param: false,
-                region_depth: outer_rdepth,
-            },
-        );
+        // so it lives in the enclosing scope and a fresh `for i` simply rebinds it.
+        bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
         self.push_scope();
         if let Some(bound) = &proven_bound {
             self.loop_bounds.push(bound.clone());
@@ -560,12 +546,6 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<()> {
-        if self.lookup_var(var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{var}` is already defined"),
-                span,
-            ));
-        }
 
         if let ExprKind::Var(aname) = &iter.kind {
             if let Some(entry) = self.lookup_var(aname).cloned() {
@@ -959,18 +939,6 @@ impl Codegen {
         if idx_var == elem_var {
             return Err(Diagnostic::new(
                 format!("duplicate loop variable `{idx_var}` in `enumerate`"),
-                span,
-            ));
-        }
-        if self.lookup_var(idx_var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{idx_var}` is already defined"),
-                span,
-            ));
-        }
-        if self.lookup_var(elem_var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{elem_var}` is already defined"),
                 span,
             ));
         }
@@ -1579,18 +1547,6 @@ impl Codegen {
         if key_var == val_var {
             return Err(Diagnostic::new(
                 format!("duplicate loop variable `{key_var}` in `for k, v in ...`"),
-                span,
-            ));
-        }
-        if self.lookup_var(key_var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{key_var}` is already defined"),
-                span,
-            ));
-        }
-        if self.lookup_var(val_var).is_some() {
-            return Err(Diagnostic::new(
-                format!("loop variable `{val_var}` is already defined"),
                 span,
             ));
         }
