@@ -9,9 +9,12 @@ use crate::diag::{Diagnostic, Result, Span};
 use super::analysis::*;
 use super::*;
 
-/// Bind a `for` loop variable in the enclosing scope (Python keeps it visible after the loop).
+/// Bind a `for` loop variable in the *function* scope.
+///
+/// Python scoping is function-level: `for b in ...` inside another loop's body still leaves `b`
+/// visible after both loops end, so the binding cannot live in either loop's block scope.
 fn bind_loop_var(cg: &mut Codegen, var: &str, ty: Type, slot: String, region_depth: usize) {
-    cg.scopes.last_mut().unwrap().vars.insert(
+    cg.scopes[0].vars.insert(
         var.to_string(),
         VarEntry {
             ty,
@@ -20,6 +23,12 @@ fn bind_loop_var(cg: &mut Codegen, var: &str, ty: Type, slot: String, region_dep
             region_depth,
         },
     );
+}
+
+/// Insert many loop variables (`enumerate`, `zip`, `dict.items`) at function scope, where Python
+/// keeps them.
+fn bind_fn_scope(cg: &mut Codegen, name: String, entry: VarEntry) {
+    cg.scopes[0].vars.insert(name, entry);
 }
 
 impl Codegen {
@@ -358,6 +367,12 @@ impl Codegen {
         let slot = self.next_slot(&format!("for.{var}"));
         let _ = writeln!(self.allocas, "  {slot} = alloca i64, align 8");
         let _ = writeln!(out, "  store i64 {start_val}, ptr {slot}, align 8");
+        // Python's loop variable keeps the last value the body *saw*, so the binding reads this
+        // slot (written at the top of every iteration) rather than the induction variable, which
+        // has already been stepped once the loop exits.
+        let last_slot = self.next_slot(&format!("for.last.{var}"));
+        let _ = writeln!(self.allocas, "  {last_slot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 {start_val}, ptr {last_slot}, align 8");
 
         if !extra_arrays.is_empty() && extra_arrays.len() <= 8 {
             let mut guard: Option<String> = None;
@@ -395,7 +410,8 @@ impl Codegen {
             self.start_block(&fast_body, out);
             let outer_depth = self.scopes.len();
             let outer_rdepth = self.region_stack.len();
-            bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
+            let _ = writeln!(out, "  store i64 {fi}, ptr {last_slot}, align 8");
+            bind_loop_var(self, var, Type::Int, last_slot.clone(), outer_rdepth);
             self.push_scope();
             let mut pushed_bounds = 0usize;
             if let Some(b) = &proven_bound {
@@ -444,8 +460,9 @@ impl Codegen {
             self.start_block(&slow_body, out);
             let outer_depth = self.scopes.len();
             let outer_rdepth = self.region_stack.len();
-            // Python keeps the loop variable bound after the loop: bind it in the enclosing scope.
-            bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
+            let _ = writeln!(out, "  store i64 {si}, ptr {last_slot}, align 8");
+            // Python keeps the loop variable bound after the loop: bind it at function scope.
+            bind_loop_var(self, var, Type::Int, last_slot.clone(), outer_rdepth);
             self.push_scope();
             if let Some(b) = &proven_bound {
                 self.loop_bounds.push(b.clone());
@@ -517,7 +534,8 @@ impl Codegen {
         let outer_rdepth = self.region_stack.len();
         // Python keeps the loop variable bound after the loop (`for i in ...` then `print(i)`),
         // so it lives in the enclosing scope and a fresh `for i` simply rebinds it.
-        bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
+        let _ = writeln!(out, "  store i64 {i}, ptr {last_slot}, align 8");
+        bind_loop_var(self, var, Type::Int, last_slot.clone(), outer_rdepth);
         self.push_scope();
         if let Some(bound) = &proven_bound {
             self.loop_bounds.push(bound.clone());
@@ -574,7 +592,7 @@ impl Codegen {
         };
         let _ = writeln!(out, "  store {ty_ir} {zero}, ptr {sptr}, align {align}");
         let _ = out;
-        self.scopes.last_mut().unwrap().vars.insert(
+        bind_fn_scope(self, 
             var.to_string(),
             VarEntry {
                 ty: elem_ty.clone(),
@@ -635,7 +653,7 @@ impl Codegen {
                     } else {
                         VarStorage::Imm(elem_val)
                     };
-                    self.scopes.last_mut().unwrap().vars.insert(
+                    bind_fn_scope(self, 
                         var.to_string(),
                         VarEntry {
                             ty: elem_ty,
@@ -767,7 +785,7 @@ impl Codegen {
         };
         let _ = writeln!(out, "  store {ty_ir} {init_elem}, ptr {slot}, align {align}");
         let owns = self.type_needs_drop(&elem_ty);
-        self.scopes.last_mut().unwrap().vars.insert(
+        bind_fn_scope(self, 
             var.to_string(),
             VarEntry {
                 ty: (*elem_ty).clone(),
@@ -935,11 +953,24 @@ impl Codegen {
         } else {
             VarStorage::Imm(ch_val)
         };
-        self.scopes.last_mut().unwrap().vars.insert(
+        // Function-scoped like every other loop variable (Python semantics). The character is an
+        // SSA value defined inside the loop, so it must live in a slot: binding the value directly
+        // would leak a definition that does not dominate the code after the loop.
+        let var_slot = match &storage {
+            VarStorage::Slot(p) => p.clone(),
+            VarStorage::Imm(v) => {
+                let sptr = self.next_slot(&format!("var.{var}"));
+                let _ = writeln!(self.allocas, "  {sptr} = alloca %ArchxStr, align 8");
+                let _ = writeln!(out, "  store %ArchxStr {v}, ptr {sptr}, align 8");
+                sptr
+            }
+            VarStorage::Soa { .. } => unreachable!(),
+        };
+        self.scopes[0].vars.insert(
             var.to_string(),
             VarEntry {
                 ty: Type::Str,
-                storage,
+                storage: VarStorage::Slot(var_slot),
                 is_param: !var_mutated,
                 region_depth: outer_rdepth,
             },
@@ -1059,7 +1090,7 @@ impl Codegen {
                     } else {
                         VarStorage::Imm(elem_val)
                     };
-                    self.scopes.last_mut().unwrap().vars.insert(
+                    bind_fn_scope(self, 
                         idx_var.to_string(),
                         VarEntry {
                             ty: Type::Int,
@@ -1068,7 +1099,7 @@ impl Codegen {
                             region_depth: outer_rdepth,
                         },
                     );
-                    self.scopes.last_mut().unwrap().vars.insert(
+                    bind_fn_scope(self, 
                         elem_var.to_string(),
                         VarEntry {
                             ty: elem_ty,
@@ -1220,15 +1251,13 @@ impl Codegen {
         let outer_depth = self.scopes.len();
         let outer_rdepth = self.region_stack.len();
         self.push_scope();
+        // The index is always slotted: it is function-scoped, and `user_idx` is defined inside
+        // this block, so binding the SSA value directly would not dominate post-loop code.
         let idx_mut = self.mutated_vars.contains(idx_var);
-        let idx_storage = if idx_mut {
-            let islot = self.next_slot(&format!("var.{idx_var}"));
-            let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
-            let _ = writeln!(out, "  store i64 {user_idx}, ptr {islot}, align 8");
-            VarStorage::Slot(islot)
-        } else {
-            VarStorage::Imm(user_idx)
-        };
+        let islot = self.next_slot(&format!("var.{idx_var}"));
+        let _ = writeln!(self.allocas, "  {islot} = alloca i64, align 8");
+        let _ = writeln!(out, "  store i64 {user_idx}, ptr {islot}, align 8");
+        let idx_storage = VarStorage::Slot(islot);
         let elem_mut = self.mutated_vars.contains(elem_var);
         let elem_storage = if elem_mut {
             let init_elem = if !is_str && self.type_needs_drop(&elem_ty) {
@@ -1256,7 +1285,7 @@ impl Codegen {
             VarStorage::Imm(raw_elem)
         };
 
-        self.scopes.last_mut().unwrap().vars.insert(
+        bind_fn_scope(self, 
             idx_var.to_string(),
             VarEntry {
                 ty: Type::Int,
@@ -1265,7 +1294,22 @@ impl Codegen {
                 region_depth: outer_rdepth,
             },
         );
-        self.scopes.last_mut().unwrap().vars.insert(
+        // String elements are SSA values defined inside the loop, so they always need a slot
+        // once they are function-scoped (`for i, ch in enumerate(s)` keeps `ch` afterwards).
+        let elem_storage = if is_str {
+            match elem_storage {
+                VarStorage::Imm(v) => {
+                    let eslot = self.next_slot(&format!("var.{elem_var}"));
+                    let _ = writeln!(self.allocas, "  {eslot} = alloca %ArchxStr, align 8");
+                    let _ = writeln!(out, "  store %ArchxStr {v}, ptr {eslot}, align 8");
+                    VarStorage::Slot(eslot)
+                }
+                other => other,
+            }
+        } else {
+            elem_storage
+        };
+        bind_fn_scope(self, 
             elem_var.to_string(),
             VarEntry {
                 ty: elem_ty,
@@ -1543,7 +1587,7 @@ impl Codegen {
                 ptr: sptr.clone(),
                 ty: Type::Any,
             });
-        self.scopes.last_mut().unwrap().vars.insert(
+        bind_fn_scope(self, 
             var.to_string(),
             VarEntry {
                 ty: Type::Any,
@@ -1783,7 +1827,7 @@ impl Codegen {
         } else {
             VarStorage::Imm(loaded_val.to_string())
         };
-        self.scopes.last_mut().unwrap().vars.insert(
+        bind_fn_scope(self, 
             var.to_string(),
             VarEntry {
                 ty: ty.clone(),

@@ -132,7 +132,8 @@ impl Codegen {
         } else {
             VarStorage::Imm(val.to_string())
         };
-        self.scopes.last_mut().unwrap().vars.insert(
+        // Zip loop variables are function-scoped, like every other Python loop variable.
+        self.scopes[0].vars.insert(
             name.to_string(),
             VarEntry {
                 ty,

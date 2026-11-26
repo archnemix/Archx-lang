@@ -1665,7 +1665,7 @@ main()
     let out = build_and_run("v11_defaults_else_map", src);
     assert_eq!(
         out,
-        "hi! hi? hey!!\n10 12\nfound missing\n2\n\
+        "hi! hi? hey!!\n10 12\nfound missing\n1\n\
          [1, 4, 9, 16, 25]\n[1, 3, 5]\n[2, 4, 6, 8, 10]\n[1, 2, 3, 4, 5]\n\
          [(a, 0), (a, 1), (b, 2)]\n[3, 2, 1]\n"
     );
