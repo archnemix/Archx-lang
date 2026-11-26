@@ -1,2 +1,111 @@
 [1m[92m   Compiling[0m archx v0.9.0 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 20.75s
+[1m[33mwarning[0m[1m: unused variable: `arr_name`[0m
+    [1m[94m--> [0msrc/codegen/calls.rs:1344:9
+     [1m[94m|[0m
+[1m[94m1344[0m [1m[94m|[0m         arr_name: &str,
+     [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_arr_name`[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: variable does not need to be mutable[0m
+    [1m[94m--> [0msrc/codegen/collections.rs:1502:13
+     [1m[94m|[0m
+[1m[94m1502[0m [1m[94m|[0m         let mut iterate_operand = |cg: &mut Self,
+     [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^^^^^^^^^^^^^[0m
+     [1m[94m|[0m             [1m[94m|[0m
+     [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused variable: `elem_ty`[0m
+   [1m[94m--> [0msrc/codegen/comprehensions.rs:580:14
+    [1m[94m|[0m
+[1m[94m580[0m [1m[94m|[0m         let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
+    [1m[94m|[0m              [1m[33m^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_elem_ty`[0m
+
+[1m[33mwarning[0m[1m: unused variable: `cfg`[0m
+    [1m[94m--> [0msrc/codegen/sort.rs:1134:9
+     [1m[94m|[0m
+[1m[94m1134[0m [1m[94m|[0m         cfg: &SortCfg,
+     [1m[94m|[0m         [1m[33m^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_cfg`[0m
+
+[1m[33mwarning[0m[1m: unreachable pattern[0m
+    [1m[94m--> [0msrc/codegen/sort.rs:1279:13
+     [1m[94m|[0m
+[1m[94m1278[0m [1m[94m|[0m             Some(Type::Float) | Some(Type::Bool) | None | Some(_) => KeyKind::Opaque,
+     [1m[94m|[0m             [1m[94m-----------------------------------------------------[0m [1m[94mmatches all the relevant values[0m
+[1m[94m1279[0m [1m[94m|[0m             Some(Type::Void) => KeyKind::Opaque,
+     [1m[94m|[0m             [1m[33m^^^^^^^^^^^^^^^^[0m [1m[33mno value can reach this[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused variable: `span`[0m
+   [1m[94m--> [0msrc/codegen/loops.rs:264:9
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m|[0m         span: Span,
+    [1m[94m|[0m         [1m[33m^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_span`[0m
+
+[1m[33mwarning[0m[1m: unused variable: `span`[0m
+   [1m[94m--> [0msrc/codegen/loops.rs:611:9
+    [1m[94m|[0m
+[1m[94m611[0m [1m[94m|[0m         span: Span,
+    [1m[94m|[0m         [1m[33m^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_span`[0m
+
+[1m[33mwarning[0m[1m: unused variable: `arr_name`[0m
+    [1m[94m--> [0msrc/codegen/methods.rs:1004:9
+     [1m[94m|[0m
+[1m[94m1004[0m [1m[94m|[0m         arr_name: &str,
+     [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_arr_name`[0m
+
+[1m[33mwarning[0m[1m: variable does not need to be mutable[0m
+    [1m[94m--> [0msrc/codegen/methods.rs:1112:13
+     [1m[94m|[0m
+[1m[94m1112[0m [1m[94m|[0m         let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
+     [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^^^^^^[0m
+     [1m[94m|[0m             [1m[94m|[0m
+     [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
+
+[1m[33mwarning[0m[1m: variant `ForElse` is never constructed[0m
+   [1m[94m--> [0msrc/ast.rs:209:5
+    [1m[94m|[0m
+[1m[94m129[0m [1m[94m|[0m pub enum StmtKind {
+    [1m[94m|[0m          [1m[94m--------[0m [1m[94mvariant in this enum[0m
+[1m[94m...[0m
+[1m[94m209[0m [1m[94m|[0m     ForElse {
+    [1m[94m|[0m     [1m[33m^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `StmtKind` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: method `emit_pack_dict_key` is never used[0m
+    [1m[94m--> [0msrc/codegen/collections.rs:1292:19
+     [1m[94m|[0m
+[1m[94m  11[0m [1m[94m|[0m impl Codegen {
+     [1m[94m|[0m [1m[94m------------[0m [1m[94mmethod in this implementation[0m
+[1m[94m...[0m
+[1m[94m1292[0m [1m[94m|[0m     pub(super) fn emit_pack_dict_key(&mut self, k_ty: &Type, val: &str, out: &mut String) -> String {
+     [1m[94m|[0m                   [1m[33m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `clauses_carry` is never used[0m
+    [1m[94m--> [0msrc/codegen/comprehensions.rs:1264:4
+     [1m[94m|[0m
+[1m[94m1264[0m [1m[94m|[0m fn clauses_carry(clauses: Vec<CompClause>) -> Vec<CompClause> {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `param_as_expr` is never used[0m
+    [1m[94m--> [0msrc/codegen/comprehensions.rs:1269:4
+     [1m[94m|[0m
+[1m[94m1269[0m [1m[94m|[0m fn param_as_expr(param: &Param, span: Span) -> Expr {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: method `declare_loop_var_in_outer_scope` is never used[0m
+   [1m[94m--> [0msrc/codegen/loops.rs:578:8
+    [1m[94m|[0m
+[1m[94m 34[0m [1m[94m|[0m impl Codegen {
+    [1m[94m|[0m [1m[94m------------[0m [1m[94mmethod in this implementation[0m
+[1m[94m...[0m
+[1m[94m578[0m [1m[94m|[0m     fn declare_loop_var_in_outer_scope(
+    [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx") generated 14 warnings (run `cargo fix --bin "archx" -p archx` to apply 8 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 22.55s

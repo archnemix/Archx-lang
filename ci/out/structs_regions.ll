@@ -13,11 +13,15 @@
 define internal fastcc i64 @archx_fn_advance(i64 %arg.n, i64 %arg.steps) {
 entry:
   %for.i.29 = alloca i64, align 8
-  %for.t.42 = alloca i64, align 8
-  %for.i.45 = alloca i64, align 8
-  %for.i.64 = alloca i64, align 8
-  %var.total.75 = alloca i64, align 8
-  %foreach.idx.76 = alloca i64, align 8
+  %for.last.i.30 = alloca i64, align 8
+  %for.t.43 = alloca i64, align 8
+  %for.last.t.44 = alloca i64, align 8
+  %for.i.47 = alloca i64, align 8
+  %for.last.i.48 = alloca i64, align 8
+  %for.i.67 = alloca i64, align 8
+  %for.last.i.68 = alloca i64, align 8
+  %var.total.79 = alloca i64, align 8
+  %foreach.idx.80 = alloca i64, align 8
   %t0 = icmp ugt i64 %arg.n, 140737488355328
   br i1 %t0, label %repeat.bad.1, label %repeat.ok.0
 repeat.bad.1:
@@ -87,139 +91,148 @@ fill.body.14:
   br i1 %t28, label %fill.body.14, label %fill.end.15
 fill.end.15:
   store i64 0, ptr %for.i.29, align 8
+  store i64 0, ptr %for.last.i.30, align 8
   br label %for.cond.16
 for.cond.16:
-  %t30 = load i64, ptr %for.i.29, align 8
-  %t31 = icmp slt i64 %t30, %arg.n
-  br i1 %t31, label %for.body.17, label %for.end.19
+  %t31 = load i64, ptr %for.i.29, align 8
+  %t32 = icmp slt i64 %t31, %arg.n
+  br i1 %t32, label %for.body.17, label %for.end.19
 for.body.17:
-  %t32 = load i64, ptr %for.i.29, align 8
-  %t33 = getelementptr inbounds i64, ptr %t3, i64 %t32
-  %t34 = load i64, ptr %for.i.29, align 8
-  %t35 = mul i64 %t34, 2
-  store i64 %t35, ptr %t33, align 8
-  %t36 = load i64, ptr %for.i.29, align 8
-  %t37 = getelementptr inbounds i64, ptr %t7, i64 %t36
-  %t38 = load i64, ptr %for.i.29, align 8
-  %t39 = mul i64 %t38, 3
-  store i64 %t39, ptr %t37, align 8
+  store i64 %t31, ptr %for.last.i.30, align 8
+  %t33 = load i64, ptr %for.last.i.30, align 8
+  %t34 = getelementptr inbounds i64, ptr %t3, i64 %t33
+  %t35 = load i64, ptr %for.last.i.30, align 8
+  %t36 = mul i64 %t35, 2
+  store i64 %t36, ptr %t34, align 8
+  %t37 = load i64, ptr %for.last.i.30, align 8
+  %t38 = getelementptr inbounds i64, ptr %t7, i64 %t37
+  %t39 = load i64, ptr %for.last.i.30, align 8
+  %t40 = mul i64 %t39, 3
+  store i64 %t40, ptr %t38, align 8
   br label %for.step.18
 for.step.18:
-  %t40 = load i64, ptr %for.i.29, align 8
-  %t41 = add nsw i64 %t40, 1
-  store i64 %t41, ptr %for.i.29, align 8
+  %t41 = load i64, ptr %for.i.29, align 8
+  %t42 = add nsw i64 %t41, 1
+  store i64 %t42, ptr %for.i.29, align 8
   br label %for.cond.16
 for.end.19:
-  store i64 0, ptr %for.t.42, align 8
+  store i64 0, ptr %for.t.43, align 8
+  store i64 0, ptr %for.last.t.44, align 8
   br label %for.cond.20
 for.cond.20:
-  %t43 = load i64, ptr %for.t.42, align 8
-  %t44 = icmp slt i64 %t43, %arg.steps
-  br i1 %t44, label %for.body.21, label %for.end.23
+  %t45 = load i64, ptr %for.t.43, align 8
+  %t46 = icmp slt i64 %t45, %arg.steps
+  br i1 %t46, label %for.body.21, label %for.end.23
 for.body.21:
-  store i64 0, ptr %for.i.45, align 8
+  store i64 %t45, ptr %for.last.t.44, align 8
+  store i64 0, ptr %for.i.47, align 8
+  store i64 0, ptr %for.last.i.48, align 8
   br label %for.cond.24
 for.cond.24:
-  %t46 = load i64, ptr %for.i.45, align 8
-  %t47 = icmp slt i64 %t46, %arg.n
-  br i1 %t47, label %for.body.25, label %for.end.27
+  %t49 = load i64, ptr %for.i.47, align 8
+  %t50 = icmp slt i64 %t49, %arg.n
+  br i1 %t50, label %for.body.25, label %for.end.27
 for.body.25:
-  %t48 = load i64, ptr %for.i.45, align 8
-  %t49 = getelementptr inbounds i64, ptr %t3, i64 %t48
-  %t50 = load i64, ptr %t49, align 8
-  %t51 = load i64, ptr %for.i.45, align 8
-  %t52 = getelementptr inbounds i64, ptr %t12, i64 %t51
+  store i64 %t49, ptr %for.last.i.48, align 8
+  %t51 = load i64, ptr %for.last.i.48, align 8
+  %t52 = getelementptr inbounds i64, ptr %t3, i64 %t51
   %t53 = load i64, ptr %t52, align 8
-  %t54 = add i64 %t50, %t53
-  store i64 %t54, ptr %t49, align 8
-  %t55 = load i64, ptr %for.i.45, align 8
-  %t56 = getelementptr inbounds i64, ptr %t7, i64 %t55
-  %t57 = load i64, ptr %t56, align 8
-  %t58 = load i64, ptr %for.i.45, align 8
-  %t59 = getelementptr inbounds i64, ptr %t22, i64 %t58
+  %t54 = load i64, ptr %for.last.i.48, align 8
+  %t55 = getelementptr inbounds i64, ptr %t12, i64 %t54
+  %t56 = load i64, ptr %t55, align 8
+  %t57 = add i64 %t53, %t56
+  store i64 %t57, ptr %t52, align 8
+  %t58 = load i64, ptr %for.last.i.48, align 8
+  %t59 = getelementptr inbounds i64, ptr %t7, i64 %t58
   %t60 = load i64, ptr %t59, align 8
-  %t61 = add i64 %t57, %t60
-  store i64 %t61, ptr %t56, align 8
+  %t61 = load i64, ptr %for.last.i.48, align 8
+  %t62 = getelementptr inbounds i64, ptr %t22, i64 %t61
+  %t63 = load i64, ptr %t62, align 8
+  %t64 = add i64 %t60, %t63
+  store i64 %t64, ptr %t59, align 8
   br label %for.step.26
 for.step.26:
-  %t62 = load i64, ptr %for.i.45, align 8
-  %t63 = add nsw i64 %t62, 1
-  store i64 %t63, ptr %for.i.45, align 8
+  %t65 = load i64, ptr %for.i.47, align 8
+  %t66 = add nsw i64 %t65, 1
+  store i64 %t66, ptr %for.i.47, align 8
   br label %for.cond.24
 for.end.27:
-  store i64 0, ptr %for.i.64, align 8
+  store i64 0, ptr %for.i.67, align 8
+  store i64 0, ptr %for.last.i.68, align 8
   br label %for.cond.28
 for.cond.28:
-  %t65 = load i64, ptr %for.i.64, align 8
-  %t66 = icmp slt i64 %t65, %arg.n
-  br i1 %t66, label %for.body.29, label %for.end.31
+  %t69 = load i64, ptr %for.i.67, align 8
+  %t70 = icmp slt i64 %t69, %arg.n
+  br i1 %t70, label %for.body.29, label %for.end.31
 for.body.29:
-  %t67 = load i64, ptr %for.i.64, align 8
-  %t68 = getelementptr inbounds i64, ptr %t12, i64 %t67
-  %t69 = load i64, ptr %t68, align 8
-  %t70 = add i64 %t69, 1
-  store i64 %t70, ptr %t68, align 8
+  store i64 %t69, ptr %for.last.i.68, align 8
+  %t71 = load i64, ptr %for.last.i.68, align 8
+  %t72 = getelementptr inbounds i64, ptr %t12, i64 %t71
+  %t73 = load i64, ptr %t72, align 8
+  %t74 = add i64 %t73, 1
+  store i64 %t74, ptr %t72, align 8
   br label %for.step.30
 for.step.30:
-  %t71 = load i64, ptr %for.i.64, align 8
-  %t72 = add nsw i64 %t71, 4
-  store i64 %t72, ptr %for.i.64, align 8
+  %t75 = load i64, ptr %for.i.67, align 8
+  %t76 = add nsw i64 %t75, 4
+  store i64 %t76, ptr %for.i.67, align 8
   br label %for.cond.28
 for.end.31:
   br label %for.step.22
 for.step.22:
-  %t73 = load i64, ptr %for.t.42, align 8
-  %t74 = add nsw i64 %t73, 1
-  store i64 %t74, ptr %for.t.42, align 8
+  %t77 = load i64, ptr %for.t.43, align 8
+  %t78 = add nsw i64 %t77, 1
+  store i64 %t78, ptr %for.t.43, align 8
   br label %for.cond.20
 for.end.23:
-  store i64 0, ptr %var.total.75, align 8
-  store i64 0, ptr %foreach.idx.76, align 8
+  store i64 0, ptr %var.total.79, align 8
+  store i64 0, ptr %foreach.idx.80, align 8
   br label %foreach.cond.32
 foreach.cond.32:
-  %t77 = load i64, ptr %foreach.idx.76, align 8
-  %t78 = icmp slt i64 %t77, %arg.n
-  br i1 %t78, label %foreach.body.33, label %foreach.end.35
+  %t81 = load i64, ptr %foreach.idx.80, align 8
+  %t82 = icmp slt i64 %t81, %arg.n
+  br i1 %t82, label %foreach.body.33, label %foreach.end.35
 foreach.body.33:
-  %t79 = getelementptr inbounds i64, ptr %t3, i64 %t77
-  %t80 = load i64, ptr %t79, align 8
-  %t81 = insertvalue %ArchxStruct_Body poison, i64 %t80, 0
-  %t82 = getelementptr inbounds i64, ptr %t7, i64 %t77
-  %t83 = load i64, ptr %t82, align 8
-  %t84 = insertvalue %ArchxStruct_Body %t81, i64 %t83, 1
-  %t85 = getelementptr inbounds i64, ptr %t12, i64 %t77
-  %t86 = load i64, ptr %t85, align 8
-  %t87 = insertvalue %ArchxStruct_Body %t84, i64 %t86, 2
-  %t88 = getelementptr inbounds i64, ptr %t22, i64 %t77
-  %t89 = load i64, ptr %t88, align 8
-  %t90 = insertvalue %ArchxStruct_Body %t87, i64 %t89, 3
-  %t91 = load i64, ptr %var.total.75, align 8
-  %t92 = extractvalue %ArchxStruct_Body %t90, 0
-  %t93 = extractvalue %ArchxStruct_Body %t90, 1
-  %t94 = add i64 %t92, %t93
-  %t95 = add i64 %t91, %t94
-  store i64 %t95, ptr %var.total.75, align 8
+  %t83 = getelementptr inbounds i64, ptr %t3, i64 %t81
+  %t84 = load i64, ptr %t83, align 8
+  %t85 = insertvalue %ArchxStruct_Body poison, i64 %t84, 0
+  %t86 = getelementptr inbounds i64, ptr %t7, i64 %t81
+  %t87 = load i64, ptr %t86, align 8
+  %t88 = insertvalue %ArchxStruct_Body %t85, i64 %t87, 1
+  %t89 = getelementptr inbounds i64, ptr %t12, i64 %t81
+  %t90 = load i64, ptr %t89, align 8
+  %t91 = insertvalue %ArchxStruct_Body %t88, i64 %t90, 2
+  %t92 = getelementptr inbounds i64, ptr %t22, i64 %t81
+  %t93 = load i64, ptr %t92, align 8
+  %t94 = insertvalue %ArchxStruct_Body %t91, i64 %t93, 3
+  %t95 = load i64, ptr %var.total.79, align 8
+  %t96 = extractvalue %ArchxStruct_Body %t94, 0
+  %t97 = extractvalue %ArchxStruct_Body %t94, 1
+  %t98 = add i64 %t96, %t97
+  %t99 = add i64 %t95, %t98
+  store i64 %t99, ptr %var.total.79, align 8
   br label %foreach.step.34
 foreach.step.34:
-  %t96 = load i64, ptr %foreach.idx.76, align 8
-  %t97 = add nsw i64 %t96, 1
-  store i64 %t97, ptr %foreach.idx.76, align 8
+  %t100 = load i64, ptr %foreach.idx.80, align 8
+  %t101 = add nsw i64 %t100, 1
+  store i64 %t101, ptr %foreach.idx.80, align 8
   br label %foreach.cond.32
 foreach.end.35:
-  %t98 = load i64, ptr %var.total.75, align 8
+  %t102 = load i64, ptr %var.total.79, align 8
   call void @free(ptr %t22)
   call void @free(ptr %t12)
   call void @free(ptr %t7)
   call void @free(ptr %t3)
-  ret i64 %t98
+  ret i64 %t102
 }
 
 define internal fastcc %ArchxStr @archx_fn_format_report(%ArchxStr %arg.label, i64 %arg.score) {
 entry:
   %func.region = alloca %ArchxRegion, align 8
   %for.i.15 = alloca i64, align 8
-  %var.tag.24 = alloca %ArchxStr, align 8
-  %bool.result.29 = alloca i1, align 1
+  %for.last.i.16 = alloca i64, align 8
+  %var.tag.25 = alloca %ArchxStr, align 8
+  %bool.result.30 = alloca i1, align 1
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
   %t0 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 64, i64 8)
   %t1 = extractvalue { i64, i1 } %t0, 0
@@ -249,60 +262,62 @@ fill.end.4:
   %t13 = insertvalue %ArchxVec %t12, i64 %t6, 1
   %t14 = insertvalue %ArchxVec %t13, ptr %t5, 2
   store i64 0, ptr %for.i.15, align 8
+  store i64 0, ptr %for.last.i.16, align 8
   br label %for.cond.5
 for.cond.5:
-  %t16 = load i64, ptr %for.i.15, align 8
-  %t17 = icmp slt i64 %t16, 64
-  br i1 %t17, label %for.body.6, label %for.end.8
+  %t17 = load i64, ptr %for.i.15, align 8
+  %t18 = icmp slt i64 %t17, 64
+  br i1 %t18, label %for.body.6, label %for.end.8
 for.body.6:
-  %t18 = load i64, ptr %for.i.15, align 8
-  %t19 = extractvalue %ArchxVec %t14, 2
-  %t20 = getelementptr inbounds i64, ptr %t19, i64 %t18
-  store i64 %arg.score, ptr %t20, align 8
+  store i64 %t17, ptr %for.last.i.16, align 8
+  %t19 = load i64, ptr %for.last.i.16, align 8
+  %t20 = extractvalue %ArchxVec %t14, 2
+  %t21 = getelementptr inbounds i64, ptr %t20, i64 %t19
+  store i64 %arg.score, ptr %t21, align 8
   br label %for.step.7
 for.step.7:
-  %t21 = load i64, ptr %for.i.15, align 8
-  %t22 = add nsw i64 %t21, 2
-  store i64 %t22, ptr %for.i.15, align 8
+  %t22 = load i64, ptr %for.i.15, align 8
+  %t23 = add nsw i64 %t22, 2
+  store i64 %t23, ptr %for.i.15, align 8
   br label %for.cond.5
 for.end.8:
-  %t23 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr %arg.label, ptr %func.region)
-  store %ArchxStr %t23, ptr %var.tag.24, align 8
-  %t25 = extractvalue %ArchxVec %t14, 2
-  %t26 = getelementptr inbounds i64, ptr %t25, i64 0
-  %t27 = load i64, ptr %t26, align 8
-  %t28 = icmp eq i64 %t27, %arg.score
-  store i1 false, ptr %bool.result.29, align 1
-  br i1 %t28, label %bool.rhs.9, label %bool.merge.10
+  %t24 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8030029675902271495, i64 3830898 }, %ArchxStr %arg.label, ptr %func.region)
+  store %ArchxStr %t24, ptr %var.tag.25, align 8
+  %t26 = extractvalue %ArchxVec %t14, 2
+  %t27 = getelementptr inbounds i64, ptr %t26, i64 0
+  %t28 = load i64, ptr %t27, align 8
+  %t29 = icmp eq i64 %t28, %arg.score
+  store i1 false, ptr %bool.result.30, align 1
+  br i1 %t29, label %bool.rhs.9, label %bool.merge.10
 bool.rhs.9:
-  %t30 = load %ArchxStr, ptr %var.tag.24, align 8
-  %t31 = extractvalue %ArchxStr %t30, 0
-  %t32 = and i64 %t31, 4294967295
-  %t33 = icmp sgt i64 %t32, 7
-  store i1 %t33, ptr %bool.result.29, align 1
+  %t31 = load %ArchxStr, ptr %var.tag.25, align 8
+  %t32 = extractvalue %ArchxStr %t31, 0
+  %t33 = and i64 %t32, 4294967295
+  %t34 = icmp sgt i64 %t33, 7
+  store i1 %t34, ptr %bool.result.30, align 1
   br label %bool.merge.10
 bool.merge.10:
-  %t34 = load i1, ptr %bool.result.29, align 1
-  br i1 %t34, label %if.then.11, label %if.else.12
+  %t35 = load i1, ptr %bool.result.30, align 1
+  br i1 %t35, label %if.then.11, label %if.else.12
 if.then.11:
-  %t35 = load %ArchxStr, ptr %var.tag.24, align 8
-  %t36 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t35, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region)
-  %t37 = call fastcc %ArchxStr @archx_str_promote(%ArchxStr %t36)
-  %t38 = load %ArchxStr, ptr %var.tag.24, align 8
-  call fastcc void @archx_str_drop(%ArchxStr %t38)
-  %t39 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t40 = load ptr, ptr %t39, align 8
-  call fastcc void @archx_region_release_from(ptr %t40)
-  ret %ArchxStr %t37
+  %t36 = load %ArchxStr, ptr %var.tag.25, align 8
+  %t37 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t36, %ArchxStr { i64 30240117406826499, i64 0 }, ptr %func.region)
+  %t38 = call fastcc %ArchxStr @archx_str_promote(%ArchxStr %t37)
+  %t39 = load %ArchxStr, ptr %var.tag.25, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t39)
+  %t40 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t41 = load ptr, ptr %t40, align 8
+  call fastcc void @archx_region_release_from(ptr %t41)
+  ret %ArchxStr %t38
 if.else.12:
   br label %if.merge.13
 if.merge.13:
-  %t41 = load %ArchxStr, ptr %var.tag.24, align 8
-  call fastcc void @archx_str_drop(%ArchxStr %t41)
+  %t42 = load %ArchxStr, ptr %var.tag.25, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t42)
   call fastcc void @archx_region_rewind_root(ptr %func.region)
-  %t42 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t43 = load ptr, ptr %t42, align 8
-  call fastcc void @archx_region_release_from(ptr %t43)
+  %t43 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t44 = load ptr, ptr %t43, align 8
+  call fastcc void @archx_region_release_from(ptr %t44)
   ret %ArchxStr { i64 7310026593965965323, i64 28548142444602209 }
 }
 

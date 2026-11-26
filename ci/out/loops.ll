@@ -9,28 +9,31 @@ define internal fastcc i64 @archx_fn_sum_to(i64 %arg.n) {
 entry:
   %var.total.0 = alloca i64, align 8
   %for.i.2 = alloca i64, align 8
+  %for.last.i.3 = alloca i64, align 8
   store i64 0, ptr %var.total.0, align 8
   %t1 = add i64 %arg.n, 1
   store i64 1, ptr %for.i.2, align 8
+  store i64 1, ptr %for.last.i.3, align 8
   br label %for.cond.0
 for.cond.0:
-  %t3 = load i64, ptr %for.i.2, align 8
-  %t4 = icmp slt i64 %t3, %t1
-  br i1 %t4, label %for.body.1, label %for.end.3
+  %t4 = load i64, ptr %for.i.2, align 8
+  %t5 = icmp slt i64 %t4, %t1
+  br i1 %t5, label %for.body.1, label %for.end.3
 for.body.1:
-  %t5 = load i64, ptr %var.total.0, align 8
-  %t6 = load i64, ptr %for.i.2, align 8
-  %t7 = add i64 %t5, %t6
-  store i64 %t7, ptr %var.total.0, align 8
+  store i64 %t4, ptr %for.last.i.3, align 8
+  %t6 = load i64, ptr %var.total.0, align 8
+  %t7 = load i64, ptr %for.last.i.3, align 8
+  %t8 = add i64 %t6, %t7
+  store i64 %t8, ptr %var.total.0, align 8
   br label %for.step.2
 for.step.2:
-  %t8 = load i64, ptr %for.i.2, align 8
-  %t9 = add nsw i64 %t8, 1
-  store i64 %t9, ptr %for.i.2, align 8
+  %t9 = load i64, ptr %for.i.2, align 8
+  %t10 = add nsw i64 %t9, 1
+  store i64 %t10, ptr %for.i.2, align 8
   br label %for.cond.0
 for.end.3:
-  %t10 = load i64, ptr %var.total.0, align 8
-  ret i64 %t10
+  %t11 = load i64, ptr %var.total.0, align 8
+  ret i64 %t11
 }
 
 define i32 @main() {
@@ -38,9 +41,12 @@ entry:
   %var.n.2 = alloca i64, align 8
   %var.factorial.3 = alloca i64, align 8
   %for.i.13 = alloca i64, align 8
-  %var.pairs.24 = alloca i64, align 8
-  %for.i.25 = alloca i64, align 8
-  %for.j.28 = alloca i64, align 8
+  %for.last.i.14 = alloca i64, align 8
+  %var.pairs.25 = alloca i64, align 8
+  %for.i.26 = alloca i64, align 8
+  %for.last.i.27 = alloca i64, align 8
+  %for.j.30 = alloca i64, align 8
+  %for.last.j.31 = alloca i64, align 8
   %t0 = call fastcc i64 @archx_fn_sum_to(i64 10)
   %t1 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t0)
   store i64 5, ptr %var.n.2, align 8
@@ -63,81 +69,87 @@ while.end.2:
   %t11 = load i64, ptr %var.factorial.3, align 8
   %t12 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t11)
   store i64 0, ptr %for.i.13, align 8
+  store i64 0, ptr %for.last.i.14, align 8
   br label %for.cond.3
 for.cond.3:
-  %t14 = load i64, ptr %for.i.13, align 8
-  %t15 = icmp slt i64 %t14, 10
-  br i1 %t15, label %for.body.4, label %for.end.6
+  %t15 = load i64, ptr %for.i.13, align 8
+  %t16 = icmp slt i64 %t15, 10
+  br i1 %t16, label %for.body.4, label %for.end.6
 for.body.4:
-  %t16 = load i64, ptr %for.i.13, align 8
-  %t17 = icmp eq i64 %t16, 3
-  br i1 %t17, label %if.then.7, label %if.else.8
+  store i64 %t15, ptr %for.last.i.14, align 8
+  %t17 = load i64, ptr %for.last.i.14, align 8
+  %t18 = icmp eq i64 %t17, 3
+  br i1 %t18, label %if.then.7, label %if.else.8
 if.then.7:
   br label %for.step.5
 if.else.8:
   br label %if.merge.9
 if.merge.9:
-  %t18 = load i64, ptr %for.i.13, align 8
-  %t19 = icmp eq i64 %t18, 7
-  br i1 %t19, label %if.then.10, label %if.else.11
+  %t19 = load i64, ptr %for.last.i.14, align 8
+  %t20 = icmp eq i64 %t19, 7
+  br i1 %t20, label %if.then.10, label %if.else.11
 if.then.10:
   br label %for.end.6
 if.else.11:
   br label %if.merge.12
 if.merge.12:
-  %t20 = load i64, ptr %for.i.13, align 8
-  %t21 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t20)
+  %t21 = load i64, ptr %for.last.i.14, align 8
+  %t22 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t21)
   br label %for.step.5
 for.step.5:
-  %t22 = load i64, ptr %for.i.13, align 8
-  %t23 = add nsw i64 %t22, 1
-  store i64 %t23, ptr %for.i.13, align 8
+  %t23 = load i64, ptr %for.i.13, align 8
+  %t24 = add nsw i64 %t23, 1
+  store i64 %t24, ptr %for.i.13, align 8
   br label %for.cond.3
 for.end.6:
-  store i64 0, ptr %var.pairs.24, align 8
-  store i64 0, ptr %for.i.25, align 8
+  store i64 0, ptr %var.pairs.25, align 8
+  store i64 0, ptr %for.i.26, align 8
+  store i64 0, ptr %for.last.i.27, align 8
   br label %for.cond.13
 for.cond.13:
-  %t26 = load i64, ptr %for.i.25, align 8
-  %t27 = icmp slt i64 %t26, 10
-  br i1 %t27, label %for.body.14, label %for.end.16
+  %t28 = load i64, ptr %for.i.26, align 8
+  %t29 = icmp slt i64 %t28, 10
+  br i1 %t29, label %for.body.14, label %for.end.16
 for.body.14:
-  store i64 0, ptr %for.j.28, align 8
+  store i64 %t28, ptr %for.last.i.27, align 8
+  store i64 0, ptr %for.j.30, align 8
+  store i64 0, ptr %for.last.j.31, align 8
   br label %for.cond.17
 for.cond.17:
-  %t29 = load i64, ptr %for.j.28, align 8
-  %t30 = icmp slt i64 %t29, 10
-  br i1 %t30, label %for.body.18, label %for.end.20
+  %t32 = load i64, ptr %for.j.30, align 8
+  %t33 = icmp slt i64 %t32, 10
+  br i1 %t33, label %for.body.18, label %for.end.20
 for.body.18:
-  %t31 = load i64, ptr %for.i.25, align 8
-  %t32 = load i64, ptr %for.j.28, align 8
-  %t33 = add i64 %t31, %t32
-  %t34 = icmp eq i64 %t33, 9
-  br i1 %t34, label %if.then.21, label %if.else.22
+  store i64 %t32, ptr %for.last.j.31, align 8
+  %t34 = load i64, ptr %for.last.i.27, align 8
+  %t35 = load i64, ptr %for.last.j.31, align 8
+  %t36 = add i64 %t34, %t35
+  %t37 = icmp eq i64 %t36, 9
+  br i1 %t37, label %if.then.21, label %if.else.22
 if.then.21:
-  %t35 = load i64, ptr %var.pairs.24, align 8
-  %t36 = add i64 %t35, 1
-  store i64 %t36, ptr %var.pairs.24, align 8
+  %t38 = load i64, ptr %var.pairs.25, align 8
+  %t39 = add i64 %t38, 1
+  store i64 %t39, ptr %var.pairs.25, align 8
   br label %if.merge.23
 if.else.22:
   br label %if.merge.23
 if.merge.23:
   br label %for.step.19
 for.step.19:
-  %t37 = load i64, ptr %for.j.28, align 8
-  %t38 = add nsw i64 %t37, 1
-  store i64 %t38, ptr %for.j.28, align 8
+  %t40 = load i64, ptr %for.j.30, align 8
+  %t41 = add nsw i64 %t40, 1
+  store i64 %t41, ptr %for.j.30, align 8
   br label %for.cond.17
 for.end.20:
   br label %for.step.15
 for.step.15:
-  %t39 = load i64, ptr %for.i.25, align 8
-  %t40 = add nsw i64 %t39, 1
-  store i64 %t40, ptr %for.i.25, align 8
+  %t42 = load i64, ptr %for.i.26, align 8
+  %t43 = add nsw i64 %t42, 1
+  store i64 %t43, ptr %for.i.26, align 8
   br label %for.cond.13
 for.end.16:
-  %t41 = load i64, ptr %var.pairs.24, align 8
-  %t42 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t41)
+  %t44 = load i64, ptr %var.pairs.25, align 8
+  %t45 = call i32 (ptr, ...) @printf(ptr @.fmt.int, i64 %t44)
   ret i32 0
 }
 

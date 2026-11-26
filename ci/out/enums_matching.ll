@@ -10,6 +10,8 @@
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00", align 1
 @.fmt.g15 = private unnamed_addr constant [6 x i8] c"%.15g\00", align 1
+@.fmt.g16 = private unnamed_addr constant [6 x i8] c"%.16g\00", align 1
+@.fmt.g17 = private unnamed_addr constant [6 x i8] c"%.17g\00", align 1
 @.str.0 = private unnamed_addr constant [14 x i8] c"large-circle:\00", align 4
 @.str.1 = private unnamed_addr constant [39 x i8] c"long_region_allocated_shape_identifier\00", align 4
 
@@ -19,6 +21,7 @@ entry:
   %var.hi.11 = alloca i64, align 8
   %var.total.12 = alloca i64, align 8
   %foreach.idx.15 = alloca i64, align 8
+  %var.x.20 = alloca i64, align 8
   %t0 = extractvalue %ArchxVec %arg.xs, 0
   %t1 = icmp uge i64 0, %t0
   br i1 %t1, label %idx.oob.1, label %idx.ok.0
@@ -53,46 +56,53 @@ foreach.cond.4:
 foreach.body.5:
   %t18 = getelementptr inbounds i64, ptr %t14, i64 %t16
   %t19 = load i64, ptr %t18, align 8
-  %t20 = load i64, ptr %var.lo.5, align 8
-  %t21 = icmp slt i64 %t19, %t20
-  br i1 %t21, label %if.then.8, label %if.else.9
+  store i64 %t19, ptr %var.x.20, align 8
+  %t21 = load i64, ptr %var.x.20, align 8
+  %t22 = load i64, ptr %var.lo.5, align 8
+  %t23 = icmp slt i64 %t21, %t22
+  br i1 %t23, label %if.then.8, label %if.else.9
 if.then.8:
-  store i64 %t19, ptr %var.lo.5, align 8
+  %t24 = load i64, ptr %var.x.20, align 8
+  store i64 %t24, ptr %var.lo.5, align 8
   br label %if.merge.10
 if.else.9:
   br label %if.merge.10
 if.merge.10:
-  %t22 = load i64, ptr %var.hi.11, align 8
-  %t23 = icmp sgt i64 %t19, %t22
-  br i1 %t23, label %if.then.11, label %if.else.12
+  %t25 = load i64, ptr %var.x.20, align 8
+  %t26 = load i64, ptr %var.hi.11, align 8
+  %t27 = icmp sgt i64 %t25, %t26
+  br i1 %t27, label %if.then.11, label %if.else.12
 if.then.11:
-  store i64 %t19, ptr %var.hi.11, align 8
+  %t28 = load i64, ptr %var.x.20, align 8
+  store i64 %t28, ptr %var.hi.11, align 8
   br label %if.merge.13
 if.else.12:
   br label %if.merge.13
 if.merge.13:
-  %t24 = load i64, ptr %var.total.12, align 8
-  %t25 = add i64 %t24, %t19
-  store i64 %t25, ptr %var.total.12, align 8
+  %t29 = load i64, ptr %var.total.12, align 8
+  %t30 = load i64, ptr %var.x.20, align 8
+  %t31 = add i64 %t29, %t30
+  store i64 %t31, ptr %var.total.12, align 8
   br label %foreach.step.6
 foreach.step.6:
-  %t26 = load i64, ptr %foreach.idx.15, align 8
-  %t27 = add nsw i64 %t26, 1
-  store i64 %t27, ptr %foreach.idx.15, align 8
+  %t32 = load i64, ptr %foreach.idx.15, align 8
+  %t33 = add nsw i64 %t32, 1
+  store i64 %t33, ptr %foreach.idx.15, align 8
   br label %foreach.cond.4
 foreach.end.7:
-  %t28 = load i64, ptr %var.lo.5, align 8
-  %t29 = load i64, ptr %var.hi.11, align 8
-  %t30 = load i64, ptr %var.total.12, align 8
-  %t31 = insertvalue { i64, i64, i64 } undef, i64 %t28, 0
-  %t32 = insertvalue { i64, i64, i64 } %t31, i64 %t29, 1
-  %t33 = insertvalue { i64, i64, i64 } %t32, i64 %t30, 2
-  ret { i64, i64, i64 } %t33
+  %t34 = load i64, ptr %var.lo.5, align 8
+  %t35 = load i64, ptr %var.hi.11, align 8
+  %t36 = load i64, ptr %var.total.12, align 8
+  %t37 = insertvalue { i64, i64, i64 } undef, i64 %t34, 0
+  %t38 = insertvalue { i64, i64, i64 } %t37, i64 %t35, 1
+  %t39 = insertvalue { i64, i64, i64 } %t38, i64 %t36, 2
+  ret { i64, i64, i64 } %t39
 }
 
 define internal fastcc { i1, i64 } @archx_fn_find_gt(%ArchxVec %arg.xs, i64 %arg.limit) {
 entry:
   %enum.pos.2 = alloca i64, align 8
+  %var.i.7 = alloca i64, align 8
   %t0 = extractvalue %ArchxVec %arg.xs, 0
   %t1 = extractvalue %ArchxVec %arg.xs, 2
   store i64 0, ptr %enum.pos.2, align 8
@@ -104,20 +114,22 @@ enum.cond.0:
 enum.body.1:
   %t5 = getelementptr inbounds i64, ptr %t1, i64 %t3
   %t6 = load i64, ptr %t5, align 8
-  %t7 = icmp sgt i64 %t6, %arg.limit
-  br i1 %t7, label %if.then.4, label %if.else.5
+  store i64 %t3, ptr %var.i.7, align 8
+  %t8 = icmp sgt i64 %t6, %arg.limit
+  br i1 %t8, label %if.then.4, label %if.else.5
 if.then.4:
-  %t8 = insertvalue { i1, i64 } undef, i1 1, 0
-  %t9 = insertvalue { i1, i64 } %t8, i64 %t3, 1
-  ret { i1, i64 } %t9
+  %t9 = load i64, ptr %var.i.7, align 8
+  %t10 = insertvalue { i1, i64 } undef, i1 1, 0
+  %t11 = insertvalue { i1, i64 } %t10, i64 %t9, 1
+  ret { i1, i64 } %t11
 if.else.5:
   br label %if.merge.6
 if.merge.6:
   br label %enum.step.2
 enum.step.2:
-  %t10 = load i64, ptr %enum.pos.2, align 8
-  %t11 = add nsw i64 %t10, 1
-  store i64 %t11, ptr %enum.pos.2, align 8
+  %t12 = load i64, ptr %enum.pos.2, align 8
+  %t13 = add nsw i64 %t12, 1
+  store i64 %t13, ptr %enum.pos.2, align 8
   br label %enum.cond.0
 enum.end.3:
   ret { i1, i64 } zeroinitializer
@@ -298,6 +310,7 @@ entry:
   %enum.Shape.96 = alloca %ArchxEnum_Shape, align 8
   %var.shapes.120 = alloca %ArchxVec, align 8
   %foreach.idx.124 = alloca i64, align 8
+  %var.sh.129 = alloca %ArchxEnum_Shape, align 8
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
   %t0 = call noalias align 16 ptr @malloc(i64 40)
   %t1 = icmp eq ptr %t0, null
@@ -520,26 +533,31 @@ foreach.cond.13:
 foreach.body.14:
   %t127 = getelementptr inbounds %ArchxEnum_Shape, ptr %t123, i64 %t125
   %t128 = load %ArchxEnum_Shape, ptr %t127, align 8
-  %t129 = call fastcc %ArchxStr @archx_fn_describe_shape(%ArchxEnum_Shape %t128)
-  call fastcc void @archx_str_print(%ArchxStr %t129, i1 true)
-  call fastcc void @archx_str_drop(%ArchxStr %t129)
+  %t130 = call fastcc %ArchxEnum_Shape @archx_enum_clone_Shape(%ArchxEnum_Shape %t128)
+  store %ArchxEnum_Shape %t130, ptr %var.sh.129, align 8
+  %t131 = load %ArchxEnum_Shape, ptr %var.sh.129, align 8
+  %t132 = call fastcc %ArchxStr @archx_fn_describe_shape(%ArchxEnum_Shape %t131)
+  call fastcc void @archx_str_print(%ArchxStr %t132, i1 true)
+  call fastcc void @archx_str_drop(%ArchxStr %t132)
   br label %foreach.step.15
 foreach.step.15:
-  %t130 = load i64, ptr %foreach.idx.124, align 8
-  %t131 = add nsw i64 %t130, 1
-  store i64 %t131, ptr %foreach.idx.124, align 8
+  %t133 = load i64, ptr %foreach.idx.124, align 8
+  %t134 = add nsw i64 %t133, 1
+  store i64 %t134, ptr %foreach.idx.124, align 8
   br label %foreach.cond.13
 foreach.end.16:
-  %t132 = load %ArchxVec, ptr %var.shapes.120, align 8
-  call fastcc void @archx_vec_drop_U5_Shape(%ArchxVec %t132)
+  %t135 = load %ArchxVec, ptr %var.shapes.120, align 8
+  call fastcc void @archx_vec_drop_U5_Shape(%ArchxVec %t135)
+  %t136 = load %ArchxEnum_Shape, ptr %var.sh.129, align 8
+  call fastcc void @archx_enum_drop_Shape(%ArchxEnum_Shape %t136)
   call fastcc void @archx_region_rewind_root(ptr %func.region)
-  %t133 = load { %ArchxStr, i64, i1 }, ptr %var.pair.34, align 8
-  %t134 = extractvalue { %ArchxStr, i64, i1 } %t133, 0
-  call fastcc void @archx_str_drop(%ArchxStr %t134)
+  %t137 = load { %ArchxStr, i64, i1 }, ptr %var.pair.34, align 8
+  %t138 = extractvalue { %ArchxStr, i64, i1 } %t137, 0
+  call fastcc void @archx_str_drop(%ArchxStr %t138)
   call void @free(ptr %t10)
-  %t135 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t136 = load ptr, ptr %t135, align 8
-  call fastcc void @archx_region_release_from(ptr %t136)
+  %t139 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t140 = load ptr, ptr %t139, align 8
+  call fastcc void @archx_region_release_from(ptr %t140)
   ret i32 0
 }
 
@@ -1083,12 +1101,27 @@ copy_long:
 
 define private fastcc i64 @archx_fmt_float_buf(double %x, ptr %buf) nounwind {
 entry:
-  %n32 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  ; Python prints the shortest decimal that round-trips back to the same double. Start at 15
+  ; significant digits and widen to 16 then 17 until `strtod` agrees again.
+  %n15 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  %back15 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq15 = fcmp oeq double %back15, %x
+  br i1 %eq15, label %done, label %try16
+try16:
+  %n16 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g16, double %x)
+  %back16 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq16 = fcmp oeq double %back16, %x
+  br i1 %eq16, label %done, label %try17
+try17:
+  %n17 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g17, double %x)
+  br label %done
+done:
+  %n32 = phi i32 [ %n15, %entry ], [ %n16, %try16 ], [ %n17, %try17 ]
   %n = sext i32 %n32 to i64
   %pos = icmp sgt i64 %n, 0
   br i1 %pos, label %scan, label %ret_orig
 scan:
-  %i = phi i64 [ 0, %entry ], [ %inext, %scan_step ]
+  %i = phi i64 [ 0, %done ], [ %inext, %scan_step ]
   %cp = getelementptr inbounds i8, ptr %buf, i64 %i
   %ch = load i8, ptr %cp, align 1
   %is_dot = icmp eq i8 %ch, 46
@@ -1144,3 +1177,4 @@ entry:
 }
 
 declare i32 @sprintf(ptr nocapture writeonly, ptr nocapture readonly, ...) nounwind
+declare double @strtod(ptr nocapture readonly, ptr nocapture writeonly) nounwind

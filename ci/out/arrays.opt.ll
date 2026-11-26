@@ -26,31 +26,31 @@ push.grow.from_heap.18.peel:
   %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @str.1)
   %t27 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 4)
   %malloc = tail call dereferenceable_or_null(32) ptr @malloc(i64 32)
-  %t69.peel = icmp eq ptr %malloc, null
-  br i1 %t69.peel, label %realloc.oom.26, label %for.body.8.peel.next
+  %t70.peel = icmp eq ptr %malloc, null
+  br i1 %t70.peel, label %realloc.oom.26, label %for.body.8.peel.next
 
 for.body.8.peel.next:                             ; preds = %push.grow.from_heap.18.peel
   store i64 10, ptr %malloc, align 8
-  %t75 = getelementptr inbounds nuw i8, ptr %malloc, i64 8
-  store i64 20, ptr %t75, align 8
-  %t75.1 = getelementptr inbounds nuw i8, ptr %malloc, i64 16
-  store i64 30, ptr %t75.1, align 8
-  %t75.2 = getelementptr inbounds nuw i8, ptr %malloc, i64 24
-  store i64 40, ptr %t75.2, align 8
-  %t88 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 40)
-  %putchar15 = tail call i32 @putchar(i32 91)
-  %t99.pre = load i64, ptr %malloc, align 8
-  %t100 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t99.pre)
-  %t97.1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.sep)
-  %t98.1 = getelementptr inbounds nuw i8, ptr %malloc, i64 8
-  %t99.1 = load i64, ptr %t98.1, align 8
-  %t100.1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t99.1)
-  %t97.2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.sep)
-  %t98.2 = getelementptr inbounds nuw i8, ptr %malloc, i64 16
-  %t99.2 = load i64, ptr %t98.2, align 8
-  %t100.2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t99.2)
-  %puts16 = tail call i32 @puts(ptr nonnull dereferenceable(1) @str.1)
-  %t122 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 300)
+  %t76 = getelementptr inbounds nuw i8, ptr %malloc, i64 8
+  store i64 20, ptr %t76, align 8
+  %t76.1 = getelementptr inbounds nuw i8, ptr %malloc, i64 16
+  store i64 30, ptr %t76.1, align 8
+  %t76.2 = getelementptr inbounds nuw i8, ptr %malloc, i64 24
+  store i64 40, ptr %t76.2, align 8
+  %t89 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 40)
+  %putchar14 = tail call i32 @putchar(i32 91)
+  %t100.pre = load i64, ptr %malloc, align 8
+  %t101 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t100.pre)
+  %t98.1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.sep)
+  %t99.1 = getelementptr inbounds nuw i8, ptr %malloc, i64 8
+  %t100.1 = load i64, ptr %t99.1, align 8
+  %t101.1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t100.1)
+  %t98.2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.sep)
+  %t99.2 = getelementptr inbounds nuw i8, ptr %malloc, i64 16
+  %t100.2 = load i64, ptr %t99.2, align 8
+  %t101.2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int.elem, i64 %t100.2)
+  %puts15 = tail call i32 @puts(ptr nonnull dereferenceable(1) @str.1)
+  %t123 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 300)
   %t3.i = tail call noalias align 16 dereferenceable_or_null(100) ptr @malloc(i64 100)
   %t4.i = icmp eq ptr %t3.i, null
   br i1 %t4.i, label %alloc.oom.3.i, label %if.merge.15.7.i
@@ -70,16 +70,16 @@ if.merge.15.7.i:                                  ; preds = %for.body.8.peel.nex
   store i8 0, ptr %t18.i, align 1
   %t48.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 4
   store i8 0, ptr %t48.i, align 4
-  %t48.127.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 6
-  store i8 0, ptr %t48.127.i, align 2
-  %t48.229.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 8
-  store i8 0, ptr %t48.229.i, align 8
-  %t48.331.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 10
-  store i8 0, ptr %t48.331.i, align 2
-  %t48.535.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 14
-  store i8 0, ptr %t48.535.i, align 2
-  %t48.637.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 16
-  store i8 0, ptr %t48.637.i, align 16
+  %t48.126.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 6
+  store i8 0, ptr %t48.126.i, align 2
+  %t48.228.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 8
+  store i8 0, ptr %t48.228.i, align 8
+  %t48.330.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 10
+  store i8 0, ptr %t48.330.i, align 2
+  %t48.534.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 14
+  store i8 0, ptr %t48.534.i, align 2
+  %t48.636.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 16
+  store i8 0, ptr %t48.636.i, align 16
   %t48.8.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 20
   store i8 0, ptr %t48.8.i, align 4
   %t48.9.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 22
@@ -133,25 +133,25 @@ if.merge.15.7.i:                                  ; preds = %for.body.8.peel.nex
 vector.body:                                      ; preds = %vector.body, %if.merge.15.7.i
   %index = phi i64 [ 0, %if.merge.15.7.i ], [ %index.next.1, %vector.body ]
   %vec.phi = phi <2 x i64> [ zeroinitializer, %if.merge.15.7.i ], [ %16, %vector.body ]
-  %vec.phi45 = phi <2 x i64> [ zeroinitializer, %if.merge.15.7.i ], [ %17, %vector.body ]
+  %vec.phi44 = phi <2 x i64> [ zeroinitializer, %if.merge.15.7.i ], [ %17, %vector.body ]
   %0 = getelementptr inbounds nuw i8, ptr %t3.i, i64 %index
   %1 = getelementptr inbounds nuw i8, ptr %0, i64 2
   %2 = getelementptr inbounds nuw i8, ptr %0, i64 4
   %wide.load = load <2 x i8>, ptr %1, align 2
-  %wide.load46 = load <2 x i8>, ptr %2, align 4
+  %wide.load45 = load <2 x i8>, ptr %2, align 4
   %3 = and <2 x i8> %wide.load, splat (i8 1)
-  %4 = and <2 x i8> %wide.load46, splat (i8 1)
+  %4 = and <2 x i8> %wide.load45, splat (i8 1)
   %5 = zext nneg <2 x i8> %3 to <2 x i64>
   %6 = zext nneg <2 x i8> %4 to <2 x i64>
   %7 = add <2 x i64> %vec.phi, %5
-  %8 = add <2 x i64> %vec.phi45, %6
+  %8 = add <2 x i64> %vec.phi44, %6
   %9 = getelementptr inbounds nuw i8, ptr %t3.i, i64 %index
   %10 = getelementptr inbounds nuw i8, ptr %9, i64 6
   %11 = getelementptr inbounds nuw i8, ptr %9, i64 8
   %wide.load.1 = load <2 x i8>, ptr %10, align 2
-  %wide.load46.1 = load <2 x i8>, ptr %11, align 8
+  %wide.load45.1 = load <2 x i8>, ptr %11, align 8
   %12 = and <2 x i8> %wide.load.1, splat (i8 1)
-  %13 = and <2 x i8> %wide.load46.1, splat (i8 1)
+  %13 = and <2 x i8> %wide.load45.1, splat (i8 1)
   %14 = zext nneg <2 x i8> %12 to <2 x i64>
   %15 = zext nneg <2 x i8> %13 to <2 x i64>
   %16 = add <2 x i64> %7, %14
@@ -163,26 +163,26 @@ vector.body:                                      ; preds = %vector.body, %if.me
 for.body.24.i:                                    ; preds = %vector.body
   %bin.rdx = add <2 x i64> %17, %16
   %19 = tail call i64 @llvm.vector.reduce.add.v2i64(<2 x i64> %bin.rdx)
-  %t72.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 98
-  %t73.i = load i8, ptr %t72.i, align 2
-  %20 = and i8 %t73.i, 1
+  %t73.i = getelementptr inbounds nuw i8, ptr %t3.i, i64 98
+  %t74.i = load i8, ptr %t73.i, align 2
+  %20 = and i8 %t74.i, 1
   %21 = zext nneg i8 %20 to i64
   %spec.select.i = add i64 %19, %21
-  %t72.i.1 = getelementptr inbounds nuw i8, ptr %t3.i, i64 99
-  %t73.i.1 = load i8, ptr %t72.i.1, align 1
-  %22 = and i8 %t73.i.1, 1
+  %t73.i.1 = getelementptr inbounds nuw i8, ptr %t3.i, i64 99
+  %t74.i.1 = load i8, ptr %t73.i.1, align 1
+  %22 = and i8 %t74.i.1, 1
   %23 = zext nneg i8 %22 to i64
   %spec.select.i.1 = add i64 %spec.select.i, %23
   tail call void @free(ptr nonnull %t3.i)
-  %t130 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %spec.select.i.1)
+  %t131 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %spec.select.i.1)
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i)
   store i32 66, ptr %tmp.i, align 4
   %tmp4.i = getelementptr inbounds nuw i8, ptr %tmp.i, i64 4
   store i64 0, ptr %tmp4.i, align 4
   %np.i = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 1, ptr nonnull %tmp.i)
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i)
-  %puts17 = call i32 @puts(ptr nonnull dereferenceable(1) @.str.true)
-  %t138 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 5)
+  %puts16 = call i32 @puts(ptr nonnull dereferenceable(1) @.str.true)
+  %t139 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 5)
   call void @free(ptr nonnull %malloc)
   ret i32 0
 }

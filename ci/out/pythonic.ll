@@ -13,6 +13,8 @@
 @.fmt.str.elem = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.none = private unnamed_addr constant [5 x i8] c"None\00", align 1
 @.fmt.g15 = private unnamed_addr constant [6 x i8] c"%.15g\00", align 1
+@.fmt.g16 = private unnamed_addr constant [6 x i8] c"%.16g\00", align 1
+@.fmt.g17 = private unnamed_addr constant [6 x i8] c"%.17g\00", align 1
 @.str.0 = private unnamed_addr constant [31 x i8] c"  fast pythonic native archx  \00", align 4
 
 define internal fastcc void @archx_method_5_Stats_add(ptr %arg.self, double %arg.value) {
@@ -53,28 +55,31 @@ define internal fastcc i64 @archx_fn_countdown_sum(i64 %arg.start) {
 entry:
   %var.acc.0 = alloca i64, align 8
   %for.k.2 = alloca i64, align 8
+  %for.last.k.3 = alloca i64, align 8
   store i64 0, ptr %var.acc.0, align 8
   %t1 = sub i64 0, 2
   store i64 %arg.start, ptr %for.k.2, align 8
+  store i64 %arg.start, ptr %for.last.k.3, align 8
   br label %for.cond.0
 for.cond.0:
-  %t3 = load i64, ptr %for.k.2, align 8
-  %t4 = icmp sgt i64 %t3, 0
-  br i1 %t4, label %for.body.1, label %for.end.3
+  %t4 = load i64, ptr %for.k.2, align 8
+  %t5 = icmp sgt i64 %t4, 0
+  br i1 %t5, label %for.body.1, label %for.end.3
 for.body.1:
-  %t5 = load i64, ptr %var.acc.0, align 8
-  %t6 = load i64, ptr %for.k.2, align 8
-  %t7 = add i64 %t5, %t6
-  store i64 %t7, ptr %var.acc.0, align 8
+  store i64 %t4, ptr %for.last.k.3, align 8
+  %t6 = load i64, ptr %var.acc.0, align 8
+  %t7 = load i64, ptr %for.last.k.3, align 8
+  %t8 = add i64 %t6, %t7
+  store i64 %t8, ptr %var.acc.0, align 8
   br label %for.step.2
 for.step.2:
-  %t8 = load i64, ptr %for.k.2, align 8
-  %t9 = add i64 %t8, %t1
-  store i64 %t9, ptr %for.k.2, align 8
+  %t9 = load i64, ptr %for.k.2, align 8
+  %t10 = add i64 %t9, %t1
+  store i64 %t10, ptr %for.k.2, align 8
   br label %for.cond.0
 for.end.3:
-  %t10 = load i64, ptr %var.acc.0, align 8
-  ret i64 %t10
+  %t11 = load i64, ptr %var.acc.0, align 8
+  ret i64 %t11
 }
 
 define i32 @main() {
@@ -83,9 +88,12 @@ entry:
   %var.stats.2 = alloca %ArchxStruct_Stats, align 8
   %var.samples.7 = alloca %ArchxVec, align 8
   %for.i.8 = alloca i64, align 8
-  %enum.pos.59 = alloca i64, align 8
-  %var.words.80 = alloca %ArchxVec, align 8
-  %for.i.103 = alloca i64, align 8
+  %for.last.i.9 = alloca i64, align 8
+  %enum.pos.60 = alloca i64, align 8
+  %var.idx.66 = alloca i64, align 8
+  %var.words.84 = alloca %ArchxVec, align 8
+  %for.i.107 = alloca i64, align 8
+  %for.last.i.108 = alloca i64, align 8
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
   %t0 = insertvalue %ArchxStruct_Stats poison, i64 0, 0
   %t1 = insertvalue %ArchxStruct_Stats %t0, double 0x0000000000000000, 1
@@ -96,267 +104,274 @@ entry:
   %t6 = call fastcc %ArchxVec @archx_vec_clone_f(%ArchxVec %t5)
   store %ArchxVec %t6, ptr %var.samples.7, align 8
   store i64 1, ptr %for.i.8, align 8
+  store i64 1, ptr %for.last.i.9, align 8
   br label %for.cond.0
 for.cond.0:
-  %t9 = load i64, ptr %for.i.8, align 8
-  %t10 = icmp slt i64 %t9, 6
-  br i1 %t10, label %for.body.1, label %for.end.3
+  %t10 = load i64, ptr %for.i.8, align 8
+  %t11 = icmp slt i64 %t10, 6
+  br i1 %t11, label %for.body.1, label %for.end.3
 for.body.1:
-  %t11 = load i64, ptr %for.i.8, align 8
-  %t12 = sitofp i64 %t11 to double
-  %t13 = fmul double %t12, 0x3FF8000000000000
-  %t14 = load %ArchxVec, ptr %var.samples.7, align 8
-  %t15 = extractvalue %ArchxVec %t14, 0
-  %t16 = extractvalue %ArchxVec %t14, 1
-  %t17 = extractvalue %ArchxVec %t14, 2
-  %t18 = icmp slt i64 %t16, 0
-  %t19 = sub nsw i64 0, %t16
-  %t20 = select i1 %t18, i64 %t19, i64 %t16
-  %t21 = icmp sge i64 %t15, %t20
-  br i1 %t21, label %push.grow.4, label %push.store.5
+  store i64 %t10, ptr %for.last.i.9, align 8
+  %t12 = load i64, ptr %for.last.i.9, align 8
+  %t13 = sitofp i64 %t12 to double
+  %t14 = fmul double %t13, 0x3FF8000000000000
+  %t15 = load %ArchxVec, ptr %var.samples.7, align 8
+  %t16 = extractvalue %ArchxVec %t15, 0
+  %t17 = extractvalue %ArchxVec %t15, 1
+  %t18 = extractvalue %ArchxVec %t15, 2
+  %t19 = icmp slt i64 %t17, 0
+  %t20 = sub nsw i64 0, %t17
+  %t21 = select i1 %t19, i64 %t20, i64 %t17
+  %t22 = icmp sge i64 %t16, %t21
+  br i1 %t22, label %push.grow.4, label %push.store.5
 push.grow.4:
-  %t22 = icmp sge i64 %t15, 140737488355328
-  br i1 %t22, label %push.oom.6, label %push.calc.7
+  %t23 = icmp sge i64 %t16, 140737488355328
+  br i1 %t23, label %push.oom.6, label %push.calc.7
 push.oom.6:
   call void @archx_oom_fail()
   unreachable
 push.calc.7:
-  %t23 = icmp eq i64 %t20, 0
-  %t24 = shl i64 %t20, 1
-  %t25 = select i1 %t23, i64 4, i64 %t24
-  %t26 = icmp sgt i64 %t25, 140737488355328
-  %t27 = select i1 %t26, i64 140737488355328, i64 %t25
-  %t28 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t27, i64 8)
-  %t29 = extractvalue { i64, i1 } %t28, 0
-  %t30 = extractvalue { i64, i1 } %t28, 1
-  br i1 %t30, label %mul.oom.8, label %mul.ok.9
+  %t24 = icmp eq i64 %t21, 0
+  %t25 = shl i64 %t21, 1
+  %t26 = select i1 %t24, i64 4, i64 %t25
+  %t27 = icmp sgt i64 %t26, 140737488355328
+  %t28 = select i1 %t27, i64 140737488355328, i64 %t26
+  %t29 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t28, i64 8)
+  %t30 = extractvalue { i64, i1 } %t29, 0
+  %t31 = extractvalue { i64, i1 } %t29, 1
+  br i1 %t31, label %mul.oom.8, label %mul.ok.9
 mul.oom.8:
   call void @archx_oom_fail()
   unreachable
 mul.ok.9:
-  %t31 = icmp eq i64 %t29, 0
-  %t32 = select i1 %t31, i64 1, i64 %t29
-  br i1 %t18, label %push.grow.from_reg.10, label %push.grow.from_heap.11
+  %t32 = icmp eq i64 %t30, 0
+  %t33 = select i1 %t32, i64 1, i64 %t30
+  br i1 %t19, label %push.grow.from_reg.10, label %push.grow.from_heap.11
 push.grow.from_reg.10:
-  %t33 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t15, i64 8)
-  %t34 = extractvalue { i64, i1 } %t33, 0
-  %t35 = extractvalue { i64, i1 } %t33, 1
-  br i1 %t35, label %mul.oom.12, label %mul.ok.13
+  %t34 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t16, i64 8)
+  %t35 = extractvalue { i64, i1 } %t34, 0
+  %t36 = extractvalue { i64, i1 } %t34, 1
+  br i1 %t36, label %mul.oom.12, label %mul.ok.13
 mul.oom.12:
   call void @archx_oom_fail()
   unreachable
 mul.ok.13:
-  %t36 = icmp eq i64 %t34, 0
-  %t37 = select i1 %t36, i64 1, i64 %t34
-  %t38 = call noalias align 16 ptr @malloc(i64 %t32)
-  %t39 = icmp eq ptr %t38, null
-  br i1 %t39, label %alloc.oom.15, label %alloc.ok.14
+  %t37 = icmp eq i64 %t35, 0
+  %t38 = select i1 %t37, i64 1, i64 %t35
+  %t39 = call noalias align 16 ptr @malloc(i64 %t33)
+  %t40 = icmp eq ptr %t39, null
+  br i1 %t40, label %alloc.oom.15, label %alloc.ok.14
 alloc.oom.15:
   call void @archx_oom_fail()
   unreachable
 alloc.ok.14:
-  %t40 = icmp sgt i64 %t37, 0
-  br i1 %t40, label %push.reg.copy.16, label %push.reg.copied.17
+  %t41 = icmp sgt i64 %t38, 0
+  br i1 %t41, label %push.reg.copy.16, label %push.reg.copied.17
 push.reg.copy.16:
-  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %t38, ptr align 8 %t17, i64 %t37, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %t39, ptr align 8 %t18, i64 %t38, i1 false)
   br label %push.reg.copied.17
 push.reg.copied.17:
-  %t41 = insertvalue %ArchxVec poison, i64 %t15, 0
-  %t42 = insertvalue %ArchxVec %t41, i64 %t27, 1
-  %t43 = insertvalue %ArchxVec %t42, ptr %t38, 2
-  store %ArchxVec %t43, ptr %var.samples.7, align 8
+  %t42 = insertvalue %ArchxVec poison, i64 %t16, 0
+  %t43 = insertvalue %ArchxVec %t42, i64 %t28, 1
+  %t44 = insertvalue %ArchxVec %t43, ptr %t39, 2
+  store %ArchxVec %t44, ptr %var.samples.7, align 8
   br label %push.store.5
 push.grow.from_heap.11:
-  %t44 = call align 16 ptr @realloc(ptr %t17, i64 %t32)
-  %t45 = icmp eq ptr %t44, null
-  br i1 %t45, label %realloc.oom.19, label %realloc.ok.18
+  %t45 = call align 16 ptr @realloc(ptr %t18, i64 %t33)
+  %t46 = icmp eq ptr %t45, null
+  br i1 %t46, label %realloc.oom.19, label %realloc.ok.18
 realloc.oom.19:
   call void @archx_oom_fail()
   unreachable
 realloc.ok.18:
-  %t46 = insertvalue %ArchxVec poison, i64 %t15, 0
-  %t47 = insertvalue %ArchxVec %t46, i64 %t27, 1
-  %t48 = insertvalue %ArchxVec %t47, ptr %t44, 2
-  store %ArchxVec %t48, ptr %var.samples.7, align 8
+  %t47 = insertvalue %ArchxVec poison, i64 %t16, 0
+  %t48 = insertvalue %ArchxVec %t47, i64 %t28, 1
+  %t49 = insertvalue %ArchxVec %t48, ptr %t45, 2
+  store %ArchxVec %t49, ptr %var.samples.7, align 8
   br label %push.store.5
 push.store.5:
-  %t49 = load %ArchxVec, ptr %var.samples.7, align 8
-  %t50 = extractvalue %ArchxVec %t49, 2
-  %t51 = getelementptr inbounds double, ptr %t50, i64 %t15
-  store double %t13, ptr %t51, align 8
-  %t52 = add nsw i64 %t15, 1
-  %t53 = insertvalue %ArchxVec %t49, i64 %t52, 0
-  store %ArchxVec %t53, ptr %var.samples.7, align 8
+  %t50 = load %ArchxVec, ptr %var.samples.7, align 8
+  %t51 = extractvalue %ArchxVec %t50, 2
+  %t52 = getelementptr inbounds double, ptr %t51, i64 %t16
+  store double %t14, ptr %t52, align 8
+  %t53 = add nsw i64 %t16, 1
+  %t54 = insertvalue %ArchxVec %t50, i64 %t53, 0
+  store %ArchxVec %t54, ptr %var.samples.7, align 8
   br label %for.step.2
 for.step.2:
-  %t54 = load i64, ptr %for.i.8, align 8
-  %t55 = add nsw i64 %t54, 1
-  store i64 %t55, ptr %for.i.8, align 8
+  %t55 = load i64, ptr %for.i.8, align 8
+  %t56 = add nsw i64 %t55, 1
+  store i64 %t56, ptr %for.i.8, align 8
   br label %for.cond.0
 for.end.3:
-  %t56 = load %ArchxVec, ptr %var.samples.7, align 8
-  %t57 = extractvalue %ArchxVec %t56, 0
-  %t58 = extractvalue %ArchxVec %t56, 2
-  store i64 0, ptr %enum.pos.59, align 8
+  %t57 = load %ArchxVec, ptr %var.samples.7, align 8
+  %t58 = extractvalue %ArchxVec %t57, 0
+  %t59 = extractvalue %ArchxVec %t57, 2
+  store i64 0, ptr %enum.pos.60, align 8
   br label %enum.cond.20
 enum.cond.20:
-  %t60 = load i64, ptr %enum.pos.59, align 8
-  %t61 = icmp slt i64 %t60, %t57
-  br i1 %t61, label %enum.body.21, label %enum.end.23
+  %t61 = load i64, ptr %enum.pos.60, align 8
+  %t62 = icmp slt i64 %t61, %t58
+  br i1 %t62, label %enum.body.21, label %enum.end.23
 enum.body.21:
-  %t62 = add i64 1, %t60
-  %t63 = getelementptr inbounds double, ptr %t58, i64 %t60
-  %t64 = load double, ptr %t63, align 8
-  call fastcc void @archx_method_5_Stats_add(ptr %var.stats.2, double %t64)
-  %t65 = load %ArchxVec, ptr %var.samples.7, align 8
-  %t66 = extractvalue %ArchxVec %t65, 0
-  %t67 = icmp eq i64 %t62, %t66
-  br i1 %t67, label %if.then.24, label %if.else.25
+  %t63 = add i64 1, %t61
+  %t64 = getelementptr inbounds double, ptr %t59, i64 %t61
+  %t65 = load double, ptr %t64, align 8
+  store i64 %t63, ptr %var.idx.66, align 8
+  call fastcc void @archx_method_5_Stats_add(ptr %var.stats.2, double %t65)
+  %t67 = load i64, ptr %var.idx.66, align 8
+  %t68 = load %ArchxVec, ptr %var.samples.7, align 8
+  %t69 = extractvalue %ArchxVec %t68, 0
+  %t70 = icmp eq i64 %t67, %t69
+  br i1 %t70, label %if.then.24, label %if.else.25
 if.then.24:
-  %t68 = call fastcc %ArchxStr @archx_str_from_int(i64 %t62, ptr null)
-  %t69 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8101238451258523656, i64 589325676 }, %ArchxStr %t68, ptr null)
-  %t70 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t69, %ArchxStr { i64 9074406902988803, i64 0 }, ptr null)
-  %t71 = call fastcc %ArchxStr @archx_str_from_float(double %t64, ptr null)
-  %t72 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t70, %ArchxStr %t71, ptr null)
-  call fastcc void @archx_str_print(%ArchxStr %t72, i1 true)
+  %t71 = load i64, ptr %var.idx.66, align 8
+  %t72 = call fastcc %ArchxStr @archx_str_from_int(i64 %t71, ptr null)
+  %t73 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 8101238451258523656, i64 589325676 }, %ArchxStr %t72, ptr null)
+  %t74 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t73, %ArchxStr { i64 9074406902988803, i64 0 }, ptr null)
+  %t75 = call fastcc %ArchxStr @archx_str_from_float(double %t65, ptr null)
+  %t76 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t74, %ArchxStr %t75, ptr null)
+  call fastcc void @archx_str_print(%ArchxStr %t76, i1 true)
+  call fastcc void @archx_str_drop(%ArchxStr %t76)
+  call fastcc void @archx_str_drop(%ArchxStr %t75)
+  call fastcc void @archx_str_drop(%ArchxStr %t74)
+  call fastcc void @archx_str_drop(%ArchxStr %t73)
   call fastcc void @archx_str_drop(%ArchxStr %t72)
-  call fastcc void @archx_str_drop(%ArchxStr %t71)
-  call fastcc void @archx_str_drop(%ArchxStr %t70)
-  call fastcc void @archx_str_drop(%ArchxStr %t69)
-  call fastcc void @archx_str_drop(%ArchxStr %t68)
   br label %if.merge.26
 if.else.25:
   br label %if.merge.26
 if.merge.26:
   br label %enum.step.22
 enum.step.22:
-  %t73 = load i64, ptr %enum.pos.59, align 8
-  %t74 = add nsw i64 %t73, 1
-  store i64 %t74, ptr %enum.pos.59, align 8
+  %t77 = load i64, ptr %enum.pos.60, align 8
+  %t78 = add nsw i64 %t77, 1
+  store i64 %t78, ptr %enum.pos.60, align 8
   br label %enum.cond.20
 enum.end.23:
-  %t75 = ptrtoint ptr @.str.0 to i64
-  %t76 = insertvalue %ArchxStr poison, i64 7018332391114539038, 0
-  %t77 = insertvalue %ArchxStr %t76, i64 %t75, 1
-  %t78 = call fastcc %ArchxStr @archx_str_strip(%ArchxStr %t77, ptr null)
-  %t79 = call fastcc %ArchxVec @archx_str_split_ws(%ArchxStr %t78)
-  call fastcc void @archx_str_drop(%ArchxStr %t78)
-  store %ArchxVec %t79, ptr %var.words.80, align 8
-  %t81 = load %ArchxVec, ptr %var.words.80, align 8
-  %t82 = extractvalue %ArchxVec %t81, 0
-  %t83 = load %ArchxVec, ptr %var.words.80, align 8
-  %t84 = extractvalue %ArchxVec %t83, 0
-  %t85 = icmp uge i64 0, %t84
-  br i1 %t85, label %idx.oob.28, label %idx.ok.27
+  %t79 = ptrtoint ptr @.str.0 to i64
+  %t80 = insertvalue %ArchxStr poison, i64 7018332391114539038, 0
+  %t81 = insertvalue %ArchxStr %t80, i64 %t79, 1
+  %t82 = call fastcc %ArchxStr @archx_str_strip(%ArchxStr %t81, ptr null)
+  %t83 = call fastcc %ArchxVec @archx_str_split_ws(%ArchxStr %t82)
+  call fastcc void @archx_str_drop(%ArchxStr %t82)
+  store %ArchxVec %t83, ptr %var.words.84, align 8
+  %t85 = load %ArchxVec, ptr %var.words.84, align 8
+  %t86 = extractvalue %ArchxVec %t85, 0
+  %t87 = load %ArchxVec, ptr %var.words.84, align 8
+  %t88 = extractvalue %ArchxVec %t87, 0
+  %t89 = icmp uge i64 0, %t88
+  br i1 %t89, label %idx.oob.28, label %idx.ok.27
 idx.oob.28:
-  call void @archx_bounds_fail(i64 0, i64 %t84)
+  call void @archx_bounds_fail(i64 0, i64 %t88)
   unreachable
 idx.ok.27:
-  %t86 = extractvalue %ArchxVec %t83, 2
-  %t87 = getelementptr inbounds %ArchxStr, ptr %t86, i64 0
-  %t88 = load %ArchxStr, ptr %t87, align 8
-  %t89 = call fastcc %ArchxStr @archx_str_case(%ArchxStr %t88, i1 true, ptr null)
+  %t90 = extractvalue %ArchxVec %t87, 2
+  %t91 = getelementptr inbounds %ArchxStr, ptr %t90, i64 0
+  %t92 = load %ArchxStr, ptr %t91, align 8
+  %t93 = call fastcc %ArchxStr @archx_str_case(%ArchxStr %t92, i1 true, ptr null)
   call fastcc void @archx_str_print(%ArchxStr { i64 7237970108029599750, i64 14963 }, i1 false)
   call fastcc void @archx_str_print(%ArchxStr { i64 9143676135538691, i64 0 }, i1 false)
-  %t90 = call i32 (ptr, ...) @printf(ptr @.fmt.int.elem, i64 %t82)
+  %t94 = call i32 (ptr, ...) @printf(ptr @.fmt.int.elem, i64 %t86)
   call fastcc void @archx_str_print(%ArchxStr { i64 9143676135538691, i64 0 }, i1 false)
-  call fastcc void @archx_str_print(%ArchxStr %t89, i1 false)
-  %t91 = call i32 @putchar(i32 10)
-  call fastcc void @archx_str_drop(%ArchxStr %t89)
-  %t92 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 1000, i64 8)
-  %t93 = extractvalue { i64, i1 } %t92, 0
-  %t94 = extractvalue { i64, i1 } %t92, 1
-  br i1 %t94, label %mul.oom.29, label %mul.ok.30
+  call fastcc void @archx_str_print(%ArchxStr %t93, i1 false)
+  %t95 = call i32 @putchar(i32 10)
+  call fastcc void @archx_str_drop(%ArchxStr %t93)
+  %t96 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 1000, i64 8)
+  %t97 = extractvalue { i64, i1 } %t96, 0
+  %t98 = extractvalue { i64, i1 } %t96, 1
+  br i1 %t98, label %mul.oom.29, label %mul.ok.30
 mul.oom.29:
   call void @archx_oom_fail()
   unreachable
 mul.ok.30:
-  %t95 = icmp eq i64 %t93, 0
-  %t96 = select i1 %t95, i64 1, i64 %t93
-  %t97 = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %func.region, i64 %t96)
-  %t98 = sub nsw i64 0, 1000
-  %t99 = shl nuw nsw i64 1000, 3
-  call void @llvm.memset.p0.i64(ptr nonnull align 16 %t97, i8 0, i64 %t99, i1 false)
-  %t100 = insertvalue %ArchxVec poison, i64 1000, 0
-  %t101 = insertvalue %ArchxVec %t100, i64 %t98, 1
-  %t102 = insertvalue %ArchxVec %t101, ptr %t97, 2
-  store i64 0, ptr %for.i.103, align 8
+  %t99 = icmp eq i64 %t97, 0
+  %t100 = select i1 %t99, i64 1, i64 %t97
+  %t101 = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr %func.region, i64 %t100)
+  %t102 = sub nsw i64 0, 1000
+  %t103 = shl nuw nsw i64 1000, 3
+  call void @llvm.memset.p0.i64(ptr nonnull align 16 %t101, i8 0, i64 %t103, i1 false)
+  %t104 = insertvalue %ArchxVec poison, i64 1000, 0
+  %t105 = insertvalue %ArchxVec %t104, i64 %t102, 1
+  %t106 = insertvalue %ArchxVec %t105, ptr %t101, 2
+  store i64 0, ptr %for.i.107, align 8
+  store i64 0, ptr %for.last.i.108, align 8
   br label %for.cond.31
 for.cond.31:
-  %t104 = load i64, ptr %for.i.103, align 8
-  %t105 = icmp slt i64 %t104, 1000
-  br i1 %t105, label %for.body.32, label %for.end.34
+  %t109 = load i64, ptr %for.i.107, align 8
+  %t110 = icmp slt i64 %t109, 1000
+  br i1 %t110, label %for.body.32, label %for.end.34
 for.body.32:
-  %t106 = load i64, ptr %for.i.103, align 8
-  %t107 = extractvalue %ArchxVec %t102, 2
-  %t108 = getelementptr inbounds i64, ptr %t107, i64 %t106
-  %t109 = load i64, ptr %for.i.103, align 8
-  %t110 = icmp eq i64 10, 0
-  br i1 %t110, label %fdiv.zero.35, label %fdiv.ok.36
+  store i64 %t109, ptr %for.last.i.108, align 8
+  %t111 = load i64, ptr %for.last.i.108, align 8
+  %t112 = extractvalue %ArchxVec %t106, 2
+  %t113 = getelementptr inbounds i64, ptr %t112, i64 %t111
+  %t114 = load i64, ptr %for.last.i.108, align 8
+  %t115 = icmp eq i64 10, 0
+  br i1 %t115, label %fdiv.zero.35, label %fdiv.ok.36
 fdiv.zero.35:
   call void @archx_div_zero_fail()
   unreachable
 fdiv.ok.36:
-  %t111 = icmp eq i64 %t109, -9223372036854775808
-  %t112 = icmp eq i64 10, -1
-  %t113 = and i1 %t111, %t112
-  %t114 = select i1 %t113, i64 1, i64 10
-  %t115 = sdiv i64 %t109, %t114
-  %t116 = sub i64 0, %t109
-  %t117 = select i1 %t113, i64 %t116, i64 %t115
-  %t118 = srem i64 %t109, %t114
-  %t119 = icmp ne i64 %t118, 0
-  %t120 = xor i64 %t109, 10
-  %t121 = icmp slt i64 %t120, 0
-  %t122 = and i1 %t119, %t121
-  %t123 = zext i1 %t122 to i64
-  %t124 = sub i64 %t117, %t123
-  store i64 %t124, ptr %t108, align 8
+  %t116 = icmp eq i64 %t114, -9223372036854775808
+  %t117 = icmp eq i64 10, -1
+  %t118 = and i1 %t116, %t117
+  %t119 = select i1 %t118, i64 1, i64 10
+  %t120 = sdiv i64 %t114, %t119
+  %t121 = sub i64 0, %t114
+  %t122 = select i1 %t118, i64 %t121, i64 %t120
+  %t123 = srem i64 %t114, %t119
+  %t124 = icmp ne i64 %t123, 0
+  %t125 = xor i64 %t114, 10
+  %t126 = icmp slt i64 %t125, 0
+  %t127 = and i1 %t124, %t126
+  %t128 = zext i1 %t127 to i64
+  %t129 = sub i64 %t122, %t128
+  store i64 %t129, ptr %t113, align 8
   br label %for.step.33
 for.step.33:
-  %t125 = load i64, ptr %for.i.103, align 8
-  %t126 = add nsw i64 %t125, 100
-  store i64 %t126, ptr %for.i.103, align 8
+  %t130 = load i64, ptr %for.i.107, align 8
+  %t131 = add nsw i64 %t130, 100
+  store i64 %t131, ptr %for.i.107, align 8
   br label %for.cond.31
 for.end.34:
-  %t127 = load %ArchxStruct_Stats, ptr %var.stats.2, align 8
-  %t128 = call fastcc double @archx_method_5_Stats_mean(%ArchxStruct_Stats %t127)
-  %t129 = call fastcc %ArchxStr @archx_str_from_float(double %t128, ptr %func.region)
-  %t130 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 7953749935738847237, i64 61 }, %ArchxStr %t129, ptr %func.region)
-  %t131 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t130, %ArchxStr { i64 8026294334255005708, i64 4426606804062203509 }, ptr %func.region)
-  %t132 = call fastcc i64 @archx_fn_countdown_sum(i64 10)
-  %t133 = call fastcc %ArchxStr @archx_str_from_int(i64 %t132, ptr %func.region)
-  %t134 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t131, %ArchxStr %t133, ptr %func.region)
-  %t135 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t134, %ArchxStr { i64 8458358423505862665, i64 262801471846 }, ptr %func.region)
-  %t136 = extractvalue %ArchxVec %t102, 2
-  %t137 = getelementptr inbounds i64, ptr %t136, i64 900
-  %t138 = load i64, ptr %t137, align 8
-  %t139 = call fastcc %ArchxStr @archx_str_from_int(i64 %t138, ptr %func.region)
-  %t140 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t135, %ArchxStr %t139, ptr %func.region)
-  call fastcc void @archx_str_print(%ArchxStr %t140, i1 true)
+  %t132 = load %ArchxStruct_Stats, ptr %var.stats.2, align 8
+  %t133 = call fastcc double @archx_method_5_Stats_mean(%ArchxStruct_Stats %t132)
+  %t134 = call fastcc %ArchxStr @archx_str_from_float(double %t133, ptr %func.region)
+  %t135 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr { i64 7953749935738847237, i64 61 }, %ArchxStr %t134, ptr %func.region)
+  %t136 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t135, %ArchxStr { i64 8026294334255005708, i64 4426606804062203509 }, ptr %func.region)
+  %t137 = call fastcc i64 @archx_fn_countdown_sum(i64 10)
+  %t138 = call fastcc %ArchxStr @archx_str_from_int(i64 %t137, ptr %func.region)
+  %t139 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t136, %ArchxStr %t138, ptr %func.region)
+  %t140 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t139, %ArchxStr { i64 8458358423505862665, i64 262801471846 }, ptr %func.region)
+  %t141 = extractvalue %ArchxVec %t106, 2
+  %t142 = getelementptr inbounds i64, ptr %t141, i64 900
+  %t143 = load i64, ptr %t142, align 8
+  %t144 = call fastcc %ArchxStr @archx_str_from_int(i64 %t143, ptr %func.region)
+  %t145 = call fastcc %ArchxStr @archx_str_concat(%ArchxStr %t140, %ArchxStr %t144, ptr %func.region)
+  call fastcc void @archx_str_print(%ArchxStr %t145, i1 true)
+  call fastcc void @archx_str_drop(%ArchxStr %t145)
+  call fastcc void @archx_str_drop(%ArchxStr %t144)
   call fastcc void @archx_str_drop(%ArchxStr %t140)
   call fastcc void @archx_str_drop(%ArchxStr %t139)
+  call fastcc void @archx_str_drop(%ArchxStr %t138)
+  call fastcc void @archx_str_drop(%ArchxStr %t136)
   call fastcc void @archx_str_drop(%ArchxStr %t135)
   call fastcc void @archx_str_drop(%ArchxStr %t134)
-  call fastcc void @archx_str_drop(%ArchxStr %t133)
-  call fastcc void @archx_str_drop(%ArchxStr %t131)
-  call fastcc void @archx_str_drop(%ArchxStr %t130)
-  call fastcc void @archx_str_drop(%ArchxStr %t129)
   call fastcc void @archx_region_rewind_root(ptr %func.region)
-  %t141 = load %ArchxVec, ptr %var.words.80, align 8
-  call fastcc void @archx_vec_drop_s(%ArchxVec %t141)
-  %t142 = load %ArchxVec, ptr %var.samples.7, align 8
-  %t143 = extractvalue %ArchxVec %t142, 1
-  %t144 = icmp sgt i64 %t143, 0
-  br i1 %t144, label %drop.vec.free.37, label %drop.vec.done.38
+  %t146 = load %ArchxVec, ptr %var.words.84, align 8
+  call fastcc void @archx_vec_drop_s(%ArchxVec %t146)
+  %t147 = load %ArchxVec, ptr %var.samples.7, align 8
+  %t148 = extractvalue %ArchxVec %t147, 1
+  %t149 = icmp sgt i64 %t148, 0
+  br i1 %t149, label %drop.vec.free.37, label %drop.vec.done.38
 drop.vec.free.37:
-  %t145 = extractvalue %ArchxVec %t142, 2
-  call void @free(ptr %t145)
+  %t150 = extractvalue %ArchxVec %t147, 2
+  call void @free(ptr %t150)
   br label %drop.vec.done.38
 drop.vec.done.38:
-  %t146 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t147 = load ptr, ptr %t146, align 8
-  call fastcc void @archx_region_release_from(ptr %t147)
+  %t151 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t152 = load ptr, ptr %t151, align 8
+  call fastcc void @archx_region_release_from(ptr %t152)
   ret i32 0
 }
 
@@ -911,12 +926,27 @@ copy_long:
 
 define private fastcc i64 @archx_fmt_float_buf(double %x, ptr %buf) nounwind {
 entry:
-  %n32 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  ; Python prints the shortest decimal that round-trips back to the same double. Start at 15
+  ; significant digits and widen to 16 then 17 until `strtod` agrees again.
+  %n15 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g15, double %x)
+  %back15 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq15 = fcmp oeq double %back15, %x
+  br i1 %eq15, label %done, label %try16
+try16:
+  %n16 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g16, double %x)
+  %back16 = call double @strtod(ptr nonnull %buf, ptr null)
+  %eq16 = fcmp oeq double %back16, %x
+  br i1 %eq16, label %done, label %try17
+try17:
+  %n17 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull %buf, ptr @.fmt.g17, double %x)
+  br label %done
+done:
+  %n32 = phi i32 [ %n15, %entry ], [ %n16, %try16 ], [ %n17, %try17 ]
   %n = sext i32 %n32 to i64
   %pos = icmp sgt i64 %n, 0
   br i1 %pos, label %scan, label %ret_orig
 scan:
-  %i = phi i64 [ 0, %entry ], [ %inext, %scan_step ]
+  %i = phi i64 [ 0, %done ], [ %inext, %scan_step ]
   %cp = getelementptr inbounds i8, ptr %buf, i64 %i
   %ch = load i8, ptr %cp, align 1
   %is_dot = icmp eq i8 %ch, 46
@@ -1205,3 +1235,4 @@ done:
 }
 
 declare i32 @sprintf(ptr nocapture writeonly, ptr nocapture readonly, ...) nounwind
+declare double @strtod(ptr nocapture readonly, ptr nocapture writeonly) nounwind
