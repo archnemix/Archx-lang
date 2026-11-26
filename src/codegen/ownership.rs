@@ -530,6 +530,17 @@ impl Codegen {
         }
     }
 
+    /// Forgets the per-scope drop target for `slot`, used by `del` once it has emitted the drop
+    /// itself so the value is not freed a second time at scope exit.
+    pub(super) fn forget_drop_target(&mut self, slot: &str) {
+        for scope in self.scopes.iter_mut() {
+            scope.owned_buffers.retain(|t| match t {
+                DropTarget::TypedSlot { ptr, .. } => ptr != slot,
+                DropTarget::DataPtr(_) => true,
+            });
+        }
+    }
+
     pub(super) fn emit_drops_down_to(&mut self, target_depth: usize, skip_slot: Option<&str>, out: &mut String) {
         let mut all_targets = Vec::new();
         for scope in self.scopes[target_depth..].iter().rev() {

@@ -689,6 +689,7 @@ impl<'a> Monomorphizer<'a> {
                     None => None,
                 },
             },
+            StmtKind::Del { name } => StmtKind::Del { name: name.clone() },
             StmtKind::Pass => StmtKind::Pass,
             StmtKind::Break => StmtKind::Break,
             StmtKind::Continue => StmtKind::Continue,

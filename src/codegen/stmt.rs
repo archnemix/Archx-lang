@@ -37,6 +37,53 @@ impl Codegen {
         match &stmt.kind {
             StmtKind::Pass => Ok(()),
 
+            // `del x` frees the value now, then forgets the binding. A later `x = ...` introduces
+            // a fresh variable (Python's `del` removes the name from the scope), and a read before
+            // that reports `undefined variable`, matching `UnboundLocalError`. Returned values are
+            // promoted to the heap instead of dropped because the caller may still own them.
+            StmtKind::Del { name } => {
+                let Some(entry) = self.lookup_var(name).cloned() else {
+                    return Err(Diagnostic::new(
+                        format!("cannot delete undefined variable `{name}`"),
+                        stmt.span,
+                    ));
+                };
+                if self.returned_vars.contains(name) {
+                    return Ok(());
+                }
+                if self.type_needs_drop(&entry.ty) {
+                    match &entry.storage {
+                        VarStorage::Imm(val) => {
+                            let val = val.clone();
+                            self.emit_drop_value(&entry.ty, &val, out);
+                        }
+                        VarStorage::Slot(ptr) => {
+                            let ptr = ptr.clone();
+                            self.forget_drop_target(&ptr);
+                            let loaded = self.next_tmp();
+                            let _ = writeln!(
+                                out,
+                                "  {loaded} = load {}, ptr {ptr}, align {}",
+                                ir_type(&entry.ty),
+                                ir_align(&entry.ty)
+                            );
+                            self.emit_drop_value(&entry.ty, &loaded, out);
+                        }
+                        VarStorage::Soa { .. } => {
+                            // A deleted SoA array cannot reach here: binding one for deletion is
+                            // treated as an escape by the layout pass, so it stays a plain vector.
+                        }
+                    }
+                }
+                for scope in self.scopes.iter_mut().rev() {
+                    if scope.vars.remove(name).is_some() {
+                        break;
+                    }
+                }
+                self.flush_stmt_temps(out);
+                Ok(())
+            }
+
             // `for ... else` is carried by `ForEach` now; a bare wrapper cannot be reached.
             StmtKind::ForElse { .. } => Err(Diagnostic::new(
                 "internal error: unwrapped `for ... else`",

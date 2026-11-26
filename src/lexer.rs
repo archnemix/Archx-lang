@@ -417,6 +417,7 @@ impl<'a> Lexer<'a> {
             "with" => TokenKind::With,
             "pass" => TokenKind::Pass,
             "assert" => TokenKind::Assert,
+            "del" => TokenKind::Del,
             "let" => TokenKind::Let,
             "return" => TokenKind::Return,
             "if" => TokenKind::If,

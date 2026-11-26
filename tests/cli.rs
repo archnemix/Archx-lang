@@ -1705,3 +1705,36 @@ main()
          [(a, 0), (a, 1), (b, 2)]\n"
     );
 }
+
+/// v0.9.2 — `del x` ends the binding early: the value is dropped once, the name is gone, and a
+/// later rebinding introduces a fresh variable (Python removes the name from the scope).
+#[test]
+fn del_statement_drops_and_forgets_binding() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    let src = r#"def main():
+    xs = [1, 2, 3]
+    print(len(xs))
+    del xs
+    xs = "reborn"
+    print(xs)
+    d = {"a": 1}
+    del d
+    print("gone")
+main()
+"#;
+    assert_eq!(build_and_run("v12_del", src), "3\nreborn\ngone\n");
+
+    // A read after `del` is a compile error, like Python's `UnboundLocalError`.
+    let dir = std::env::temp_dir().join(format!("archx-del-bad-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("del_bad.archx.lang");
+    fs::write(&src, "def main():\n    x = 5\n    del x\n    print(x)\nmain()\n").unwrap();
+    let out = Command::new(archx()).arg(&src).arg("--emit-ir").output().unwrap();
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("undefined variable `x`"), "stderr was: {err}");
+}

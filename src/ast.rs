@@ -202,6 +202,11 @@ pub enum StmtKind {
         cond: Expr,
         msg: Option<Expr>,
     },
+    /// `del x` — drop the value and forget the binding; a later use reports `undefined variable`
+    /// the way Python raises `UnboundLocalError`.
+    Del {
+        name: String,
+    },
     Pass,
     Break,
     Continue,

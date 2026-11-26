@@ -11,6 +11,8 @@ pub enum TokenKind {
     With,
     Pass,
     Assert,
+    /// `del x` — ends a binding's lifetime early.
+    Del,
     Let,
     Return,
     If,
@@ -92,6 +94,7 @@ impl TokenKind {
             TokenKind::With => "`with`".to_string(),
             TokenKind::Pass => "`pass`".to_string(),
             TokenKind::Assert => "`assert`".to_string(),
+            TokenKind::Del => "`del`".to_string(),
             TokenKind::Let => "`let`".to_string(),
             TokenKind::Return => "`return`".to_string(),
             TokenKind::If => "`if`".to_string(),

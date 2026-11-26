@@ -92,6 +92,8 @@ pub(super) fn stmt_escapes_soa(
                     .as_ref()
                     .map_or(false, |m| expr_escapes_soa(m, var, mutating_methods))
         }
+        // `del x` frees the value; it never lets SoA planes escape.
+        StmtKind::Del { .. } => false,
         StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => false,
         StmtKind::If {
             cond,
@@ -629,6 +631,9 @@ pub(super) fn walk_mutations(
                     walk_expr_mutations(m, mutated, mutating_methods);
                 }
             }
+            StmtKind::Del { name } => {
+                bound.remove(name);
+            }
             StmtKind::Return(None) | StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
             StmtKind::If {
                 cond,
@@ -1113,6 +1118,13 @@ pub(super) fn compute_adaptive_hints(
                     if let Some(m) = msg {
                         walk_expr_hints(m, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                     }
+                }
+                StmtKind::Del { name } => {
+                    env.remove(name);
+                    list_elems.remove(name);
+                    dict_keys.remove(name);
+                    dict_vals.remove(name);
+                    set_elems.remove(name);
                 }
                 StmtKind::If {
                     cond,

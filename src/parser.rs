@@ -721,6 +721,16 @@ impl Parser {
             });
         }
 
+        if self.check(&TokenKind::Del) {
+            self.bump();
+            let name = self.expect_ident("a variable name")?;
+            self.expect(TokenKind::Newline, "a newline after `del`")?;
+            return Ok(Stmt {
+                kind: StmtKind::Del { name },
+                span,
+            });
+        }
+
         if self.check(&TokenKind::Let) {
             self.bump();
             if self.check(&TokenKind::LParen) {
@@ -2759,6 +2769,7 @@ fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
                 rewrite_main_calls_in_expr(value);
             }
             StmtKind::Return(Some(e)) | StmtKind::Expr(e) => rewrite_main_calls_in_expr(e),
+            StmtKind::Del { .. } => {}
             StmtKind::Assert { cond, msg } => {
                 rewrite_main_calls_in_expr(cond);
                 if let Some(m) = msg {
