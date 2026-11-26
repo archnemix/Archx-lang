@@ -45,6 +45,10 @@ pub(super) fn stmt_escapes_soa(
     mutating_methods: &HashSet<String>,
 ) -> bool {
     match &stmt.kind {
+        StmtKind::ForElse { body, else_body } => body
+            .iter()
+            .chain(else_body.iter())
+            .any(|s| stmt_escapes_soa(s, var, mutating_methods)),
         StmtKind::Let { value, .. } => expr_escapes_soa(value, var, mutating_methods),
         StmtKind::Assign { target, value, .. } => {
             match target {
@@ -576,6 +580,10 @@ pub(super) fn walk_mutations(
                 walk_expr_mutations(value, mutated, mutating_methods);
                 bound.insert(name.clone());
             }
+            StmtKind::ForElse { body, else_body } => {
+                walk_mutations(body, bound, mutated, mutating_methods);
+                walk_mutations(else_body, bound, mutated, mutating_methods);
+            }
             StmtKind::Assign { target, op, value } => {
                 walk_expr_mutations(value, mutated, mutating_methods);
                 match target {
@@ -994,6 +1002,35 @@ pub(super) fn compute_adaptive_hints(
     ) {
         for s in stmts {
             match &s.kind {
+                StmtKind::ForElse { body, else_body } => {
+                    // Recurse for hints, then continue with the following statements.
+                    walk(
+                        body,
+                        env,
+                        explicitly_typed,
+                        dynamic_vars,
+                        empty_inits,
+                        list_elems,
+                        dict_keys,
+                        dict_vals,
+                        set_elems,
+                        structs,
+                        sigs,
+                    );
+                    walk(
+                        else_body,
+                        env,
+                        explicitly_typed,
+                        dynamic_vars,
+                        empty_inits,
+                        list_elems,
+                        dict_keys,
+                        dict_vals,
+                        set_elems,
+                        structs,
+                        sigs,
+                    );
+                }
                 StmtKind::Let { name, ty, value } => {
                     walk_expr_hints(value, env, list_elems, dict_keys, dict_vals, set_elems, structs, sigs);
                     if let Some(decl_t) = ty {

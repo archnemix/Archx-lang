@@ -323,6 +323,7 @@ impl Codegen {
             } => self.gen_for(var, start, end, step.as_ref(), body, stmt.span, out),
 
             StmtKind::ForEach { var, iter, body } => {
+                let _ = rest_in_block;
                 self.gen_foreach(var, iter, body, stmt.span, out)
             }
 
@@ -359,14 +360,28 @@ impl Codegen {
 
             StmtKind::Region { body } => self.gen_region(body, out),
 
+            StmtKind::ForElse { body, else_body } => {
+                self.gen_for_else(body, else_body, stmt.span, out)
+            }
+
             StmtKind::Break => {
-                let (label, sdepth, rdepth) = self
+                let (label, sdepth, rdepth, flag) = self
                     .loop_stack
                     .last()
-                    .map(|l| (l.break_label.clone(), l.scope_depth, l.region_depth))
+                    .map(|l| {
+                        (
+                            l.break_label.clone(),
+                            l.scope_depth,
+                            l.region_depth,
+                            l.break_flag.clone(),
+                        )
+                    })
                     .ok_or_else(|| {
                         Diagnostic::new("`break` is only allowed inside a loop", stmt.span)
                     })?;
+                if let Some(flag) = &flag {
+                    let _ = writeln!(out, "  store i1 false, ptr {flag}, align 8");
+                }
                 self.emit_drops_down_to(sdepth, None, out);
                 self.emit_region_exits_down_to(rdepth, out);
                 self.break_count += 1;

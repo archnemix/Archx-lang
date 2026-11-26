@@ -101,6 +101,9 @@ pub struct Func {
 pub struct Param {
     pub name: String,
     pub ty: Type,
+    /// `def f(a: int, b: int = 3)` — the default is applied at the call site when the argument is
+    /// omitted, exactly like Python's.
+    pub default: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -198,6 +201,11 @@ pub enum StmtKind {
     Pass,
     Break,
     Continue,
+    /// `for ...: ... else: ...` — the body runs when the loop finishes without `break`.
+    ForElse {
+        body: Vec<Stmt>,
+        else_body: Vec<Stmt>,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -9,6 +9,19 @@ use crate::diag::{Diagnostic, Result, Span};
 use super::analysis::*;
 use super::*;
 
+/// Bind a `for` loop variable in the enclosing scope (Python keeps it visible after the loop).
+fn bind_loop_var(cg: &mut Codegen, var: &str, ty: Type, slot: String, region_depth: usize) {
+    cg.scopes.last_mut().unwrap().vars.insert(
+        var.to_string(),
+        VarEntry {
+            ty,
+            storage: VarStorage::Slot(slot),
+            is_param: false,
+            region_depth,
+        },
+    );
+}
+
 impl Codegen {
     // ---------------- Loops --------------------------------------------------
 
@@ -62,6 +75,7 @@ impl Codegen {
             self.push_scope();
             self.loop_bounds.push(plan.proven_bound);
             self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
                 break_label: end_label.clone(),
                 continue_label: fast_cond.clone(),
                 scope_depth: outer_depth,
@@ -85,6 +99,7 @@ impl Codegen {
             let outer_rdepth = self.region_stack.len();
             self.push_scope();
             self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
                 break_label: end_label.clone(),
                 continue_label: slow_cond.clone(),
                 scope_depth: outer_depth,
@@ -118,6 +133,7 @@ impl Codegen {
         self.push_scope();
         let breaks_before = self.break_count;
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_label.clone(),
             continue_label: cond_label.clone(),
             scope_depth: outer_depth,
@@ -138,6 +154,47 @@ impl Codegen {
             let _ = writeln!(out, "  unreachable");
             self.terminated = true;
         }
+        Ok(())
+    }
+
+    /// `for ...: ..., else: ...` — the `else` body runs only when the loop completed without a
+    /// `break`. The compiled loop is wrapped in a scope whose loop entry carries a `break` flag:
+    ///
+    /// ```text
+    ///   store i1 true, ptr %flag
+    ///   <loop>              ; every `break` stores false into %flag
+    ///   %ok = load i1, ptr %flag
+    ///   br i1 %ok, label %else, label %done
+    /// ```
+    pub(super) fn gen_for_else(
+        &mut self,
+        body: &[Stmt],
+        else_body: &[Stmt],
+        span: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        let flag = self.next_slot("forelse.flag");
+        let _ = writeln!(self.allocas, "  {flag} = alloca i1, align 8");
+        let _ = writeln!(out, "  store i1 true, ptr {flag}, align 8");
+
+        // `gen_for_else` is reached through `gen_stmt`, so the flag has to be visible to the
+        // loop's own `LoopLabels`. The simplest correct encoding: compile the loop with a
+        // one-shot "pending break flag" that the next pushed loop entry consumes.
+        self.pending_break_flag = Some(flag.clone());
+        self.gen_block(body, out)?;
+        let _ = span;
+
+        let ok = self.next_tmp();
+        let _ = writeln!(out, "  {ok} = load i1, ptr {flag}, align 8");
+        let else_lbl = self.fresh_label("forelse.then");
+        let done_lbl = self.fresh_label("forelse.done");
+        self.emit_cond_br(&ok, &else_lbl, &done_lbl, out);
+        self.start_block(&else_lbl, out);
+        self.gen_block(else_body, out)?;
+        if !self.terminated {
+            self.emit_br(&done_lbl, out);
+        }
+        self.start_block(&done_lbl, out);
         Ok(())
     }
 
@@ -297,16 +354,8 @@ impl Codegen {
             self.start_block(&fast_body, out);
             let outer_depth = self.scopes.len();
             let outer_rdepth = self.region_stack.len();
+            bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
             self.push_scope();
-            self.scopes.last_mut().unwrap().vars.insert(
-                var.to_string(),
-                VarEntry {
-                    ty: Type::Int,
-                    storage: VarStorage::Slot(slot.clone()),
-                    is_param: false,
-                    region_depth: outer_rdepth,
-                },
-            );
             let mut pushed_bounds = 0usize;
             if let Some(b) = &proven_bound {
                 self.loop_bounds.push(b.clone());
@@ -320,6 +369,7 @@ impl Codegen {
                 pushed_bounds += 1;
             }
             self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
                 break_label: end_label.clone(),
                 continue_label: fast_step.clone(),
                 scope_depth: outer_depth,
@@ -353,20 +403,14 @@ impl Codegen {
             self.start_block(&slow_body, out);
             let outer_depth = self.scopes.len();
             let outer_rdepth = self.region_stack.len();
+            // Python keeps the loop variable bound after the loop: bind it in the enclosing scope.
+            bind_loop_var(self, var, Type::Int, slot.clone(), outer_rdepth);
             self.push_scope();
-            self.scopes.last_mut().unwrap().vars.insert(
-                var.to_string(),
-                VarEntry {
-                    ty: Type::Int,
-                    storage: VarStorage::Slot(slot.clone()),
-                    is_param: false,
-                    region_depth: outer_rdepth,
-                },
-            );
             if let Some(b) = &proven_bound {
                 self.loop_bounds.push(b.clone());
             }
             self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
                 break_label: end_label.clone(),
                 continue_label: slow_step.clone(),
                 scope_depth: outer_depth,
@@ -430,7 +474,8 @@ impl Codegen {
         self.start_block(&body_label, out);
         let outer_depth = self.scopes.len();
         let outer_rdepth = self.region_stack.len();
-        self.push_scope();
+        // Python keeps the loop variable bound after the loop (`for i in ...` then `print(i)`),
+        // so it lives in the *enclosing* scope, not in the loop body's scope.
         self.scopes.last_mut().unwrap().vars.insert(
             var.to_string(),
             VarEntry {
@@ -440,10 +485,12 @@ impl Codegen {
                 region_depth: outer_rdepth,
             },
         );
+        self.push_scope();
         if let Some(bound) = &proven_bound {
             self.loop_bounds.push(bound.clone());
         }
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_label.clone(),
             continue_label: step_label.clone(),
             scope_depth: outer_depth,
@@ -473,6 +520,36 @@ impl Codegen {
 
         self.start_block(&end_label, out);
         Ok(())
+    }
+
+    /// Bind a `for` loop variable in the enclosing scope so it survives the loop, matching
+    /// Python's function-scoped loop variables.
+    fn declare_loop_var_in_outer_scope(
+        &mut self,
+        var: &str,
+        elem_ty: &Type,
+        outer_rdepth: usize,
+        out: &mut String,
+    ) {
+        let ty_ir = ir_type(elem_ty);
+        let align = ir_align(elem_ty);
+        let sptr = self.next_slot(&format!("var.{var}"));
+        let _ = writeln!(self.allocas, "  {sptr} = alloca {ty_ir}, align {align}");
+        let zero = match elem_ty {
+            Type::Int | Type::Bool => "0",
+            _ => "zeroinitializer",
+        };
+        let _ = writeln!(out, "  store {ty_ir} {zero}, ptr {sptr}, align {align}");
+        let _ = out;
+        self.scopes.last_mut().unwrap().vars.insert(
+            var.to_string(),
+            VarEntry {
+                ty: elem_ty.clone(),
+                storage: VarStorage::Slot(sptr),
+                is_param: false,
+                region_depth: outer_rdepth,
+            },
+        );
     }
 
     pub(super) fn gen_foreach(
@@ -541,6 +618,7 @@ impl Codegen {
                         },
                     );
                     self.loop_stack.push(LoopLabels {
+                        break_flag: self.pending_break_flag.take(),
                         break_label: end_lbl.clone(),
                         continue_label: step_lbl.clone(),
                         scope_depth: outer_depth,
@@ -590,7 +668,6 @@ impl Codegen {
         let hold_outer_scope = self.claim_stmt_temp(&iter_val);
         self.flush_stmt_temps(out);
         if hold_outer_scope {
-            self.push_scope();
             let hslot = self.next_slot("foreach.iter");
             let _ = writeln!(self.allocas, "  {hslot} = alloca %ArchxVec, align 8");
             let _ = writeln!(out, "  store %ArchxVec {iter_val}, ptr {hslot}, align 8");
@@ -638,6 +715,7 @@ impl Codegen {
         self.emit_cond_br(&cmp, &body_lbl, &end_lbl, out);
 
         self.start_block(&body_lbl, out);
+
         let mem_ty = elem_mem_ir_type(&elem_ty);
         let ep = self.next_tmp();
         let _ = writeln!(
@@ -646,45 +724,44 @@ impl Codegen {
         );
         let raw_elem = self.emit_elem_load(&elem_ty, &ep, out);
 
+        // Python binds the loop variable in the *enclosing* scope (`for x in xs:` then `print(x)`
+        // after the loop), so the slot is declared here and registered before the body scope is
+        // pushed. `pop_scope_with_drops` then cannot take the binding away.
         let outer_depth = self.scopes.len();
         let outer_rdepth = self.region_stack.len();
-        self.push_scope();
-        let var_mutated = self.mutated_vars.contains(var);
-        let storage = if var_mutated {
-            let init_elem = if self.type_needs_drop(&elem_ty) {
-                self.emit_clone_value(&elem_ty, &raw_elem, out)
-            } else {
-                raw_elem
-            };
-            let sptr = self.next_slot(&format!("var.{var}"));
-            let ty_ir = ir_type(&elem_ty);
-            let align = ir_align(&elem_ty);
-            let _ = writeln!(self.allocas, "  {sptr} = alloca {ty_ir}, align {align}");
-            let _ = writeln!(out, "  store {ty_ir} {init_elem}, ptr {sptr}, align {align}");
-            if self.type_needs_drop(&elem_ty) {
-                self.scopes
-                    .last_mut()
-                    .unwrap()
-                    .owned_buffers
-                    .push(DropTarget::TypedSlot {
-                        ptr: sptr.clone(),
-                        ty: (*elem_ty).clone(),
-                    });
-            }
-            VarStorage::Slot(sptr)
+        let slot = self.next_slot(&format!("var.{var}"));
+        let ty_ir = ir_type(&elem_ty);
+        let align = ir_align(&elem_ty);
+        let _ = writeln!(self.allocas, "  {slot} = alloca {ty_ir}, align {align}");
+        let init_elem = if self.type_needs_drop(&elem_ty) {
+            self.emit_clone_value(&elem_ty, &raw_elem, out)
         } else {
-            VarStorage::Imm(raw_elem)
+            raw_elem
         };
+        let _ = writeln!(out, "  store {ty_ir} {init_elem}, ptr {slot}, align {align}");
+        let owns = self.type_needs_drop(&elem_ty);
         self.scopes.last_mut().unwrap().vars.insert(
             var.to_string(),
             VarEntry {
                 ty: (*elem_ty).clone(),
-                storage,
-                is_param: !var_mutated,
+                storage: VarStorage::Slot(slot.clone()),
+                is_param: false,
                 region_depth: outer_rdepth,
             },
         );
+        if owns {
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .owned_buffers
+                .push(DropTarget::TypedSlot {
+                    ptr: slot.clone(),
+                    ty: (*elem_ty).clone(),
+                });
+        }
+        self.push_scope();
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -706,9 +783,6 @@ impl Codegen {
         self.emit_br(&cond_lbl, out);
 
         self.start_block(&end_lbl, out);
-        if hold_outer_scope {
-            self.pop_scope_with_drops(out);
-        }
         Ok(())
     }
 
@@ -844,6 +918,7 @@ impl Codegen {
             },
         );
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -995,6 +1070,7 @@ impl Codegen {
                         });
                     }
                     self.loop_stack.push(LoopLabels {
+                        break_flag: self.pending_break_flag.take(),
                         break_label: end_lbl.clone(),
                         continue_label: step_lbl.clone(),
                         scope_depth: outer_depth,
@@ -1203,6 +1279,7 @@ impl Codegen {
         };
 
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -1303,6 +1380,7 @@ impl Codegen {
         self.push_scope();
         self.bind_loop_elem_var(var, k_ty, &kval, outer_rdepth, out);
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -1461,6 +1539,7 @@ impl Codegen {
         );
 
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -1640,6 +1719,7 @@ impl Codegen {
         self.bind_loop_elem_var(val_var, &v_ty, &vval, outer_rdepth, out);
 
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -1711,7 +1791,7 @@ impl Codegen {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
     fn gen_for_tuple2_list(
         &mut self,
         var_a: &str,
@@ -1779,6 +1859,7 @@ impl Codegen {
         self.bind_loop_elem_var(var_a, ty_a, &va, outer_rdepth, out);
         self.bind_loop_elem_var(var_b, ty_b, &vb, outer_rdepth, out);
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,

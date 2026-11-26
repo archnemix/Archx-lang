@@ -361,6 +361,28 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
+        // Fill omitted trailing arguments from their declared defaults (`def f(a, b=3)`).
+        let mut padded: Vec<Expr> = args.to_vec();
+        if padded.len() < sig.params.len() {
+            for d in &sig.defaults[padded.len()..] {
+                match d {
+                    Some(d) => padded.push(d.clone()),
+                    None => {
+                        return Err(Diagnostic::new(
+                            format!(
+                                "function `{name}` expects {} argument{}, but {} {} supplied",
+                                sig.params.len(),
+                                if sig.params.len() == 1 { "" } else { "s" },
+                                args.len(),
+                                if args.len() == 1 { "was" } else { "were" }
+                            ),
+                            span,
+                        ))
+                    }
+                }
+            }
+        }
+        let args: &[Expr] = &padded;
         if args.len() != sig.params.len() {
             return Err(Diagnostic::new(
                 format!(

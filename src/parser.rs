@@ -230,6 +230,7 @@ impl Parser {
             fields.push(Param {
                 name: field_name,
                 ty,
+                default: None,
             });
         }
 
@@ -295,6 +296,7 @@ impl Parser {
         params.push(Param {
             name: "self".to_string(),
             ty: self_ty,
+            default: None,
         });
 
         while self.check(&TokenKind::Comma) {
@@ -309,9 +311,17 @@ impl Parser {
             } else {
                 Type::Any
             };
+            // `param: T = default`
+            let default = if self.check(&TokenKind::Eq) {
+                self.bump();
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
             params.push(Param {
                 name: param_name,
                 ty,
+                default,
             });
         }
 
@@ -368,9 +378,17 @@ impl Parser {
                 } else {
                     Type::Any
                 };
+                // `def f(a: int, b: int = 3)` — an optional trailing default.
+                let default = if self.check(&TokenKind::Eq) {
+                    self.bump();
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
                 params.push(Param {
                     name: param_name,
                     ty,
+                    default,
                 });
 
                 if self.check(&TokenKind::Comma) {
@@ -984,7 +1002,7 @@ impl Parser {
                 if body.is_empty() {
                     return Err(Diagnostic::new("`for` body cannot be empty", span));
                 }
-                return Ok(Stmt {
+                return self.maybe_parse_loop_else(Stmt {
                     kind: StmtKind::For {
                         var,
                         start: first,
@@ -1041,7 +1059,7 @@ impl Parser {
                 if body.is_empty() {
                     return Err(Diagnostic::new("`for` body cannot be empty", span));
                 }
-                return Ok(Stmt {
+                return self.maybe_parse_loop_else(Stmt {
                     kind: StmtKind::For {
                         var,
                         start,
@@ -1061,7 +1079,7 @@ impl Parser {
             if body.is_empty() {
                 return Err(Diagnostic::new("`for` body cannot be empty", span));
             }
-            return Ok(Stmt {
+            return self.maybe_parse_loop_else(Stmt {
                 kind: StmtKind::ForEach {
                     var,
                     iter: first,
@@ -1489,6 +1507,32 @@ impl Parser {
         })
     }
 
+    /// `for ...: <body> else: <else_body>` — wraps the loop so codegen can run the `else` only
+    /// when the loop left through normal completion (Python's `for/else`).
+    fn maybe_parse_loop_else(&mut self, loop_stmt: Stmt) -> Result<Stmt> {
+        self.skip_newlines();
+        if !matches!(&self.peek().kind, TokenKind::Else) {
+            return Ok(loop_stmt);
+        }
+        let span = self.peek().span;
+        self.bump();
+        self.expect(TokenKind::Colon, "`:` after `else`")?;
+        self.expect(TokenKind::Newline, "a newline after `else:`")?;
+        self.expect(TokenKind::Indent, "an indented `else` body")?;
+        let else_body = self.parse_block_body()?;
+        self.expect(TokenKind::Dedent, "the end of the `else` body")?;
+        if else_body.is_empty() {
+            return Err(Diagnostic::new("`else` body cannot be empty", span));
+        }
+        Ok(Stmt {
+            kind: StmtKind::ForElse {
+                body: vec![loop_stmt],
+                else_body,
+            },
+            span,
+        })
+    }
+
     fn parse_block_body(&mut self) -> Result<Vec<Stmt>> {
         self.enter_depth()?;
         let mut body = Vec::new();
@@ -1555,7 +1599,11 @@ impl Parser {
                 } else {
                     Type::Any
                 };
-                params.push(Param { name: pname, ty });
+                params.push(Param {
+                    name: pname,
+                    ty,
+                    default: None,
+                });
                 if self.check(&TokenKind::Comma) {
                     self.bump();
                 } else {
@@ -1577,6 +1625,7 @@ impl Parser {
                 params.push(Param {
                     name: pname,
                     ty: Type::Any,
+                    default: None,
                 });
                 if self.check(&TokenKind::Comma) {
                     self.bump();
@@ -2683,6 +2732,10 @@ impl Parser {
 fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
     for s in stmts {
         match &mut s.kind {
+        StmtKind::ForElse { body, else_body } => {
+            rewrite_main_calls_in_stmts(body);
+            rewrite_main_calls_in_stmts(else_body);
+        }
             StmtKind::Let { value, .. } => rewrite_main_calls_in_expr(value),
             StmtKind::Assign { target, value, .. } => {
                 match target {
@@ -3010,6 +3063,7 @@ fn infer_fields_from_init(init_fn: &Func) -> Vec<Param> {
                 fields.push(Param {
                     name: field.clone(),
                     ty,
+                    default: None,
                 });
             }
         }
@@ -3185,3 +3239,4 @@ def run(ev: Event) -> (int, int) | None:
         assert_eq!(program.funcs.len(), 1);
     }
 }
+

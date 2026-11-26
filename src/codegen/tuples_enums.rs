@@ -31,6 +31,7 @@ pub(super) fn resolve_program_types(raw: &Program, enum_names: &HashSet<String>)
                     .map(|f| Param {
                         name: f.name.clone(),
                         ty: resolve_ty(&f.ty, enum_names),
+                        default: None,
                     })
                     .collect(),
                 methods: s
@@ -76,6 +77,8 @@ fn resolve_func(f: &Func, enum_names: &HashSet<String>) -> Func {
             .map(|p| Param {
                 name: p.name.clone(),
                 ty: resolve_ty(&p.ty, enum_names),
+                // Defaults survive type resolution: they are evaluated at the call site.
+                default: p.default.clone(),
             })
             .collect(),
         ret: f.ret.as_ref().map(|t| resolve_ty(t, enum_names)),

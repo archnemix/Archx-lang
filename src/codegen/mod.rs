@@ -27,7 +27,7 @@ mod tests;
 use self::analysis::*;
 use self::generics::*;
 use self::tuples_enums::*;
-use crate::ast::{EnumDef, Func, Param, Program, StructDef, Type};
+use crate::ast::{EnumDef, Expr, Func, Param, Program, StructDef, Type};
 use crate::diag::{Diagnostic, Result, Span};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -324,6 +324,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
             func.name.clone(),
             FuncSig {
                 params: func.params.iter().map(|p| p.ty.clone()).collect(),
+                defaults: func.params.iter().map(|p| p.default.clone()).collect(),
                 ret,
             },
         );
@@ -447,6 +448,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_value_missing_fail: false,
         used_copysign_f64: false,
         used_rint_f64: false,
+        pending_break_flag: None,
         used_sprintf_fmt: false,
         used_int_to_base_raw: false,
         used_str_percent_suffix: false,
@@ -778,6 +780,9 @@ pub(super) fn topo_sort_structs(
 #[derive(Clone)]
 pub(super) struct FuncSig {
     pub(super) params: Vec<Type>,
+    /// `def f(a: int, b: int = 3)` — the defaults are evaluated at the call site when the trailing
+    /// arguments are omitted.
+    pub(super) defaults: Vec<Option<Expr>>,
     pub(super) ret: Option<Type>,
 }
 
@@ -851,6 +856,9 @@ pub(super) struct LoopLabels {
     pub(super) continue_label: String,
     pub(super) scope_depth: usize,
     pub(super) region_depth: usize,
+    /// Slot that every `break` writes `false` into, so `for ... else:` can tell whether the loop
+    /// finished normally. Present only while compiling a loop that has an `else` clause.
+    pub(super) break_flag: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -922,6 +930,9 @@ pub(super) struct Codegen {
     pub(super) mutated_vars: HashSet<String>,
     pub(super) returned_vars: HashSet<String>,
     pub(super) loop_stack: Vec<LoopLabels>,
+    /// Set by `for ... else:` right before compiling the loop; the next pushed `LoopLabels`
+    /// takes ownership of it.
+    pub(super) pending_break_flag: Option<String>,
     pub(super) loop_bounds: Vec<InductionBound>,
     pub(super) region_stack: Vec<RegionSave>,
     pub(super) func_region_slot: Option<String>,

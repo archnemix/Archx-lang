@@ -282,6 +282,7 @@ impl Codegen {
             self.bind_loop_var(vname, vty.clone(), &fv, outer_rdepth, out);
         }
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -370,6 +371,7 @@ impl Codegen {
             self.bind_loop_var(vname, src.elem_ty.clone(), &val, outer_rdepth, out);
         }
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,
@@ -463,6 +465,7 @@ impl Codegen {
         self.bind_loop_var(&vars[0], Type::Int, &cur, outer_rdepth, out);
         self.bind_loop_var(&vars[1], (*elem_ty).clone(), &raw, outer_rdepth, out);
         self.loop_stack.push(LoopLabels {
+            break_flag: self.pending_break_flag.take(),
             break_label: end_lbl.clone(),
             continue_label: step_lbl.clone(),
             scope_depth: outer_depth,

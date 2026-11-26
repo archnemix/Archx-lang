@@ -218,6 +218,7 @@ impl<'a> Monomorphizer<'a> {
                 .map(|f| Param {
                     name: f.name.clone(),
                     ty: subst_ty(&f.ty, &subst),
+                    default: None,
                 })
                 .collect(),
             methods: def
@@ -319,6 +320,7 @@ impl<'a> Monomorphizer<'a> {
             out.fields.push(Param {
                 name: f.name.clone(),
                 ty,
+                default: None,
             });
         }
         // PEP 695: inside a generic template every `self` *is* the instantiation, so the self
@@ -350,9 +352,16 @@ impl<'a> Monomorphizer<'a> {
         for p in &f.params {
             let ty = self.rewrite_ty(&p.ty)?;
             self.env_types.insert(p.name.clone(), ty.clone());
+            // Defaults are rewritten too: they are evaluated at the call site, but they still
+            // have to be concrete once the function is monomorphized.
+            let default = match &p.default {
+                Some(d) => Some(self.rewrite_expr(d)?),
+                None => None,
+            };
             params.push(Param {
                 name: p.name.clone(),
                 ty,
+                default,
             });
         }
         let ret = match &f.ret {
@@ -425,6 +434,16 @@ impl<'a> Monomorphizer<'a> {
     fn rewrite_stmt(&mut self, stmt: &Stmt) -> Result<Stmt> {
         let span = stmt.span;
         let kind = match &stmt.kind {
+            StmtKind::ForElse { body, else_body } => StmtKind::ForElse {
+                body: body
+                    .iter()
+                    .map(|s| self.rewrite_stmt(s))
+                    .collect::<Result<_>>()?,
+                else_body: else_body
+                    .iter()
+                    .map(|s| self.rewrite_stmt(s))
+                    .collect::<Result<_>>()?,
+            },
             StmtKind::Let { name, ty, value } => {
                 let declared = match ty {
                     Some(t) => Some(self.rewrite_ty(t)?),
@@ -750,6 +769,7 @@ impl<'a> Monomorphizer<'a> {
             lam_params.push(Param {
                 name: p.name.clone(),
                 ty,
+                default: None,
             });
         }
 
@@ -761,12 +781,14 @@ impl<'a> Monomorphizer<'a> {
             .map(|(n, t)| Param {
                 name: n.clone(),
                 ty: t.clone(),
+                default: None,
             })
             .collect();
         if fn_params.is_empty() {
             fn_params.push(Param {
                 name: ENV_PARAM.to_string(),
                 ty: Type::Bool,
+                default: None,
             });
         }
         fn_params.extend(lam_params.iter().cloned());
@@ -1217,6 +1239,7 @@ fn subst_func(f: &Func, new_name: &str, subst: &HashMap<String, Type>) -> Func {
             .map(|p| Param {
                 name: p.name.clone(),
                 ty: subst_ty(&p.ty, subst),
+                default: None,
             })
             .collect(),
         ret: f.ret.as_ref().map(|t| subst_ty(t, subst)),
