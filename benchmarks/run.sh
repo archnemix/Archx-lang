@@ -41,7 +41,9 @@ check_1to1() {
     echo "MISMATCH: $ax must start with \"$want\" (found: $first)"
     return 1
   fi
-  if ! diff -q <(tail -n +2 "$ax") "$py" >/dev/null; then
+  # Normalise CRLF first: these files are checked out with CRLF on Windows, and the invariant is
+  # about source text, not the host's newline convention.
+  if ! diff -q <(tail -n +2 "$ax" | tr -d '\r') <(tr -d '\r' < "$py") >/dev/null; then
     echo "MISMATCH: $ax must be byte-for-byte identical to $py below the directive!"
     return 1
   fi

@@ -33,6 +33,38 @@ fn exe_path(dir: &Path, stem: &str) -> PathBuf {
     p
 }
 
+/// The dialect directive that a 1:1 Python edition must carry on line 1.
+const COMPAT_DIRECTIVE: &str = "# archx: dialect=compat, version=1";
+
+/// Returns the body of a 1:1 Archx source below its dialect directive.
+///
+/// `None` when the file does not start with the expected compat directive, which is itself a
+/// failure the caller should report. Line endings are normalised first: the 1:1 editions are
+/// checked out with CRLF on Windows, and the invariant is about *source text*, not about the host's
+/// newline convention.
+fn one_to_one_body(source: &str) -> Option<String> {
+    let normalised = source.replace("\r\n", "\n");
+    normalised
+        .strip_prefix(COMPAT_DIRECTIVE)
+        .map(|rest| rest.trim_start_matches('\n').to_string())
+}
+
+/// Whether the linker genuinely implements GNU `--wrap`.
+///
+/// The leak harness depends on it, and only Linux reliably provides it (GNU ld and lld both do).
+/// The other platforms fail in ways that would be easy to mistake for "no leaks":
+///
+/// * macOS `ld64`: rejects the flags outright (`ld: unknown options: --wrap=malloc …`).
+/// * Windows MSVC `link.exe`: accepts them from the driver but performs no wrapping, so the harness
+///   ends up with unresolved `__real_malloc` (LNK1120).
+///
+/// Skipping is the honest choice: a harness that cannot observe allocations must not report
+/// success. The leak *evidence* for this project is therefore Linux-only, which is stated in
+/// `docs/V1_Tracker.md` rather than implied to be cross-platform.
+fn linker_supports_wrap() -> bool {
+    cfg!(target_os = "linux")
+}
+
 /// Native-dialect header for inline test sources.
 ///
 /// Every module must declare its dialect (AX-013), so the tests state the contract they are written
@@ -1211,6 +1243,28 @@ unwrapped=42 g=45,-99
     );
 }
 
+/// AX-013 regression, found by CI on Windows: the 1:1 editions are checked out with CRLF there, so
+/// comparing raw text failed even though the sources were unchanged. The helper normalises first,
+/// and it must still reject a file with no directive or the wrong one.
+#[test]
+fn one_to_one_body_normalises_line_endings_and_requires_the_directive() {
+    let lf = "# archx: dialect=compat, version=1\nA = 1\n";
+    assert_eq!(one_to_one_body(lf).as_deref(), Some("A = 1\n"));
+
+    let crlf = "# archx: dialect=compat, version=1\r\nA = 1\r\n";
+    assert_eq!(
+        one_to_one_body(crlf).as_deref(),
+        Some("A = 1\n"),
+        "a CRLF checkout must yield the same body as an LF one"
+    );
+
+    assert!(one_to_one_body("A = 1\n").is_none(), "a missing directive is not a body");
+    assert!(
+        one_to_one_body("# archx: dialect=native, version=1\nA = 1\n").is_none(),
+        "a 1:1 edition must be compat, not native"
+    );
+}
+
 #[test]
 fn full_tour_pythonic_and_speed_editions_match_exactly() {
     if !has_clang() {
@@ -1224,13 +1278,12 @@ fn full_tour_pythonic_and_speed_editions_match_exactly() {
         fs::read_to_string(root.join("examples/comparison/full_tour_pythonic.archx.lang")).unwrap();
     // The Archx edition carries the mandatory dialect directive on line 1; the rest of the file must
     // stay byte-for-byte identical to the Python reference, which is the point of the 1:1 edition.
-    let directive_line = "# archx: dialect=compat, version=1";
-    let ax_body = ax_py_src
-        .strip_prefix(directive_line)
-        .map(|rest| rest.trim_start_matches('\n'))
-        .unwrap_or_else(|| panic!("full_tour_pythonic.archx.lang must start with `{directive_line}`"));
+    let ax_body = one_to_one_body(&ax_py_src).unwrap_or_else(|| {
+        panic!("full_tour_pythonic.archx.lang must start with `{COMPAT_DIRECTIVE}`")
+    });
     assert_eq!(
-        py_src, ax_body,
+        py_src.replace("\r\n", "\n"),
+        ax_body,
         "full_tour.py and full_tour_pythonic.archx.lang must stay 1:1 identical below the directive"
     );
 
@@ -1814,6 +1867,10 @@ print(total)
 fn leakcheck_tracker_reports_leaks() {
     if !has_clang() {
         eprintln!("skipping: clang not found");
+        return;
+    }
+    if !linker_supports_wrap() {
+        eprintln!("skipping: the leak harness needs GNU ld/lld `--wrap` (Linux only)");
         return;
     }
     let dir = std::env::temp_dir().join(format!("archx-leakcheck-{}", std::process::id()));

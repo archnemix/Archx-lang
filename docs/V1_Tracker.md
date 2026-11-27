@@ -119,10 +119,25 @@ BOLT, hardened release profile, guarded specialization with deopt.
 |---|---|
 | `cargo build --release` | clean, 13 pre-existing warnings |
 | `cargo test --release` | 37 unit + 36 CLI = **73 pass, 0 fail** |
-| Leak gate (11 CI targets + `pipelines`) | **0 live blocks** |
+| Leak gate (11 CI targets + `pipelines`) | **0 live blocks** — measured on Linux; see the coverage note |
 | `benchmarks/pipelines.archx.lang` vs CPython 3.12 | byte-identical: `5333140919445` |
 | Trapping arithmetic | `MAX+1`, `MAX*2`, `MAX-(0-1)` all panic, exit 101 |
 | Audit baseline | 73/94 = 78 % (control 6/6, fn 6/10, ops 10/10, num 7/7, str 17/17, coll 18/18, err 0/5, mod 0/8, misc 9/13) |
+
+---
+
+## Leak-coverage note (scope, not a gap being hidden)
+
+Both leak checks are **Linux-only**, by the limits of the tooling rather than by choice:
+
+* ASan/LSan does not link against Archx IR on this toolchain.
+* The `--wrap` harness needs GNU ld or lld. macOS `ld64` rejects the flags outright; Windows'
+  MSVC `link.exe` accepts them from the driver but performs no wrapping, leaving unresolved
+  `__real_malloc` (LNK1120).
+
+So "zero leaks" is a Linux result. macOS and Windows are covered for *correctness* by the full test
+suite in `cross-platform-test`, not for leak-freedom. Anything that needs to change this has to bring
+a per-platform leak mechanism (e.g. `leaks(1)` on macOS, `_CrtMemCheckpoint` on Windows).
 
 ---
 

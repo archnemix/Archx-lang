@@ -118,6 +118,10 @@ jobs:
           done 2>&1 | tee ci/logs/asan_lsan.log
 
       - name: Verify zero live allocations (independent leak gate)
+        # `--wrap` is a GNU ld / lld feature; ld64 does not implement it. The job already runs on a
+        # Linux runner, so this is a guard against the step being moved somewhere it cannot work --
+        # a leak gate that silently cannot run must not look like a pass.
+        if: runner.os != 'macOS'
         run: |
           set -euo pipefail
           # The ASan/LSan step above covers invalid accesses and is the primary check. This gate
