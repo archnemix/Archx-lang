@@ -117,9 +117,11 @@ BOLT, hardened release profile, guarded specialization with deopt.
 
 | Check | Result |
 |---|---|
-| `cargo build --release` | clean, 13 pre-existing warnings |
-| `cargo test --release` | 37 unit + 36 CLI = **73 pass, 0 fail** |
-| Leak gate (11 CI targets + `pipelines`) | **0 live blocks** — measured on Linux; see the coverage note |
+| `cargo build --release` | clean, 13 pre-existing build warnings |
+| **CI (run 45999706770)** | **all 4 jobs green** — Linux `build-and-test`, macOS + Windows `cross-platform-test`, records |
+| ASan+LSan (`ci/logs/asan_lsan.log`) | **11/11 CLEAN** (0 leaks, 0 invalid accesses) — the audit's `pipeline_tour` leak is gone |
+| `cargo test --release` | 42 unit + 38 CLI = **80 pass, 0 fail** |
+| Leak gate (11 CI targets + `pipelines`) | **0 live blocks** — Linux only, see the coverage note |
 | `benchmarks/pipelines.archx.lang` vs CPython 3.12 | byte-identical: `5333140919445` |
 | Trapping arithmetic | `MAX+1`, `MAX*2`, `MAX-(0-1)` all panic, exit 101 |
 | Audit baseline | 73/94 = 78 % (control 6/6, fn 6/10, ops 10/10, num 7/7, str 17/17, coll 18/18, err 0/5, mod 0/8, misc 9/13) |
