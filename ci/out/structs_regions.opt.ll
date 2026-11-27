@@ -8,7 +8,8 @@ target triple = "x86_64-pc-linux-gnu"
 
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 @.fmt.pstr.nl = private unnamed_addr constant [6 x i8] c"%.*s\0A\00", align 1
-@str = private unnamed_addr constant [35 x i8] c"archx runtime panic: out of memory\00", align 1
+@str = private unnamed_addr constant [38 x i8] c"archx runtime panic: integer overflow\00", align 1
+@str.1 = private unnamed_addr constant [35 x i8] c"archx runtime panic: out of memory\00", align 1
 
 ; Function Attrs: nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
@@ -139,372 +140,187 @@ fill.body.14.preheader.i:                         ; preds = %fill.body.9.prehead
   %29 = getelementptr inbounds nuw i8, ptr %t7.i, i64 240
   store <2 x i64> <i64 84, i64 87>, ptr %28, align 16
   store <2 x i64> <i64 90, i64 93>, ptr %29, align 16
-  br label %vector.body12
+  br label %for.cond.28.preheader.i
 
 alloc.oom.12.i:                                   ; preds = %fill.body.9.preheader.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-vector.body12:                                    ; preds = %fill.body.14.preheader.i, %vector.body12
-  %index13 = phi i64 [ %index.next21, %vector.body12 ], [ 0, %fill.body.14.preheader.i ]
-  %30 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index13
-  %31 = getelementptr inbounds nuw i8, ptr %30, i64 16
-  %wide.load = load <2 x i64>, ptr %30, align 16
-  %wide.load14 = load <2 x i64>, ptr %31, align 16
-  %32 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index13
-  %33 = getelementptr inbounds nuw i8, ptr %32, i64 16
-  %wide.load15 = load <2 x i64>, ptr %32, align 16
-  %wide.load16 = load <2 x i64>, ptr %33, align 16
-  %34 = add <2 x i64> %wide.load15, %wide.load
-  %35 = add <2 x i64> %wide.load16, %wide.load14
-  store <2 x i64> %34, ptr %30, align 16
-  store <2 x i64> %35, ptr %31, align 16
-  %36 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index13
-  %37 = getelementptr inbounds nuw i8, ptr %36, i64 16
-  %wide.load17 = load <2 x i64>, ptr %36, align 16
-  %wide.load18 = load <2 x i64>, ptr %37, align 16
-  %38 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index13
-  %39 = getelementptr inbounds nuw i8, ptr %38, i64 16
-  %wide.load19 = load <2 x i64>, ptr %38, align 16
-  %wide.load20 = load <2 x i64>, ptr %39, align 16
-  %40 = add <2 x i64> %wide.load19, %wide.load17
-  %41 = add <2 x i64> %wide.load20, %wide.load18
-  store <2 x i64> %40, ptr %36, align 16
-  store <2 x i64> %41, ptr %37, align 16
-  %index.next21 = add nuw i64 %index13, 4
-  %42 = icmp eq i64 %index.next21, 32
-  br i1 %42, label %for.body.29.preheader.i, label %vector.body12, !llvm.loop !0
+for.cond.28.preheader.i:                          ; preds = %fill.body.14.preheader.i, %overflow.ok.41.7.i
+  %t81.7.i = phi i64 [ %30, %overflow.ok.41.7.i ], [ 1, %fill.body.14.preheader.i ]
+  %for.t.47.018.i = phi i64 [ %t88.i, %overflow.ok.41.7.i ], [ 0, %fill.body.14.preheader.i ]
+  br label %for.body.29.i
 
-for.body.29.preheader.i:                          ; preds = %vector.body12
-  store i64 2, ptr %t12.i, align 16
-  store i64 2, ptr %t17.4.i, align 16
-  store i64 2, ptr %t17.8.i, align 16
-  store i64 2, ptr %t17.12.i, align 16
-  store i64 2, ptr %t17.16.i, align 16
-  store i64 2, ptr %t17.20.i, align 16
-  store i64 2, ptr %t17.24.i, align 16
-  store i64 2, ptr %t17.28.i, align 16
-  br label %vector.body26
+for.body.29.i:                                    ; preds = %overflow.ok.35.i, %for.cond.28.preheader.i
+  %for.i.51.016.i = phi i64 [ 0, %for.cond.28.preheader.i ], [ %t74.i, %overflow.ok.35.i ]
+  %t56.i = getelementptr inbounds nuw i64, ptr %t3.i, i64 %for.i.51.016.i
+  %t57.i = load i64, ptr %t56.i, align 8
+  %t59.i = getelementptr inbounds nuw i64, ptr %t12.i, i64 %for.i.51.016.i
+  %t60.i = load i64, ptr %t59.i, align 8
+  %t61.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t57.i, i64 %t60.i)
+  %t63.i = extractvalue { i64, i1 } %t61.i, 1
+  br i1 %t63.i, label %overflow.add.32.i, label %overflow.ok.33.i
 
-vector.body26:                                    ; preds = %vector.body26, %for.body.29.preheader.i
-  %index27 = phi i64 [ 0, %for.body.29.preheader.i ], [ %index.next36, %vector.body26 ]
-  %43 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index27
-  %44 = getelementptr inbounds nuw i8, ptr %43, i64 16
-  %wide.load28 = load <2 x i64>, ptr %43, align 16
-  %wide.load29 = load <2 x i64>, ptr %44, align 16
-  %45 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index27
-  %46 = getelementptr inbounds nuw i8, ptr %45, i64 16
-  %wide.load30 = load <2 x i64>, ptr %45, align 16
-  %wide.load31 = load <2 x i64>, ptr %46, align 16
-  %47 = add <2 x i64> %wide.load30, %wide.load28
-  %48 = add <2 x i64> %wide.load31, %wide.load29
-  store <2 x i64> %47, ptr %43, align 16
-  store <2 x i64> %48, ptr %44, align 16
-  %49 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index27
-  %50 = getelementptr inbounds nuw i8, ptr %49, i64 16
-  %wide.load32 = load <2 x i64>, ptr %49, align 16
-  %wide.load33 = load <2 x i64>, ptr %50, align 16
-  %51 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index27
-  %52 = getelementptr inbounds nuw i8, ptr %51, i64 16
-  %wide.load34 = load <2 x i64>, ptr %51, align 16
-  %wide.load35 = load <2 x i64>, ptr %52, align 16
-  %53 = add <2 x i64> %wide.load34, %wide.load32
-  %54 = add <2 x i64> %wide.load35, %wide.load33
-  store <2 x i64> %53, ptr %49, align 16
-  store <2 x i64> %54, ptr %50, align 16
-  %index.next36 = add nuw i64 %index27, 4
-  %55 = icmp eq i64 %index.next36, 32
-  br i1 %55, label %for.body.29.preheader.i.1, label %vector.body26, !llvm.loop !3
+overflow.add.32.i:                                ; preds = %for.body.29.i
+  tail call fastcc void @archx_int_overflow_fail()
+  unreachable
 
-for.body.29.preheader.i.1:                        ; preds = %vector.body26
-  store i64 3, ptr %t12.i, align 16
-  store i64 3, ptr %t17.4.i, align 16
-  store i64 3, ptr %t17.8.i, align 16
-  store i64 3, ptr %t17.12.i, align 16
-  store i64 3, ptr %t17.16.i, align 16
-  store i64 3, ptr %t17.20.i, align 16
-  store i64 3, ptr %t17.24.i, align 16
-  store i64 3, ptr %t17.28.i, align 16
-  br label %vector.body41
+overflow.ok.33.i:                                 ; preds = %for.body.29.i
+  %t62.i = extractvalue { i64, i1 } %t61.i, 0
+  store i64 %t62.i, ptr %t56.i, align 8
+  %t65.i = getelementptr inbounds nuw i64, ptr %t7.i, i64 %for.i.51.016.i
+  %t66.i = load i64, ptr %t65.i, align 8
+  %t68.i = getelementptr inbounds nuw i64, ptr %t22.i, i64 %for.i.51.016.i
+  %t69.i = load i64, ptr %t68.i, align 8
+  %t70.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t66.i, i64 %t69.i)
+  %t72.i = extractvalue { i64, i1 } %t70.i, 1
+  br i1 %t72.i, label %overflow.add.34.i, label %overflow.ok.35.i
 
-vector.body41:                                    ; preds = %vector.body41, %for.body.29.preheader.i.1
-  %index42 = phi i64 [ 0, %for.body.29.preheader.i.1 ], [ %index.next51, %vector.body41 ]
-  %56 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index42
-  %57 = getelementptr inbounds nuw i8, ptr %56, i64 16
-  %wide.load43 = load <2 x i64>, ptr %56, align 16
-  %wide.load44 = load <2 x i64>, ptr %57, align 16
-  %58 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index42
-  %59 = getelementptr inbounds nuw i8, ptr %58, i64 16
-  %wide.load45 = load <2 x i64>, ptr %58, align 16
-  %wide.load46 = load <2 x i64>, ptr %59, align 16
-  %60 = add <2 x i64> %wide.load45, %wide.load43
-  %61 = add <2 x i64> %wide.load46, %wide.load44
-  store <2 x i64> %60, ptr %56, align 16
-  store <2 x i64> %61, ptr %57, align 16
-  %62 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index42
-  %63 = getelementptr inbounds nuw i8, ptr %62, i64 16
-  %wide.load47 = load <2 x i64>, ptr %62, align 16
-  %wide.load48 = load <2 x i64>, ptr %63, align 16
-  %64 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index42
-  %65 = getelementptr inbounds nuw i8, ptr %64, i64 16
-  %wide.load49 = load <2 x i64>, ptr %64, align 16
-  %wide.load50 = load <2 x i64>, ptr %65, align 16
-  %66 = add <2 x i64> %wide.load49, %wide.load47
-  %67 = add <2 x i64> %wide.load50, %wide.load48
-  store <2 x i64> %66, ptr %62, align 16
-  store <2 x i64> %67, ptr %63, align 16
-  %index.next51 = add nuw i64 %index42, 4
-  %68 = icmp eq i64 %index.next51, 32
-  br i1 %68, label %for.body.29.preheader.i.2, label %vector.body41, !llvm.loop !4
+overflow.add.34.i:                                ; preds = %overflow.ok.33.i
+  tail call fastcc void @archx_int_overflow_fail()
+  unreachable
 
-for.body.29.preheader.i.2:                        ; preds = %vector.body41
-  store i64 4, ptr %t12.i, align 16
-  store i64 4, ptr %t17.4.i, align 16
-  store i64 4, ptr %t17.8.i, align 16
-  store i64 4, ptr %t17.12.i, align 16
-  store i64 4, ptr %t17.16.i, align 16
-  store i64 4, ptr %t17.20.i, align 16
-  store i64 4, ptr %t17.24.i, align 16
-  store i64 4, ptr %t17.28.i, align 16
-  br label %vector.body56
+overflow.ok.35.i:                                 ; preds = %overflow.ok.33.i
+  %t71.i = extractvalue { i64, i1 } %t70.i, 0
+  store i64 %t71.i, ptr %t65.i, align 8
+  %t74.i = add nuw nsw i64 %for.i.51.016.i, 1
+  %exitcond21.not.i = icmp eq i64 %t74.i, 32
+  br i1 %exitcond21.not.i, label %overflow.ok.41.7.i, label %for.body.29.i
 
-vector.body56:                                    ; preds = %vector.body56, %for.body.29.preheader.i.2
-  %index57 = phi i64 [ 0, %for.body.29.preheader.i.2 ], [ %index.next66, %vector.body56 ]
-  %69 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index57
-  %70 = getelementptr inbounds nuw i8, ptr %69, i64 16
-  %wide.load58 = load <2 x i64>, ptr %69, align 16
-  %wide.load59 = load <2 x i64>, ptr %70, align 16
-  %71 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index57
-  %72 = getelementptr inbounds nuw i8, ptr %71, i64 16
-  %wide.load60 = load <2 x i64>, ptr %71, align 16
-  %wide.load61 = load <2 x i64>, ptr %72, align 16
-  %73 = add <2 x i64> %wide.load60, %wide.load58
-  %74 = add <2 x i64> %wide.load61, %wide.load59
-  store <2 x i64> %73, ptr %69, align 16
-  store <2 x i64> %74, ptr %70, align 16
-  %75 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index57
-  %76 = getelementptr inbounds nuw i8, ptr %75, i64 16
-  %wide.load62 = load <2 x i64>, ptr %75, align 16
-  %wide.load63 = load <2 x i64>, ptr %76, align 16
-  %77 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index57
-  %78 = getelementptr inbounds nuw i8, ptr %77, i64 16
-  %wide.load64 = load <2 x i64>, ptr %77, align 16
-  %wide.load65 = load <2 x i64>, ptr %78, align 16
-  %79 = add <2 x i64> %wide.load64, %wide.load62
-  %80 = add <2 x i64> %wide.load65, %wide.load63
-  store <2 x i64> %79, ptr %75, align 16
-  store <2 x i64> %80, ptr %76, align 16
-  %index.next66 = add nuw i64 %index57, 4
-  %81 = icmp eq i64 %index.next66, 32
-  br i1 %81, label %for.body.29.preheader.i.3, label %vector.body56, !llvm.loop !5
+overflow.ok.41.7.i:                               ; preds = %overflow.ok.35.i
+  %30 = add nuw nsw i64 %t81.7.i, 1
+  store i64 %30, ptr %t12.i, align 16
+  store i64 %30, ptr %t17.4.i, align 16
+  store i64 %30, ptr %t17.8.i, align 16
+  store i64 %30, ptr %t17.12.i, align 16
+  store i64 %30, ptr %t17.16.i, align 16
+  store i64 %30, ptr %t17.20.i, align 16
+  store i64 %30, ptr %t17.24.i, align 16
+  store i64 %30, ptr %t17.28.i, align 16
+  %t88.i = add nuw nsw i64 %for.t.47.018.i, 1
+  %exitcond22.not.i = icmp eq i64 %t88.i, 5
+  br i1 %exitcond22.not.i, label %foreach.body.43.i, label %for.cond.28.preheader.i
 
-for.body.29.preheader.i.3:                        ; preds = %vector.body56
-  store i64 5, ptr %t12.i, align 16
-  store i64 5, ptr %t17.4.i, align 16
-  store i64 5, ptr %t17.8.i, align 16
-  store i64 5, ptr %t17.12.i, align 16
-  store i64 5, ptr %t17.16.i, align 16
-  store i64 5, ptr %t17.20.i, align 16
-  store i64 5, ptr %t17.24.i, align 16
-  store i64 5, ptr %t17.28.i, align 16
-  br label %vector.body71
+foreach.body.43.i:                                ; preds = %overflow.ok.41.7.i, %overflow.ok.49.i.1
+  %foreach.idx.90.020.i = phi i64 [ %t115.i.1, %overflow.ok.49.i.1 ], [ 0, %overflow.ok.41.7.i ]
+  %var.total.89.019.i = phi i64 [ %t112.i.1, %overflow.ok.49.i.1 ], [ 0, %overflow.ok.41.7.i ]
+  %t93.i = getelementptr inbounds nuw i64, ptr %t3.i, i64 %foreach.idx.90.020.i
+  %t94.i = load i64, ptr %t93.i, align 16
+  %t96.i = getelementptr inbounds nuw i64, ptr %t7.i, i64 %foreach.idx.90.020.i
+  %t97.i = load i64, ptr %t96.i, align 16
+  %t108.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t94.i, i64 %t97.i)
+  %t110.i = extractvalue { i64, i1 } %t108.i, 1
+  br i1 %t110.i, label %overflow.add.46.i, label %overflow.ok.47.i
 
-vector.body71:                                    ; preds = %vector.body71, %for.body.29.preheader.i.3
-  %index72 = phi i64 [ 0, %for.body.29.preheader.i.3 ], [ %index.next81, %vector.body71 ]
-  %82 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %index72
-  %83 = getelementptr inbounds nuw i8, ptr %82, i64 16
-  %wide.load73 = load <2 x i64>, ptr %82, align 16
-  %wide.load74 = load <2 x i64>, ptr %83, align 16
-  %84 = getelementptr inbounds nuw i64, ptr %t12.i, i64 %index72
-  %85 = getelementptr inbounds nuw i8, ptr %84, i64 16
-  %wide.load75 = load <2 x i64>, ptr %84, align 16
-  %wide.load76 = load <2 x i64>, ptr %85, align 16
-  %86 = add <2 x i64> %wide.load75, %wide.load73
-  %87 = add <2 x i64> %wide.load76, %wide.load74
-  store <2 x i64> %86, ptr %82, align 16
-  store <2 x i64> %87, ptr %83, align 16
-  %88 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %index72
-  %89 = getelementptr inbounds nuw i8, ptr %88, i64 16
-  %wide.load77 = load <2 x i64>, ptr %88, align 16
-  %wide.load78 = load <2 x i64>, ptr %89, align 16
-  %90 = getelementptr inbounds nuw i64, ptr %t22.i, i64 %index72
-  %91 = getelementptr inbounds nuw i8, ptr %90, i64 16
-  %wide.load79 = load <2 x i64>, ptr %90, align 16
-  %wide.load80 = load <2 x i64>, ptr %91, align 16
-  %92 = add <2 x i64> %wide.load79, %wide.load77
-  %93 = add <2 x i64> %wide.load80, %wide.load78
-  store <2 x i64> %92, ptr %88, align 16
-  store <2 x i64> %93, ptr %89, align 16
-  %index.next81 = add nuw i64 %index72, 4
-  %94 = icmp eq i64 %index.next81, 32
-  br i1 %94, label %vector.body86, label %vector.body71, !llvm.loop !6
+overflow.add.46.i:                                ; preds = %overflow.ok.49.i, %foreach.body.43.i
+  tail call fastcc void @archx_int_overflow_fail()
+  unreachable
 
-vector.body86:                                    ; preds = %vector.body71
-  %95 = getelementptr inbounds nuw i8, ptr %t3.i, i64 16
-  %wide.load89 = load <2 x i64>, ptr %t3.i, align 16
-  %wide.load90 = load <2 x i64>, ptr %95, align 16
-  %96 = getelementptr inbounds nuw i8, ptr %t7.i, i64 16
-  %wide.load91 = load <2 x i64>, ptr %t7.i, align 16
-  %wide.load92 = load <2 x i64>, ptr %96, align 16
-  %97 = add <2 x i64> %wide.load89, %wide.load91
-  %98 = add <2 x i64> %wide.load90, %wide.load92
-  %99 = getelementptr inbounds nuw i8, ptr %t3.i, i64 32
-  %100 = getelementptr inbounds nuw i8, ptr %t3.i, i64 48
-  %wide.load89.1 = load <2 x i64>, ptr %99, align 16
-  %wide.load90.1 = load <2 x i64>, ptr %100, align 16
-  %101 = getelementptr inbounds nuw i8, ptr %t7.i, i64 32
-  %102 = getelementptr inbounds nuw i8, ptr %t7.i, i64 48
-  %wide.load91.1 = load <2 x i64>, ptr %101, align 16
-  %wide.load92.1 = load <2 x i64>, ptr %102, align 16
-  %103 = add <2 x i64> %wide.load89.1, %97
-  %104 = add <2 x i64> %wide.load90.1, %98
-  %105 = add <2 x i64> %103, %wide.load91.1
-  %106 = add <2 x i64> %104, %wide.load92.1
-  %107 = getelementptr inbounds nuw i8, ptr %t3.i, i64 64
-  %108 = getelementptr inbounds nuw i8, ptr %t3.i, i64 80
-  %wide.load89.2 = load <2 x i64>, ptr %107, align 16
-  %wide.load90.2 = load <2 x i64>, ptr %108, align 16
-  %109 = getelementptr inbounds nuw i8, ptr %t7.i, i64 64
-  %110 = getelementptr inbounds nuw i8, ptr %t7.i, i64 80
-  %wide.load91.2 = load <2 x i64>, ptr %109, align 16
-  %wide.load92.2 = load <2 x i64>, ptr %110, align 16
-  %111 = add <2 x i64> %wide.load89.2, %105
-  %112 = add <2 x i64> %wide.load90.2, %106
-  %113 = add <2 x i64> %111, %wide.load91.2
-  %114 = add <2 x i64> %112, %wide.load92.2
-  %115 = getelementptr inbounds nuw i8, ptr %t3.i, i64 96
-  %116 = getelementptr inbounds nuw i8, ptr %t3.i, i64 112
-  %wide.load89.3 = load <2 x i64>, ptr %115, align 16
-  %wide.load90.3 = load <2 x i64>, ptr %116, align 16
-  %117 = getelementptr inbounds nuw i8, ptr %t7.i, i64 96
-  %118 = getelementptr inbounds nuw i8, ptr %t7.i, i64 112
-  %wide.load91.3 = load <2 x i64>, ptr %117, align 16
-  %wide.load92.3 = load <2 x i64>, ptr %118, align 16
-  %119 = add <2 x i64> %wide.load89.3, %113
-  %120 = add <2 x i64> %wide.load90.3, %114
-  %121 = add <2 x i64> %119, %wide.load91.3
-  %122 = add <2 x i64> %120, %wide.load92.3
-  %123 = getelementptr inbounds nuw i8, ptr %t3.i, i64 128
-  %124 = getelementptr inbounds nuw i8, ptr %t3.i, i64 144
-  %wide.load89.4 = load <2 x i64>, ptr %123, align 16
-  %wide.load90.4 = load <2 x i64>, ptr %124, align 16
-  %125 = getelementptr inbounds nuw i8, ptr %t7.i, i64 128
-  %126 = getelementptr inbounds nuw i8, ptr %t7.i, i64 144
-  %wide.load91.4 = load <2 x i64>, ptr %125, align 16
-  %wide.load92.4 = load <2 x i64>, ptr %126, align 16
-  %127 = add <2 x i64> %wide.load89.4, %121
-  %128 = add <2 x i64> %wide.load90.4, %122
-  %129 = add <2 x i64> %127, %wide.load91.4
-  %130 = add <2 x i64> %128, %wide.load92.4
-  %131 = getelementptr inbounds nuw i8, ptr %t3.i, i64 160
-  %132 = getelementptr inbounds nuw i8, ptr %t3.i, i64 176
-  %wide.load89.5 = load <2 x i64>, ptr %131, align 16
-  %wide.load90.5 = load <2 x i64>, ptr %132, align 16
-  %133 = getelementptr inbounds nuw i8, ptr %t7.i, i64 160
-  %134 = getelementptr inbounds nuw i8, ptr %t7.i, i64 176
-  %wide.load91.5 = load <2 x i64>, ptr %133, align 16
-  %wide.load92.5 = load <2 x i64>, ptr %134, align 16
-  %135 = add <2 x i64> %wide.load89.5, %129
-  %136 = add <2 x i64> %wide.load90.5, %130
-  %137 = add <2 x i64> %135, %wide.load91.5
-  %138 = add <2 x i64> %136, %wide.load92.5
-  %139 = getelementptr inbounds nuw i8, ptr %t3.i, i64 192
-  %140 = getelementptr inbounds nuw i8, ptr %t3.i, i64 208
-  %wide.load89.6 = load <2 x i64>, ptr %139, align 16
-  %wide.load90.6 = load <2 x i64>, ptr %140, align 16
-  %141 = getelementptr inbounds nuw i8, ptr %t7.i, i64 192
-  %142 = getelementptr inbounds nuw i8, ptr %t7.i, i64 208
-  %wide.load91.6 = load <2 x i64>, ptr %141, align 16
-  %wide.load92.6 = load <2 x i64>, ptr %142, align 16
-  %143 = add <2 x i64> %wide.load89.6, %137
-  %144 = add <2 x i64> %wide.load90.6, %138
-  %145 = add <2 x i64> %143, %wide.load91.6
-  %146 = add <2 x i64> %144, %wide.load92.6
-  %147 = getelementptr inbounds nuw i8, ptr %t3.i, i64 224
-  %148 = getelementptr inbounds nuw i8, ptr %t3.i, i64 240
-  %wide.load89.7 = load <2 x i64>, ptr %147, align 16
-  %wide.load90.7 = load <2 x i64>, ptr %148, align 16
-  %149 = getelementptr inbounds nuw i8, ptr %t7.i, i64 224
-  %150 = getelementptr inbounds nuw i8, ptr %t7.i, i64 240
-  %wide.load91.7 = load <2 x i64>, ptr %149, align 16
-  %wide.load92.7 = load <2 x i64>, ptr %150, align 16
-  %151 = add <2 x i64> %wide.load89.7, %145
-  %152 = add <2 x i64> %wide.load90.7, %146
-  %153 = add <2 x i64> %151, %wide.load91.7
-  %154 = add <2 x i64> %152, %wide.load92.7
-  %bin.rdx = add <2 x i64> %154, %153
-  %155 = tail call i64 @llvm.vector.reduce.add.v2i64(<2 x i64> %bin.rdx)
-  tail call void @free(ptr nonnull %t22.i)
-  tail call void @free(ptr nonnull %t12.i)
+overflow.ok.47.i:                                 ; preds = %foreach.body.43.i
+  %t109.i = extractvalue { i64, i1 } %t108.i, 0
+  %t111.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %var.total.89.019.i, i64 %t109.i)
+  %t113.i = extractvalue { i64, i1 } %t111.i, 1
+  br i1 %t113.i, label %overflow.add.48.i, label %overflow.ok.49.i
+
+overflow.add.48.i:                                ; preds = %overflow.ok.47.i.1, %overflow.ok.47.i
+  tail call fastcc void @archx_int_overflow_fail()
+  unreachable
+
+overflow.ok.49.i:                                 ; preds = %overflow.ok.47.i
+  %t115.i = or disjoint i64 %foreach.idx.90.020.i, 1
+  %t93.i.1 = getelementptr inbounds nuw i64, ptr %t3.i, i64 %t115.i
+  %t94.i.1 = load i64, ptr %t93.i.1, align 8
+  %t96.i.1 = getelementptr inbounds nuw i64, ptr %t7.i, i64 %t115.i
+  %t97.i.1 = load i64, ptr %t96.i.1, align 8
+  %t108.i.1 = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t94.i.1, i64 %t97.i.1)
+  %t110.i.1 = extractvalue { i64, i1 } %t108.i.1, 1
+  br i1 %t110.i.1, label %overflow.add.46.i, label %overflow.ok.47.i.1
+
+overflow.ok.47.i.1:                               ; preds = %overflow.ok.49.i
+  %t112.i = extractvalue { i64, i1 } %t111.i, 0
+  %t109.i.1 = extractvalue { i64, i1 } %t108.i.1, 0
+  %t111.i.1 = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t112.i, i64 %t109.i.1)
+  %t113.i.1 = extractvalue { i64, i1 } %t111.i.1, 1
+  br i1 %t113.i.1, label %overflow.add.48.i, label %overflow.ok.49.i.1
+
+overflow.ok.49.i.1:                               ; preds = %overflow.ok.47.i.1
+  %t112.i.1 = extractvalue { i64, i1 } %t111.i.1, 0
+  %t115.i.1 = add nuw nsw i64 %foreach.idx.90.020.i, 2
+  %exitcond23.not.i.1 = icmp eq i64 %t115.i.1, 32
+  br i1 %exitcond23.not.i.1, label %archx_fn_advance.exit, label %foreach.body.43.i
+
+archx_fn_advance.exit:                            ; preds = %overflow.ok.49.i.1
+  tail call void @free(ptr %t22.i)
+  tail call void @free(ptr %t12.i)
   tail call void @free(ptr nonnull %t7.i)
   tail call void @free(ptr nonnull %t3.i)
-  %t1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %155)
+  %t1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %t112.i.1)
   call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %func.region.i)
   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %func.region.i, i8 0, i64 32, i1 false)
   %res.i.i = call fastcc nonnull align 16 ptr @archx_region_alloc_fallback(ptr nonnull %func.region.i, i64 512)
-  %156 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 16
+  %31 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 16
   store <2 x i64> splat (i64 1), ptr %res.i.i, align 16
-  store <2 x i64> splat (i64 1), ptr %156, align 16
-  %157 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 32
-  %158 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 48
-  store <2 x i64> splat (i64 1), ptr %157, align 16
-  store <2 x i64> splat (i64 1), ptr %158, align 16
-  %159 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 64
-  %160 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 80
-  store <2 x i64> splat (i64 1), ptr %159, align 16
-  store <2 x i64> splat (i64 1), ptr %160, align 16
-  %161 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 96
-  %162 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 112
-  store <2 x i64> splat (i64 1), ptr %161, align 16
-  store <2 x i64> splat (i64 1), ptr %162, align 16
-  %163 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 128
-  %164 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 144
-  store <2 x i64> splat (i64 1), ptr %163, align 16
-  store <2 x i64> splat (i64 1), ptr %164, align 16
-  %165 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 160
-  %166 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 176
-  store <2 x i64> splat (i64 1), ptr %165, align 16
-  store <2 x i64> splat (i64 1), ptr %166, align 16
-  %167 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 192
-  %168 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 208
-  store <2 x i64> splat (i64 1), ptr %167, align 16
-  store <2 x i64> splat (i64 1), ptr %168, align 16
-  %169 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 224
-  %170 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 240
-  store <2 x i64> splat (i64 1), ptr %169, align 16
-  store <2 x i64> splat (i64 1), ptr %170, align 16
-  %171 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 256
-  %172 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 272
-  store <2 x i64> splat (i64 1), ptr %171, align 16
-  store <2 x i64> splat (i64 1), ptr %172, align 16
-  %173 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 288
-  %174 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 304
-  store <2 x i64> splat (i64 1), ptr %173, align 16
-  store <2 x i64> splat (i64 1), ptr %174, align 16
-  %175 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 320
-  %176 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 336
-  store <2 x i64> splat (i64 1), ptr %175, align 16
-  store <2 x i64> splat (i64 1), ptr %176, align 16
-  %177 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 352
-  %178 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 368
-  store <2 x i64> splat (i64 1), ptr %177, align 16
-  store <2 x i64> splat (i64 1), ptr %178, align 16
-  %179 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 384
-  %180 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 400
-  store <2 x i64> splat (i64 1), ptr %179, align 16
-  store <2 x i64> splat (i64 1), ptr %180, align 16
-  %181 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 416
-  %182 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 432
-  store <2 x i64> splat (i64 1), ptr %181, align 16
-  store <2 x i64> splat (i64 1), ptr %182, align 16
-  %183 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 448
-  %184 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 464
-  store <2 x i64> splat (i64 1), ptr %183, align 16
-  store <2 x i64> splat (i64 1), ptr %184, align 16
-  %185 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 480
-  %186 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 496
-  store <2 x i64> splat (i64 1), ptr %185, align 16
-  store <2 x i64> splat (i64 1), ptr %186, align 16
+  store <2 x i64> splat (i64 1), ptr %31, align 16
+  %32 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 32
+  %33 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 48
+  store <2 x i64> splat (i64 1), ptr %32, align 16
+  store <2 x i64> splat (i64 1), ptr %33, align 16
+  %34 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 64
+  %35 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 80
+  store <2 x i64> splat (i64 1), ptr %34, align 16
+  store <2 x i64> splat (i64 1), ptr %35, align 16
+  %36 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 96
+  %37 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 112
+  store <2 x i64> splat (i64 1), ptr %36, align 16
+  store <2 x i64> splat (i64 1), ptr %37, align 16
+  %38 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 128
+  %39 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 144
+  store <2 x i64> splat (i64 1), ptr %38, align 16
+  store <2 x i64> splat (i64 1), ptr %39, align 16
+  %40 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 160
+  %41 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 176
+  store <2 x i64> splat (i64 1), ptr %40, align 16
+  store <2 x i64> splat (i64 1), ptr %41, align 16
+  %42 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 192
+  %43 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 208
+  store <2 x i64> splat (i64 1), ptr %42, align 16
+  store <2 x i64> splat (i64 1), ptr %43, align 16
+  %44 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 224
+  %45 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 240
+  store <2 x i64> splat (i64 1), ptr %44, align 16
+  store <2 x i64> splat (i64 1), ptr %45, align 16
+  %46 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 256
+  %47 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 272
+  store <2 x i64> splat (i64 1), ptr %46, align 16
+  store <2 x i64> splat (i64 1), ptr %47, align 16
+  %48 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 288
+  %49 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 304
+  store <2 x i64> splat (i64 1), ptr %48, align 16
+  store <2 x i64> splat (i64 1), ptr %49, align 16
+  %50 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 320
+  %51 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 336
+  store <2 x i64> splat (i64 1), ptr %50, align 16
+  store <2 x i64> splat (i64 1), ptr %51, align 16
+  %52 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 352
+  %53 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 368
+  store <2 x i64> splat (i64 1), ptr %52, align 16
+  store <2 x i64> splat (i64 1), ptr %53, align 16
+  %54 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 384
+  %55 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 400
+  store <2 x i64> splat (i64 1), ptr %54, align 16
+  store <2 x i64> splat (i64 1), ptr %55, align 16
+  %56 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 416
+  %57 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 432
+  store <2 x i64> splat (i64 1), ptr %56, align 16
+  store <2 x i64> splat (i64 1), ptr %57, align 16
+  %58 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 448
+  %59 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 464
+  store <2 x i64> splat (i64 1), ptr %58, align 16
+  store <2 x i64> splat (i64 1), ptr %59, align 16
+  %60 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 480
+  %61 = getelementptr inbounds nuw i8, ptr %res.i.i, i64 496
+  store <2 x i64> splat (i64 1), ptr %60, align 16
+  store <2 x i64> splat (i64 1), ptr %61, align 16
   %.fca.1.gep.i = getelementptr inbounds nuw i8, ptr %func.region.i, i64 8
   %.fca.2.gep.i = getelementptr inbounds nuw i8, ptr %func.region.i, i64 16
   %cur.i.i.i = load ptr, ptr %func.region.i, align 8
@@ -515,12 +331,12 @@ vector.body86:                                    ; preds = %vector.body71
   %fits.not.i.i.i = icmp slt i64 %rem.i.i.i, 32
   br i1 %fits.not.i.i.i, label %fallback.i.i.i, label %fast.i.i.i
 
-fast.i.i.i:                                       ; preds = %vector.body86
+fast.i.i.i:                                       ; preds = %archx_fn_advance.exit
   %next.i.i.i = getelementptr inbounds nuw i8, ptr %cur.i.i.i, i64 32
   store ptr %next.i.i.i, ptr %func.region.i, align 8
   br label %if.then.11.i
 
-fallback.i.i.i:                                   ; preds = %vector.body86
+fallback.i.i.i:                                   ; preds = %archx_fn_advance.exit
   %res.i.i.i = call fastcc nonnull align 16 ptr @archx_region_alloc_fallback(ptr nonnull %func.region.i, i64 32)
   %.pre.i = ptrtoint ptr %res.i.i.i to i64
   %cur.i.i26.i.pre = load ptr, ptr %func.region.i, align 8
@@ -777,9 +593,17 @@ slow:                                             ; preds = %loop.i, %entry
 }
 
 ; Function Attrs: cold nofree noreturn nounwind
-define private fastcc void @archx_oom_fail() unnamed_addr #3 {
+define private fastcc void @archx_int_overflow_fail() unnamed_addr #3 {
 entry:
   %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @str)
+  tail call void @exit(i32 101)
+  unreachable
+}
+
+; Function Attrs: cold nofree noreturn nounwind
+define private fastcc void @archx_oom_fail() unnamed_addr #3 {
+entry:
+  %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @str.1)
   tail call void @exit(i32 101)
   unreachable
 }
@@ -799,8 +623,11 @@ declare void @free(ptr allocptr noundef captures(none)) local_unnamed_addr #7
 ; Function Attrs: mustprogress nocallback nofree nounwind willreturn memory(argmem: readwrite)
 declare void @llvm.memcpy.p0.p0.i64(ptr noalias writeonly captures(none), ptr noalias readonly captures(none), i64, i1 immarg) #8
 
+; Function Attrs: mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) #9
+
 ; Function Attrs: mustprogress nocallback nofree nounwind willreturn memory(argmem: read)
-declare ptr @memchr(ptr captures(none), i32, i64) local_unnamed_addr #9
+declare ptr @memchr(ptr captures(none), i32, i64) local_unnamed_addr #10
 
 ; Function Attrs: nofree nounwind
 declare noundef i32 @putchar(i32 noundef) local_unnamed_addr #4
@@ -809,22 +636,19 @@ declare noundef i32 @putchar(i32 noundef) local_unnamed_addr #4
 declare void @exit(i32) local_unnamed_addr #3
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-declare i64 @llvm.umax.i64(i64, i64) #10
+declare i64 @llvm.umax.i64(i64, i64) #11
 
 ; Function Attrs: nofree nounwind
 declare noundef i32 @puts(ptr noundef readonly captures(none)) local_unnamed_addr #4
 
 ; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.start.p0(i64 immarg, ptr captures(none)) #11
+declare void @llvm.lifetime.start.p0(i64 immarg, ptr captures(none)) #12
 
 ; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.end.p0(i64 immarg, ptr captures(none)) #11
+declare void @llvm.lifetime.end.p0(i64 immarg, ptr captures(none)) #12
 
 ; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: write)
-declare void @llvm.memset.p0.i64(ptr writeonly captures(none), i8, i64, i1 immarg) #12
-
-; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-declare i64 @llvm.vector.reduce.add.v2i64(<2 x i64>) #10
+declare void @llvm.memset.p0.i64(ptr writeonly captures(none), i8, i64, i1 immarg) #13
 
 attributes #0 = { nounwind }
 attributes #1 = { nofree noinline nounwind }
@@ -835,15 +659,8 @@ attributes #5 = { mustprogress nofree nounwind willreturn allockind("alloc,unini
 attributes #6 = { mustprogress nofree nounwind willreturn allockind("alloc,zeroed") allocsize(0,1) memory(inaccessiblemem: readwrite) "alloc-family"="malloc" }
 attributes #7 = { mustprogress nounwind willreturn allockind("free") memory(argmem: readwrite, inaccessiblemem: readwrite) "alloc-family"="malloc" }
 attributes #8 = { mustprogress nocallback nofree nounwind willreturn memory(argmem: readwrite) }
-attributes #9 = { mustprogress nocallback nofree nounwind willreturn memory(argmem: read) }
-attributes #10 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
-attributes #11 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
-attributes #12 = { nocallback nofree nounwind willreturn memory(argmem: write) }
-
-!0 = distinct !{!0, !1, !2}
-!1 = !{!"llvm.loop.isvectorized", i32 1}
-!2 = !{!"llvm.loop.unroll.runtime.disable"}
-!3 = distinct !{!3, !1, !2}
-!4 = distinct !{!4, !1, !2}
-!5 = distinct !{!5, !1, !2}
-!6 = distinct !{!6, !1, !2}
+attributes #9 = { mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none) }
+attributes #10 = { mustprogress nocallback nofree nounwind willreturn memory(argmem: read) }
+attributes #11 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
+attributes #12 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
+attributes #13 = { nocallback nofree nounwind willreturn memory(argmem: write) }

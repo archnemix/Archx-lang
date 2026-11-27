@@ -18,9 +18,9 @@
      [1m[94m= [0m[1mnote[0m: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
 [1m[33mwarning[0m[1m: unused variable: `elem_ty`[0m
-   [1m[94m--> [0msrc/codegen/comprehensions.rs:580:14
+   [1m[94m--> [0msrc/codegen/comprehensions.rs:586:14
     [1m[94m|[0m
-[1m[94m580[0m [1m[94m|[0m         let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
+[1m[94m586[0m [1m[94m|[0m         let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
     [1m[94m|[0m              [1m[33m^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_elem_ty`[0m
 
 [1m[33mwarning[0m[1m: unused variable: `span`[0m
@@ -50,12 +50,12 @@
      [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
 
 [1m[33mwarning[0m[1m: variant `ForElse` is never constructed[0m
-   [1m[94m--> [0msrc/ast.rs:234:5
+   [1m[94m--> [0msrc/ast.rs:237:5
     [1m[94m|[0m
-[1m[94m145[0m [1m[94m|[0m pub enum StmtKind {
+[1m[94m148[0m [1m[94m|[0m pub enum StmtKind {
     [1m[94m|[0m          [1m[94m--------[0m [1m[94mvariant in this enum[0m
 [1m[94m...[0m
-[1m[94m234[0m [1m[94m|[0m     ForElse {
+[1m[94m237[0m [1m[94m|[0m     ForElse {
     [1m[94m|[0m     [1m[33m^^^^^^^[0m
     [1m[94m|[0m
     [1m[94m= [0m[1mnote[0m: `StmtKind` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
@@ -71,15 +71,15 @@
      [1m[94m|[0m                   [1m[33m^^^^^^^^^^^^^^^^^^[0m
 
 [1m[33mwarning[0m[1m: function `clauses_carry` is never used[0m
-    [1m[94m--> [0msrc/codegen/comprehensions.rs:1264:4
+    [1m[94m--> [0msrc/codegen/comprehensions.rs:1274:4
      [1m[94m|[0m
-[1m[94m1264[0m [1m[94m|[0m fn clauses_carry(clauses: Vec<CompClause>) -> Vec<CompClause> {
+[1m[94m1274[0m [1m[94m|[0m fn clauses_carry(clauses: Vec<CompClause>) -> Vec<CompClause> {
      [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
 
 [1m[33mwarning[0m[1m: function `param_as_expr` is never used[0m
-    [1m[94m--> [0msrc/codegen/comprehensions.rs:1269:4
+    [1m[94m--> [0msrc/codegen/comprehensions.rs:1279:4
      [1m[94m|[0m
-[1m[94m1269[0m [1m[94m|[0m fn param_as_expr(param: &Param, span: Span) -> Expr {
+[1m[94m1279[0m [1m[94m|[0m fn param_as_expr(param: &Param, span: Span) -> Expr {
      [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
 
 [1m[33mwarning[0m[1m: method `declare_loop_var_in_outer_scope` is never used[0m
@@ -100,5 +100,27 @@
 [1m[94m535[0m [1m[94m|[0m     pub(super) fn forget_drop_target(&mut self, slot: &str) {
     [1m[94m|[0m                   [1m[33m^^^^^^^^^^^^^^^^^^[0m
 
-[1m[33mwarning[0m: `archx` (bin "archx") generated 13 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 26.92s
+[1m[33mwarning[0m[1m: method `name` is never used[0m
+  [1m[94m--> [0msrc/dialect.rs:31:12
+   [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m impl Dialect {
+   [1m[94m|[0m [1m[94m------------[0m [1m[94mmethod in this implementation[0m
+[1m[94m31[0m [1m[94m|[0m     pub fn name(self) -> &'static str {
+   [1m[94m|[0m            [1m[33m^^^^[0m
+
+[1m[33mwarning[0m[1m: struct `DialectRules` is never constructed[0m
+   [1m[94m--> [0msrc/dialect.rs:187:12
+    [1m[94m|[0m
+[1m[94m187[0m [1m[94m|[0m pub struct DialectRules {
+    [1m[94m|[0m            [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: associated function `for_dialect` is never used[0m
+   [1m[94m--> [0msrc/dialect.rs:202:12
+    [1m[94m|[0m
+[1m[94m201[0m [1m[94m|[0m impl DialectRules {
+    [1m[94m|[0m [1m[94m-----------------[0m [1m[94massociated function in this implementation[0m
+[1m[94m202[0m [1m[94m|[0m     pub fn for_dialect(dialect: Dialect) -> Self {
+    [1m[94m|[0m            [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m: `archx` (bin "archx") generated 16 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 22.98s

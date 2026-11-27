@@ -14,12 +14,12 @@ target triple = "x86_64-pc-linux-gnu"
 @.fmt.pstr.nl = private unnamed_addr constant [6 x i8] c"%.*s\0A\00", align 1
 @.err.bounds = private unnamed_addr constant [63 x i8] c"archx runtime panic: index %lld out of bounds for length %lld\0A\00", align 1
 @.fmt.i64s = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
-@str = private unnamed_addr constant [35 x i8] c"archx runtime panic: out of memory\00", align 1
+@str.1 = private unnamed_addr constant [35 x i8] c"archx runtime panic: out of memory\00", align 1
 
 ; Function Attrs: nounwind
 define noundef i32 @main() local_unnamed_addr #0 {
 entry:
-  %tmp.i1895 = alloca [12 x i8], align 4
+  %tmp.i1913 = alloca [12 x i8], align 4
   %sso.i.i620.i = alloca [16 x i8], align 8
   %buf.i621.i = alloca [32 x i8], align 8
   %sso.i.i.i = alloca [16 x i8], align 8
@@ -41,78 +41,78 @@ entry:
   %btmp.i159.i = alloca [12 x i8], align 4
   %out_sso.i.sroa.6.sroa.5.sroa.0.i = alloca i40, align 8
   %btmp.i.i = alloca [12 x i8], align 4
-  %tmp.i1837 = alloca [12 x i8], align 4
-  %sso.i.i1807 = alloca [16 x i8], align 8
-  %buf.i1808 = alloca [32 x i8], align 8
-  %tmp.i1776 = alloca [12 x i8], align 4
-  %sso.i.i1709 = alloca [16 x i8], align 8
-  %buf.i1710 = alloca [32 x i8], align 8
-  %sso.i.i1678 = alloca [16 x i8], align 8
-  %buf.i1679 = alloca [32 x i8], align 8
-  %tmp.i1623 = alloca [12 x i8], align 4
-  %sso.i.i1556 = alloca [16 x i8], align 8
-  %buf.i1557 = alloca [32 x i8], align 8
-  %sso.i.i1484 = alloca [16 x i8], align 8
-  %buf.i1485 = alloca [32 x i8], align 8
-  %sso.i.i1453 = alloca [16 x i8], align 8
-  %buf.i1454 = alloca [32 x i8], align 8
+  %tmp.i1842 = alloca [12 x i8], align 4
+  %sso.i.i1812 = alloca [16 x i8], align 8
+  %buf.i1813 = alloca [32 x i8], align 8
+  %tmp.i1781 = alloca [12 x i8], align 4
+  %sso.i.i1714 = alloca [16 x i8], align 8
+  %buf.i1715 = alloca [32 x i8], align 8
+  %sso.i.i1683 = alloca [16 x i8], align 8
+  %buf.i1684 = alloca [32 x i8], align 8
+  %tmp.i1628 = alloca [12 x i8], align 4
+  %sso.i.i1561 = alloca [16 x i8], align 8
+  %buf.i1562 = alloca [32 x i8], align 8
+  %sso.i.i1489 = alloca [16 x i8], align 8
+  %buf.i1490 = alloca [32 x i8], align 8
+  %sso.i.i1458 = alloca [16 x i8], align 8
+  %buf.i1459 = alloca [32 x i8], align 8
   %tmp.i = alloca [12 x i8], align 4
-  %sso.i.i1382 = alloca [16 x i8], align 8
-  %buf.i1383 = alloca [32 x i8], align 8
-  %sso.i.i1324 = alloca [16 x i8], align 8
-  %buf.i1325 = alloca [32 x i8], align 8
+  %sso.i.i1387 = alloca [16 x i8], align 8
+  %buf.i1388 = alloca [32 x i8], align 8
+  %sso.i.i1329 = alloca [16 x i8], align 8
+  %buf.i1330 = alloca [32 x i8], align 8
   %sso.i.i = alloca [16 x i8], align 8
   %buf.i = alloca [32 x i8], align 8
-  %btmp.i1268 = alloca [12 x i8], align 4
-  %out_sso.i1269.sroa.6.sroa.5 = alloca i32, align 4
-  %atmp.i1201 = alloca [12 x i8], align 4
-  %btmp.i1202 = alloca [12 x i8], align 4
-  %out_sso.i1203 = alloca [16 x i8], align 8
-  %atmp.i1147 = alloca [12 x i8], align 4
-  %out_sso.i1149 = alloca [16 x i8], align 8
-  %btmp.i1094 = alloca [12 x i8], align 4
-  %out_sso.i1095.sroa.6.sroa.5.sroa.0 = alloca i48, align 8
-  %atmp.i1027 = alloca [12 x i8], align 4
-  %btmp.i1028 = alloca [12 x i8], align 4
-  %out_sso.i1029 = alloca [16 x i8], align 8
-  %atmp.i973 = alloca [12 x i8], align 4
-  %out_sso.i975 = alloca [16 x i8], align 8
-  %atmp.i919 = alloca [12 x i8], align 4
-  %out_sso.i921 = alloca [16 x i8], align 8
-  %atmp.i865 = alloca [12 x i8], align 4
-  %out_sso.i867 = alloca [16 x i8], align 8
-  %atmp.i811 = alloca [12 x i8], align 4
-  %out_sso.i813 = alloca [16 x i8], align 8
-  %atmp.i757 = alloca [12 x i8], align 4
-  %out_sso.i759 = alloca [16 x i8], align 8
-  %atmp.i691 = alloca [12 x i8], align 4
-  %btmp.i692 = alloca [12 x i8], align 4
-  %out_sso.i693 = alloca [16 x i8], align 8
-  %atmp.i637 = alloca [12 x i8], align 4
-  %out_sso.i639 = alloca [16 x i8], align 8
-  %btmp.i584 = alloca [12 x i8], align 4
-  %out_sso.i585.sroa.6.sroa.5.sroa.0 = alloca i56, align 8
-  %atmp.i517 = alloca [12 x i8], align 4
-  %btmp.i518 = alloca [12 x i8], align 4
-  %out_sso.i519 = alloca [16 x i8], align 8
-  %atmp.i463 = alloca [12 x i8], align 4
-  %out_sso.i465 = alloca [16 x i8], align 8
-  %atmp.i397 = alloca [12 x i8], align 4
-  %btmp.i398 = alloca [12 x i8], align 4
-  %out_sso.i399 = alloca [16 x i8], align 8
-  %atmp.i359 = alloca [12 x i8], align 4
-  %out_sso.i361 = alloca [16 x i8], align 8
+  %btmp.i1273 = alloca [12 x i8], align 4
+  %out_sso.i1274.sroa.6.sroa.5 = alloca i32, align 4
+  %atmp.i1206 = alloca [12 x i8], align 4
+  %btmp.i1207 = alloca [12 x i8], align 4
+  %out_sso.i1208 = alloca [16 x i8], align 8
+  %atmp.i1152 = alloca [12 x i8], align 4
+  %out_sso.i1154 = alloca [16 x i8], align 8
+  %btmp.i1099 = alloca [12 x i8], align 4
+  %out_sso.i1100.sroa.6.sroa.5.sroa.0 = alloca i48, align 8
+  %atmp.i1032 = alloca [12 x i8], align 4
+  %btmp.i1033 = alloca [12 x i8], align 4
+  %out_sso.i1034 = alloca [16 x i8], align 8
+  %atmp.i978 = alloca [12 x i8], align 4
+  %out_sso.i980 = alloca [16 x i8], align 8
+  %atmp.i924 = alloca [12 x i8], align 4
+  %out_sso.i926 = alloca [16 x i8], align 8
+  %atmp.i870 = alloca [12 x i8], align 4
+  %out_sso.i872 = alloca [16 x i8], align 8
+  %atmp.i816 = alloca [12 x i8], align 4
+  %out_sso.i818 = alloca [16 x i8], align 8
+  %atmp.i762 = alloca [12 x i8], align 4
+  %out_sso.i764 = alloca [16 x i8], align 8
+  %atmp.i696 = alloca [12 x i8], align 4
+  %btmp.i697 = alloca [12 x i8], align 4
+  %out_sso.i698 = alloca [16 x i8], align 8
+  %atmp.i642 = alloca [12 x i8], align 4
+  %out_sso.i644 = alloca [16 x i8], align 8
+  %btmp.i589 = alloca [12 x i8], align 4
+  %out_sso.i590.sroa.6.sroa.5.sroa.0 = alloca i56, align 8
+  %atmp.i522 = alloca [12 x i8], align 4
+  %btmp.i523 = alloca [12 x i8], align 4
+  %out_sso.i524 = alloca [16 x i8], align 8
+  %atmp.i468 = alloca [12 x i8], align 4
+  %out_sso.i470 = alloca [16 x i8], align 8
+  %atmp.i402 = alloca [12 x i8], align 4
+  %btmp.i403 = alloca [12 x i8], align 4
+  %out_sso.i404 = alloca [16 x i8], align 8
+  %atmp.i364 = alloca [12 x i8], align 4
+  %out_sso.i366 = alloca [16 x i8], align 8
   %btmp.i = alloca [12 x i8], align 4
   %out_sso.i.sroa.6.sroa.5.sroa.0 = alloca i48, align 8
   %t0 = tail call noalias align 16 dereferenceable_or_null(40) ptr @malloc(i64 40)
   %t1 = icmp eq ptr %t0, null
-  br i1 %t1, label %alloc.oom.1, label %alloc.ok.0
+  br i1 %t1, label %alloc.oom.1, label %archx_fn_min_max_sum.exit
 
 alloc.oom.1:                                      ; preds = %entry
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-alloc.ok.0:                                       ; preds = %entry
+archx_fn_min_max_sum.exit:                        ; preds = %entry
   store i64 12, ptr %t0, align 16
   %t3 = getelementptr inbounds nuw i8, ptr %t0, i64 8
   store i64 5, ptr %t3, align 8
@@ -124,7 +124,7 @@ alloc.ok.0:                                       ; preds = %entry
   store i64 8, ptr %t6, align 16
   call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i)
   %n32.i = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 5)
-  %len.i1321 = sext i32 %n32.i to i64
+  %len.i1326 = sext i32 %n32.i to i64
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i)
   %z.i.i = icmp slt i32 %n32.i, 1
   br i1 %z.i.i, label %archx_str_from_int.exit, label %chk_sso.i.i
@@ -133,7 +133,7 @@ oom.i.i:                                          ; preds = %alloc_heap.i.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i:                                      ; preds = %alloc.ok.0
+chk_sso.i.i:                                      ; preds = %archx_fn_min_max_sum.exit
   %short.i.i = icmp samesign ult i32 %n32.i, 13
   br i1 %short.i.i, label %pack_sso.i.i, label %alloc_heap.i.i
 
@@ -141,7 +141,7 @@ pack_sso.i.i:                                     ; preds = %chk_sso.i.i
   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i, i8 0, i64 16, i1 false)
   store i32 %n32.i, ptr %sso.i.i, align 8
   %sso.i.i.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i.4.sroa_idx, ptr nonnull readonly align 8 %buf.i, i64 range(i64 -2147483648, 2147483650) %len.i1321, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i.4.sroa_idx, ptr nonnull readonly align 8 %buf.i, i64 range(i64 -2147483648, 2147483650) %len.i1326, i1 false)
   %sso.i.i.0.sso.i.i.0.sso.i.i.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i = load i64, ptr %sso.i.i, align 8
   %sso.i.i.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i, i64 8
   %sso.i.i.8.sso.i.i.8.sso.i.i.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i = load i64, ptr %sso.i.i.8.sroa_idx, align 8
@@ -150,24 +150,24 @@ pack_sso.i.i:                                     ; preds = %chk_sso.i.i
   br label %archx_str_from_int.exit
 
 alloc_heap.i.i:                                   ; preds = %chk_sso.i.i
-  %hp.i.i = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1321)
+  %hp.i.i = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1326)
   %hnull.i.i = icmp eq ptr %hp.i.i, null
   br i1 %hnull.i.i, label %oom.i.i, label %copy_long.i.i
 
 copy_long.i.i:                                    ; preds = %alloc_heap.i.i
   %hp_i.i.i = ptrtoint ptr %hp.i.i to i64
   %htagged.i.i = or disjoint i64 %hp_i.i.i, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i, ptr nonnull readonly align 8 %buf.i, i64 range(i64 -2147483648, 2147483650) %len.i1321, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i, ptr nonnull readonly align 8 %buf.i, i64 range(i64 -2147483648, 2147483650) %len.i1326, i1 false)
   %pref32.i.i = load i32, ptr %hp.i.i, align 16
   %pref64.i.i = zext i32 %pref32.i.i to i64
   %pref_sh.i.i = shl nuw i64 %pref64.i.i, 32
-  %w0_out.i.i = or disjoint i64 %pref_sh.i.i, %len.i1321
+  %w0_out.i.i = or disjoint i64 %pref_sh.i.i, %len.i1326
   %ls0.i.i = insertvalue %ArchxStr poison, i64 %w0_out.i.i, 0
   %ls1.i.i = insertvalue %ArchxStr %ls0.i.i, i64 %htagged.i.i, 1
   br label %archx_str_from_int.exit
 
-archx_str_from_int.exit:                          ; preds = %alloc.ok.0, %pack_sso.i.i, %copy_long.i.i
-  %common.ret.op.i.i = phi %ArchxStr [ %ss1.i.i, %pack_sso.i.i ], [ %ls1.i.i, %copy_long.i.i ], [ zeroinitializer, %alloc.ok.0 ]
+archx_str_from_int.exit:                          ; preds = %archx_fn_min_max_sum.exit, %pack_sso.i.i, %copy_long.i.i
+  %common.ret.op.i.i = phi %ArchxStr [ %ss1.i.i, %pack_sso.i.i ], [ %ls1.i.i, %copy_long.i.i ], [ zeroinitializer, %archx_fn_min_max_sum.exit ]
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i)
   call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i)
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i)
@@ -217,7 +217,7 @@ build_sso.i:                                      ; preds = %build.i
   br label %archx_str_concat.exit
 
 alloc_heap.i:                                     ; preds = %build.i.thread, %build.i
-  %bptr.i2183 = phi ptr [ %blptr.i, %build.i.thread ], [ %btmp.i, %build.i ]
+  %bptr.i2205 = phi ptr [ %blptr.i, %build.i.thread ], [ %btmp.i, %build.i ]
   %hp.i = tail call noalias align 16 ptr @malloc(i64 %tot.i)
   %hnull.i = icmp eq ptr %hp.i, null
   br i1 %hnull.i, label %oom.i, label %copy_long.i
@@ -229,7 +229,7 @@ copy_long.i:                                      ; preds = %alloc_heap.i
   %atmp.i.sroa.5.0.hp.i.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i, i64 4
   store i16 15731, ptr %atmp.i.sroa.5.0.hp.i.sroa_idx, align 4
   %dst_b.i = getelementptr inbounds nuw i8, ptr %hp.i, i64 6
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 2 %dst_b.i, ptr nonnull align 1 %bptr.i2183, i64 %blen.i, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 2 %dst_b.i, ptr nonnull align 1 %bptr.i2205, i64 %blen.i, i1 false)
   %w0_out.i = or disjoint i64 %tot.i, 8386112018410635264
   %ls0.i = insertvalue %ArchxStr poison, i64 %w0_out.i, 0
   %ls1.i = insertvalue %ArchxStr %ls0.i, i64 %htagged.i, 1
@@ -238,587 +238,587 @@ copy_long.i:                                      ; preds = %alloc_heap.i
 archx_str_concat.exit:                            ; preds = %archx_str_from_int.exit, %build_sso.i, %copy_long.i
   %common.ret.op.i = phi %ArchxStr [ %rs1.i, %build_sso.i ], [ %ls1.i, %copy_long.i ], [ { i64 8386112018410635270, i64 15731 }, %archx_str_from_int.exit ]
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i359)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i361)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i364)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i366)
   %aw0.i = extractvalue %ArchxStr %common.ret.op.i, 0
   %aw1.i = extractvalue %ArchxStr %common.ret.op.i, 1
   %alen.i = and i64 %aw0.i, 4294967295
   %az.i = icmp eq i64 %alen.i, 0
-  br i1 %az.i, label %archx_str_concat.exit396, label %chk_bz.i
+  br i1 %az.i, label %archx_str_concat.exit401, label %chk_bz.i
 
 chk_bz.i:                                         ; preds = %archx_str_concat.exit
-  %tot.i363 = add nuw nsw i64 %alen.i, 1
-  %too_big.i364 = icmp samesign ugt i64 %alen.i, 2147483646
-  br i1 %too_big.i364, label %oom.i385, label %mat_a.i365
+  %tot.i368 = add nuw nsw i64 %alen.i, 1
+  %too_big.i369 = icmp samesign ugt i64 %alen.i, 2147483646
+  br i1 %too_big.i369, label %oom.i390, label %mat_a.i370
 
-oom.i385:                                         ; preds = %alloc_heap.i371, %chk_bz.i
+oom.i390:                                         ; preds = %alloc_heap.i376, %chk_bz.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i365:                                       ; preds = %chk_bz.i
+mat_a.i370:                                       ; preds = %chk_bz.i
   %ashort.i = icmp samesign ult i64 %alen.i, 13
   br i1 %ashort.i, label %mat_b.i, label %mat_b.i.thread
 
-mat_b.i.thread:                                   ; preds = %mat_a.i365
+mat_b.i.thread:                                   ; preds = %mat_a.i370
   %araw.i = and i64 %aw1.i, -4
   %alptr.i = inttoptr i64 %araw.i to ptr
-  br label %alloc_heap.i371
+  br label %alloc_heap.i376
 
-mat_b.i:                                          ; preds = %mat_a.i365
+mat_b.i:                                          ; preds = %mat_a.i370
   %ap4.i = lshr i64 %aw0.i, 32
   %ap4_32.i = trunc nuw i64 %ap4.i to i32
-  store i32 %ap4_32.i, ptr %atmp.i359, align 4
-  %atmp4.i395 = getelementptr inbounds nuw i8, ptr %atmp.i359, i64 4
-  store i64 %aw1.i, ptr %atmp4.i395, align 4
-  %fits_sso.i370.not = icmp eq i64 %alen.i, 12
-  br i1 %fits_sso.i370.not, label %alloc_heap.i371, label %build_sso.i386
+  store i32 %ap4_32.i, ptr %atmp.i364, align 4
+  %atmp4.i400 = getelementptr inbounds nuw i8, ptr %atmp.i364, i64 4
+  store i64 %aw1.i, ptr %atmp4.i400, align 4
+  %fits_sso.i375.not = icmp eq i64 %alen.i, 12
+  br i1 %fits_sso.i375.not, label %alloc_heap.i376, label %build_sso.i391
 
-build_sso.i386:                                   ; preds = %mat_b.i
-  %out_sso8.i387 = getelementptr inbounds nuw i8, ptr %out_sso.i361, i64 8
-  %tot32.i388 = trunc nuw nsw i64 %tot.i363 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i361, i8 0, i64 16, i1 false)
-  store i32 %tot32.i388, ptr %out_sso.i361, align 8
-  %sso_dst_a.i389 = getelementptr inbounds nuw i8, ptr %out_sso.i361, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i389, ptr nonnull align 4 %atmp.i359, i64 %alen.i, i1 false)
-  %sso_dst_b.i390 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i389, i64 %alen.i
-  store i8 44, ptr %sso_dst_b.i390, align 1
-  %rw0.i391 = load i64, ptr %out_sso.i361, align 8
-  %rw1.i392 = load i64, ptr %out_sso8.i387, align 8
-  %rs0.i393 = insertvalue %ArchxStr poison, i64 %rw0.i391, 0
-  %rs1.i394 = insertvalue %ArchxStr %rs0.i393, i64 %rw1.i392, 1
-  br label %archx_str_concat.exit396
+build_sso.i391:                                   ; preds = %mat_b.i
+  %out_sso8.i392 = getelementptr inbounds nuw i8, ptr %out_sso.i366, i64 8
+  %tot32.i393 = trunc nuw nsw i64 %tot.i368 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i366, i8 0, i64 16, i1 false)
+  store i32 %tot32.i393, ptr %out_sso.i366, align 8
+  %sso_dst_a.i394 = getelementptr inbounds nuw i8, ptr %out_sso.i366, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i394, ptr nonnull align 4 %atmp.i364, i64 %alen.i, i1 false)
+  %sso_dst_b.i395 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i394, i64 %alen.i
+  store i8 44, ptr %sso_dst_b.i395, align 1
+  %rw0.i396 = load i64, ptr %out_sso.i366, align 8
+  %rw1.i397 = load i64, ptr %out_sso8.i392, align 8
+  %rs0.i398 = insertvalue %ArchxStr poison, i64 %rw0.i396, 0
+  %rs1.i399 = insertvalue %ArchxStr %rs0.i398, i64 %rw1.i397, 1
+  br label %archx_str_concat.exit401
 
-alloc_heap.i371:                                  ; preds = %mat_b.i.thread, %mat_b.i
-  %aptr.i1966 = phi ptr [ %alptr.i, %mat_b.i.thread ], [ %atmp.i359, %mat_b.i ]
-  %hp.i372 = tail call noalias align 16 ptr @malloc(i64 %tot.i363)
-  %hnull.i373 = icmp eq ptr %hp.i372, null
-  br i1 %hnull.i373, label %oom.i385, label %copy_long.i374
+alloc_heap.i376:                                  ; preds = %mat_b.i.thread, %mat_b.i
+  %aptr.i1985 = phi ptr [ %alptr.i, %mat_b.i.thread ], [ %atmp.i364, %mat_b.i ]
+  %hp.i377 = tail call noalias align 16 ptr @malloc(i64 %tot.i368)
+  %hnull.i378 = icmp eq ptr %hp.i377, null
+  br i1 %hnull.i378, label %oom.i390, label %copy_long.i379
 
-copy_long.i374:                                   ; preds = %alloc_heap.i371
-  %hp_i.i375 = ptrtoint ptr %hp.i372 to i64
-  %htagged.i376 = or disjoint i64 %hp_i.i375, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i372, ptr nonnull align 1 %aptr.i1966, i64 %alen.i, i1 false)
-  %dst_b.i377 = getelementptr inbounds nuw i8, ptr %hp.i372, i64 %alen.i
-  store i8 44, ptr %dst_b.i377, align 1
-  %pref32.i378 = load i32, ptr %hp.i372, align 16
-  %pref64.i379 = zext i32 %pref32.i378 to i64
-  %pref_sh.i380 = shl nuw i64 %pref64.i379, 32
-  %w0_out.i381 = or disjoint i64 %pref_sh.i380, %tot.i363
-  %ls0.i382 = insertvalue %ArchxStr poison, i64 %w0_out.i381, 0
-  %ls1.i383 = insertvalue %ArchxStr %ls0.i382, i64 %htagged.i376, 1
-  br label %archx_str_concat.exit396
+copy_long.i379:                                   ; preds = %alloc_heap.i376
+  %hp_i.i380 = ptrtoint ptr %hp.i377 to i64
+  %htagged.i381 = or disjoint i64 %hp_i.i380, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i377, ptr nonnull align 1 %aptr.i1985, i64 %alen.i, i1 false)
+  %dst_b.i382 = getelementptr inbounds nuw i8, ptr %hp.i377, i64 %alen.i
+  store i8 44, ptr %dst_b.i382, align 1
+  %pref32.i383 = load i32, ptr %hp.i377, align 16
+  %pref64.i384 = zext i32 %pref32.i383 to i64
+  %pref_sh.i385 = shl nuw i64 %pref64.i384, 32
+  %w0_out.i386 = or disjoint i64 %pref_sh.i385, %tot.i368
+  %ls0.i387 = insertvalue %ArchxStr poison, i64 %w0_out.i386, 0
+  %ls1.i388 = insertvalue %ArchxStr %ls0.i387, i64 %htagged.i381, 1
+  br label %archx_str_concat.exit401
 
-archx_str_concat.exit396:                         ; preds = %archx_str_concat.exit, %build_sso.i386, %copy_long.i374
-  %common.ret.op.i384 = phi %ArchxStr [ %rs1.i394, %build_sso.i386 ], [ %ls1.i383, %copy_long.i374 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i359)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i361)
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1325)
-  %n32.i1326 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1325, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 42)
-  %len.i1327 = sext i32 %n32.i1326 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1324)
-  %z.i.i1328 = icmp slt i32 %n32.i1326, 1
-  br i1 %z.i.i1328, label %archx_str_from_int.exit1352, label %chk_sso.i.i1329
+archx_str_concat.exit401:                         ; preds = %archx_str_concat.exit, %build_sso.i391, %copy_long.i379
+  %common.ret.op.i389 = phi %ArchxStr [ %rs1.i399, %build_sso.i391 ], [ %ls1.i388, %copy_long.i379 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i364)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i366)
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1330)
+  %n32.i1331 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1330, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 42)
+  %len.i1332 = sext i32 %n32.i1331 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1329)
+  %z.i.i1333 = icmp slt i32 %n32.i1331, 1
+  br i1 %z.i.i1333, label %archx_str_from_int.exit1357, label %chk_sso.i.i1334
 
-oom.i.i1344:                                      ; preds = %alloc_heap.i.i1331
+oom.i.i1349:                                      ; preds = %alloc_heap.i.i1336
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1329:                                  ; preds = %archx_str_concat.exit396
-  %short.i.i1330 = icmp samesign ult i32 %n32.i1326, 13
-  br i1 %short.i.i1330, label %pack_sso.i.i1345, label %alloc_heap.i.i1331
+chk_sso.i.i1334:                                  ; preds = %archx_str_concat.exit401
+  %short.i.i1335 = icmp samesign ult i32 %n32.i1331, 13
+  br i1 %short.i.i1335, label %pack_sso.i.i1350, label %alloc_heap.i.i1336
 
-pack_sso.i.i1345:                                 ; preds = %chk_sso.i.i1329
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1324, i8 0, i64 16, i1 false)
-  store i32 %n32.i1326, ptr %sso.i.i1324, align 8
-  %sso.i.i1324.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1324, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1324.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1325, i64 range(i64 -2147483648, 2147483650) %len.i1327, i1 false)
-  %sso.i.i1324.0.sso.i.i1324.0.sso.i.i1324.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1347 = load i64, ptr %sso.i.i1324, align 8
-  %sso.i.i1324.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1324, i64 8
-  %sso.i.i1324.8.sso.i.i1324.8.sso.i.i1324.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1349 = load i64, ptr %sso.i.i1324.8.sroa_idx, align 8
-  %ss0.i.i1350 = insertvalue %ArchxStr poison, i64 %sso.i.i1324.0.sso.i.i1324.0.sso.i.i1324.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1347, 0
-  %ss1.i.i1351 = insertvalue %ArchxStr %ss0.i.i1350, i64 %sso.i.i1324.8.sso.i.i1324.8.sso.i.i1324.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1349, 1
-  br label %archx_str_from_int.exit1352
+pack_sso.i.i1350:                                 ; preds = %chk_sso.i.i1334
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1329, i8 0, i64 16, i1 false)
+  store i32 %n32.i1331, ptr %sso.i.i1329, align 8
+  %sso.i.i1329.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1329, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1329.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1330, i64 range(i64 -2147483648, 2147483650) %len.i1332, i1 false)
+  %sso.i.i1329.0.sso.i.i1329.0.sso.i.i1329.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1352 = load i64, ptr %sso.i.i1329, align 8
+  %sso.i.i1329.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1329, i64 8
+  %sso.i.i1329.8.sso.i.i1329.8.sso.i.i1329.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1354 = load i64, ptr %sso.i.i1329.8.sroa_idx, align 8
+  %ss0.i.i1355 = insertvalue %ArchxStr poison, i64 %sso.i.i1329.0.sso.i.i1329.0.sso.i.i1329.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1352, 0
+  %ss1.i.i1356 = insertvalue %ArchxStr %ss0.i.i1355, i64 %sso.i.i1329.8.sso.i.i1329.8.sso.i.i1329.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1354, 1
+  br label %archx_str_from_int.exit1357
 
-alloc_heap.i.i1331:                               ; preds = %chk_sso.i.i1329
-  %hp.i.i1332 = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1327)
-  %hnull.i.i1333 = icmp eq ptr %hp.i.i1332, null
-  br i1 %hnull.i.i1333, label %oom.i.i1344, label %copy_long.i.i1334
+alloc_heap.i.i1336:                               ; preds = %chk_sso.i.i1334
+  %hp.i.i1337 = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1332)
+  %hnull.i.i1338 = icmp eq ptr %hp.i.i1337, null
+  br i1 %hnull.i.i1338, label %oom.i.i1349, label %copy_long.i.i1339
 
-copy_long.i.i1334:                                ; preds = %alloc_heap.i.i1331
-  %hp_i.i.i1335 = ptrtoint ptr %hp.i.i1332 to i64
-  %htagged.i.i1336 = or disjoint i64 %hp_i.i.i1335, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1332, ptr nonnull readonly align 8 %buf.i1325, i64 range(i64 -2147483648, 2147483650) %len.i1327, i1 false)
-  %pref32.i.i1337 = load i32, ptr %hp.i.i1332, align 16
-  %pref64.i.i1338 = zext i32 %pref32.i.i1337 to i64
-  %pref_sh.i.i1339 = shl nuw i64 %pref64.i.i1338, 32
-  %w0_out.i.i1340 = or disjoint i64 %pref_sh.i.i1339, %len.i1327
-  %ls0.i.i1341 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1340, 0
-  %ls1.i.i1342 = insertvalue %ArchxStr %ls0.i.i1341, i64 %htagged.i.i1336, 1
-  br label %archx_str_from_int.exit1352
+copy_long.i.i1339:                                ; preds = %alloc_heap.i.i1336
+  %hp_i.i.i1340 = ptrtoint ptr %hp.i.i1337 to i64
+  %htagged.i.i1341 = or disjoint i64 %hp_i.i.i1340, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1337, ptr nonnull readonly align 8 %buf.i1330, i64 range(i64 -2147483648, 2147483650) %len.i1332, i1 false)
+  %pref32.i.i1342 = load i32, ptr %hp.i.i1337, align 16
+  %pref64.i.i1343 = zext i32 %pref32.i.i1342 to i64
+  %pref_sh.i.i1344 = shl nuw i64 %pref64.i.i1343, 32
+  %w0_out.i.i1345 = or disjoint i64 %pref_sh.i.i1344, %len.i1332
+  %ls0.i.i1346 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1345, 0
+  %ls1.i.i1347 = insertvalue %ArchxStr %ls0.i.i1346, i64 %htagged.i.i1341, 1
+  br label %archx_str_from_int.exit1357
 
-archx_str_from_int.exit1352:                      ; preds = %archx_str_concat.exit396, %pack_sso.i.i1345, %copy_long.i.i1334
-  %common.ret.op.i.i1343 = phi %ArchxStr [ %ss1.i.i1351, %pack_sso.i.i1345 ], [ %ls1.i.i1342, %copy_long.i.i1334 ], [ zeroinitializer, %archx_str_concat.exit396 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1324)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1325)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i397)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i398)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i399)
-  %aw0.i400 = extractvalue %ArchxStr %common.ret.op.i384, 0
-  %aw1.i401 = extractvalue %ArchxStr %common.ret.op.i384, 1
-  %bw0.i402 = extractvalue %ArchxStr %common.ret.op.i.i1343, 0
-  %bw1.i403 = extractvalue %ArchxStr %common.ret.op.i.i1343, 1
-  %alen.i404 = and i64 %aw0.i400, 4294967295
-  %blen.i405 = and i64 %bw0.i402, 4294967295
-  %az.i406 = icmp eq i64 %alen.i404, 0
-  br i1 %az.i406, label %ret_b_clone.i460, label %chk_bz.i407
+archx_str_from_int.exit1357:                      ; preds = %archx_str_concat.exit401, %pack_sso.i.i1350, %copy_long.i.i1339
+  %common.ret.op.i.i1348 = phi %ArchxStr [ %ss1.i.i1356, %pack_sso.i.i1350 ], [ %ls1.i.i1347, %copy_long.i.i1339 ], [ zeroinitializer, %archx_str_concat.exit401 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1329)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1330)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i402)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i403)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i404)
+  %aw0.i405 = extractvalue %ArchxStr %common.ret.op.i389, 0
+  %aw1.i406 = extractvalue %ArchxStr %common.ret.op.i389, 1
+  %bw0.i407 = extractvalue %ArchxStr %common.ret.op.i.i1348, 0
+  %bw1.i408 = extractvalue %ArchxStr %common.ret.op.i.i1348, 1
+  %alen.i409 = and i64 %aw0.i405, 4294967295
+  %blen.i410 = and i64 %bw0.i407, 4294967295
+  %az.i411 = icmp eq i64 %alen.i409, 0
+  br i1 %az.i411, label %ret_b_clone.i465, label %chk_bz.i412
 
-ret_b_clone.i460:                                 ; preds = %archx_str_from_int.exit1352
-  %long.i1355 = icmp samesign ult i64 %blen.i405, 13
-  %tag.i1359 = and i64 %bw1.i403, 3
-  %owned.not.i1360 = icmp eq i64 %tag.i1359, 0
-  %or.cond = select i1 %long.i1355, i1 true, i1 %owned.not.i1360
-  br i1 %or.cond, label %archx_str_concat.exit462, label %dup_heap.i
+ret_b_clone.i465:                                 ; preds = %archx_str_from_int.exit1357
+  %long.i1360 = icmp samesign ult i64 %blen.i410, 13
+  %tag.i1364 = and i64 %bw1.i408, 3
+  %owned.not.i1365 = icmp eq i64 %tag.i1364, 0
+  %or.cond = select i1 %long.i1360, i1 true, i1 %owned.not.i1365
+  br i1 %or.cond, label %archx_str_concat.exit467, label %dup_heap.i
 
-dup_heap.i:                                       ; preds = %ret_b_clone.i460
-  %dst.i = tail call noalias align 16 ptr @malloc(i64 %blen.i405)
+dup_heap.i:                                       ; preds = %ret_b_clone.i465
+  %dst.i = tail call noalias align 16 ptr @malloc(i64 %blen.i410)
   %isnull.i = icmp eq ptr %dst.i, null
-  br i1 %isnull.i, label %oom.i1361, label %copy.i
+  br i1 %isnull.i, label %oom.i1366, label %copy.i
 
-oom.i1361:                                        ; preds = %dup_heap.i
+oom.i1366:                                        ; preds = %dup_heap.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
 copy.i:                                           ; preds = %dup_heap.i
-  %src_i.i = and i64 %bw1.i403, -4
+  %src_i.i = and i64 %bw1.i408, -4
   %src.i = inttoptr i64 %src_i.i to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i, ptr nonnull align 4 %src.i, i64 %blen.i405, i1 false)
+  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i, ptr nonnull align 4 %src.i, i64 %blen.i410, i1 false)
   %dst_i.i = ptrtoint ptr %dst.i to i64
   %tagged.i = or disjoint i64 %dst_i.i, 1
-  %out.i = insertvalue %ArchxStr %common.ret.op.i.i1343, i64 %tagged.i, 1
-  br label %archx_str_concat.exit462
+  %out.i = insertvalue %ArchxStr %common.ret.op.i.i1348, i64 %tagged.i, 1
+  br label %archx_str_concat.exit467
 
-chk_bz.i407:                                      ; preds = %archx_str_from_int.exit1352
-  %bz.i408 = icmp eq i64 %blen.i405, 0
-  br i1 %bz.i408, label %ret_a_clone.i458, label %calc_tot.i409
+chk_bz.i412:                                      ; preds = %archx_str_from_int.exit1357
+  %bz.i413 = icmp eq i64 %blen.i410, 0
+  br i1 %bz.i413, label %ret_a_clone.i463, label %calc_tot.i414
 
-ret_a_clone.i458:                                 ; preds = %chk_bz.i407
-  %long.i1364 = icmp samesign ult i64 %alen.i404, 13
-  %tag.i1368 = and i64 %aw1.i401, 3
-  %owned.not.i1369 = icmp eq i64 %tag.i1368, 0
-  %or.cond2047 = select i1 %long.i1364, i1 true, i1 %owned.not.i1369
-  br i1 %or.cond2047, label %archx_str_concat.exit462, label %dup_heap.i1370
+ret_a_clone.i463:                                 ; preds = %chk_bz.i412
+  %long.i1369 = icmp samesign ult i64 %alen.i409, 13
+  %tag.i1373 = and i64 %aw1.i406, 3
+  %owned.not.i1374 = icmp eq i64 %tag.i1373, 0
+  %or.cond2066 = select i1 %long.i1369, i1 true, i1 %owned.not.i1374
+  br i1 %or.cond2066, label %archx_str_concat.exit467, label %dup_heap.i1375
 
-dup_heap.i1370:                                   ; preds = %ret_a_clone.i458
-  %dst.i1371 = tail call noalias align 16 ptr @malloc(i64 %alen.i404)
-  %isnull.i1372 = icmp eq ptr %dst.i1371, null
-  br i1 %isnull.i1372, label %oom.i1379, label %copy.i1373
+dup_heap.i1375:                                   ; preds = %ret_a_clone.i463
+  %dst.i1376 = tail call noalias align 16 ptr @malloc(i64 %alen.i409)
+  %isnull.i1377 = icmp eq ptr %dst.i1376, null
+  br i1 %isnull.i1377, label %oom.i1384, label %copy.i1378
 
-oom.i1379:                                        ; preds = %dup_heap.i1370
+oom.i1384:                                        ; preds = %dup_heap.i1375
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1373:                                       ; preds = %dup_heap.i1370
-  %src_i.i1374 = and i64 %aw1.i401, -4
-  %src.i1375 = inttoptr i64 %src_i.i1374 to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1371, ptr nonnull align 4 %src.i1375, i64 %alen.i404, i1 false)
-  %dst_i.i1376 = ptrtoint ptr %dst.i1371 to i64
-  %tagged.i1377 = or disjoint i64 %dst_i.i1376, 1
-  %out.i1378 = insertvalue %ArchxStr %common.ret.op.i384, i64 %tagged.i1377, 1
-  br label %archx_str_concat.exit462
+copy.i1378:                                       ; preds = %dup_heap.i1375
+  %src_i.i1379 = and i64 %aw1.i406, -4
+  %src.i1380 = inttoptr i64 %src_i.i1379 to ptr
+  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1376, ptr nonnull align 4 %src.i1380, i64 %alen.i409, i1 false)
+  %dst_i.i1381 = ptrtoint ptr %dst.i1376 to i64
+  %tagged.i1382 = or disjoint i64 %dst_i.i1381, 1
+  %out.i1383 = insertvalue %ArchxStr %common.ret.op.i389, i64 %tagged.i1382, 1
+  br label %archx_str_concat.exit467
 
-calc_tot.i409:                                    ; preds = %chk_bz.i407
-  %tot.i410 = add nuw nsw i64 %blen.i405, %alen.i404
-  %too_big.i411 = icmp samesign ugt i64 %tot.i410, 2147483647
-  br i1 %too_big.i411, label %oom.i440, label %mat_a.i412
+calc_tot.i414:                                    ; preds = %chk_bz.i412
+  %tot.i415 = add nuw nsw i64 %blen.i410, %alen.i409
+  %too_big.i416 = icmp samesign ugt i64 %tot.i415, 2147483647
+  br i1 %too_big.i416, label %oom.i445, label %mat_a.i417
 
-oom.i440:                                         ; preds = %alloc_heap.i426, %calc_tot.i409
+oom.i445:                                         ; preds = %alloc_heap.i431, %calc_tot.i414
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i412:                                       ; preds = %calc_tot.i409
-  %ashort.i413 = icmp samesign ult i64 %alen.i404, 13
-  br i1 %ashort.i413, label %mat_a_short.i454, label %mat_a_long.i414
+mat_a.i417:                                       ; preds = %calc_tot.i414
+  %ashort.i418 = icmp samesign ult i64 %alen.i409, 13
+  br i1 %ashort.i418, label %mat_a_short.i459, label %mat_a_long.i419
 
-mat_a_short.i454:                                 ; preds = %mat_a.i412
-  %ap4.i455 = lshr i64 %aw0.i400, 32
-  %ap4_32.i456 = trunc nuw i64 %ap4.i455 to i32
-  store i32 %ap4_32.i456, ptr %atmp.i397, align 4
-  %atmp4.i457 = getelementptr inbounds nuw i8, ptr %atmp.i397, i64 4
-  store i64 %aw1.i401, ptr %atmp4.i457, align 4
-  br label %mat_b.i417
+mat_a_short.i459:                                 ; preds = %mat_a.i417
+  %ap4.i460 = lshr i64 %aw0.i405, 32
+  %ap4_32.i461 = trunc nuw i64 %ap4.i460 to i32
+  store i32 %ap4_32.i461, ptr %atmp.i402, align 4
+  %atmp4.i462 = getelementptr inbounds nuw i8, ptr %atmp.i402, i64 4
+  store i64 %aw1.i406, ptr %atmp4.i462, align 4
+  br label %mat_b.i422
 
-mat_a_long.i414:                                  ; preds = %mat_a.i412
-  %araw.i415 = and i64 %aw1.i401, -4
-  %alptr.i416 = inttoptr i64 %araw.i415 to ptr
-  br label %mat_b.i417
+mat_a_long.i419:                                  ; preds = %mat_a.i417
+  %araw.i420 = and i64 %aw1.i406, -4
+  %alptr.i421 = inttoptr i64 %araw.i420 to ptr
+  br label %mat_b.i422
 
-mat_b.i417:                                       ; preds = %mat_a_long.i414, %mat_a_short.i454
-  %aptr.i418 = phi ptr [ %atmp.i397, %mat_a_short.i454 ], [ %alptr.i416, %mat_a_long.i414 ]
-  %bshort.i419 = icmp samesign ult i64 %blen.i405, 13
-  br i1 %bshort.i419, label %mat_b_short.i450, label %mat_b_long.i420
+mat_b.i422:                                       ; preds = %mat_a_long.i419, %mat_a_short.i459
+  %aptr.i423 = phi ptr [ %atmp.i402, %mat_a_short.i459 ], [ %alptr.i421, %mat_a_long.i419 ]
+  %bshort.i424 = icmp samesign ult i64 %blen.i410, 13
+  br i1 %bshort.i424, label %mat_b_short.i455, label %mat_b_long.i425
 
-mat_b_short.i450:                                 ; preds = %mat_b.i417
-  %bp4.i451 = lshr i64 %bw0.i402, 32
-  %bp4_32.i452 = trunc nuw i64 %bp4.i451 to i32
-  store i32 %bp4_32.i452, ptr %btmp.i398, align 4
-  %btmp4.i453 = getelementptr inbounds nuw i8, ptr %btmp.i398, i64 4
-  store i64 %bw1.i403, ptr %btmp4.i453, align 4
-  br label %build.i423
+mat_b_short.i455:                                 ; preds = %mat_b.i422
+  %bp4.i456 = lshr i64 %bw0.i407, 32
+  %bp4_32.i457 = trunc nuw i64 %bp4.i456 to i32
+  store i32 %bp4_32.i457, ptr %btmp.i403, align 4
+  %btmp4.i458 = getelementptr inbounds nuw i8, ptr %btmp.i403, i64 4
+  store i64 %bw1.i408, ptr %btmp4.i458, align 4
+  br label %build.i428
 
-mat_b_long.i420:                                  ; preds = %mat_b.i417
-  %braw.i421 = and i64 %bw1.i403, -4
-  %blptr.i422 = inttoptr i64 %braw.i421 to ptr
-  br label %build.i423
+mat_b_long.i425:                                  ; preds = %mat_b.i422
+  %braw.i426 = and i64 %bw1.i408, -4
+  %blptr.i427 = inttoptr i64 %braw.i426 to ptr
+  br label %build.i428
 
-build.i423:                                       ; preds = %mat_b_long.i420, %mat_b_short.i450
-  %bptr.i424 = phi ptr [ %btmp.i398, %mat_b_short.i450 ], [ %blptr.i422, %mat_b_long.i420 ]
-  %fits_sso.i425 = icmp samesign ult i64 %tot.i410, 13
-  br i1 %fits_sso.i425, label %build_sso.i441, label %alloc_heap.i426
+build.i428:                                       ; preds = %mat_b_long.i425, %mat_b_short.i455
+  %bptr.i429 = phi ptr [ %btmp.i403, %mat_b_short.i455 ], [ %blptr.i427, %mat_b_long.i425 ]
+  %fits_sso.i430 = icmp samesign ult i64 %tot.i415, 13
+  br i1 %fits_sso.i430, label %build_sso.i446, label %alloc_heap.i431
 
-build_sso.i441:                                   ; preds = %build.i423
-  %out_sso8.i442 = getelementptr inbounds nuw i8, ptr %out_sso.i399, i64 8
-  %tot32.i443 = trunc nuw nsw i64 %tot.i410 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i399, i8 0, i64 16, i1 false)
-  store i32 %tot32.i443, ptr %out_sso.i399, align 8
-  %sso_dst_a.i444 = getelementptr inbounds nuw i8, ptr %out_sso.i399, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i444, ptr nonnull align 1 %aptr.i418, i64 %alen.i404, i1 false)
-  %sso_dst_b.i445 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i444, i64 %alen.i404
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i445, ptr nonnull align 1 %bptr.i424, i64 %blen.i405, i1 false)
-  %rw0.i446 = load i64, ptr %out_sso.i399, align 8
-  %rw1.i447 = load i64, ptr %out_sso8.i442, align 8
-  %rs0.i448 = insertvalue %ArchxStr poison, i64 %rw0.i446, 0
-  %rs1.i449 = insertvalue %ArchxStr %rs0.i448, i64 %rw1.i447, 1
-  br label %archx_str_concat.exit462
+build_sso.i446:                                   ; preds = %build.i428
+  %out_sso8.i447 = getelementptr inbounds nuw i8, ptr %out_sso.i404, i64 8
+  %tot32.i448 = trunc nuw nsw i64 %tot.i415 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i404, i8 0, i64 16, i1 false)
+  store i32 %tot32.i448, ptr %out_sso.i404, align 8
+  %sso_dst_a.i449 = getelementptr inbounds nuw i8, ptr %out_sso.i404, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i449, ptr nonnull align 1 %aptr.i423, i64 %alen.i409, i1 false)
+  %sso_dst_b.i450 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i449, i64 %alen.i409
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i450, ptr nonnull align 1 %bptr.i429, i64 %blen.i410, i1 false)
+  %rw0.i451 = load i64, ptr %out_sso.i404, align 8
+  %rw1.i452 = load i64, ptr %out_sso8.i447, align 8
+  %rs0.i453 = insertvalue %ArchxStr poison, i64 %rw0.i451, 0
+  %rs1.i454 = insertvalue %ArchxStr %rs0.i453, i64 %rw1.i452, 1
+  br label %archx_str_concat.exit467
 
-alloc_heap.i426:                                  ; preds = %build.i423
-  %hp.i427 = tail call noalias align 16 ptr @malloc(i64 %tot.i410)
-  %hnull.i428 = icmp eq ptr %hp.i427, null
-  br i1 %hnull.i428, label %oom.i440, label %copy_long.i429
+alloc_heap.i431:                                  ; preds = %build.i428
+  %hp.i432 = tail call noalias align 16 ptr @malloc(i64 %tot.i415)
+  %hnull.i433 = icmp eq ptr %hp.i432, null
+  br i1 %hnull.i433, label %oom.i445, label %copy_long.i434
 
-copy_long.i429:                                   ; preds = %alloc_heap.i426
-  %hp_i.i430 = ptrtoint ptr %hp.i427 to i64
-  %htagged.i431 = or disjoint i64 %hp_i.i430, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i427, ptr nonnull align 1 %aptr.i418, i64 %alen.i404, i1 false)
-  %dst_b.i432 = getelementptr inbounds nuw i8, ptr %hp.i427, i64 %alen.i404
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i432, ptr nonnull align 1 %bptr.i424, i64 %blen.i405, i1 false)
-  %pref32.i433 = load i32, ptr %hp.i427, align 16
-  %pref64.i434 = zext i32 %pref32.i433 to i64
-  %pref_sh.i435 = shl nuw i64 %pref64.i434, 32
-  %w0_out.i436 = or disjoint i64 %pref_sh.i435, %tot.i410
-  %ls0.i437 = insertvalue %ArchxStr poison, i64 %w0_out.i436, 0
-  %ls1.i438 = insertvalue %ArchxStr %ls0.i437, i64 %htagged.i431, 1
-  br label %archx_str_concat.exit462
+copy_long.i434:                                   ; preds = %alloc_heap.i431
+  %hp_i.i435 = ptrtoint ptr %hp.i432 to i64
+  %htagged.i436 = or disjoint i64 %hp_i.i435, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i432, ptr nonnull align 1 %aptr.i423, i64 %alen.i409, i1 false)
+  %dst_b.i437 = getelementptr inbounds nuw i8, ptr %hp.i432, i64 %alen.i409
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i437, ptr nonnull align 1 %bptr.i429, i64 %blen.i410, i1 false)
+  %pref32.i438 = load i32, ptr %hp.i432, align 16
+  %pref64.i439 = zext i32 %pref32.i438 to i64
+  %pref_sh.i440 = shl nuw i64 %pref64.i439, 32
+  %w0_out.i441 = or disjoint i64 %pref_sh.i440, %tot.i415
+  %ls0.i442 = insertvalue %ArchxStr poison, i64 %w0_out.i441, 0
+  %ls1.i443 = insertvalue %ArchxStr %ls0.i442, i64 %htagged.i436, 1
+  br label %archx_str_concat.exit467
 
-archx_str_concat.exit462:                         ; preds = %copy.i1373, %ret_a_clone.i458, %copy.i, %ret_b_clone.i460, %build_sso.i441, %copy_long.i429
-  %common.ret.op.i439 = phi %ArchxStr [ %rs1.i449, %build_sso.i441 ], [ %ls1.i438, %copy_long.i429 ], [ %out.i, %copy.i ], [ %common.ret.op.i.i1343, %ret_b_clone.i460 ], [ %out.i1378, %copy.i1373 ], [ %common.ret.op.i384, %ret_a_clone.i458 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i397)
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i398)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i399)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i463)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i465)
-  %aw0.i466 = extractvalue %ArchxStr %common.ret.op.i439, 0
-  %aw1.i467 = extractvalue %ArchxStr %common.ret.op.i439, 1
-  %alen.i468 = and i64 %aw0.i466, 4294967295
-  %az.i469 = icmp eq i64 %alen.i468, 0
-  br i1 %az.i469, label %archx_str_concat.exit516, label %chk_bz.i470
+archx_str_concat.exit467:                         ; preds = %copy.i1378, %ret_a_clone.i463, %copy.i, %ret_b_clone.i465, %build_sso.i446, %copy_long.i434
+  %common.ret.op.i444 = phi %ArchxStr [ %rs1.i454, %build_sso.i446 ], [ %ls1.i443, %copy_long.i434 ], [ %out.i, %copy.i ], [ %common.ret.op.i.i1348, %ret_b_clone.i465 ], [ %out.i1383, %copy.i1378 ], [ %common.ret.op.i389, %ret_a_clone.i463 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i402)
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i403)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i404)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i468)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i470)
+  %aw0.i471 = extractvalue %ArchxStr %common.ret.op.i444, 0
+  %aw1.i472 = extractvalue %ArchxStr %common.ret.op.i444, 1
+  %alen.i473 = and i64 %aw0.i471, 4294967295
+  %az.i474 = icmp eq i64 %alen.i473, 0
+  br i1 %az.i474, label %archx_str_concat.exit521, label %chk_bz.i475
 
-chk_bz.i470:                                      ; preds = %archx_str_concat.exit462
-  %tot.i472 = add nuw nsw i64 %alen.i468, 1
-  %too_big.i473 = icmp samesign ugt i64 %alen.i468, 2147483646
-  br i1 %too_big.i473, label %oom.i500, label %mat_a.i474
+chk_bz.i475:                                      ; preds = %archx_str_concat.exit467
+  %tot.i477 = add nuw nsw i64 %alen.i473, 1
+  %too_big.i478 = icmp samesign ugt i64 %alen.i473, 2147483646
+  br i1 %too_big.i478, label %oom.i505, label %mat_a.i479
 
-oom.i500:                                         ; preds = %alloc_heap.i486, %chk_bz.i470
+oom.i505:                                         ; preds = %alloc_heap.i491, %chk_bz.i475
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i474:                                       ; preds = %chk_bz.i470
-  %ashort.i475 = icmp samesign ult i64 %alen.i468, 13
-  br i1 %ashort.i475, label %mat_b.i479, label %mat_b.i479.thread
+mat_a.i479:                                       ; preds = %chk_bz.i475
+  %ashort.i480 = icmp samesign ult i64 %alen.i473, 13
+  br i1 %ashort.i480, label %mat_b.i484, label %mat_b.i484.thread
 
-mat_b.i479.thread:                                ; preds = %mat_a.i474
-  %araw.i477 = and i64 %aw1.i467, -4
-  %alptr.i478 = inttoptr i64 %araw.i477 to ptr
-  br label %alloc_heap.i486
+mat_b.i484.thread:                                ; preds = %mat_a.i479
+  %araw.i482 = and i64 %aw1.i472, -4
+  %alptr.i483 = inttoptr i64 %araw.i482 to ptr
+  br label %alloc_heap.i491
 
-mat_b.i479:                                       ; preds = %mat_a.i474
-  %ap4.i511 = lshr i64 %aw0.i466, 32
-  %ap4_32.i512 = trunc nuw i64 %ap4.i511 to i32
-  store i32 %ap4_32.i512, ptr %atmp.i463, align 4
-  %atmp4.i513 = getelementptr inbounds nuw i8, ptr %atmp.i463, i64 4
-  store i64 %aw1.i467, ptr %atmp4.i513, align 4
-  %fits_sso.i485.not = icmp eq i64 %alen.i468, 12
-  br i1 %fits_sso.i485.not, label %alloc_heap.i486, label %build_sso.i501
+mat_b.i484:                                       ; preds = %mat_a.i479
+  %ap4.i516 = lshr i64 %aw0.i471, 32
+  %ap4_32.i517 = trunc nuw i64 %ap4.i516 to i32
+  store i32 %ap4_32.i517, ptr %atmp.i468, align 4
+  %atmp4.i518 = getelementptr inbounds nuw i8, ptr %atmp.i468, i64 4
+  store i64 %aw1.i472, ptr %atmp4.i518, align 4
+  %fits_sso.i490.not = icmp eq i64 %alen.i473, 12
+  br i1 %fits_sso.i490.not, label %alloc_heap.i491, label %build_sso.i506
 
-build_sso.i501:                                   ; preds = %mat_b.i479
-  %out_sso8.i502 = getelementptr inbounds nuw i8, ptr %out_sso.i465, i64 8
-  %tot32.i503 = trunc nuw nsw i64 %tot.i472 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i465, i8 0, i64 16, i1 false)
-  store i32 %tot32.i503, ptr %out_sso.i465, align 8
-  %sso_dst_a.i504 = getelementptr inbounds nuw i8, ptr %out_sso.i465, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i504, ptr nonnull align 4 %atmp.i463, i64 %alen.i468, i1 false)
-  %sso_dst_b.i505 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i504, i64 %alen.i468
-  store i8 44, ptr %sso_dst_b.i505, align 1
-  %rw0.i506 = load i64, ptr %out_sso.i465, align 8
-  %rw1.i507 = load i64, ptr %out_sso8.i502, align 8
-  %rs0.i508 = insertvalue %ArchxStr poison, i64 %rw0.i506, 0
-  %rs1.i509 = insertvalue %ArchxStr %rs0.i508, i64 %rw1.i507, 1
-  br label %archx_str_concat.exit516
+build_sso.i506:                                   ; preds = %mat_b.i484
+  %out_sso8.i507 = getelementptr inbounds nuw i8, ptr %out_sso.i470, i64 8
+  %tot32.i508 = trunc nuw nsw i64 %tot.i477 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i470, i8 0, i64 16, i1 false)
+  store i32 %tot32.i508, ptr %out_sso.i470, align 8
+  %sso_dst_a.i509 = getelementptr inbounds nuw i8, ptr %out_sso.i470, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i509, ptr nonnull align 4 %atmp.i468, i64 %alen.i473, i1 false)
+  %sso_dst_b.i510 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i509, i64 %alen.i473
+  store i8 44, ptr %sso_dst_b.i510, align 1
+  %rw0.i511 = load i64, ptr %out_sso.i470, align 8
+  %rw1.i512 = load i64, ptr %out_sso8.i507, align 8
+  %rs0.i513 = insertvalue %ArchxStr poison, i64 %rw0.i511, 0
+  %rs1.i514 = insertvalue %ArchxStr %rs0.i513, i64 %rw1.i512, 1
+  br label %archx_str_concat.exit521
 
-alloc_heap.i486:                                  ; preds = %mat_b.i479.thread, %mat_b.i479
-  %aptr.i4801969 = phi ptr [ %alptr.i478, %mat_b.i479.thread ], [ %atmp.i463, %mat_b.i479 ]
-  %hp.i487 = tail call noalias align 16 ptr @malloc(i64 %tot.i472)
-  %hnull.i488 = icmp eq ptr %hp.i487, null
-  br i1 %hnull.i488, label %oom.i500, label %copy_long.i489
+alloc_heap.i491:                                  ; preds = %mat_b.i484.thread, %mat_b.i484
+  %aptr.i4851988 = phi ptr [ %alptr.i483, %mat_b.i484.thread ], [ %atmp.i468, %mat_b.i484 ]
+  %hp.i492 = tail call noalias align 16 ptr @malloc(i64 %tot.i477)
+  %hnull.i493 = icmp eq ptr %hp.i492, null
+  br i1 %hnull.i493, label %oom.i505, label %copy_long.i494
 
-copy_long.i489:                                   ; preds = %alloc_heap.i486
-  %hp_i.i490 = ptrtoint ptr %hp.i487 to i64
-  %htagged.i491 = or disjoint i64 %hp_i.i490, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i487, ptr nonnull align 1 %aptr.i4801969, i64 %alen.i468, i1 false)
-  %dst_b.i492 = getelementptr inbounds nuw i8, ptr %hp.i487, i64 %alen.i468
-  store i8 44, ptr %dst_b.i492, align 1
-  %pref32.i493 = load i32, ptr %hp.i487, align 16
-  %pref64.i494 = zext i32 %pref32.i493 to i64
-  %pref_sh.i495 = shl nuw i64 %pref64.i494, 32
-  %w0_out.i496 = or disjoint i64 %pref_sh.i495, %tot.i472
-  %ls0.i497 = insertvalue %ArchxStr poison, i64 %w0_out.i496, 0
-  %ls1.i498 = insertvalue %ArchxStr %ls0.i497, i64 %htagged.i491, 1
-  br label %archx_str_concat.exit516
+copy_long.i494:                                   ; preds = %alloc_heap.i491
+  %hp_i.i495 = ptrtoint ptr %hp.i492 to i64
+  %htagged.i496 = or disjoint i64 %hp_i.i495, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i492, ptr nonnull align 1 %aptr.i4851988, i64 %alen.i473, i1 false)
+  %dst_b.i497 = getelementptr inbounds nuw i8, ptr %hp.i492, i64 %alen.i473
+  store i8 44, ptr %dst_b.i497, align 1
+  %pref32.i498 = load i32, ptr %hp.i492, align 16
+  %pref64.i499 = zext i32 %pref32.i498 to i64
+  %pref_sh.i500 = shl nuw i64 %pref64.i499, 32
+  %w0_out.i501 = or disjoint i64 %pref_sh.i500, %tot.i477
+  %ls0.i502 = insertvalue %ArchxStr poison, i64 %w0_out.i501, 0
+  %ls1.i503 = insertvalue %ArchxStr %ls0.i502, i64 %htagged.i496, 1
+  br label %archx_str_concat.exit521
 
-archx_str_concat.exit516:                         ; preds = %archx_str_concat.exit462, %build_sso.i501, %copy_long.i489
-  %common.ret.op.i499 = phi %ArchxStr [ %rs1.i509, %build_sso.i501 ], [ %ls1.i498, %copy_long.i489 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit462 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i463)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i465)
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1383)
-  %n32.i1384 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1383, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 86)
-  %len.i1385 = sext i32 %n32.i1384 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1382)
-  %z.i.i1386 = icmp slt i32 %n32.i1384, 1
-  br i1 %z.i.i1386, label %archx_str_from_int.exit1410, label %chk_sso.i.i1387
+archx_str_concat.exit521:                         ; preds = %archx_str_concat.exit467, %build_sso.i506, %copy_long.i494
+  %common.ret.op.i504 = phi %ArchxStr [ %rs1.i514, %build_sso.i506 ], [ %ls1.i503, %copy_long.i494 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit467 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i468)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i470)
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1388)
+  %n32.i1389 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1388, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 86)
+  %len.i1390 = sext i32 %n32.i1389 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1387)
+  %z.i.i1391 = icmp slt i32 %n32.i1389, 1
+  br i1 %z.i.i1391, label %archx_str_from_int.exit1415, label %chk_sso.i.i1392
 
-oom.i.i1402:                                      ; preds = %alloc_heap.i.i1389
+oom.i.i1407:                                      ; preds = %alloc_heap.i.i1394
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1387:                                  ; preds = %archx_str_concat.exit516
-  %short.i.i1388 = icmp samesign ult i32 %n32.i1384, 13
-  br i1 %short.i.i1388, label %pack_sso.i.i1403, label %alloc_heap.i.i1389
+chk_sso.i.i1392:                                  ; preds = %archx_str_concat.exit521
+  %short.i.i1393 = icmp samesign ult i32 %n32.i1389, 13
+  br i1 %short.i.i1393, label %pack_sso.i.i1408, label %alloc_heap.i.i1394
 
-pack_sso.i.i1403:                                 ; preds = %chk_sso.i.i1387
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1382, i8 0, i64 16, i1 false)
-  store i32 %n32.i1384, ptr %sso.i.i1382, align 8
-  %sso.i.i1382.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1382, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1382.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1383, i64 range(i64 -2147483648, 2147483650) %len.i1385, i1 false)
-  %sso.i.i1382.0.sso.i.i1382.0.sso.i.i1382.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1405 = load i64, ptr %sso.i.i1382, align 8
-  %sso.i.i1382.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1382, i64 8
-  %sso.i.i1382.8.sso.i.i1382.8.sso.i.i1382.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1407 = load i64, ptr %sso.i.i1382.8.sroa_idx, align 8
-  %ss0.i.i1408 = insertvalue %ArchxStr poison, i64 %sso.i.i1382.0.sso.i.i1382.0.sso.i.i1382.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1405, 0
-  %ss1.i.i1409 = insertvalue %ArchxStr %ss0.i.i1408, i64 %sso.i.i1382.8.sso.i.i1382.8.sso.i.i1382.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1407, 1
-  br label %archx_str_from_int.exit1410
+pack_sso.i.i1408:                                 ; preds = %chk_sso.i.i1392
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1387, i8 0, i64 16, i1 false)
+  store i32 %n32.i1389, ptr %sso.i.i1387, align 8
+  %sso.i.i1387.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1387, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1387.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1388, i64 range(i64 -2147483648, 2147483650) %len.i1390, i1 false)
+  %sso.i.i1387.0.sso.i.i1387.0.sso.i.i1387.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1410 = load i64, ptr %sso.i.i1387, align 8
+  %sso.i.i1387.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1387, i64 8
+  %sso.i.i1387.8.sso.i.i1387.8.sso.i.i1387.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1412 = load i64, ptr %sso.i.i1387.8.sroa_idx, align 8
+  %ss0.i.i1413 = insertvalue %ArchxStr poison, i64 %sso.i.i1387.0.sso.i.i1387.0.sso.i.i1387.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1410, 0
+  %ss1.i.i1414 = insertvalue %ArchxStr %ss0.i.i1413, i64 %sso.i.i1387.8.sso.i.i1387.8.sso.i.i1387.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1412, 1
+  br label %archx_str_from_int.exit1415
 
-alloc_heap.i.i1389:                               ; preds = %chk_sso.i.i1387
-  %hp.i.i1390 = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1385)
-  %hnull.i.i1391 = icmp eq ptr %hp.i.i1390, null
-  br i1 %hnull.i.i1391, label %oom.i.i1402, label %copy_long.i.i1392
+alloc_heap.i.i1394:                               ; preds = %chk_sso.i.i1392
+  %hp.i.i1395 = tail call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1390)
+  %hnull.i.i1396 = icmp eq ptr %hp.i.i1395, null
+  br i1 %hnull.i.i1396, label %oom.i.i1407, label %copy_long.i.i1397
 
-copy_long.i.i1392:                                ; preds = %alloc_heap.i.i1389
-  %hp_i.i.i1393 = ptrtoint ptr %hp.i.i1390 to i64
-  %htagged.i.i1394 = or disjoint i64 %hp_i.i.i1393, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1390, ptr nonnull readonly align 8 %buf.i1383, i64 range(i64 -2147483648, 2147483650) %len.i1385, i1 false)
-  %pref32.i.i1395 = load i32, ptr %hp.i.i1390, align 16
-  %pref64.i.i1396 = zext i32 %pref32.i.i1395 to i64
-  %pref_sh.i.i1397 = shl nuw i64 %pref64.i.i1396, 32
-  %w0_out.i.i1398 = or disjoint i64 %pref_sh.i.i1397, %len.i1385
-  %ls0.i.i1399 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1398, 0
-  %ls1.i.i1400 = insertvalue %ArchxStr %ls0.i.i1399, i64 %htagged.i.i1394, 1
-  br label %archx_str_from_int.exit1410
+copy_long.i.i1397:                                ; preds = %alloc_heap.i.i1394
+  %hp_i.i.i1398 = ptrtoint ptr %hp.i.i1395 to i64
+  %htagged.i.i1399 = or disjoint i64 %hp_i.i.i1398, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1395, ptr nonnull readonly align 8 %buf.i1388, i64 range(i64 -2147483648, 2147483650) %len.i1390, i1 false)
+  %pref32.i.i1400 = load i32, ptr %hp.i.i1395, align 16
+  %pref64.i.i1401 = zext i32 %pref32.i.i1400 to i64
+  %pref_sh.i.i1402 = shl nuw i64 %pref64.i.i1401, 32
+  %w0_out.i.i1403 = or disjoint i64 %pref_sh.i.i1402, %len.i1390
+  %ls0.i.i1404 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1403, 0
+  %ls1.i.i1405 = insertvalue %ArchxStr %ls0.i.i1404, i64 %htagged.i.i1399, 1
+  br label %archx_str_from_int.exit1415
 
-archx_str_from_int.exit1410:                      ; preds = %archx_str_concat.exit516, %pack_sso.i.i1403, %copy_long.i.i1392
-  %common.ret.op.i.i1401 = phi %ArchxStr [ %ss1.i.i1409, %pack_sso.i.i1403 ], [ %ls1.i.i1400, %copy_long.i.i1392 ], [ zeroinitializer, %archx_str_concat.exit516 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1382)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1383)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i517)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i518)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i519)
-  %aw0.i520 = extractvalue %ArchxStr %common.ret.op.i499, 0
-  %aw1.i521 = extractvalue %ArchxStr %common.ret.op.i499, 1
-  %bw0.i522 = extractvalue %ArchxStr %common.ret.op.i.i1401, 0
-  %bw1.i523 = extractvalue %ArchxStr %common.ret.op.i.i1401, 1
-  %alen.i524 = and i64 %aw0.i520, 4294967295
-  %blen.i525 = and i64 %bw0.i522, 4294967295
-  %az.i526 = icmp eq i64 %alen.i524, 0
-  br i1 %az.i526, label %ret_b_clone.i580, label %chk_bz.i527
+archx_str_from_int.exit1415:                      ; preds = %archx_str_concat.exit521, %pack_sso.i.i1408, %copy_long.i.i1397
+  %common.ret.op.i.i1406 = phi %ArchxStr [ %ss1.i.i1414, %pack_sso.i.i1408 ], [ %ls1.i.i1405, %copy_long.i.i1397 ], [ zeroinitializer, %archx_str_concat.exit521 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1387)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1388)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i522)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i523)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i524)
+  %aw0.i525 = extractvalue %ArchxStr %common.ret.op.i504, 0
+  %aw1.i526 = extractvalue %ArchxStr %common.ret.op.i504, 1
+  %bw0.i527 = extractvalue %ArchxStr %common.ret.op.i.i1406, 0
+  %bw1.i528 = extractvalue %ArchxStr %common.ret.op.i.i1406, 1
+  %alen.i529 = and i64 %aw0.i525, 4294967295
+  %blen.i530 = and i64 %bw0.i527, 4294967295
+  %az.i531 = icmp eq i64 %alen.i529, 0
+  br i1 %az.i531, label %ret_b_clone.i585, label %chk_bz.i532
 
-ret_b_clone.i580:                                 ; preds = %archx_str_from_int.exit1410
-  %long.i1413 = icmp samesign ult i64 %blen.i525, 13
-  %tag.i1417 = and i64 %bw1.i523, 3
-  %owned.not.i1418 = icmp eq i64 %tag.i1417, 0
-  %or.cond2048 = select i1 %long.i1413, i1 true, i1 %owned.not.i1418
-  br i1 %or.cond2048, label %archx_str_concat.exit582, label %dup_heap.i1419
+ret_b_clone.i585:                                 ; preds = %archx_str_from_int.exit1415
+  %long.i1418 = icmp samesign ult i64 %blen.i530, 13
+  %tag.i1422 = and i64 %bw1.i528, 3
+  %owned.not.i1423 = icmp eq i64 %tag.i1422, 0
+  %or.cond2067 = select i1 %long.i1418, i1 true, i1 %owned.not.i1423
+  br i1 %or.cond2067, label %archx_str_concat.exit587, label %dup_heap.i1424
 
-dup_heap.i1419:                                   ; preds = %ret_b_clone.i580
-  %dst.i1420 = tail call noalias align 16 ptr @malloc(i64 %blen.i525)
-  %isnull.i1421 = icmp eq ptr %dst.i1420, null
-  br i1 %isnull.i1421, label %oom.i1428, label %copy.i1422
+dup_heap.i1424:                                   ; preds = %ret_b_clone.i585
+  %dst.i1425 = tail call noalias align 16 ptr @malloc(i64 %blen.i530)
+  %isnull.i1426 = icmp eq ptr %dst.i1425, null
+  br i1 %isnull.i1426, label %oom.i1433, label %copy.i1427
 
-oom.i1428:                                        ; preds = %dup_heap.i1419
+oom.i1433:                                        ; preds = %dup_heap.i1424
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1422:                                       ; preds = %dup_heap.i1419
-  %src_i.i1423 = and i64 %bw1.i523, -4
-  %src.i1424 = inttoptr i64 %src_i.i1423 to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1420, ptr nonnull align 4 %src.i1424, i64 %blen.i525, i1 false)
-  %dst_i.i1425 = ptrtoint ptr %dst.i1420 to i64
-  %tagged.i1426 = or disjoint i64 %dst_i.i1425, 1
-  %out.i1427 = insertvalue %ArchxStr %common.ret.op.i.i1401, i64 %tagged.i1426, 1
-  br label %archx_str_concat.exit582
+copy.i1427:                                       ; preds = %dup_heap.i1424
+  %src_i.i1428 = and i64 %bw1.i528, -4
+  %src.i1429 = inttoptr i64 %src_i.i1428 to ptr
+  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1425, ptr nonnull align 4 %src.i1429, i64 %blen.i530, i1 false)
+  %dst_i.i1430 = ptrtoint ptr %dst.i1425 to i64
+  %tagged.i1431 = or disjoint i64 %dst_i.i1430, 1
+  %out.i1432 = insertvalue %ArchxStr %common.ret.op.i.i1406, i64 %tagged.i1431, 1
+  br label %archx_str_concat.exit587
 
-chk_bz.i527:                                      ; preds = %archx_str_from_int.exit1410
-  %bz.i528 = icmp eq i64 %blen.i525, 0
-  br i1 %bz.i528, label %ret_a_clone.i578, label %calc_tot.i529
+chk_bz.i532:                                      ; preds = %archx_str_from_int.exit1415
+  %bz.i533 = icmp eq i64 %blen.i530, 0
+  br i1 %bz.i533, label %ret_a_clone.i583, label %calc_tot.i534
 
-ret_a_clone.i578:                                 ; preds = %chk_bz.i527
-  %long.i1432 = icmp samesign ult i64 %alen.i524, 13
-  %tag.i1436 = and i64 %aw1.i521, 3
-  %owned.not.i1437 = icmp eq i64 %tag.i1436, 0
-  %or.cond2049 = select i1 %long.i1432, i1 true, i1 %owned.not.i1437
-  br i1 %or.cond2049, label %archx_str_concat.exit582, label %dup_heap.i1438
+ret_a_clone.i583:                                 ; preds = %chk_bz.i532
+  %long.i1437 = icmp samesign ult i64 %alen.i529, 13
+  %tag.i1441 = and i64 %aw1.i526, 3
+  %owned.not.i1442 = icmp eq i64 %tag.i1441, 0
+  %or.cond2068 = select i1 %long.i1437, i1 true, i1 %owned.not.i1442
+  br i1 %or.cond2068, label %archx_str_concat.exit587, label %dup_heap.i1443
 
-dup_heap.i1438:                                   ; preds = %ret_a_clone.i578
-  %dst.i1439 = tail call noalias align 16 ptr @malloc(i64 %alen.i524)
-  %isnull.i1440 = icmp eq ptr %dst.i1439, null
-  br i1 %isnull.i1440, label %oom.i1447, label %copy.i1441
+dup_heap.i1443:                                   ; preds = %ret_a_clone.i583
+  %dst.i1444 = tail call noalias align 16 ptr @malloc(i64 %alen.i529)
+  %isnull.i1445 = icmp eq ptr %dst.i1444, null
+  br i1 %isnull.i1445, label %oom.i1452, label %copy.i1446
 
-oom.i1447:                                        ; preds = %dup_heap.i1438
+oom.i1452:                                        ; preds = %dup_heap.i1443
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1441:                                       ; preds = %dup_heap.i1438
-  %src_i.i1442 = and i64 %aw1.i521, -4
-  %src.i1443 = inttoptr i64 %src_i.i1442 to ptr
-  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1439, ptr nonnull align 4 %src.i1443, i64 %alen.i524, i1 false)
-  %dst_i.i1444 = ptrtoint ptr %dst.i1439 to i64
-  %tagged.i1445 = or disjoint i64 %dst_i.i1444, 1
-  %out.i1446 = insertvalue %ArchxStr %common.ret.op.i499, i64 %tagged.i1445, 1
-  br label %archx_str_concat.exit582
+copy.i1446:                                       ; preds = %dup_heap.i1443
+  %src_i.i1447 = and i64 %aw1.i526, -4
+  %src.i1448 = inttoptr i64 %src_i.i1447 to ptr
+  tail call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1444, ptr nonnull align 4 %src.i1448, i64 %alen.i529, i1 false)
+  %dst_i.i1449 = ptrtoint ptr %dst.i1444 to i64
+  %tagged.i1450 = or disjoint i64 %dst_i.i1449, 1
+  %out.i1451 = insertvalue %ArchxStr %common.ret.op.i504, i64 %tagged.i1450, 1
+  br label %archx_str_concat.exit587
 
-calc_tot.i529:                                    ; preds = %chk_bz.i527
-  %tot.i530 = add nuw nsw i64 %blen.i525, %alen.i524
-  %too_big.i531 = icmp samesign ugt i64 %tot.i530, 2147483647
-  br i1 %too_big.i531, label %oom.i560, label %mat_a.i532
+calc_tot.i534:                                    ; preds = %chk_bz.i532
+  %tot.i535 = add nuw nsw i64 %blen.i530, %alen.i529
+  %too_big.i536 = icmp samesign ugt i64 %tot.i535, 2147483647
+  br i1 %too_big.i536, label %oom.i565, label %mat_a.i537
 
-oom.i560:                                         ; preds = %alloc_heap.i546, %calc_tot.i529
+oom.i565:                                         ; preds = %alloc_heap.i551, %calc_tot.i534
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i532:                                       ; preds = %calc_tot.i529
-  %ashort.i533 = icmp samesign ult i64 %alen.i524, 13
-  br i1 %ashort.i533, label %mat_a_short.i574, label %mat_a_long.i534
+mat_a.i537:                                       ; preds = %calc_tot.i534
+  %ashort.i538 = icmp samesign ult i64 %alen.i529, 13
+  br i1 %ashort.i538, label %mat_a_short.i579, label %mat_a_long.i539
 
-mat_a_short.i574:                                 ; preds = %mat_a.i532
-  %ap4.i575 = lshr i64 %aw0.i520, 32
-  %ap4_32.i576 = trunc nuw i64 %ap4.i575 to i32
-  store i32 %ap4_32.i576, ptr %atmp.i517, align 4
-  %atmp4.i577 = getelementptr inbounds nuw i8, ptr %atmp.i517, i64 4
-  store i64 %aw1.i521, ptr %atmp4.i577, align 4
-  br label %mat_b.i537
+mat_a_short.i579:                                 ; preds = %mat_a.i537
+  %ap4.i580 = lshr i64 %aw0.i525, 32
+  %ap4_32.i581 = trunc nuw i64 %ap4.i580 to i32
+  store i32 %ap4_32.i581, ptr %atmp.i522, align 4
+  %atmp4.i582 = getelementptr inbounds nuw i8, ptr %atmp.i522, i64 4
+  store i64 %aw1.i526, ptr %atmp4.i582, align 4
+  br label %mat_b.i542
 
-mat_a_long.i534:                                  ; preds = %mat_a.i532
-  %araw.i535 = and i64 %aw1.i521, -4
-  %alptr.i536 = inttoptr i64 %araw.i535 to ptr
-  br label %mat_b.i537
+mat_a_long.i539:                                  ; preds = %mat_a.i537
+  %araw.i540 = and i64 %aw1.i526, -4
+  %alptr.i541 = inttoptr i64 %araw.i540 to ptr
+  br label %mat_b.i542
 
-mat_b.i537:                                       ; preds = %mat_a_long.i534, %mat_a_short.i574
-  %aptr.i538 = phi ptr [ %atmp.i517, %mat_a_short.i574 ], [ %alptr.i536, %mat_a_long.i534 ]
-  %bshort.i539 = icmp samesign ult i64 %blen.i525, 13
-  br i1 %bshort.i539, label %mat_b_short.i570, label %mat_b_long.i540
+mat_b.i542:                                       ; preds = %mat_a_long.i539, %mat_a_short.i579
+  %aptr.i543 = phi ptr [ %atmp.i522, %mat_a_short.i579 ], [ %alptr.i541, %mat_a_long.i539 ]
+  %bshort.i544 = icmp samesign ult i64 %blen.i530, 13
+  br i1 %bshort.i544, label %mat_b_short.i575, label %mat_b_long.i545
 
-mat_b_short.i570:                                 ; preds = %mat_b.i537
-  %bp4.i571 = lshr i64 %bw0.i522, 32
-  %bp4_32.i572 = trunc nuw i64 %bp4.i571 to i32
-  store i32 %bp4_32.i572, ptr %btmp.i518, align 4
-  %btmp4.i573 = getelementptr inbounds nuw i8, ptr %btmp.i518, i64 4
-  store i64 %bw1.i523, ptr %btmp4.i573, align 4
-  br label %build.i543
+mat_b_short.i575:                                 ; preds = %mat_b.i542
+  %bp4.i576 = lshr i64 %bw0.i527, 32
+  %bp4_32.i577 = trunc nuw i64 %bp4.i576 to i32
+  store i32 %bp4_32.i577, ptr %btmp.i523, align 4
+  %btmp4.i578 = getelementptr inbounds nuw i8, ptr %btmp.i523, i64 4
+  store i64 %bw1.i528, ptr %btmp4.i578, align 4
+  br label %build.i548
 
-mat_b_long.i540:                                  ; preds = %mat_b.i537
-  %braw.i541 = and i64 %bw1.i523, -4
-  %blptr.i542 = inttoptr i64 %braw.i541 to ptr
-  br label %build.i543
+mat_b_long.i545:                                  ; preds = %mat_b.i542
+  %braw.i546 = and i64 %bw1.i528, -4
+  %blptr.i547 = inttoptr i64 %braw.i546 to ptr
+  br label %build.i548
 
-build.i543:                                       ; preds = %mat_b_long.i540, %mat_b_short.i570
-  %bptr.i544 = phi ptr [ %btmp.i518, %mat_b_short.i570 ], [ %blptr.i542, %mat_b_long.i540 ]
-  %fits_sso.i545 = icmp samesign ult i64 %tot.i530, 13
-  br i1 %fits_sso.i545, label %build_sso.i561, label %alloc_heap.i546
+build.i548:                                       ; preds = %mat_b_long.i545, %mat_b_short.i575
+  %bptr.i549 = phi ptr [ %btmp.i523, %mat_b_short.i575 ], [ %blptr.i547, %mat_b_long.i545 ]
+  %fits_sso.i550 = icmp samesign ult i64 %tot.i535, 13
+  br i1 %fits_sso.i550, label %build_sso.i566, label %alloc_heap.i551
 
-build_sso.i561:                                   ; preds = %build.i543
-  %out_sso8.i562 = getelementptr inbounds nuw i8, ptr %out_sso.i519, i64 8
-  %tot32.i563 = trunc nuw nsw i64 %tot.i530 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i519, i8 0, i64 16, i1 false)
-  store i32 %tot32.i563, ptr %out_sso.i519, align 8
-  %sso_dst_a.i564 = getelementptr inbounds nuw i8, ptr %out_sso.i519, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i564, ptr nonnull align 1 %aptr.i538, i64 %alen.i524, i1 false)
-  %sso_dst_b.i565 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i564, i64 %alen.i524
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i565, ptr nonnull align 1 %bptr.i544, i64 %blen.i525, i1 false)
-  %rw0.i566 = load i64, ptr %out_sso.i519, align 8
-  %rw1.i567 = load i64, ptr %out_sso8.i562, align 8
-  %rs0.i568 = insertvalue %ArchxStr poison, i64 %rw0.i566, 0
-  %rs1.i569 = insertvalue %ArchxStr %rs0.i568, i64 %rw1.i567, 1
-  br label %archx_str_concat.exit582
+build_sso.i566:                                   ; preds = %build.i548
+  %out_sso8.i567 = getelementptr inbounds nuw i8, ptr %out_sso.i524, i64 8
+  %tot32.i568 = trunc nuw nsw i64 %tot.i535 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i524, i8 0, i64 16, i1 false)
+  store i32 %tot32.i568, ptr %out_sso.i524, align 8
+  %sso_dst_a.i569 = getelementptr inbounds nuw i8, ptr %out_sso.i524, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i569, ptr nonnull align 1 %aptr.i543, i64 %alen.i529, i1 false)
+  %sso_dst_b.i570 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i569, i64 %alen.i529
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i570, ptr nonnull align 1 %bptr.i549, i64 %blen.i530, i1 false)
+  %rw0.i571 = load i64, ptr %out_sso.i524, align 8
+  %rw1.i572 = load i64, ptr %out_sso8.i567, align 8
+  %rs0.i573 = insertvalue %ArchxStr poison, i64 %rw0.i571, 0
+  %rs1.i574 = insertvalue %ArchxStr %rs0.i573, i64 %rw1.i572, 1
+  br label %archx_str_concat.exit587
 
-alloc_heap.i546:                                  ; preds = %build.i543
-  %hp.i547 = tail call noalias align 16 ptr @malloc(i64 %tot.i530)
-  %hnull.i548 = icmp eq ptr %hp.i547, null
-  br i1 %hnull.i548, label %oom.i560, label %copy_long.i549
+alloc_heap.i551:                                  ; preds = %build.i548
+  %hp.i552 = tail call noalias align 16 ptr @malloc(i64 %tot.i535)
+  %hnull.i553 = icmp eq ptr %hp.i552, null
+  br i1 %hnull.i553, label %oom.i565, label %copy_long.i554
 
-copy_long.i549:                                   ; preds = %alloc_heap.i546
-  %hp_i.i550 = ptrtoint ptr %hp.i547 to i64
-  %htagged.i551 = or disjoint i64 %hp_i.i550, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i547, ptr nonnull align 1 %aptr.i538, i64 %alen.i524, i1 false)
-  %dst_b.i552 = getelementptr inbounds nuw i8, ptr %hp.i547, i64 %alen.i524
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i552, ptr nonnull align 1 %bptr.i544, i64 %blen.i525, i1 false)
-  %pref32.i553 = load i32, ptr %hp.i547, align 16
-  %pref64.i554 = zext i32 %pref32.i553 to i64
-  %pref_sh.i555 = shl nuw i64 %pref64.i554, 32
-  %w0_out.i556 = or disjoint i64 %pref_sh.i555, %tot.i530
-  %ls0.i557 = insertvalue %ArchxStr poison, i64 %w0_out.i556, 0
-  %ls1.i558 = insertvalue %ArchxStr %ls0.i557, i64 %htagged.i551, 1
-  br label %archx_str_concat.exit582
+copy_long.i554:                                   ; preds = %alloc_heap.i551
+  %hp_i.i555 = ptrtoint ptr %hp.i552 to i64
+  %htagged.i556 = or disjoint i64 %hp_i.i555, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i552, ptr nonnull align 1 %aptr.i543, i64 %alen.i529, i1 false)
+  %dst_b.i557 = getelementptr inbounds nuw i8, ptr %hp.i552, i64 %alen.i529
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i557, ptr nonnull align 1 %bptr.i549, i64 %blen.i530, i1 false)
+  %pref32.i558 = load i32, ptr %hp.i552, align 16
+  %pref64.i559 = zext i32 %pref32.i558 to i64
+  %pref_sh.i560 = shl nuw i64 %pref64.i559, 32
+  %w0_out.i561 = or disjoint i64 %pref_sh.i560, %tot.i535
+  %ls0.i562 = insertvalue %ArchxStr poison, i64 %w0_out.i561, 0
+  %ls1.i563 = insertvalue %ArchxStr %ls0.i562, i64 %htagged.i556, 1
+  br label %archx_str_concat.exit587
 
-archx_str_concat.exit582:                         ; preds = %copy.i1441, %ret_a_clone.i578, %copy.i1422, %ret_b_clone.i580, %build_sso.i561, %copy_long.i549
-  %common.ret.op.i559 = phi %ArchxStr [ %rs1.i569, %build_sso.i561 ], [ %ls1.i558, %copy_long.i549 ], [ %out.i1427, %copy.i1422 ], [ %common.ret.op.i.i1401, %ret_b_clone.i580 ], [ %out.i1446, %copy.i1441 ], [ %common.ret.op.i499, %ret_a_clone.i578 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i517)
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i518)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i519)
+archx_str_concat.exit587:                         ; preds = %copy.i1446, %ret_a_clone.i583, %copy.i1427, %ret_b_clone.i585, %build_sso.i566, %copy_long.i554
+  %common.ret.op.i564 = phi %ArchxStr [ %rs1.i574, %build_sso.i566 ], [ %ls1.i563, %copy_long.i554 ], [ %out.i1432, %copy.i1427 ], [ %common.ret.op.i.i1406, %ret_b_clone.i585 ], [ %out.i1451, %copy.i1446 ], [ %common.ret.op.i504, %ret_a_clone.i583 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i522)
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i523)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i524)
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i)
-  %w0.i1449 = extractvalue %ArchxStr %common.ret.op.i559, 0
-  %w1.i1450 = extractvalue %ArchxStr %common.ret.op.i559, 1
-  %len.i1451 = and i64 %w0.i1449, 4294967295
-  %short.i = icmp samesign ult i64 %len.i1451, 13
+  %w0.i1454 = extractvalue %ArchxStr %common.ret.op.i564, 0
+  %w1.i1455 = extractvalue %ArchxStr %common.ret.op.i564, 1
+  %len.i1456 = and i64 %w0.i1454, 4294967295
+  %short.i = icmp samesign ult i64 %len.i1456, 13
   br i1 %short.i, label %emit.i, label %emit.thread.i
 
-emit.thread.i:                                    ; preds = %archx_str_concat.exit582
-  %raw.i1452 = and i64 %w1.i1450, -4
-  %lptr.i = inttoptr i64 %raw.i1452 to ptr
+emit.thread.i:                                    ; preds = %archx_str_concat.exit587
+  %raw.i1457 = and i64 %w1.i1455, -4
+  %lptr.i = inttoptr i64 %raw.i1457 to ptr
   br label %chk_nul.i
 
-emit.i:                                           ; preds = %archx_str_concat.exit582
-  %p4.i = lshr i64 %w0.i1449, 32
+emit.i:                                           ; preds = %archx_str_concat.exit587
+  %p4.i = lshr i64 %w0.i1454, 32
   %p4_32.i = trunc nuw i64 %p4.i to i32
   store i32 %p4_32.i, ptr %tmp.i, align 4
   %tmp4.i = getelementptr inbounds nuw i8, ptr %tmp.i, i64 4
-  store i64 %w1.i1450, ptr %tmp4.i, align 4
-  %pos.not.i = icmp eq i64 %len.i1451, 0
+  store i64 %w1.i1455, ptr %tmp4.i, align 4
+  %pos.not.i = icmp eq i64 %len.i1456, 0
   br i1 %pos.not.i, label %do_nl.i, label %chk_nul.i
 
 chk_nul.i:                                        ; preds = %emit.i, %emit.thread.i
   %data3.i = phi ptr [ %lptr.i, %emit.thread.i ], [ %tmp.i, %emit.i ]
-  %nul.i = call ptr @memchr(ptr nonnull %data3.i, i32 0, i64 %len.i1451)
+  %nul.i = call ptr @memchr(ptr nonnull %data3.i, i32 0, i64 %len.i1456)
   %has_nul.not.i = icmp eq ptr %nul.i, null
   br i1 %has_nul.not.i, label %fast_printf.i, label %byte_loop.i
 
 fast_printf.i:                                    ; preds = %chk_nul.i
-  %len32.i = trunc i64 %w0.i1449 to i32
+  %len32.i = trunc i64 %w0.i1454 to i32
   %np.i = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i, ptr nonnull %data3.i)
   br label %archx_str_print.exit
 
@@ -829,7 +829,7 @@ byte_loop.i:                                      ; preds = %chk_nul.i, %byte_lo
   %ch32.i = zext i8 %ch8.i to i32
   %pc.i = tail call i32 @putchar(i32 %ch32.i)
   %bnext.i = add nuw nsw i64 %bi.i, 1
-  %exitcond.not.i = icmp eq i64 %bnext.i, %len.i1451
+  %exitcond.not.i = icmp eq i64 %bnext.i, %len.i1456
   br i1 %exitcond.not.i, label %do_nl.i, label %byte_loop.i
 
 do_nl.i:                                          ; preds = %byte_loop.i, %emit.i
@@ -838,1356 +838,1356 @@ do_nl.i:                                          ; preds = %byte_loop.i, %emit.
 
 archx_str_print.exit:                             ; preds = %fast_printf.i, %do_nl.i
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i)
-  %tag.i = and i64 %w1.i1450, 1
+  %tag.i = and i64 %w1.i1455, 1
   %owned.not.i = icmp eq i64 %tag.i, 0
-  %or.cond2050 = select i1 %short.i, i1 true, i1 %owned.not.i
-  br i1 %or.cond2050, label %archx_str_drop.exit, label %do_free.i
+  %or.cond2069 = select i1 %short.i, i1 true, i1 %owned.not.i
+  br i1 %or.cond2069, label %archx_str_drop.exit, label %do_free.i
 
 do_free.i:                                        ; preds = %archx_str_print.exit
-  %raw.i = and i64 %w1.i1450, -2
+  %raw.i = and i64 %w1.i1455, -2
   %ptr.i = inttoptr i64 %raw.i to ptr
   call void @free(ptr %ptr.i)
   br label %archx_str_drop.exit
 
 archx_str_drop.exit:                              ; preds = %archx_str_print.exit, %do_free.i
-  %long.i64 = icmp samesign ult i64 %blen.i525, 13
-  %tag.i67 = and i64 %bw1.i523, 1
-  %owned.not.i68 = icmp eq i64 %tag.i67, 0
-  %or.cond2051 = select i1 %long.i64, i1 true, i1 %owned.not.i68
-  br i1 %or.cond2051, label %archx_str_drop.exit72, label %do_free.i69
+  %long.i69 = icmp samesign ult i64 %blen.i530, 13
+  %tag.i72 = and i64 %bw1.i528, 1
+  %owned.not.i73 = icmp eq i64 %tag.i72, 0
+  %or.cond2070 = select i1 %long.i69, i1 true, i1 %owned.not.i73
+  br i1 %or.cond2070, label %archx_str_drop.exit77, label %do_free.i74
 
-do_free.i69:                                      ; preds = %archx_str_drop.exit
-  %raw.i70 = and i64 %bw1.i523, -2
-  %ptr.i71 = inttoptr i64 %raw.i70 to ptr
-  call void @free(ptr %ptr.i71)
-  br label %archx_str_drop.exit72
+do_free.i74:                                      ; preds = %archx_str_drop.exit
+  %raw.i75 = and i64 %bw1.i528, -2
+  %ptr.i76 = inttoptr i64 %raw.i75 to ptr
+  call void @free(ptr %ptr.i76)
+  br label %archx_str_drop.exit77
 
-archx_str_drop.exit72:                            ; preds = %archx_str_drop.exit, %do_free.i69
-  %long.i75 = icmp samesign ult i64 %alen.i524, 13
-  %tag.i78 = and i64 %aw1.i521, 1
-  %owned.not.i79 = icmp eq i64 %tag.i78, 0
-  %or.cond2052 = select i1 %long.i75, i1 true, i1 %owned.not.i79
-  br i1 %or.cond2052, label %archx_str_drop.exit83, label %do_free.i80
+archx_str_drop.exit77:                            ; preds = %archx_str_drop.exit, %do_free.i74
+  %long.i80 = icmp samesign ult i64 %alen.i529, 13
+  %tag.i83 = and i64 %aw1.i526, 1
+  %owned.not.i84 = icmp eq i64 %tag.i83, 0
+  %or.cond2071 = select i1 %long.i80, i1 true, i1 %owned.not.i84
+  br i1 %or.cond2071, label %archx_str_drop.exit88, label %do_free.i85
 
-do_free.i80:                                      ; preds = %archx_str_drop.exit72
-  %raw.i81 = and i64 %aw1.i521, -2
-  %ptr.i82 = inttoptr i64 %raw.i81 to ptr
-  call void @free(ptr %ptr.i82)
-  br label %archx_str_drop.exit83
+do_free.i85:                                      ; preds = %archx_str_drop.exit77
+  %raw.i86 = and i64 %aw1.i526, -2
+  %ptr.i87 = inttoptr i64 %raw.i86 to ptr
+  call void @free(ptr %ptr.i87)
+  br label %archx_str_drop.exit88
 
-archx_str_drop.exit83:                            ; preds = %archx_str_drop.exit72, %do_free.i80
-  %long.i86 = icmp samesign ult i64 %alen.i468, 13
-  %tag.i89 = and i64 %aw1.i467, 1
-  %owned.not.i90 = icmp eq i64 %tag.i89, 0
-  %or.cond2053 = select i1 %long.i86, i1 true, i1 %owned.not.i90
-  br i1 %or.cond2053, label %archx_str_drop.exit94, label %do_free.i91
+archx_str_drop.exit88:                            ; preds = %archx_str_drop.exit77, %do_free.i85
+  %long.i91 = icmp samesign ult i64 %alen.i473, 13
+  %tag.i94 = and i64 %aw1.i472, 1
+  %owned.not.i95 = icmp eq i64 %tag.i94, 0
+  %or.cond2072 = select i1 %long.i91, i1 true, i1 %owned.not.i95
+  br i1 %or.cond2072, label %archx_str_drop.exit99, label %do_free.i96
 
-do_free.i91:                                      ; preds = %archx_str_drop.exit83
-  %raw.i92 = and i64 %aw1.i467, -2
-  %ptr.i93 = inttoptr i64 %raw.i92 to ptr
-  call void @free(ptr %ptr.i93)
-  br label %archx_str_drop.exit94
+do_free.i96:                                      ; preds = %archx_str_drop.exit88
+  %raw.i97 = and i64 %aw1.i472, -2
+  %ptr.i98 = inttoptr i64 %raw.i97 to ptr
+  call void @free(ptr %ptr.i98)
+  br label %archx_str_drop.exit99
 
-archx_str_drop.exit94:                            ; preds = %archx_str_drop.exit83, %do_free.i91
-  %long.i97 = icmp samesign ult i64 %blen.i405, 13
-  %tag.i100 = and i64 %bw1.i403, 1
-  %owned.not.i101 = icmp eq i64 %tag.i100, 0
-  %or.cond2054 = select i1 %long.i97, i1 true, i1 %owned.not.i101
-  br i1 %or.cond2054, label %archx_str_drop.exit105, label %do_free.i102
+archx_str_drop.exit99:                            ; preds = %archx_str_drop.exit88, %do_free.i96
+  %long.i102 = icmp samesign ult i64 %blen.i410, 13
+  %tag.i105 = and i64 %bw1.i408, 1
+  %owned.not.i106 = icmp eq i64 %tag.i105, 0
+  %or.cond2073 = select i1 %long.i102, i1 true, i1 %owned.not.i106
+  br i1 %or.cond2073, label %archx_str_drop.exit110, label %do_free.i107
 
-do_free.i102:                                     ; preds = %archx_str_drop.exit94
-  %raw.i103 = and i64 %bw1.i403, -2
-  %ptr.i104 = inttoptr i64 %raw.i103 to ptr
-  call void @free(ptr %ptr.i104)
-  br label %archx_str_drop.exit105
+do_free.i107:                                     ; preds = %archx_str_drop.exit99
+  %raw.i108 = and i64 %bw1.i408, -2
+  %ptr.i109 = inttoptr i64 %raw.i108 to ptr
+  call void @free(ptr %ptr.i109)
+  br label %archx_str_drop.exit110
 
-archx_str_drop.exit105:                           ; preds = %archx_str_drop.exit94, %do_free.i102
-  %long.i108 = icmp samesign ult i64 %alen.i404, 13
-  %tag.i111 = and i64 %aw1.i401, 1
-  %owned.not.i112 = icmp eq i64 %tag.i111, 0
-  %or.cond2055 = select i1 %long.i108, i1 true, i1 %owned.not.i112
-  br i1 %or.cond2055, label %archx_str_drop.exit116, label %do_free.i113
+archx_str_drop.exit110:                           ; preds = %archx_str_drop.exit99, %do_free.i107
+  %long.i113 = icmp samesign ult i64 %alen.i409, 13
+  %tag.i116 = and i64 %aw1.i406, 1
+  %owned.not.i117 = icmp eq i64 %tag.i116, 0
+  %or.cond2074 = select i1 %long.i113, i1 true, i1 %owned.not.i117
+  br i1 %or.cond2074, label %archx_str_drop.exit121, label %do_free.i118
 
-do_free.i113:                                     ; preds = %archx_str_drop.exit105
-  %raw.i114 = and i64 %aw1.i401, -2
-  %ptr.i115 = inttoptr i64 %raw.i114 to ptr
-  call void @free(ptr %ptr.i115)
-  br label %archx_str_drop.exit116
+do_free.i118:                                     ; preds = %archx_str_drop.exit110
+  %raw.i119 = and i64 %aw1.i406, -2
+  %ptr.i120 = inttoptr i64 %raw.i119 to ptr
+  call void @free(ptr %ptr.i120)
+  br label %archx_str_drop.exit121
 
-archx_str_drop.exit116:                           ; preds = %archx_str_drop.exit105, %do_free.i113
-  %long.i119 = icmp samesign ult i64 %alen.i, 13
-  %tag.i122 = and i64 %aw1.i, 1
-  %owned.not.i123 = icmp eq i64 %tag.i122, 0
-  %or.cond2056 = select i1 %long.i119, i1 true, i1 %owned.not.i123
-  br i1 %or.cond2056, label %archx_str_drop.exit127, label %do_free.i124
+archx_str_drop.exit121:                           ; preds = %archx_str_drop.exit110, %do_free.i118
+  %long.i124 = icmp samesign ult i64 %alen.i, 13
+  %tag.i127 = and i64 %aw1.i, 1
+  %owned.not.i128 = icmp eq i64 %tag.i127, 0
+  %or.cond2075 = select i1 %long.i124, i1 true, i1 %owned.not.i128
+  br i1 %or.cond2075, label %archx_str_drop.exit132, label %do_free.i129
 
-do_free.i124:                                     ; preds = %archx_str_drop.exit116
-  %raw.i125 = and i64 %aw1.i, -2
-  %ptr.i126 = inttoptr i64 %raw.i125 to ptr
-  call void @free(ptr %ptr.i126)
-  br label %archx_str_drop.exit127
+do_free.i129:                                     ; preds = %archx_str_drop.exit121
+  %raw.i130 = and i64 %aw1.i, -2
+  %ptr.i131 = inttoptr i64 %raw.i130 to ptr
+  call void @free(ptr %ptr.i131)
+  br label %archx_str_drop.exit132
 
-archx_str_drop.exit127:                           ; preds = %archx_str_drop.exit116, %do_free.i124
-  %long.i130 = icmp samesign ult i64 %blen.i, 13
-  %tag.i133 = and i64 %bw1.i, 1
-  %owned.not.i134 = icmp eq i64 %tag.i133, 0
-  %or.cond2057 = select i1 %long.i130, i1 true, i1 %owned.not.i134
-  br i1 %or.cond2057, label %archx_str_drop.exit138, label %do_free.i135
+archx_str_drop.exit132:                           ; preds = %archx_str_drop.exit121, %do_free.i129
+  %long.i135 = icmp samesign ult i64 %blen.i, 13
+  %tag.i138 = and i64 %bw1.i, 1
+  %owned.not.i139 = icmp eq i64 %tag.i138, 0
+  %or.cond2076 = select i1 %long.i135, i1 true, i1 %owned.not.i139
+  br i1 %or.cond2076, label %archx_str_drop.exit143, label %do_free.i140
 
-do_free.i135:                                     ; preds = %archx_str_drop.exit127
-  %raw.i136 = and i64 %bw1.i, -2
-  %ptr.i137 = inttoptr i64 %raw.i136 to ptr
-  call void @free(ptr %ptr.i137)
-  br label %archx_str_drop.exit138
+do_free.i140:                                     ; preds = %archx_str_drop.exit132
+  %raw.i141 = and i64 %bw1.i, -2
+  %ptr.i142 = inttoptr i64 %raw.i141 to ptr
+  call void @free(ptr %ptr.i142)
+  br label %archx_str_drop.exit143
 
-archx_str_drop.exit138:                           ; preds = %archx_str_drop.exit127, %do_free.i135
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1454)
-  %n32.i1455 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1454, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 99)
-  %len.i1456 = sext i32 %n32.i1455 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1453)
-  %z.i.i1457 = icmp slt i32 %n32.i1455, 1
-  br i1 %z.i.i1457, label %archx_str_from_int.exit1481, label %chk_sso.i.i1458
+archx_str_drop.exit143:                           ; preds = %archx_str_drop.exit132, %do_free.i140
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1459)
+  %n32.i1460 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1459, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 99)
+  %len.i1461 = sext i32 %n32.i1460 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1458)
+  %z.i.i1462 = icmp slt i32 %n32.i1460, 1
+  br i1 %z.i.i1462, label %archx_str_from_int.exit1486, label %chk_sso.i.i1463
 
-oom.i.i1473:                                      ; preds = %alloc_heap.i.i1460
+oom.i.i1478:                                      ; preds = %alloc_heap.i.i1465
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1458:                                  ; preds = %archx_str_drop.exit138
-  %short.i.i1459 = icmp samesign ult i32 %n32.i1455, 13
-  br i1 %short.i.i1459, label %pack_sso.i.i1474, label %alloc_heap.i.i1460
+chk_sso.i.i1463:                                  ; preds = %archx_str_drop.exit143
+  %short.i.i1464 = icmp samesign ult i32 %n32.i1460, 13
+  br i1 %short.i.i1464, label %pack_sso.i.i1479, label %alloc_heap.i.i1465
 
-pack_sso.i.i1474:                                 ; preds = %chk_sso.i.i1458
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1453, i8 0, i64 16, i1 false)
-  store i32 %n32.i1455, ptr %sso.i.i1453, align 8
-  %sso.i.i1453.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1453, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1453.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1454, i64 range(i64 -2147483648, 2147483650) %len.i1456, i1 false)
-  %sso.i.i1453.0.sso.i.i1453.0.sso.i.i1453.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1476 = load i64, ptr %sso.i.i1453, align 8
-  %sso.i.i1453.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1453, i64 8
-  %sso.i.i1453.8.sso.i.i1453.8.sso.i.i1453.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1478 = load i64, ptr %sso.i.i1453.8.sroa_idx, align 8
-  %ss0.i.i1479 = insertvalue %ArchxStr poison, i64 %sso.i.i1453.0.sso.i.i1453.0.sso.i.i1453.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1476, 0
-  %ss1.i.i1480 = insertvalue %ArchxStr %ss0.i.i1479, i64 %sso.i.i1453.8.sso.i.i1453.8.sso.i.i1453.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1478, 1
-  br label %archx_str_from_int.exit1481
+pack_sso.i.i1479:                                 ; preds = %chk_sso.i.i1463
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1458, i8 0, i64 16, i1 false)
+  store i32 %n32.i1460, ptr %sso.i.i1458, align 8
+  %sso.i.i1458.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1458, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1458.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1459, i64 range(i64 -2147483648, 2147483650) %len.i1461, i1 false)
+  %sso.i.i1458.0.sso.i.i1458.0.sso.i.i1458.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1481 = load i64, ptr %sso.i.i1458, align 8
+  %sso.i.i1458.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1458, i64 8
+  %sso.i.i1458.8.sso.i.i1458.8.sso.i.i1458.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1483 = load i64, ptr %sso.i.i1458.8.sroa_idx, align 8
+  %ss0.i.i1484 = insertvalue %ArchxStr poison, i64 %sso.i.i1458.0.sso.i.i1458.0.sso.i.i1458.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1481, 0
+  %ss1.i.i1485 = insertvalue %ArchxStr %ss0.i.i1484, i64 %sso.i.i1458.8.sso.i.i1458.8.sso.i.i1458.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1483, 1
+  br label %archx_str_from_int.exit1486
 
-alloc_heap.i.i1460:                               ; preds = %chk_sso.i.i1458
-  %hp.i.i1461 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1456)
-  %hnull.i.i1462 = icmp eq ptr %hp.i.i1461, null
-  br i1 %hnull.i.i1462, label %oom.i.i1473, label %copy_long.i.i1463
+alloc_heap.i.i1465:                               ; preds = %chk_sso.i.i1463
+  %hp.i.i1466 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1461)
+  %hnull.i.i1467 = icmp eq ptr %hp.i.i1466, null
+  br i1 %hnull.i.i1467, label %oom.i.i1478, label %copy_long.i.i1468
 
-copy_long.i.i1463:                                ; preds = %alloc_heap.i.i1460
-  %hp_i.i.i1464 = ptrtoint ptr %hp.i.i1461 to i64
-  %htagged.i.i1465 = or disjoint i64 %hp_i.i.i1464, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1461, ptr nonnull readonly align 8 %buf.i1454, i64 range(i64 -2147483648, 2147483650) %len.i1456, i1 false)
-  %pref32.i.i1466 = load i32, ptr %hp.i.i1461, align 16
-  %pref64.i.i1467 = zext i32 %pref32.i.i1466 to i64
-  %pref_sh.i.i1468 = shl nuw i64 %pref64.i.i1467, 32
-  %w0_out.i.i1469 = or disjoint i64 %pref_sh.i.i1468, %len.i1456
-  %ls0.i.i1470 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1469, 0
-  %ls1.i.i1471 = insertvalue %ArchxStr %ls0.i.i1470, i64 %htagged.i.i1465, 1
-  br label %archx_str_from_int.exit1481
+copy_long.i.i1468:                                ; preds = %alloc_heap.i.i1465
+  %hp_i.i.i1469 = ptrtoint ptr %hp.i.i1466 to i64
+  %htagged.i.i1470 = or disjoint i64 %hp_i.i.i1469, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1466, ptr nonnull readonly align 8 %buf.i1459, i64 range(i64 -2147483648, 2147483650) %len.i1461, i1 false)
+  %pref32.i.i1471 = load i32, ptr %hp.i.i1466, align 16
+  %pref64.i.i1472 = zext i32 %pref32.i.i1471 to i64
+  %pref_sh.i.i1473 = shl nuw i64 %pref64.i.i1472, 32
+  %w0_out.i.i1474 = or disjoint i64 %pref_sh.i.i1473, %len.i1461
+  %ls0.i.i1475 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1474, 0
+  %ls1.i.i1476 = insertvalue %ArchxStr %ls0.i.i1475, i64 %htagged.i.i1470, 1
+  br label %archx_str_from_int.exit1486
 
-archx_str_from_int.exit1481:                      ; preds = %archx_str_drop.exit138, %pack_sso.i.i1474, %copy_long.i.i1463
-  %common.ret.op.i.i1472 = phi %ArchxStr [ %ss1.i.i1480, %pack_sso.i.i1474 ], [ %ls1.i.i1471, %copy_long.i.i1463 ], [ zeroinitializer, %archx_str_drop.exit138 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1453)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1454)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i584)
-  %bw0.i586 = extractvalue %ArchxStr %common.ret.op.i.i1472, 0
-  %bw1.i587 = extractvalue %ArchxStr %common.ret.op.i.i1472, 1
-  %blen.i588 = and i64 %bw0.i586, 4294967295
-  %bz.i590 = icmp eq i64 %blen.i588, 0
-  br i1 %bz.i590, label %archx_str_concat.exit636, label %calc_tot.i591
+archx_str_from_int.exit1486:                      ; preds = %archx_str_drop.exit143, %pack_sso.i.i1479, %copy_long.i.i1468
+  %common.ret.op.i.i1477 = phi %ArchxStr [ %ss1.i.i1485, %pack_sso.i.i1479 ], [ %ls1.i.i1476, %copy_long.i.i1468 ], [ zeroinitializer, %archx_str_drop.exit143 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1458)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1459)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i589)
+  %bw0.i591 = extractvalue %ArchxStr %common.ret.op.i.i1477, 0
+  %bw1.i592 = extractvalue %ArchxStr %common.ret.op.i.i1477, 1
+  %blen.i593 = and i64 %bw0.i591, 4294967295
+  %bz.i595 = icmp eq i64 %blen.i593, 0
+  br i1 %bz.i595, label %archx_str_concat.exit641, label %calc_tot.i596
 
-calc_tot.i591:                                    ; preds = %archx_str_from_int.exit1481
-  %tot.i592 = add nuw nsw i64 %blen.i588, 5
-  %too_big.i593 = icmp samesign ugt i64 %blen.i588, 2147483642
-  br i1 %too_big.i593, label %oom.i620, label %mat_a.i594
+calc_tot.i596:                                    ; preds = %archx_str_from_int.exit1486
+  %tot.i597 = add nuw nsw i64 %blen.i593, 5
+  %too_big.i598 = icmp samesign ugt i64 %blen.i593, 2147483642
+  br i1 %too_big.i598, label %oom.i625, label %mat_a.i599
 
-oom.i620:                                         ; preds = %alloc_heap.i606, %calc_tot.i591
+oom.i625:                                         ; preds = %alloc_heap.i611, %calc_tot.i596
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i594:                                       ; preds = %calc_tot.i591
-  %bshort.i599 = icmp samesign ult i64 %blen.i588, 13
-  br i1 %bshort.i599, label %build.i603, label %build.i603.thread
+mat_a.i599:                                       ; preds = %calc_tot.i596
+  %bshort.i604 = icmp samesign ult i64 %blen.i593, 13
+  br i1 %bshort.i604, label %build.i608, label %build.i608.thread
 
-build.i603.thread:                                ; preds = %mat_a.i594
-  %braw.i601 = and i64 %bw1.i587, -4
-  %blptr.i602 = inttoptr i64 %braw.i601 to ptr
-  br label %alloc_heap.i606
+build.i608.thread:                                ; preds = %mat_a.i599
+  %braw.i606 = and i64 %bw1.i592, -4
+  %blptr.i607 = inttoptr i64 %braw.i606 to ptr
+  br label %alloc_heap.i611
 
-build.i603:                                       ; preds = %mat_a.i594
-  %bp4.i631 = lshr i64 %bw0.i586, 32
-  %bp4_32.i632 = trunc nuw i64 %bp4.i631 to i32
-  store i32 %bp4_32.i632, ptr %btmp.i584, align 4
-  %btmp4.i633 = getelementptr inbounds nuw i8, ptr %btmp.i584, i64 4
-  store i64 %bw1.i587, ptr %btmp4.i633, align 4
-  %fits_sso.i605 = icmp samesign ult i64 %blen.i588, 8
-  br i1 %fits_sso.i605, label %build_sso.i621, label %alloc_heap.i606
+build.i608:                                       ; preds = %mat_a.i599
+  %bp4.i636 = lshr i64 %bw0.i591, 32
+  %bp4_32.i637 = trunc nuw i64 %bp4.i636 to i32
+  store i32 %bp4_32.i637, ptr %btmp.i589, align 4
+  %btmp4.i638 = getelementptr inbounds nuw i8, ptr %btmp.i589, i64 4
+  store i64 %bw1.i592, ptr %btmp4.i638, align 4
+  %fits_sso.i610 = icmp samesign ult i64 %blen.i593, 8
+  br i1 %fits_sso.i610, label %build_sso.i626, label %alloc_heap.i611
 
-build_sso.i621:                                   ; preds = %build.i603
-  store i56 0, ptr %out_sso.i585.sroa.6.sroa.5.sroa.0, align 8
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %out_sso.i585.sroa.6.sroa.5.sroa.0, ptr nonnull align 4 %btmp.i584, i64 %blen.i588, i1 false)
-  %out_sso.i585.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i592, 8097884940793806848
-  %out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.0.out_sso.i585.sroa.6.8.rw1.i627 = load i56, ptr %out_sso.i585.sroa.6.sroa.5.sroa.0, align 8
-  %out_sso.i585.sroa.6.sroa.5.0.insert.ext = zext i56 %out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.sroa.0.0.out_sso.i585.sroa.6.sroa.5.0.out_sso.i585.sroa.6.8.rw1.i627 to i64
-  %out_sso.i585.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i585.sroa.6.sroa.5.0.insert.ext, 8
-  %out_sso.i585.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i585.sroa.6.sroa.5.0.insert.shift, 61
-  %rs0.i628 = insertvalue %ArchxStr poison, i64 %out_sso.i585.sroa.0.sroa.0.0.insert.insert, 0
-  %rs1.i629 = insertvalue %ArchxStr %rs0.i628, i64 %out_sso.i585.sroa.6.sroa.0.0.insert.insert, 1
-  br label %archx_str_concat.exit636
+build_sso.i626:                                   ; preds = %build.i608
+  store i56 0, ptr %out_sso.i590.sroa.6.sroa.5.sroa.0, align 8
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %out_sso.i590.sroa.6.sroa.5.sroa.0, ptr nonnull align 4 %btmp.i589, i64 %blen.i593, i1 false)
+  %out_sso.i590.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i597, 8097884940793806848
+  %out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.0.out_sso.i590.sroa.6.8.rw1.i632 = load i56, ptr %out_sso.i590.sroa.6.sroa.5.sroa.0, align 8
+  %out_sso.i590.sroa.6.sroa.5.0.insert.ext = zext i56 %out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.sroa.0.0.out_sso.i590.sroa.6.sroa.5.0.out_sso.i590.sroa.6.8.rw1.i632 to i64
+  %out_sso.i590.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i590.sroa.6.sroa.5.0.insert.ext, 8
+  %out_sso.i590.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i590.sroa.6.sroa.5.0.insert.shift, 61
+  %rs0.i633 = insertvalue %ArchxStr poison, i64 %out_sso.i590.sroa.0.sroa.0.0.insert.insert, 0
+  %rs1.i634 = insertvalue %ArchxStr %rs0.i633, i64 %out_sso.i590.sroa.6.sroa.0.0.insert.insert, 1
+  br label %archx_str_concat.exit641
 
-alloc_heap.i606:                                  ; preds = %build.i603.thread, %build.i603
-  %bptr.i6042186 = phi ptr [ %blptr.i602, %build.i603.thread ], [ %btmp.i584, %build.i603 ]
-  %hp.i607 = call noalias align 16 ptr @malloc(i64 %tot.i592)
-  %hnull.i608 = icmp eq ptr %hp.i607, null
-  br i1 %hnull.i608, label %oom.i620, label %copy_long.i609
+alloc_heap.i611:                                  ; preds = %build.i608.thread, %build.i608
+  %bptr.i6092208 = phi ptr [ %blptr.i607, %build.i608.thread ], [ %btmp.i589, %build.i608 ]
+  %hp.i612 = call noalias align 16 ptr @malloc(i64 %tot.i597)
+  %hnull.i613 = icmp eq ptr %hp.i612, null
+  br i1 %hnull.i613, label %oom.i625, label %copy_long.i614
 
-copy_long.i609:                                   ; preds = %alloc_heap.i606
-  %hp_i.i610 = ptrtoint ptr %hp.i607 to i64
-  %htagged.i611 = or disjoint i64 %hp_i.i610, 1
-  store i32 1885435763, ptr %hp.i607, align 16
-  %atmp.i583.sroa.5.0.hp.i607.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i607, i64 4
-  store i8 61, ptr %atmp.i583.sroa.5.0.hp.i607.sroa_idx, align 4
-  %dst_b.i612 = getelementptr inbounds nuw i8, ptr %hp.i607, i64 5
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i612, ptr nonnull align 1 %bptr.i6042186, i64 %blen.i588, i1 false)
-  %w0_out.i616 = or disjoint i64 %tot.i592, 8097884940793806848
-  %ls0.i617 = insertvalue %ArchxStr poison, i64 %w0_out.i616, 0
-  %ls1.i618 = insertvalue %ArchxStr %ls0.i617, i64 %htagged.i611, 1
-  br label %archx_str_concat.exit636
+copy_long.i614:                                   ; preds = %alloc_heap.i611
+  %hp_i.i615 = ptrtoint ptr %hp.i612 to i64
+  %htagged.i616 = or disjoint i64 %hp_i.i615, 1
+  store i32 1885435763, ptr %hp.i612, align 16
+  %atmp.i588.sroa.5.0.hp.i612.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i612, i64 4
+  store i8 61, ptr %atmp.i588.sroa.5.0.hp.i612.sroa_idx, align 4
+  %dst_b.i617 = getelementptr inbounds nuw i8, ptr %hp.i612, i64 5
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i617, ptr nonnull align 1 %bptr.i6092208, i64 %blen.i593, i1 false)
+  %w0_out.i621 = or disjoint i64 %tot.i597, 8097884940793806848
+  %ls0.i622 = insertvalue %ArchxStr poison, i64 %w0_out.i621, 0
+  %ls1.i623 = insertvalue %ArchxStr %ls0.i622, i64 %htagged.i616, 1
+  br label %archx_str_concat.exit641
 
-archx_str_concat.exit636:                         ; preds = %archx_str_from_int.exit1481, %build_sso.i621, %copy_long.i609
-  %common.ret.op.i619 = phi %ArchxStr [ %rs1.i629, %build_sso.i621 ], [ %ls1.i618, %copy_long.i609 ], [ { i64 8097884940793806853, i64 61 }, %archx_str_from_int.exit1481 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i584)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i637)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i639)
-  %aw0.i640 = extractvalue %ArchxStr %common.ret.op.i619, 0
-  %aw1.i641 = extractvalue %ArchxStr %common.ret.op.i619, 1
-  %alen.i642 = and i64 %aw0.i640, 4294967295
-  %az.i643 = icmp eq i64 %alen.i642, 0
-  br i1 %az.i643, label %archx_str_concat.exit690, label %chk_bz.i644
+archx_str_concat.exit641:                         ; preds = %archx_str_from_int.exit1486, %build_sso.i626, %copy_long.i614
+  %common.ret.op.i624 = phi %ArchxStr [ %rs1.i634, %build_sso.i626 ], [ %ls1.i623, %copy_long.i614 ], [ { i64 8097884940793806853, i64 61 }, %archx_str_from_int.exit1486 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i589)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i642)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i644)
+  %aw0.i645 = extractvalue %ArchxStr %common.ret.op.i624, 0
+  %aw1.i646 = extractvalue %ArchxStr %common.ret.op.i624, 1
+  %alen.i647 = and i64 %aw0.i645, 4294967295
+  %az.i648 = icmp eq i64 %alen.i647, 0
+  br i1 %az.i648, label %archx_str_concat.exit695, label %chk_bz.i649
 
-chk_bz.i644:                                      ; preds = %archx_str_concat.exit636
-  %tot.i646 = add nuw nsw i64 %alen.i642, 1
-  %too_big.i647 = icmp samesign ugt i64 %alen.i642, 2147483646
-  br i1 %too_big.i647, label %oom.i674, label %mat_a.i648
+chk_bz.i649:                                      ; preds = %archx_str_concat.exit641
+  %tot.i651 = add nuw nsw i64 %alen.i647, 1
+  %too_big.i652 = icmp samesign ugt i64 %alen.i647, 2147483646
+  br i1 %too_big.i652, label %oom.i679, label %mat_a.i653
 
-oom.i674:                                         ; preds = %alloc_heap.i660, %chk_bz.i644
+oom.i679:                                         ; preds = %alloc_heap.i665, %chk_bz.i649
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i648:                                       ; preds = %chk_bz.i644
-  %ashort.i649 = icmp samesign ult i64 %alen.i642, 13
-  br i1 %ashort.i649, label %mat_b.i653, label %mat_b.i653.thread
+mat_a.i653:                                       ; preds = %chk_bz.i649
+  %ashort.i654 = icmp samesign ult i64 %alen.i647, 13
+  br i1 %ashort.i654, label %mat_b.i658, label %mat_b.i658.thread
 
-mat_b.i653.thread:                                ; preds = %mat_a.i648
-  %araw.i651 = and i64 %aw1.i641, -4
-  %alptr.i652 = inttoptr i64 %araw.i651 to ptr
-  br label %alloc_heap.i660
+mat_b.i658.thread:                                ; preds = %mat_a.i653
+  %araw.i656 = and i64 %aw1.i646, -4
+  %alptr.i657 = inttoptr i64 %araw.i656 to ptr
+  br label %alloc_heap.i665
 
-mat_b.i653:                                       ; preds = %mat_a.i648
-  %ap4.i685 = lshr i64 %aw0.i640, 32
-  %ap4_32.i686 = trunc nuw i64 %ap4.i685 to i32
-  store i32 %ap4_32.i686, ptr %atmp.i637, align 4
-  %atmp4.i687 = getelementptr inbounds nuw i8, ptr %atmp.i637, i64 4
-  store i64 %aw1.i641, ptr %atmp4.i687, align 4
-  %fits_sso.i659.not = icmp eq i64 %alen.i642, 12
-  br i1 %fits_sso.i659.not, label %alloc_heap.i660, label %build_sso.i675
+mat_b.i658:                                       ; preds = %mat_a.i653
+  %ap4.i690 = lshr i64 %aw0.i645, 32
+  %ap4_32.i691 = trunc nuw i64 %ap4.i690 to i32
+  store i32 %ap4_32.i691, ptr %atmp.i642, align 4
+  %atmp4.i692 = getelementptr inbounds nuw i8, ptr %atmp.i642, i64 4
+  store i64 %aw1.i646, ptr %atmp4.i692, align 4
+  %fits_sso.i664.not = icmp eq i64 %alen.i647, 12
+  br i1 %fits_sso.i664.not, label %alloc_heap.i665, label %build_sso.i680
 
-build_sso.i675:                                   ; preds = %mat_b.i653
-  %out_sso8.i676 = getelementptr inbounds nuw i8, ptr %out_sso.i639, i64 8
-  %tot32.i677 = trunc nuw nsw i64 %tot.i646 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i639, i8 0, i64 16, i1 false)
-  store i32 %tot32.i677, ptr %out_sso.i639, align 8
-  %sso_dst_a.i678 = getelementptr inbounds nuw i8, ptr %out_sso.i639, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i678, ptr nonnull align 4 %atmp.i637, i64 %alen.i642, i1 false)
-  %sso_dst_b.i679 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i678, i64 %alen.i642
-  store i8 44, ptr %sso_dst_b.i679, align 1
-  %rw0.i680 = load i64, ptr %out_sso.i639, align 8
-  %rw1.i681 = load i64, ptr %out_sso8.i676, align 8
-  %rs0.i682 = insertvalue %ArchxStr poison, i64 %rw0.i680, 0
-  %rs1.i683 = insertvalue %ArchxStr %rs0.i682, i64 %rw1.i681, 1
-  br label %archx_str_concat.exit690
+build_sso.i680:                                   ; preds = %mat_b.i658
+  %out_sso8.i681 = getelementptr inbounds nuw i8, ptr %out_sso.i644, i64 8
+  %tot32.i682 = trunc nuw nsw i64 %tot.i651 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i644, i8 0, i64 16, i1 false)
+  store i32 %tot32.i682, ptr %out_sso.i644, align 8
+  %sso_dst_a.i683 = getelementptr inbounds nuw i8, ptr %out_sso.i644, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i683, ptr nonnull align 4 %atmp.i642, i64 %alen.i647, i1 false)
+  %sso_dst_b.i684 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i683, i64 %alen.i647
+  store i8 44, ptr %sso_dst_b.i684, align 1
+  %rw0.i685 = load i64, ptr %out_sso.i644, align 8
+  %rw1.i686 = load i64, ptr %out_sso8.i681, align 8
+  %rs0.i687 = insertvalue %ArchxStr poison, i64 %rw0.i685, 0
+  %rs1.i688 = insertvalue %ArchxStr %rs0.i687, i64 %rw1.i686, 1
+  br label %archx_str_concat.exit695
 
-alloc_heap.i660:                                  ; preds = %mat_b.i653.thread, %mat_b.i653
-  %aptr.i6541972 = phi ptr [ %alptr.i652, %mat_b.i653.thread ], [ %atmp.i637, %mat_b.i653 ]
-  %hp.i661 = call noalias align 16 ptr @malloc(i64 %tot.i646)
-  %hnull.i662 = icmp eq ptr %hp.i661, null
-  br i1 %hnull.i662, label %oom.i674, label %copy_long.i663
+alloc_heap.i665:                                  ; preds = %mat_b.i658.thread, %mat_b.i658
+  %aptr.i6591991 = phi ptr [ %alptr.i657, %mat_b.i658.thread ], [ %atmp.i642, %mat_b.i658 ]
+  %hp.i666 = call noalias align 16 ptr @malloc(i64 %tot.i651)
+  %hnull.i667 = icmp eq ptr %hp.i666, null
+  br i1 %hnull.i667, label %oom.i679, label %copy_long.i668
 
-copy_long.i663:                                   ; preds = %alloc_heap.i660
-  %hp_i.i664 = ptrtoint ptr %hp.i661 to i64
-  %htagged.i665 = or disjoint i64 %hp_i.i664, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i661, ptr nonnull align 1 %aptr.i6541972, i64 %alen.i642, i1 false)
-  %dst_b.i666 = getelementptr inbounds nuw i8, ptr %hp.i661, i64 %alen.i642
-  store i8 44, ptr %dst_b.i666, align 1
-  %pref32.i667 = load i32, ptr %hp.i661, align 16
-  %pref64.i668 = zext i32 %pref32.i667 to i64
-  %pref_sh.i669 = shl nuw i64 %pref64.i668, 32
-  %w0_out.i670 = or disjoint i64 %pref_sh.i669, %tot.i646
-  %ls0.i671 = insertvalue %ArchxStr poison, i64 %w0_out.i670, 0
-  %ls1.i672 = insertvalue %ArchxStr %ls0.i671, i64 %htagged.i665, 1
-  br label %archx_str_concat.exit690
+copy_long.i668:                                   ; preds = %alloc_heap.i665
+  %hp_i.i669 = ptrtoint ptr %hp.i666 to i64
+  %htagged.i670 = or disjoint i64 %hp_i.i669, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i666, ptr nonnull align 1 %aptr.i6591991, i64 %alen.i647, i1 false)
+  %dst_b.i671 = getelementptr inbounds nuw i8, ptr %hp.i666, i64 %alen.i647
+  store i8 44, ptr %dst_b.i671, align 1
+  %pref32.i672 = load i32, ptr %hp.i666, align 16
+  %pref64.i673 = zext i32 %pref32.i672 to i64
+  %pref_sh.i674 = shl nuw i64 %pref64.i673, 32
+  %w0_out.i675 = or disjoint i64 %pref_sh.i674, %tot.i651
+  %ls0.i676 = insertvalue %ArchxStr poison, i64 %w0_out.i675, 0
+  %ls1.i677 = insertvalue %ArchxStr %ls0.i676, i64 %htagged.i670, 1
+  br label %archx_str_concat.exit695
 
-archx_str_concat.exit690:                         ; preds = %archx_str_concat.exit636, %build_sso.i675, %copy_long.i663
-  %common.ret.op.i673 = phi %ArchxStr [ %rs1.i683, %build_sso.i675 ], [ %ls1.i672, %copy_long.i663 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit636 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i637)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i639)
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1485)
-  %n32.i1486 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1485, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 10)
-  %len.i1487 = sext i32 %n32.i1486 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1484)
-  %z.i.i1488 = icmp slt i32 %n32.i1486, 1
-  br i1 %z.i.i1488, label %archx_str_from_int.exit1512, label %chk_sso.i.i1489
+archx_str_concat.exit695:                         ; preds = %archx_str_concat.exit641, %build_sso.i680, %copy_long.i668
+  %common.ret.op.i678 = phi %ArchxStr [ %rs1.i688, %build_sso.i680 ], [ %ls1.i677, %copy_long.i668 ], [ { i64 188978561025, i64 0 }, %archx_str_concat.exit641 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i642)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i644)
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1490)
+  %n32.i1491 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1490, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 10)
+  %len.i1492 = sext i32 %n32.i1491 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1489)
+  %z.i.i1493 = icmp slt i32 %n32.i1491, 1
+  br i1 %z.i.i1493, label %archx_str_from_int.exit1517, label %chk_sso.i.i1494
 
-oom.i.i1504:                                      ; preds = %alloc_heap.i.i1491
+oom.i.i1509:                                      ; preds = %alloc_heap.i.i1496
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1489:                                  ; preds = %archx_str_concat.exit690
-  %short.i.i1490 = icmp samesign ult i32 %n32.i1486, 13
-  br i1 %short.i.i1490, label %pack_sso.i.i1505, label %alloc_heap.i.i1491
+chk_sso.i.i1494:                                  ; preds = %archx_str_concat.exit695
+  %short.i.i1495 = icmp samesign ult i32 %n32.i1491, 13
+  br i1 %short.i.i1495, label %pack_sso.i.i1510, label %alloc_heap.i.i1496
 
-pack_sso.i.i1505:                                 ; preds = %chk_sso.i.i1489
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1484, i8 0, i64 16, i1 false)
-  store i32 %n32.i1486, ptr %sso.i.i1484, align 8
-  %sso.i.i1484.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1484, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1484.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1485, i64 range(i64 -2147483648, 2147483650) %len.i1487, i1 false)
-  %sso.i.i1484.0.sso.i.i1484.0.sso.i.i1484.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1507 = load i64, ptr %sso.i.i1484, align 8
-  %sso.i.i1484.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1484, i64 8
-  %sso.i.i1484.8.sso.i.i1484.8.sso.i.i1484.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1509 = load i64, ptr %sso.i.i1484.8.sroa_idx, align 8
-  %ss0.i.i1510 = insertvalue %ArchxStr poison, i64 %sso.i.i1484.0.sso.i.i1484.0.sso.i.i1484.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1507, 0
-  %ss1.i.i1511 = insertvalue %ArchxStr %ss0.i.i1510, i64 %sso.i.i1484.8.sso.i.i1484.8.sso.i.i1484.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1509, 1
-  br label %archx_str_from_int.exit1512
+pack_sso.i.i1510:                                 ; preds = %chk_sso.i.i1494
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1489, i8 0, i64 16, i1 false)
+  store i32 %n32.i1491, ptr %sso.i.i1489, align 8
+  %sso.i.i1489.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1489, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1489.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1490, i64 range(i64 -2147483648, 2147483650) %len.i1492, i1 false)
+  %sso.i.i1489.0.sso.i.i1489.0.sso.i.i1489.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1512 = load i64, ptr %sso.i.i1489, align 8
+  %sso.i.i1489.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1489, i64 8
+  %sso.i.i1489.8.sso.i.i1489.8.sso.i.i1489.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1514 = load i64, ptr %sso.i.i1489.8.sroa_idx, align 8
+  %ss0.i.i1515 = insertvalue %ArchxStr poison, i64 %sso.i.i1489.0.sso.i.i1489.0.sso.i.i1489.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1512, 0
+  %ss1.i.i1516 = insertvalue %ArchxStr %ss0.i.i1515, i64 %sso.i.i1489.8.sso.i.i1489.8.sso.i.i1489.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1514, 1
+  br label %archx_str_from_int.exit1517
 
-alloc_heap.i.i1491:                               ; preds = %chk_sso.i.i1489
-  %hp.i.i1492 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1487)
-  %hnull.i.i1493 = icmp eq ptr %hp.i.i1492, null
-  br i1 %hnull.i.i1493, label %oom.i.i1504, label %copy_long.i.i1494
+alloc_heap.i.i1496:                               ; preds = %chk_sso.i.i1494
+  %hp.i.i1497 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1492)
+  %hnull.i.i1498 = icmp eq ptr %hp.i.i1497, null
+  br i1 %hnull.i.i1498, label %oom.i.i1509, label %copy_long.i.i1499
 
-copy_long.i.i1494:                                ; preds = %alloc_heap.i.i1491
-  %hp_i.i.i1495 = ptrtoint ptr %hp.i.i1492 to i64
-  %htagged.i.i1496 = or disjoint i64 %hp_i.i.i1495, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1492, ptr nonnull readonly align 8 %buf.i1485, i64 range(i64 -2147483648, 2147483650) %len.i1487, i1 false)
-  %pref32.i.i1497 = load i32, ptr %hp.i.i1492, align 16
-  %pref64.i.i1498 = zext i32 %pref32.i.i1497 to i64
-  %pref_sh.i.i1499 = shl nuw i64 %pref64.i.i1498, 32
-  %w0_out.i.i1500 = or disjoint i64 %pref_sh.i.i1499, %len.i1487
-  %ls0.i.i1501 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1500, 0
-  %ls1.i.i1502 = insertvalue %ArchxStr %ls0.i.i1501, i64 %htagged.i.i1496, 1
-  br label %archx_str_from_int.exit1512
+copy_long.i.i1499:                                ; preds = %alloc_heap.i.i1496
+  %hp_i.i.i1500 = ptrtoint ptr %hp.i.i1497 to i64
+  %htagged.i.i1501 = or disjoint i64 %hp_i.i.i1500, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1497, ptr nonnull readonly align 8 %buf.i1490, i64 range(i64 -2147483648, 2147483650) %len.i1492, i1 false)
+  %pref32.i.i1502 = load i32, ptr %hp.i.i1497, align 16
+  %pref64.i.i1503 = zext i32 %pref32.i.i1502 to i64
+  %pref_sh.i.i1504 = shl nuw i64 %pref64.i.i1503, 32
+  %w0_out.i.i1505 = or disjoint i64 %pref_sh.i.i1504, %len.i1492
+  %ls0.i.i1506 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1505, 0
+  %ls1.i.i1507 = insertvalue %ArchxStr %ls0.i.i1506, i64 %htagged.i.i1501, 1
+  br label %archx_str_from_int.exit1517
 
-archx_str_from_int.exit1512:                      ; preds = %archx_str_concat.exit690, %pack_sso.i.i1505, %copy_long.i.i1494
-  %common.ret.op.i.i1503 = phi %ArchxStr [ %ss1.i.i1511, %pack_sso.i.i1505 ], [ %ls1.i.i1502, %copy_long.i.i1494 ], [ zeroinitializer, %archx_str_concat.exit690 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1484)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1485)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i691)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i692)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i693)
-  %aw0.i694 = extractvalue %ArchxStr %common.ret.op.i673, 0
-  %aw1.i695 = extractvalue %ArchxStr %common.ret.op.i673, 1
-  %bw0.i696 = extractvalue %ArchxStr %common.ret.op.i.i1503, 0
-  %bw1.i697 = extractvalue %ArchxStr %common.ret.op.i.i1503, 1
-  %alen.i698 = and i64 %aw0.i694, 4294967295
-  %blen.i699 = and i64 %bw0.i696, 4294967295
-  %az.i700 = icmp eq i64 %alen.i698, 0
-  br i1 %az.i700, label %ret_b_clone.i754, label %chk_bz.i701
+archx_str_from_int.exit1517:                      ; preds = %archx_str_concat.exit695, %pack_sso.i.i1510, %copy_long.i.i1499
+  %common.ret.op.i.i1508 = phi %ArchxStr [ %ss1.i.i1516, %pack_sso.i.i1510 ], [ %ls1.i.i1507, %copy_long.i.i1499 ], [ zeroinitializer, %archx_str_concat.exit695 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1489)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1490)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i696)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i697)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i698)
+  %aw0.i699 = extractvalue %ArchxStr %common.ret.op.i678, 0
+  %aw1.i700 = extractvalue %ArchxStr %common.ret.op.i678, 1
+  %bw0.i701 = extractvalue %ArchxStr %common.ret.op.i.i1508, 0
+  %bw1.i702 = extractvalue %ArchxStr %common.ret.op.i.i1508, 1
+  %alen.i703 = and i64 %aw0.i699, 4294967295
+  %blen.i704 = and i64 %bw0.i701, 4294967295
+  %az.i705 = icmp eq i64 %alen.i703, 0
+  br i1 %az.i705, label %ret_b_clone.i759, label %chk_bz.i706
 
-ret_b_clone.i754:                                 ; preds = %archx_str_from_int.exit1512
-  %long.i1515 = icmp samesign ult i64 %blen.i699, 13
-  %tag.i1519 = and i64 %bw1.i697, 3
-  %owned.not.i1520 = icmp eq i64 %tag.i1519, 0
-  %or.cond2058 = select i1 %long.i1515, i1 true, i1 %owned.not.i1520
-  br i1 %or.cond2058, label %archx_str_concat.exit756, label %dup_heap.i1521
+ret_b_clone.i759:                                 ; preds = %archx_str_from_int.exit1517
+  %long.i1520 = icmp samesign ult i64 %blen.i704, 13
+  %tag.i1524 = and i64 %bw1.i702, 3
+  %owned.not.i1525 = icmp eq i64 %tag.i1524, 0
+  %or.cond2077 = select i1 %long.i1520, i1 true, i1 %owned.not.i1525
+  br i1 %or.cond2077, label %archx_str_concat.exit761, label %dup_heap.i1526
 
-dup_heap.i1521:                                   ; preds = %ret_b_clone.i754
-  %dst.i1522 = call noalias align 16 ptr @malloc(i64 %blen.i699)
-  %isnull.i1523 = icmp eq ptr %dst.i1522, null
-  br i1 %isnull.i1523, label %oom.i1530, label %copy.i1524
+dup_heap.i1526:                                   ; preds = %ret_b_clone.i759
+  %dst.i1527 = call noalias align 16 ptr @malloc(i64 %blen.i704)
+  %isnull.i1528 = icmp eq ptr %dst.i1527, null
+  br i1 %isnull.i1528, label %oom.i1535, label %copy.i1529
 
-oom.i1530:                                        ; preds = %dup_heap.i1521
+oom.i1535:                                        ; preds = %dup_heap.i1526
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1524:                                       ; preds = %dup_heap.i1521
-  %src_i.i1525 = and i64 %bw1.i697, -4
-  %src.i1526 = inttoptr i64 %src_i.i1525 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1522, ptr nonnull align 4 %src.i1526, i64 %blen.i699, i1 false)
-  %dst_i.i1527 = ptrtoint ptr %dst.i1522 to i64
-  %tagged.i1528 = or disjoint i64 %dst_i.i1527, 1
-  %out.i1529 = insertvalue %ArchxStr %common.ret.op.i.i1503, i64 %tagged.i1528, 1
-  br label %archx_str_concat.exit756
+copy.i1529:                                       ; preds = %dup_heap.i1526
+  %src_i.i1530 = and i64 %bw1.i702, -4
+  %src.i1531 = inttoptr i64 %src_i.i1530 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1527, ptr nonnull align 4 %src.i1531, i64 %blen.i704, i1 false)
+  %dst_i.i1532 = ptrtoint ptr %dst.i1527 to i64
+  %tagged.i1533 = or disjoint i64 %dst_i.i1532, 1
+  %out.i1534 = insertvalue %ArchxStr %common.ret.op.i.i1508, i64 %tagged.i1533, 1
+  br label %archx_str_concat.exit761
 
-chk_bz.i701:                                      ; preds = %archx_str_from_int.exit1512
-  %bz.i702 = icmp eq i64 %blen.i699, 0
-  br i1 %bz.i702, label %ret_a_clone.i752, label %calc_tot.i703
+chk_bz.i706:                                      ; preds = %archx_str_from_int.exit1517
+  %bz.i707 = icmp eq i64 %blen.i704, 0
+  br i1 %bz.i707, label %ret_a_clone.i757, label %calc_tot.i708
 
-ret_a_clone.i752:                                 ; preds = %chk_bz.i701
-  %long.i1534 = icmp samesign ult i64 %alen.i698, 13
-  %tag.i1538 = and i64 %aw1.i695, 3
-  %owned.not.i1539 = icmp eq i64 %tag.i1538, 0
-  %or.cond2059 = select i1 %long.i1534, i1 true, i1 %owned.not.i1539
-  br i1 %or.cond2059, label %archx_str_concat.exit756, label %dup_heap.i1540
+ret_a_clone.i757:                                 ; preds = %chk_bz.i706
+  %long.i1539 = icmp samesign ult i64 %alen.i703, 13
+  %tag.i1543 = and i64 %aw1.i700, 3
+  %owned.not.i1544 = icmp eq i64 %tag.i1543, 0
+  %or.cond2078 = select i1 %long.i1539, i1 true, i1 %owned.not.i1544
+  br i1 %or.cond2078, label %archx_str_concat.exit761, label %dup_heap.i1545
 
-dup_heap.i1540:                                   ; preds = %ret_a_clone.i752
-  %dst.i1541 = call noalias align 16 ptr @malloc(i64 %alen.i698)
-  %isnull.i1542 = icmp eq ptr %dst.i1541, null
-  br i1 %isnull.i1542, label %oom.i1549, label %copy.i1543
+dup_heap.i1545:                                   ; preds = %ret_a_clone.i757
+  %dst.i1546 = call noalias align 16 ptr @malloc(i64 %alen.i703)
+  %isnull.i1547 = icmp eq ptr %dst.i1546, null
+  br i1 %isnull.i1547, label %oom.i1554, label %copy.i1548
 
-oom.i1549:                                        ; preds = %dup_heap.i1540
+oom.i1554:                                        ; preds = %dup_heap.i1545
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1543:                                       ; preds = %dup_heap.i1540
-  %src_i.i1544 = and i64 %aw1.i695, -4
-  %src.i1545 = inttoptr i64 %src_i.i1544 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1541, ptr nonnull align 4 %src.i1545, i64 %alen.i698, i1 false)
-  %dst_i.i1546 = ptrtoint ptr %dst.i1541 to i64
-  %tagged.i1547 = or disjoint i64 %dst_i.i1546, 1
-  %out.i1548 = insertvalue %ArchxStr %common.ret.op.i673, i64 %tagged.i1547, 1
-  br label %archx_str_concat.exit756
+copy.i1548:                                       ; preds = %dup_heap.i1545
+  %src_i.i1549 = and i64 %aw1.i700, -4
+  %src.i1550 = inttoptr i64 %src_i.i1549 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1546, ptr nonnull align 4 %src.i1550, i64 %alen.i703, i1 false)
+  %dst_i.i1551 = ptrtoint ptr %dst.i1546 to i64
+  %tagged.i1552 = or disjoint i64 %dst_i.i1551, 1
+  %out.i1553 = insertvalue %ArchxStr %common.ret.op.i678, i64 %tagged.i1552, 1
+  br label %archx_str_concat.exit761
 
-calc_tot.i703:                                    ; preds = %chk_bz.i701
-  %tot.i704 = add nuw nsw i64 %blen.i699, %alen.i698
-  %too_big.i705 = icmp samesign ugt i64 %tot.i704, 2147483647
-  br i1 %too_big.i705, label %oom.i734, label %mat_a.i706
+calc_tot.i708:                                    ; preds = %chk_bz.i706
+  %tot.i709 = add nuw nsw i64 %blen.i704, %alen.i703
+  %too_big.i710 = icmp samesign ugt i64 %tot.i709, 2147483647
+  br i1 %too_big.i710, label %oom.i739, label %mat_a.i711
 
-oom.i734:                                         ; preds = %alloc_heap.i720, %calc_tot.i703
+oom.i739:                                         ; preds = %alloc_heap.i725, %calc_tot.i708
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i706:                                       ; preds = %calc_tot.i703
-  %ashort.i707 = icmp samesign ult i64 %alen.i698, 13
-  br i1 %ashort.i707, label %mat_a_short.i748, label %mat_a_long.i708
+mat_a.i711:                                       ; preds = %calc_tot.i708
+  %ashort.i712 = icmp samesign ult i64 %alen.i703, 13
+  br i1 %ashort.i712, label %mat_a_short.i753, label %mat_a_long.i713
 
-mat_a_short.i748:                                 ; preds = %mat_a.i706
-  %ap4.i749 = lshr i64 %aw0.i694, 32
-  %ap4_32.i750 = trunc nuw i64 %ap4.i749 to i32
-  store i32 %ap4_32.i750, ptr %atmp.i691, align 4
-  %atmp4.i751 = getelementptr inbounds nuw i8, ptr %atmp.i691, i64 4
-  store i64 %aw1.i695, ptr %atmp4.i751, align 4
-  br label %mat_b.i711
+mat_a_short.i753:                                 ; preds = %mat_a.i711
+  %ap4.i754 = lshr i64 %aw0.i699, 32
+  %ap4_32.i755 = trunc nuw i64 %ap4.i754 to i32
+  store i32 %ap4_32.i755, ptr %atmp.i696, align 4
+  %atmp4.i756 = getelementptr inbounds nuw i8, ptr %atmp.i696, i64 4
+  store i64 %aw1.i700, ptr %atmp4.i756, align 4
+  br label %mat_b.i716
 
-mat_a_long.i708:                                  ; preds = %mat_a.i706
-  %araw.i709 = and i64 %aw1.i695, -4
-  %alptr.i710 = inttoptr i64 %araw.i709 to ptr
-  br label %mat_b.i711
+mat_a_long.i713:                                  ; preds = %mat_a.i711
+  %araw.i714 = and i64 %aw1.i700, -4
+  %alptr.i715 = inttoptr i64 %araw.i714 to ptr
+  br label %mat_b.i716
 
-mat_b.i711:                                       ; preds = %mat_a_long.i708, %mat_a_short.i748
-  %aptr.i712 = phi ptr [ %atmp.i691, %mat_a_short.i748 ], [ %alptr.i710, %mat_a_long.i708 ]
-  %bshort.i713 = icmp samesign ult i64 %blen.i699, 13
-  br i1 %bshort.i713, label %mat_b_short.i744, label %mat_b_long.i714
+mat_b.i716:                                       ; preds = %mat_a_long.i713, %mat_a_short.i753
+  %aptr.i717 = phi ptr [ %atmp.i696, %mat_a_short.i753 ], [ %alptr.i715, %mat_a_long.i713 ]
+  %bshort.i718 = icmp samesign ult i64 %blen.i704, 13
+  br i1 %bshort.i718, label %mat_b_short.i749, label %mat_b_long.i719
 
-mat_b_short.i744:                                 ; preds = %mat_b.i711
-  %bp4.i745 = lshr i64 %bw0.i696, 32
-  %bp4_32.i746 = trunc nuw i64 %bp4.i745 to i32
-  store i32 %bp4_32.i746, ptr %btmp.i692, align 4
-  %btmp4.i747 = getelementptr inbounds nuw i8, ptr %btmp.i692, i64 4
-  store i64 %bw1.i697, ptr %btmp4.i747, align 4
-  br label %build.i717
+mat_b_short.i749:                                 ; preds = %mat_b.i716
+  %bp4.i750 = lshr i64 %bw0.i701, 32
+  %bp4_32.i751 = trunc nuw i64 %bp4.i750 to i32
+  store i32 %bp4_32.i751, ptr %btmp.i697, align 4
+  %btmp4.i752 = getelementptr inbounds nuw i8, ptr %btmp.i697, i64 4
+  store i64 %bw1.i702, ptr %btmp4.i752, align 4
+  br label %build.i722
 
-mat_b_long.i714:                                  ; preds = %mat_b.i711
-  %braw.i715 = and i64 %bw1.i697, -4
-  %blptr.i716 = inttoptr i64 %braw.i715 to ptr
-  br label %build.i717
+mat_b_long.i719:                                  ; preds = %mat_b.i716
+  %braw.i720 = and i64 %bw1.i702, -4
+  %blptr.i721 = inttoptr i64 %braw.i720 to ptr
+  br label %build.i722
 
-build.i717:                                       ; preds = %mat_b_long.i714, %mat_b_short.i744
-  %bptr.i718 = phi ptr [ %btmp.i692, %mat_b_short.i744 ], [ %blptr.i716, %mat_b_long.i714 ]
-  %fits_sso.i719 = icmp samesign ult i64 %tot.i704, 13
-  br i1 %fits_sso.i719, label %build_sso.i735, label %alloc_heap.i720
+build.i722:                                       ; preds = %mat_b_long.i719, %mat_b_short.i749
+  %bptr.i723 = phi ptr [ %btmp.i697, %mat_b_short.i749 ], [ %blptr.i721, %mat_b_long.i719 ]
+  %fits_sso.i724 = icmp samesign ult i64 %tot.i709, 13
+  br i1 %fits_sso.i724, label %build_sso.i740, label %alloc_heap.i725
 
-build_sso.i735:                                   ; preds = %build.i717
-  %out_sso8.i736 = getelementptr inbounds nuw i8, ptr %out_sso.i693, i64 8
-  %tot32.i737 = trunc nuw nsw i64 %tot.i704 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i693, i8 0, i64 16, i1 false)
-  store i32 %tot32.i737, ptr %out_sso.i693, align 8
-  %sso_dst_a.i738 = getelementptr inbounds nuw i8, ptr %out_sso.i693, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i738, ptr nonnull align 1 %aptr.i712, i64 %alen.i698, i1 false)
-  %sso_dst_b.i739 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i738, i64 %alen.i698
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i739, ptr nonnull align 1 %bptr.i718, i64 %blen.i699, i1 false)
-  %rw0.i740 = load i64, ptr %out_sso.i693, align 8
-  %rw1.i741 = load i64, ptr %out_sso8.i736, align 8
-  %rs0.i742 = insertvalue %ArchxStr poison, i64 %rw0.i740, 0
-  %rs1.i743 = insertvalue %ArchxStr %rs0.i742, i64 %rw1.i741, 1
-  br label %archx_str_concat.exit756
+build_sso.i740:                                   ; preds = %build.i722
+  %out_sso8.i741 = getelementptr inbounds nuw i8, ptr %out_sso.i698, i64 8
+  %tot32.i742 = trunc nuw nsw i64 %tot.i709 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i698, i8 0, i64 16, i1 false)
+  store i32 %tot32.i742, ptr %out_sso.i698, align 8
+  %sso_dst_a.i743 = getelementptr inbounds nuw i8, ptr %out_sso.i698, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i743, ptr nonnull align 1 %aptr.i717, i64 %alen.i703, i1 false)
+  %sso_dst_b.i744 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i743, i64 %alen.i703
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i744, ptr nonnull align 1 %bptr.i723, i64 %blen.i704, i1 false)
+  %rw0.i745 = load i64, ptr %out_sso.i698, align 8
+  %rw1.i746 = load i64, ptr %out_sso8.i741, align 8
+  %rs0.i747 = insertvalue %ArchxStr poison, i64 %rw0.i745, 0
+  %rs1.i748 = insertvalue %ArchxStr %rs0.i747, i64 %rw1.i746, 1
+  br label %archx_str_concat.exit761
 
-alloc_heap.i720:                                  ; preds = %build.i717
-  %hp.i721 = call noalias align 16 ptr @malloc(i64 %tot.i704)
-  %hnull.i722 = icmp eq ptr %hp.i721, null
-  br i1 %hnull.i722, label %oom.i734, label %copy_long.i723
+alloc_heap.i725:                                  ; preds = %build.i722
+  %hp.i726 = call noalias align 16 ptr @malloc(i64 %tot.i709)
+  %hnull.i727 = icmp eq ptr %hp.i726, null
+  br i1 %hnull.i727, label %oom.i739, label %copy_long.i728
 
-copy_long.i723:                                   ; preds = %alloc_heap.i720
-  %hp_i.i724 = ptrtoint ptr %hp.i721 to i64
-  %htagged.i725 = or disjoint i64 %hp_i.i724, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i721, ptr nonnull align 1 %aptr.i712, i64 %alen.i698, i1 false)
-  %dst_b.i726 = getelementptr inbounds nuw i8, ptr %hp.i721, i64 %alen.i698
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i726, ptr nonnull align 1 %bptr.i718, i64 %blen.i699, i1 false)
-  %pref32.i727 = load i32, ptr %hp.i721, align 16
-  %pref64.i728 = zext i32 %pref32.i727 to i64
-  %pref_sh.i729 = shl nuw i64 %pref64.i728, 32
-  %w0_out.i730 = or disjoint i64 %pref_sh.i729, %tot.i704
-  %ls0.i731 = insertvalue %ArchxStr poison, i64 %w0_out.i730, 0
-  %ls1.i732 = insertvalue %ArchxStr %ls0.i731, i64 %htagged.i725, 1
-  br label %archx_str_concat.exit756
+copy_long.i728:                                   ; preds = %alloc_heap.i725
+  %hp_i.i729 = ptrtoint ptr %hp.i726 to i64
+  %htagged.i730 = or disjoint i64 %hp_i.i729, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i726, ptr nonnull align 1 %aptr.i717, i64 %alen.i703, i1 false)
+  %dst_b.i731 = getelementptr inbounds nuw i8, ptr %hp.i726, i64 %alen.i703
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i731, ptr nonnull align 1 %bptr.i723, i64 %blen.i704, i1 false)
+  %pref32.i732 = load i32, ptr %hp.i726, align 16
+  %pref64.i733 = zext i32 %pref32.i732 to i64
+  %pref_sh.i734 = shl nuw i64 %pref64.i733, 32
+  %w0_out.i735 = or disjoint i64 %pref_sh.i734, %tot.i709
+  %ls0.i736 = insertvalue %ArchxStr poison, i64 %w0_out.i735, 0
+  %ls1.i737 = insertvalue %ArchxStr %ls0.i736, i64 %htagged.i730, 1
+  br label %archx_str_concat.exit761
 
-archx_str_concat.exit756:                         ; preds = %copy.i1543, %ret_a_clone.i752, %copy.i1524, %ret_b_clone.i754, %build_sso.i735, %copy_long.i723
-  %common.ret.op.i733 = phi %ArchxStr [ %rs1.i743, %build_sso.i735 ], [ %ls1.i732, %copy_long.i723 ], [ %out.i1529, %copy.i1524 ], [ %common.ret.op.i.i1503, %ret_b_clone.i754 ], [ %out.i1548, %copy.i1543 ], [ %common.ret.op.i673, %ret_a_clone.i752 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i691)
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i692)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i693)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i757)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i759)
-  %aw0.i760 = extractvalue %ArchxStr %common.ret.op.i733, 0
-  %aw1.i761 = extractvalue %ArchxStr %common.ret.op.i733, 1
-  %alen.i762 = and i64 %aw0.i760, 4294967295
-  %az.i763 = icmp eq i64 %alen.i762, 0
-  br i1 %az.i763, label %archx_str_concat.exit810, label %chk_bz.i764
+archx_str_concat.exit761:                         ; preds = %copy.i1548, %ret_a_clone.i757, %copy.i1529, %ret_b_clone.i759, %build_sso.i740, %copy_long.i728
+  %common.ret.op.i738 = phi %ArchxStr [ %rs1.i748, %build_sso.i740 ], [ %ls1.i737, %copy_long.i728 ], [ %out.i1534, %copy.i1529 ], [ %common.ret.op.i.i1508, %ret_b_clone.i759 ], [ %out.i1553, %copy.i1548 ], [ %common.ret.op.i678, %ret_a_clone.i757 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i696)
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i697)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i698)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i762)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i764)
+  %aw0.i765 = extractvalue %ArchxStr %common.ret.op.i738, 0
+  %aw1.i766 = extractvalue %ArchxStr %common.ret.op.i738, 1
+  %alen.i767 = and i64 %aw0.i765, 4294967295
+  %az.i768 = icmp eq i64 %alen.i767, 0
+  br i1 %az.i768, label %archx_str_concat.exit815, label %chk_bz.i769
 
-chk_bz.i764:                                      ; preds = %archx_str_concat.exit756
-  %tot.i766 = add nuw nsw i64 %alen.i762, 5
-  %too_big.i767 = icmp samesign ugt i64 %alen.i762, 2147483642
-  br i1 %too_big.i767, label %oom.i794, label %mat_a.i768
+chk_bz.i769:                                      ; preds = %archx_str_concat.exit761
+  %tot.i771 = add nuw nsw i64 %alen.i767, 5
+  %too_big.i772 = icmp samesign ugt i64 %alen.i767, 2147483642
+  br i1 %too_big.i772, label %oom.i799, label %mat_a.i773
 
-oom.i794:                                         ; preds = %alloc_heap.i780, %chk_bz.i764
+oom.i799:                                         ; preds = %alloc_heap.i785, %chk_bz.i769
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i768:                                       ; preds = %chk_bz.i764
-  %ashort.i769 = icmp samesign ult i64 %alen.i762, 13
-  br i1 %ashort.i769, label %mat_b.i773, label %mat_b.i773.thread
+mat_a.i773:                                       ; preds = %chk_bz.i769
+  %ashort.i774 = icmp samesign ult i64 %alen.i767, 13
+  br i1 %ashort.i774, label %mat_b.i778, label %mat_b.i778.thread
 
-mat_b.i773.thread:                                ; preds = %mat_a.i768
-  %araw.i771 = and i64 %aw1.i761, -4
-  %alptr.i772 = inttoptr i64 %araw.i771 to ptr
-  br label %alloc_heap.i780
+mat_b.i778.thread:                                ; preds = %mat_a.i773
+  %araw.i776 = and i64 %aw1.i766, -4
+  %alptr.i777 = inttoptr i64 %araw.i776 to ptr
+  br label %alloc_heap.i785
 
-mat_b.i773:                                       ; preds = %mat_a.i768
-  %ap4.i805 = lshr i64 %aw0.i760, 32
-  %ap4_32.i806 = trunc nuw i64 %ap4.i805 to i32
-  store i32 %ap4_32.i806, ptr %atmp.i757, align 4
-  %atmp4.i807 = getelementptr inbounds nuw i8, ptr %atmp.i757, i64 4
-  store i64 %aw1.i761, ptr %atmp4.i807, align 4
-  %fits_sso.i779 = icmp samesign ult i64 %alen.i762, 8
-  br i1 %fits_sso.i779, label %build_sso.i795, label %alloc_heap.i780
+mat_b.i778:                                       ; preds = %mat_a.i773
+  %ap4.i810 = lshr i64 %aw0.i765, 32
+  %ap4_32.i811 = trunc nuw i64 %ap4.i810 to i32
+  store i32 %ap4_32.i811, ptr %atmp.i762, align 4
+  %atmp4.i812 = getelementptr inbounds nuw i8, ptr %atmp.i762, i64 4
+  store i64 %aw1.i766, ptr %atmp4.i812, align 4
+  %fits_sso.i784 = icmp samesign ult i64 %alen.i767, 8
+  br i1 %fits_sso.i784, label %build_sso.i800, label %alloc_heap.i785
 
-build_sso.i795:                                   ; preds = %mat_b.i773
-  %out_sso8.i796 = getelementptr inbounds nuw i8, ptr %out_sso.i759, i64 8
-  %tot32.i797 = trunc nuw nsw i64 %tot.i766 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i759, i8 0, i64 16, i1 false)
-  store i32 %tot32.i797, ptr %out_sso.i759, align 8
-  %sso_dst_a.i798 = getelementptr inbounds nuw i8, ptr %out_sso.i759, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i798, ptr nonnull align 4 %atmp.i757, i64 %alen.i762, i1 false)
-  %sso_dst_b.i799 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i798, i64 %alen.i762
-  store i32 1886745632, ptr %sso_dst_b.i799, align 1
-  %btmp.i758.sroa.5.0.sso_dst_b.i799.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i799, i64 4
-  store i8 61, ptr %btmp.i758.sroa.5.0.sso_dst_b.i799.sroa_idx, align 1
-  %rw0.i800 = load i64, ptr %out_sso.i759, align 8
-  %rw1.i801 = load i64, ptr %out_sso8.i796, align 8
-  %rs0.i802 = insertvalue %ArchxStr poison, i64 %rw0.i800, 0
-  %rs1.i803 = insertvalue %ArchxStr %rs0.i802, i64 %rw1.i801, 1
-  br label %archx_str_concat.exit810
+build_sso.i800:                                   ; preds = %mat_b.i778
+  %out_sso8.i801 = getelementptr inbounds nuw i8, ptr %out_sso.i764, i64 8
+  %tot32.i802 = trunc nuw nsw i64 %tot.i771 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i764, i8 0, i64 16, i1 false)
+  store i32 %tot32.i802, ptr %out_sso.i764, align 8
+  %sso_dst_a.i803 = getelementptr inbounds nuw i8, ptr %out_sso.i764, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i803, ptr nonnull align 4 %atmp.i762, i64 %alen.i767, i1 false)
+  %sso_dst_b.i804 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i803, i64 %alen.i767
+  store i32 1886745632, ptr %sso_dst_b.i804, align 1
+  %btmp.i763.sroa.5.0.sso_dst_b.i804.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i804, i64 4
+  store i8 61, ptr %btmp.i763.sroa.5.0.sso_dst_b.i804.sroa_idx, align 1
+  %rw0.i805 = load i64, ptr %out_sso.i764, align 8
+  %rw1.i806 = load i64, ptr %out_sso8.i801, align 8
+  %rs0.i807 = insertvalue %ArchxStr poison, i64 %rw0.i805, 0
+  %rs1.i808 = insertvalue %ArchxStr %rs0.i807, i64 %rw1.i806, 1
+  br label %archx_str_concat.exit815
 
-alloc_heap.i780:                                  ; preds = %mat_b.i773.thread, %mat_b.i773
-  %aptr.i7741975 = phi ptr [ %alptr.i772, %mat_b.i773.thread ], [ %atmp.i757, %mat_b.i773 ]
-  %hp.i781 = call noalias align 16 ptr @malloc(i64 %tot.i766)
-  %hnull.i782 = icmp eq ptr %hp.i781, null
-  br i1 %hnull.i782, label %oom.i794, label %copy_long.i783
+alloc_heap.i785:                                  ; preds = %mat_b.i778.thread, %mat_b.i778
+  %aptr.i7791994 = phi ptr [ %alptr.i777, %mat_b.i778.thread ], [ %atmp.i762, %mat_b.i778 ]
+  %hp.i786 = call noalias align 16 ptr @malloc(i64 %tot.i771)
+  %hnull.i787 = icmp eq ptr %hp.i786, null
+  br i1 %hnull.i787, label %oom.i799, label %copy_long.i788
 
-copy_long.i783:                                   ; preds = %alloc_heap.i780
-  %hp_i.i784 = ptrtoint ptr %hp.i781 to i64
-  %htagged.i785 = or disjoint i64 %hp_i.i784, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i781, ptr nonnull align 1 %aptr.i7741975, i64 %alen.i762, i1 false)
-  %dst_b.i786 = getelementptr inbounds nuw i8, ptr %hp.i781, i64 %alen.i762
-  store i32 1886745632, ptr %dst_b.i786, align 1
-  %btmp.i758.sroa.5.0.dst_b.i786.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i786, i64 4
-  store i8 61, ptr %btmp.i758.sroa.5.0.dst_b.i786.sroa_idx, align 1
-  %pref32.i787 = load i32, ptr %hp.i781, align 16
-  %pref64.i788 = zext i32 %pref32.i787 to i64
-  %pref_sh.i789 = shl nuw i64 %pref64.i788, 32
-  %w0_out.i790 = or disjoint i64 %pref_sh.i789, %tot.i766
-  %ls0.i791 = insertvalue %ArchxStr poison, i64 %w0_out.i790, 0
-  %ls1.i792 = insertvalue %ArchxStr %ls0.i791, i64 %htagged.i785, 1
-  br label %archx_str_concat.exit810
+copy_long.i788:                                   ; preds = %alloc_heap.i785
+  %hp_i.i789 = ptrtoint ptr %hp.i786 to i64
+  %htagged.i790 = or disjoint i64 %hp_i.i789, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i786, ptr nonnull align 1 %aptr.i7791994, i64 %alen.i767, i1 false)
+  %dst_b.i791 = getelementptr inbounds nuw i8, ptr %hp.i786, i64 %alen.i767
+  store i32 1886745632, ptr %dst_b.i791, align 1
+  %btmp.i763.sroa.5.0.dst_b.i791.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i791, i64 4
+  store i8 61, ptr %btmp.i763.sroa.5.0.dst_b.i791.sroa_idx, align 1
+  %pref32.i792 = load i32, ptr %hp.i786, align 16
+  %pref64.i793 = zext i32 %pref32.i792 to i64
+  %pref_sh.i794 = shl nuw i64 %pref64.i793, 32
+  %w0_out.i795 = or disjoint i64 %pref_sh.i794, %tot.i771
+  %ls0.i796 = insertvalue %ArchxStr poison, i64 %w0_out.i795, 0
+  %ls1.i797 = insertvalue %ArchxStr %ls0.i796, i64 %htagged.i790, 1
+  br label %archx_str_concat.exit815
 
-archx_str_concat.exit810:                         ; preds = %archx_str_concat.exit756, %build_sso.i795, %copy_long.i783
-  %common.ret.op.i793 = phi %ArchxStr [ %rs1.i803, %build_sso.i795 ], [ %ls1.i792, %copy_long.i783 ], [ { i64 8103510785310851077, i64 61 }, %archx_str_concat.exit756 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i757)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i759)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i811)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i813)
-  %aw0.i814 = extractvalue %ArchxStr %common.ret.op.i793, 0
-  %aw1.i815 = extractvalue %ArchxStr %common.ret.op.i793, 1
-  %alen.i816 = and i64 %aw0.i814, 4294967295
-  %az.i817 = icmp eq i64 %alen.i816, 0
-  br i1 %az.i817, label %archx_str_concat.exit864, label %chk_bz.i818
+archx_str_concat.exit815:                         ; preds = %archx_str_concat.exit761, %build_sso.i800, %copy_long.i788
+  %common.ret.op.i798 = phi %ArchxStr [ %rs1.i808, %build_sso.i800 ], [ %ls1.i797, %copy_long.i788 ], [ { i64 8103510785310851077, i64 61 }, %archx_str_concat.exit761 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i762)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i764)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i816)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i818)
+  %aw0.i819 = extractvalue %ArchxStr %common.ret.op.i798, 0
+  %aw1.i820 = extractvalue %ArchxStr %common.ret.op.i798, 1
+  %alen.i821 = and i64 %aw0.i819, 4294967295
+  %az.i822 = icmp eq i64 %alen.i821, 0
+  br i1 %az.i822, label %archx_str_concat.exit869, label %chk_bz.i823
 
-chk_bz.i818:                                      ; preds = %archx_str_concat.exit810
-  %tot.i820 = add nuw nsw i64 %alen.i816, 5
-  %too_big.i821 = icmp samesign ugt i64 %alen.i816, 2147483642
-  br i1 %too_big.i821, label %oom.i848, label %mat_a.i822
+chk_bz.i823:                                      ; preds = %archx_str_concat.exit815
+  %tot.i825 = add nuw nsw i64 %alen.i821, 5
+  %too_big.i826 = icmp samesign ugt i64 %alen.i821, 2147483642
+  br i1 %too_big.i826, label %oom.i853, label %mat_a.i827
 
-oom.i848:                                         ; preds = %alloc_heap.i834, %chk_bz.i818
+oom.i853:                                         ; preds = %alloc_heap.i839, %chk_bz.i823
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i822:                                       ; preds = %chk_bz.i818
-  %ashort.i823 = icmp samesign ult i64 %alen.i816, 13
-  br i1 %ashort.i823, label %mat_b.i827, label %mat_b.i827.thread
+mat_a.i827:                                       ; preds = %chk_bz.i823
+  %ashort.i828 = icmp samesign ult i64 %alen.i821, 13
+  br i1 %ashort.i828, label %mat_b.i832, label %mat_b.i832.thread
 
-mat_b.i827.thread:                                ; preds = %mat_a.i822
-  %araw.i825 = and i64 %aw1.i815, -4
-  %alptr.i826 = inttoptr i64 %araw.i825 to ptr
-  br label %alloc_heap.i834
+mat_b.i832.thread:                                ; preds = %mat_a.i827
+  %araw.i830 = and i64 %aw1.i820, -4
+  %alptr.i831 = inttoptr i64 %araw.i830 to ptr
+  br label %alloc_heap.i839
 
-mat_b.i827:                                       ; preds = %mat_a.i822
-  %ap4.i859 = lshr i64 %aw0.i814, 32
-  %ap4_32.i860 = trunc nuw i64 %ap4.i859 to i32
-  store i32 %ap4_32.i860, ptr %atmp.i811, align 4
-  %atmp4.i861 = getelementptr inbounds nuw i8, ptr %atmp.i811, i64 4
-  store i64 %aw1.i815, ptr %atmp4.i861, align 4
-  %fits_sso.i833 = icmp samesign ult i64 %alen.i816, 8
-  br i1 %fits_sso.i833, label %build_sso.i849, label %alloc_heap.i834
+mat_b.i832:                                       ; preds = %mat_a.i827
+  %ap4.i864 = lshr i64 %aw0.i819, 32
+  %ap4_32.i865 = trunc nuw i64 %ap4.i864 to i32
+  store i32 %ap4_32.i865, ptr %atmp.i816, align 4
+  %atmp4.i866 = getelementptr inbounds nuw i8, ptr %atmp.i816, i64 4
+  store i64 %aw1.i820, ptr %atmp4.i866, align 4
+  %fits_sso.i838 = icmp samesign ult i64 %alen.i821, 8
+  br i1 %fits_sso.i838, label %build_sso.i854, label %alloc_heap.i839
 
-build_sso.i849:                                   ; preds = %mat_b.i827
-  %out_sso8.i850 = getelementptr inbounds nuw i8, ptr %out_sso.i813, i64 8
-  %tot32.i851 = trunc nuw nsw i64 %tot.i820 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i813, i8 0, i64 16, i1 false)
-  store i32 %tot32.i851, ptr %out_sso.i813, align 8
-  %sso_dst_a.i852 = getelementptr inbounds nuw i8, ptr %out_sso.i813, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i852, ptr nonnull align 4 %atmp.i811, i64 %alen.i816, i1 false)
-  %sso_dst_b.i853 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i852, i64 %alen.i816
-  store i32 1751347809, ptr %sso_dst_b.i853, align 1
-  %btmp.i812.sroa.5.0.sso_dst_b.i853.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i853, i64 4
-  store i8 120, ptr %btmp.i812.sroa.5.0.sso_dst_b.i853.sroa_idx, align 1
-  %rw0.i854 = load i64, ptr %out_sso.i813, align 8
-  %rw1.i855 = load i64, ptr %out_sso8.i850, align 8
-  %rs0.i856 = insertvalue %ArchxStr poison, i64 %rw0.i854, 0
-  %rs1.i857 = insertvalue %ArchxStr %rs0.i856, i64 %rw1.i855, 1
-  br label %archx_str_concat.exit864
+build_sso.i854:                                   ; preds = %mat_b.i832
+  %out_sso8.i855 = getelementptr inbounds nuw i8, ptr %out_sso.i818, i64 8
+  %tot32.i856 = trunc nuw nsw i64 %tot.i825 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i818, i8 0, i64 16, i1 false)
+  store i32 %tot32.i856, ptr %out_sso.i818, align 8
+  %sso_dst_a.i857 = getelementptr inbounds nuw i8, ptr %out_sso.i818, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i857, ptr nonnull align 4 %atmp.i816, i64 %alen.i821, i1 false)
+  %sso_dst_b.i858 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i857, i64 %alen.i821
+  store i32 1751347809, ptr %sso_dst_b.i858, align 1
+  %btmp.i817.sroa.5.0.sso_dst_b.i858.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i858, i64 4
+  store i8 120, ptr %btmp.i817.sroa.5.0.sso_dst_b.i858.sroa_idx, align 1
+  %rw0.i859 = load i64, ptr %out_sso.i818, align 8
+  %rw1.i860 = load i64, ptr %out_sso8.i855, align 8
+  %rs0.i861 = insertvalue %ArchxStr poison, i64 %rw0.i859, 0
+  %rs1.i862 = insertvalue %ArchxStr %rs0.i861, i64 %rw1.i860, 1
+  br label %archx_str_concat.exit869
 
-alloc_heap.i834:                                  ; preds = %mat_b.i827.thread, %mat_b.i827
-  %aptr.i8281978 = phi ptr [ %alptr.i826, %mat_b.i827.thread ], [ %atmp.i811, %mat_b.i827 ]
-  %hp.i835 = call noalias align 16 ptr @malloc(i64 %tot.i820)
-  %hnull.i836 = icmp eq ptr %hp.i835, null
-  br i1 %hnull.i836, label %oom.i848, label %copy_long.i837
+alloc_heap.i839:                                  ; preds = %mat_b.i832.thread, %mat_b.i832
+  %aptr.i8331997 = phi ptr [ %alptr.i831, %mat_b.i832.thread ], [ %atmp.i816, %mat_b.i832 ]
+  %hp.i840 = call noalias align 16 ptr @malloc(i64 %tot.i825)
+  %hnull.i841 = icmp eq ptr %hp.i840, null
+  br i1 %hnull.i841, label %oom.i853, label %copy_long.i842
 
-copy_long.i837:                                   ; preds = %alloc_heap.i834
-  %hp_i.i838 = ptrtoint ptr %hp.i835 to i64
-  %htagged.i839 = or disjoint i64 %hp_i.i838, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i835, ptr nonnull align 1 %aptr.i8281978, i64 %alen.i816, i1 false)
-  %dst_b.i840 = getelementptr inbounds nuw i8, ptr %hp.i835, i64 %alen.i816
-  store i32 1751347809, ptr %dst_b.i840, align 1
-  %btmp.i812.sroa.5.0.dst_b.i840.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i840, i64 4
-  store i8 120, ptr %btmp.i812.sroa.5.0.dst_b.i840.sroa_idx, align 1
-  %pref32.i841 = load i32, ptr %hp.i835, align 16
-  %pref64.i842 = zext i32 %pref32.i841 to i64
-  %pref_sh.i843 = shl nuw i64 %pref64.i842, 32
-  %w0_out.i844 = or disjoint i64 %pref_sh.i843, %tot.i820
-  %ls0.i845 = insertvalue %ArchxStr poison, i64 %w0_out.i844, 0
-  %ls1.i846 = insertvalue %ArchxStr %ls0.i845, i64 %htagged.i839, 1
-  br label %archx_str_concat.exit864
+copy_long.i842:                                   ; preds = %alloc_heap.i839
+  %hp_i.i843 = ptrtoint ptr %hp.i840 to i64
+  %htagged.i844 = or disjoint i64 %hp_i.i843, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i840, ptr nonnull align 1 %aptr.i8331997, i64 %alen.i821, i1 false)
+  %dst_b.i845 = getelementptr inbounds nuw i8, ptr %hp.i840, i64 %alen.i821
+  store i32 1751347809, ptr %dst_b.i845, align 1
+  %btmp.i817.sroa.5.0.dst_b.i845.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i845, i64 4
+  store i8 120, ptr %btmp.i817.sroa.5.0.dst_b.i845.sroa_idx, align 1
+  %pref32.i846 = load i32, ptr %hp.i840, align 16
+  %pref64.i847 = zext i32 %pref32.i846 to i64
+  %pref_sh.i848 = shl nuw i64 %pref64.i847, 32
+  %w0_out.i849 = or disjoint i64 %pref_sh.i848, %tot.i825
+  %ls0.i850 = insertvalue %ArchxStr poison, i64 %w0_out.i849, 0
+  %ls1.i851 = insertvalue %ArchxStr %ls0.i850, i64 %htagged.i844, 1
+  br label %archx_str_concat.exit869
 
-archx_str_concat.exit864:                         ; preds = %archx_str_concat.exit810, %build_sso.i849, %copy_long.i837
-  %common.ret.op.i847 = phi %ArchxStr [ %rs1.i857, %build_sso.i849 ], [ %ls1.i846, %copy_long.i837 ], [ { i64 7521981563576254469, i64 120 }, %archx_str_concat.exit810 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i811)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i813)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i865)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i867)
-  %aw0.i868 = extractvalue %ArchxStr %common.ret.op.i847, 0
-  %aw1.i869 = extractvalue %ArchxStr %common.ret.op.i847, 1
-  %alen.i870 = and i64 %aw0.i868, 4294967295
-  %az.i871 = icmp eq i64 %alen.i870, 0
-  br i1 %az.i871, label %archx_str_concat.exit918, label %chk_bz.i872
+archx_str_concat.exit869:                         ; preds = %archx_str_concat.exit815, %build_sso.i854, %copy_long.i842
+  %common.ret.op.i852 = phi %ArchxStr [ %rs1.i862, %build_sso.i854 ], [ %ls1.i851, %copy_long.i842 ], [ { i64 7521981563576254469, i64 120 }, %archx_str_concat.exit815 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i816)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i818)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i870)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i872)
+  %aw0.i873 = extractvalue %ArchxStr %common.ret.op.i852, 0
+  %aw1.i874 = extractvalue %ArchxStr %common.ret.op.i852, 1
+  %alen.i875 = and i64 %aw0.i873, 4294967295
+  %az.i876 = icmp eq i64 %alen.i875, 0
+  br i1 %az.i876, label %archx_str_concat.exit923, label %chk_bz.i877
 
-chk_bz.i872:                                      ; preds = %archx_str_concat.exit864
-  %tot.i874 = add nuw nsw i64 %alen.i870, 1
-  %too_big.i875 = icmp samesign ugt i64 %alen.i870, 2147483646
-  br i1 %too_big.i875, label %oom.i902, label %mat_a.i876
+chk_bz.i877:                                      ; preds = %archx_str_concat.exit869
+  %tot.i879 = add nuw nsw i64 %alen.i875, 1
+  %too_big.i880 = icmp samesign ugt i64 %alen.i875, 2147483646
+  br i1 %too_big.i880, label %oom.i907, label %mat_a.i881
 
-oom.i902:                                         ; preds = %alloc_heap.i888, %chk_bz.i872
+oom.i907:                                         ; preds = %alloc_heap.i893, %chk_bz.i877
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i876:                                       ; preds = %chk_bz.i872
-  %ashort.i877 = icmp samesign ult i64 %alen.i870, 13
-  br i1 %ashort.i877, label %mat_b.i881, label %mat_b.i881.thread
+mat_a.i881:                                       ; preds = %chk_bz.i877
+  %ashort.i882 = icmp samesign ult i64 %alen.i875, 13
+  br i1 %ashort.i882, label %mat_b.i886, label %mat_b.i886.thread
 
-mat_b.i881.thread:                                ; preds = %mat_a.i876
-  %araw.i879 = and i64 %aw1.i869, -4
-  %alptr.i880 = inttoptr i64 %araw.i879 to ptr
-  br label %alloc_heap.i888
+mat_b.i886.thread:                                ; preds = %mat_a.i881
+  %araw.i884 = and i64 %aw1.i874, -4
+  %alptr.i885 = inttoptr i64 %araw.i884 to ptr
+  br label %alloc_heap.i893
 
-mat_b.i881:                                       ; preds = %mat_a.i876
-  %ap4.i913 = lshr i64 %aw0.i868, 32
-  %ap4_32.i914 = trunc nuw i64 %ap4.i913 to i32
-  store i32 %ap4_32.i914, ptr %atmp.i865, align 4
-  %atmp4.i915 = getelementptr inbounds nuw i8, ptr %atmp.i865, i64 4
-  store i64 %aw1.i869, ptr %atmp4.i915, align 4
-  %fits_sso.i887.not = icmp eq i64 %alen.i870, 12
-  br i1 %fits_sso.i887.not, label %alloc_heap.i888, label %build_sso.i903
+mat_b.i886:                                       ; preds = %mat_a.i881
+  %ap4.i918 = lshr i64 %aw0.i873, 32
+  %ap4_32.i919 = trunc nuw i64 %ap4.i918 to i32
+  store i32 %ap4_32.i919, ptr %atmp.i870, align 4
+  %atmp4.i920 = getelementptr inbounds nuw i8, ptr %atmp.i870, i64 4
+  store i64 %aw1.i874, ptr %atmp4.i920, align 4
+  %fits_sso.i892.not = icmp eq i64 %alen.i875, 12
+  br i1 %fits_sso.i892.not, label %alloc_heap.i893, label %build_sso.i908
 
-build_sso.i903:                                   ; preds = %mat_b.i881
-  %out_sso8.i904 = getelementptr inbounds nuw i8, ptr %out_sso.i867, i64 8
-  %tot32.i905 = trunc nuw nsw i64 %tot.i874 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i867, i8 0, i64 16, i1 false)
-  store i32 %tot32.i905, ptr %out_sso.i867, align 8
-  %sso_dst_a.i906 = getelementptr inbounds nuw i8, ptr %out_sso.i867, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i906, ptr nonnull align 4 %atmp.i865, i64 %alen.i870, i1 false)
-  %sso_dst_b.i907 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i906, i64 %alen.i870
-  store i8 58, ptr %sso_dst_b.i907, align 1
-  %rw0.i908 = load i64, ptr %out_sso.i867, align 8
-  %rw1.i909 = load i64, ptr %out_sso8.i904, align 8
-  %rs0.i910 = insertvalue %ArchxStr poison, i64 %rw0.i908, 0
-  %rs1.i911 = insertvalue %ArchxStr %rs0.i910, i64 %rw1.i909, 1
-  br label %archx_str_concat.exit918
+build_sso.i908:                                   ; preds = %mat_b.i886
+  %out_sso8.i909 = getelementptr inbounds nuw i8, ptr %out_sso.i872, i64 8
+  %tot32.i910 = trunc nuw nsw i64 %tot.i879 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i872, i8 0, i64 16, i1 false)
+  store i32 %tot32.i910, ptr %out_sso.i872, align 8
+  %sso_dst_a.i911 = getelementptr inbounds nuw i8, ptr %out_sso.i872, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i911, ptr nonnull align 4 %atmp.i870, i64 %alen.i875, i1 false)
+  %sso_dst_b.i912 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i911, i64 %alen.i875
+  store i8 58, ptr %sso_dst_b.i912, align 1
+  %rw0.i913 = load i64, ptr %out_sso.i872, align 8
+  %rw1.i914 = load i64, ptr %out_sso8.i909, align 8
+  %rs0.i915 = insertvalue %ArchxStr poison, i64 %rw0.i913, 0
+  %rs1.i916 = insertvalue %ArchxStr %rs0.i915, i64 %rw1.i914, 1
+  br label %archx_str_concat.exit923
 
-alloc_heap.i888:                                  ; preds = %mat_b.i881.thread, %mat_b.i881
-  %aptr.i8821981 = phi ptr [ %alptr.i880, %mat_b.i881.thread ], [ %atmp.i865, %mat_b.i881 ]
-  %hp.i889 = call noalias align 16 ptr @malloc(i64 %tot.i874)
-  %hnull.i890 = icmp eq ptr %hp.i889, null
-  br i1 %hnull.i890, label %oom.i902, label %copy_long.i891
+alloc_heap.i893:                                  ; preds = %mat_b.i886.thread, %mat_b.i886
+  %aptr.i8872000 = phi ptr [ %alptr.i885, %mat_b.i886.thread ], [ %atmp.i870, %mat_b.i886 ]
+  %hp.i894 = call noalias align 16 ptr @malloc(i64 %tot.i879)
+  %hnull.i895 = icmp eq ptr %hp.i894, null
+  br i1 %hnull.i895, label %oom.i907, label %copy_long.i896
 
-copy_long.i891:                                   ; preds = %alloc_heap.i888
-  %hp_i.i892 = ptrtoint ptr %hp.i889 to i64
-  %htagged.i893 = or disjoint i64 %hp_i.i892, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i889, ptr nonnull align 1 %aptr.i8821981, i64 %alen.i870, i1 false)
-  %dst_b.i894 = getelementptr inbounds nuw i8, ptr %hp.i889, i64 %alen.i870
-  store i8 58, ptr %dst_b.i894, align 1
-  %pref32.i895 = load i32, ptr %hp.i889, align 16
-  %pref64.i896 = zext i32 %pref32.i895 to i64
-  %pref_sh.i897 = shl nuw i64 %pref64.i896, 32
-  %w0_out.i898 = or disjoint i64 %pref_sh.i897, %tot.i874
-  %ls0.i899 = insertvalue %ArchxStr poison, i64 %w0_out.i898, 0
-  %ls1.i900 = insertvalue %ArchxStr %ls0.i899, i64 %htagged.i893, 1
-  br label %archx_str_concat.exit918
+copy_long.i896:                                   ; preds = %alloc_heap.i893
+  %hp_i.i897 = ptrtoint ptr %hp.i894 to i64
+  %htagged.i898 = or disjoint i64 %hp_i.i897, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i894, ptr nonnull align 1 %aptr.i8872000, i64 %alen.i875, i1 false)
+  %dst_b.i899 = getelementptr inbounds nuw i8, ptr %hp.i894, i64 %alen.i875
+  store i8 58, ptr %dst_b.i899, align 1
+  %pref32.i900 = load i32, ptr %hp.i894, align 16
+  %pref64.i901 = zext i32 %pref32.i900 to i64
+  %pref_sh.i902 = shl nuw i64 %pref64.i901, 32
+  %w0_out.i903 = or disjoint i64 %pref_sh.i902, %tot.i879
+  %ls0.i904 = insertvalue %ArchxStr poison, i64 %w0_out.i903, 0
+  %ls1.i905 = insertvalue %ArchxStr %ls0.i904, i64 %htagged.i898, 1
+  br label %archx_str_concat.exit923
 
-archx_str_concat.exit918:                         ; preds = %archx_str_concat.exit864, %build_sso.i903, %copy_long.i891
-  %common.ret.op.i901 = phi %ArchxStr [ %rs1.i911, %build_sso.i903 ], [ %ls1.i900, %copy_long.i891 ], [ { i64 249108103169, i64 0 }, %archx_str_concat.exit864 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i865)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i867)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i919)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i921)
-  %aw0.i922 = extractvalue %ArchxStr %common.ret.op.i901, 0
-  %aw1.i923 = extractvalue %ArchxStr %common.ret.op.i901, 1
-  %alen.i924 = and i64 %aw0.i922, 4294967295
-  %az.i925 = icmp eq i64 %alen.i924, 0
-  br i1 %az.i925, label %archx_str_concat.exit972, label %chk_bz.i926
+archx_str_concat.exit923:                         ; preds = %archx_str_concat.exit869, %build_sso.i908, %copy_long.i896
+  %common.ret.op.i906 = phi %ArchxStr [ %rs1.i916, %build_sso.i908 ], [ %ls1.i905, %copy_long.i896 ], [ { i64 249108103169, i64 0 }, %archx_str_concat.exit869 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i870)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i872)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i924)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i926)
+  %aw0.i927 = extractvalue %ArchxStr %common.ret.op.i906, 0
+  %aw1.i928 = extractvalue %ArchxStr %common.ret.op.i906, 1
+  %alen.i929 = and i64 %aw0.i927, 4294967295
+  %az.i930 = icmp eq i64 %alen.i929, 0
+  br i1 %az.i930, label %archx_str_concat.exit977, label %chk_bz.i931
 
-chk_bz.i926:                                      ; preds = %archx_str_concat.exit918
-  %tot.i928 = add nuw nsw i64 %alen.i924, 4
-  %too_big.i929 = icmp samesign ugt i64 %alen.i924, 2147483643
-  br i1 %too_big.i929, label %oom.i956, label %mat_a.i930
+chk_bz.i931:                                      ; preds = %archx_str_concat.exit923
+  %tot.i933 = add nuw nsw i64 %alen.i929, 4
+  %too_big.i934 = icmp samesign ugt i64 %alen.i929, 2147483643
+  br i1 %too_big.i934, label %oom.i961, label %mat_a.i935
 
-oom.i956:                                         ; preds = %alloc_heap.i942, %chk_bz.i926
+oom.i961:                                         ; preds = %alloc_heap.i947, %chk_bz.i931
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i930:                                       ; preds = %chk_bz.i926
-  %ashort.i931 = icmp samesign ult i64 %alen.i924, 13
-  br i1 %ashort.i931, label %mat_b.i935, label %mat_b.i935.thread
+mat_a.i935:                                       ; preds = %chk_bz.i931
+  %ashort.i936 = icmp samesign ult i64 %alen.i929, 13
+  br i1 %ashort.i936, label %mat_b.i940, label %mat_b.i940.thread
 
-mat_b.i935.thread:                                ; preds = %mat_a.i930
-  %araw.i933 = and i64 %aw1.i923, -4
-  %alptr.i934 = inttoptr i64 %araw.i933 to ptr
-  br label %alloc_heap.i942
+mat_b.i940.thread:                                ; preds = %mat_a.i935
+  %araw.i938 = and i64 %aw1.i928, -4
+  %alptr.i939 = inttoptr i64 %araw.i938 to ptr
+  br label %alloc_heap.i947
 
-mat_b.i935:                                       ; preds = %mat_a.i930
-  %ap4.i967 = lshr i64 %aw0.i922, 32
-  %ap4_32.i968 = trunc nuw i64 %ap4.i967 to i32
-  store i32 %ap4_32.i968, ptr %atmp.i919, align 4
-  %atmp4.i969 = getelementptr inbounds nuw i8, ptr %atmp.i919, i64 4
-  store i64 %aw1.i923, ptr %atmp4.i969, align 4
-  %fits_sso.i941 = icmp samesign ult i64 %alen.i924, 9
-  br i1 %fits_sso.i941, label %build_sso.i957, label %alloc_heap.i942
+mat_b.i940:                                       ; preds = %mat_a.i935
+  %ap4.i972 = lshr i64 %aw0.i927, 32
+  %ap4_32.i973 = trunc nuw i64 %ap4.i972 to i32
+  store i32 %ap4_32.i973, ptr %atmp.i924, align 4
+  %atmp4.i974 = getelementptr inbounds nuw i8, ptr %atmp.i924, i64 4
+  store i64 %aw1.i928, ptr %atmp4.i974, align 4
+  %fits_sso.i946 = icmp samesign ult i64 %alen.i929, 9
+  br i1 %fits_sso.i946, label %build_sso.i962, label %alloc_heap.i947
 
-build_sso.i957:                                   ; preds = %mat_b.i935
-  %out_sso8.i958 = getelementptr inbounds nuw i8, ptr %out_sso.i921, i64 8
-  %tot32.i959 = trunc nuw nsw i64 %tot.i928 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i921, i8 0, i64 16, i1 false)
-  store i32 %tot32.i959, ptr %out_sso.i921, align 8
-  %sso_dst_a.i960 = getelementptr inbounds nuw i8, ptr %out_sso.i921, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i960, ptr nonnull align 4 %atmp.i919, i64 %alen.i924, i1 false)
-  %sso_dst_b.i961 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i960, i64 %alen.i924
-  store i32 1702195828, ptr %sso_dst_b.i961, align 1
-  %rw0.i962 = load i64, ptr %out_sso.i921, align 8
-  %rw1.i963 = load i64, ptr %out_sso8.i958, align 8
-  %rs0.i964 = insertvalue %ArchxStr poison, i64 %rw0.i962, 0
-  %rs1.i965 = insertvalue %ArchxStr %rs0.i964, i64 %rw1.i963, 1
-  br label %archx_str_concat.exit972
+build_sso.i962:                                   ; preds = %mat_b.i940
+  %out_sso8.i963 = getelementptr inbounds nuw i8, ptr %out_sso.i926, i64 8
+  %tot32.i964 = trunc nuw nsw i64 %tot.i933 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i926, i8 0, i64 16, i1 false)
+  store i32 %tot32.i964, ptr %out_sso.i926, align 8
+  %sso_dst_a.i965 = getelementptr inbounds nuw i8, ptr %out_sso.i926, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i965, ptr nonnull align 4 %atmp.i924, i64 %alen.i929, i1 false)
+  %sso_dst_b.i966 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i965, i64 %alen.i929
+  store i32 1702195828, ptr %sso_dst_b.i966, align 1
+  %rw0.i967 = load i64, ptr %out_sso.i926, align 8
+  %rw1.i968 = load i64, ptr %out_sso8.i963, align 8
+  %rs0.i969 = insertvalue %ArchxStr poison, i64 %rw0.i967, 0
+  %rs1.i970 = insertvalue %ArchxStr %rs0.i969, i64 %rw1.i968, 1
+  br label %archx_str_concat.exit977
 
-alloc_heap.i942:                                  ; preds = %mat_b.i935.thread, %mat_b.i935
-  %aptr.i9361984 = phi ptr [ %alptr.i934, %mat_b.i935.thread ], [ %atmp.i919, %mat_b.i935 ]
-  %hp.i943 = call noalias align 16 ptr @malloc(i64 %tot.i928)
-  %hnull.i944 = icmp eq ptr %hp.i943, null
-  br i1 %hnull.i944, label %oom.i956, label %copy_long.i945
+alloc_heap.i947:                                  ; preds = %mat_b.i940.thread, %mat_b.i940
+  %aptr.i9412003 = phi ptr [ %alptr.i939, %mat_b.i940.thread ], [ %atmp.i924, %mat_b.i940 ]
+  %hp.i948 = call noalias align 16 ptr @malloc(i64 %tot.i933)
+  %hnull.i949 = icmp eq ptr %hp.i948, null
+  br i1 %hnull.i949, label %oom.i961, label %copy_long.i950
 
-copy_long.i945:                                   ; preds = %alloc_heap.i942
-  %hp_i.i946 = ptrtoint ptr %hp.i943 to i64
-  %htagged.i947 = or disjoint i64 %hp_i.i946, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i943, ptr nonnull align 1 %aptr.i9361984, i64 %alen.i924, i1 false)
-  %dst_b.i948 = getelementptr inbounds nuw i8, ptr %hp.i943, i64 %alen.i924
-  store i32 1702195828, ptr %dst_b.i948, align 1
-  %pref32.i949 = load i32, ptr %hp.i943, align 16
-  %pref64.i950 = zext i32 %pref32.i949 to i64
-  %pref_sh.i951 = shl nuw i64 %pref64.i950, 32
-  %w0_out.i952 = or disjoint i64 %pref_sh.i951, %tot.i928
-  %ls0.i953 = insertvalue %ArchxStr poison, i64 %w0_out.i952, 0
-  %ls1.i954 = insertvalue %ArchxStr %ls0.i953, i64 %htagged.i947, 1
-  br label %archx_str_concat.exit972
+copy_long.i950:                                   ; preds = %alloc_heap.i947
+  %hp_i.i951 = ptrtoint ptr %hp.i948 to i64
+  %htagged.i952 = or disjoint i64 %hp_i.i951, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i948, ptr nonnull align 1 %aptr.i9412003, i64 %alen.i929, i1 false)
+  %dst_b.i953 = getelementptr inbounds nuw i8, ptr %hp.i948, i64 %alen.i929
+  store i32 1702195828, ptr %dst_b.i953, align 1
+  %pref32.i954 = load i32, ptr %hp.i948, align 16
+  %pref64.i955 = zext i32 %pref32.i954 to i64
+  %pref_sh.i956 = shl nuw i64 %pref64.i955, 32
+  %w0_out.i957 = or disjoint i64 %pref_sh.i956, %tot.i933
+  %ls0.i958 = insertvalue %ArchxStr poison, i64 %w0_out.i957, 0
+  %ls1.i959 = insertvalue %ArchxStr %ls0.i958, i64 %htagged.i952, 1
+  br label %archx_str_concat.exit977
 
-archx_str_concat.exit972:                         ; preds = %archx_str_concat.exit918, %build_sso.i957, %copy_long.i945
-  %common.ret.op.i955 = phi %ArchxStr [ %rs1.i965, %build_sso.i957 ], [ %ls1.i954, %copy_long.i945 ], [ { i64 7310875412647641092, i64 0 }, %archx_str_concat.exit918 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i919)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i921)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i973)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i975)
-  %aw0.i976 = extractvalue %ArchxStr %common.ret.op.i955, 0
-  %aw1.i977 = extractvalue %ArchxStr %common.ret.op.i955, 1
-  %alen.i978 = and i64 %aw0.i976, 4294967295
-  %az.i979 = icmp eq i64 %alen.i978, 0
-  br i1 %az.i979, label %archx_str_concat.exit1026, label %chk_bz.i980
+archx_str_concat.exit977:                         ; preds = %archx_str_concat.exit923, %build_sso.i962, %copy_long.i950
+  %common.ret.op.i960 = phi %ArchxStr [ %rs1.i970, %build_sso.i962 ], [ %ls1.i959, %copy_long.i950 ], [ { i64 7310875412647641092, i64 0 }, %archx_str_concat.exit923 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i924)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i926)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i978)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i980)
+  %aw0.i981 = extractvalue %ArchxStr %common.ret.op.i960, 0
+  %aw1.i982 = extractvalue %ArchxStr %common.ret.op.i960, 1
+  %alen.i983 = and i64 %aw0.i981, 4294967295
+  %az.i984 = icmp eq i64 %alen.i983, 0
+  br i1 %az.i984, label %archx_str_concat.exit1031, label %chk_bz.i985
 
-chk_bz.i980:                                      ; preds = %archx_str_concat.exit972
-  %tot.i982 = add nuw nsw i64 %alen.i978, 5
-  %too_big.i983 = icmp samesign ugt i64 %alen.i978, 2147483642
-  br i1 %too_big.i983, label %oom.i1010, label %mat_a.i984
+chk_bz.i985:                                      ; preds = %archx_str_concat.exit977
+  %tot.i987 = add nuw nsw i64 %alen.i983, 5
+  %too_big.i988 = icmp samesign ugt i64 %alen.i983, 2147483642
+  br i1 %too_big.i988, label %oom.i1015, label %mat_a.i989
 
-oom.i1010:                                        ; preds = %alloc_heap.i996, %chk_bz.i980
+oom.i1015:                                        ; preds = %alloc_heap.i1001, %chk_bz.i985
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i984:                                       ; preds = %chk_bz.i980
-  %ashort.i985 = icmp samesign ult i64 %alen.i978, 13
-  br i1 %ashort.i985, label %mat_b.i989, label %mat_b.i989.thread
+mat_a.i989:                                       ; preds = %chk_bz.i985
+  %ashort.i990 = icmp samesign ult i64 %alen.i983, 13
+  br i1 %ashort.i990, label %mat_b.i994, label %mat_b.i994.thread
 
-mat_b.i989.thread:                                ; preds = %mat_a.i984
-  %araw.i987 = and i64 %aw1.i977, -4
-  %alptr.i988 = inttoptr i64 %araw.i987 to ptr
-  br label %alloc_heap.i996
+mat_b.i994.thread:                                ; preds = %mat_a.i989
+  %araw.i992 = and i64 %aw1.i982, -4
+  %alptr.i993 = inttoptr i64 %araw.i992 to ptr
+  br label %alloc_heap.i1001
 
-mat_b.i989:                                       ; preds = %mat_a.i984
-  %ap4.i1021 = lshr i64 %aw0.i976, 32
-  %ap4_32.i1022 = trunc nuw i64 %ap4.i1021 to i32
-  store i32 %ap4_32.i1022, ptr %atmp.i973, align 4
-  %atmp4.i1023 = getelementptr inbounds nuw i8, ptr %atmp.i973, i64 4
-  store i64 %aw1.i977, ptr %atmp4.i1023, align 4
-  %fits_sso.i995 = icmp samesign ult i64 %alen.i978, 8
-  br i1 %fits_sso.i995, label %build_sso.i1011, label %alloc_heap.i996
+mat_b.i994:                                       ; preds = %mat_a.i989
+  %ap4.i1026 = lshr i64 %aw0.i981, 32
+  %ap4_32.i1027 = trunc nuw i64 %ap4.i1026 to i32
+  store i32 %ap4_32.i1027, ptr %atmp.i978, align 4
+  %atmp4.i1028 = getelementptr inbounds nuw i8, ptr %atmp.i978, i64 4
+  store i64 %aw1.i982, ptr %atmp4.i1028, align 4
+  %fits_sso.i1000 = icmp samesign ult i64 %alen.i983, 8
+  br i1 %fits_sso.i1000, label %build_sso.i1016, label %alloc_heap.i1001
 
-build_sso.i1011:                                  ; preds = %mat_b.i989
-  %out_sso8.i1012 = getelementptr inbounds nuw i8, ptr %out_sso.i975, i64 8
-  %tot32.i1013 = trunc nuw nsw i64 %tot.i982 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i975, i8 0, i64 16, i1 false)
-  store i32 %tot32.i1013, ptr %out_sso.i975, align 8
-  %sso_dst_a.i1014 = getelementptr inbounds nuw i8, ptr %out_sso.i975, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1014, ptr nonnull align 4 %atmp.i973, i64 %alen.i978, i1 false)
-  %sso_dst_b.i1015 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1014, i64 %alen.i978
-  store i32 1852140576, ptr %sso_dst_b.i1015, align 1
-  %btmp.i974.sroa.5.0.sso_dst_b.i1015.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i1015, i64 4
-  store i8 61, ptr %btmp.i974.sroa.5.0.sso_dst_b.i1015.sroa_idx, align 1
-  %rw0.i1016 = load i64, ptr %out_sso.i975, align 8
-  %rw1.i1017 = load i64, ptr %out_sso8.i1012, align 8
-  %rs0.i1018 = insertvalue %ArchxStr poison, i64 %rw0.i1016, 0
-  %rs1.i1019 = insertvalue %ArchxStr %rs0.i1018, i64 %rw1.i1017, 1
-  br label %archx_str_concat.exit1026
+build_sso.i1016:                                  ; preds = %mat_b.i994
+  %out_sso8.i1017 = getelementptr inbounds nuw i8, ptr %out_sso.i980, i64 8
+  %tot32.i1018 = trunc nuw nsw i64 %tot.i987 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i980, i8 0, i64 16, i1 false)
+  store i32 %tot32.i1018, ptr %out_sso.i980, align 8
+  %sso_dst_a.i1019 = getelementptr inbounds nuw i8, ptr %out_sso.i980, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1019, ptr nonnull align 4 %atmp.i978, i64 %alen.i983, i1 false)
+  %sso_dst_b.i1020 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1019, i64 %alen.i983
+  store i32 1852140576, ptr %sso_dst_b.i1020, align 1
+  %btmp.i979.sroa.5.0.sso_dst_b.i1020.sroa_idx = getelementptr inbounds nuw i8, ptr %sso_dst_b.i1020, i64 4
+  store i8 61, ptr %btmp.i979.sroa.5.0.sso_dst_b.i1020.sroa_idx, align 1
+  %rw0.i1021 = load i64, ptr %out_sso.i980, align 8
+  %rw1.i1022 = load i64, ptr %out_sso8.i1017, align 8
+  %rs0.i1023 = insertvalue %ArchxStr poison, i64 %rw0.i1021, 0
+  %rs1.i1024 = insertvalue %ArchxStr %rs0.i1023, i64 %rw1.i1022, 1
+  br label %archx_str_concat.exit1031
 
-alloc_heap.i996:                                  ; preds = %mat_b.i989.thread, %mat_b.i989
-  %aptr.i9901987 = phi ptr [ %alptr.i988, %mat_b.i989.thread ], [ %atmp.i973, %mat_b.i989 ]
-  %hp.i997 = call noalias align 16 ptr @malloc(i64 %tot.i982)
-  %hnull.i998 = icmp eq ptr %hp.i997, null
-  br i1 %hnull.i998, label %oom.i1010, label %copy_long.i999
+alloc_heap.i1001:                                 ; preds = %mat_b.i994.thread, %mat_b.i994
+  %aptr.i9952006 = phi ptr [ %alptr.i993, %mat_b.i994.thread ], [ %atmp.i978, %mat_b.i994 ]
+  %hp.i1002 = call noalias align 16 ptr @malloc(i64 %tot.i987)
+  %hnull.i1003 = icmp eq ptr %hp.i1002, null
+  br i1 %hnull.i1003, label %oom.i1015, label %copy_long.i1004
 
-copy_long.i999:                                   ; preds = %alloc_heap.i996
-  %hp_i.i1000 = ptrtoint ptr %hp.i997 to i64
-  %htagged.i1001 = or disjoint i64 %hp_i.i1000, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i997, ptr nonnull align 1 %aptr.i9901987, i64 %alen.i978, i1 false)
-  %dst_b.i1002 = getelementptr inbounds nuw i8, ptr %hp.i997, i64 %alen.i978
-  store i32 1852140576, ptr %dst_b.i1002, align 1
-  %btmp.i974.sroa.5.0.dst_b.i1002.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i1002, i64 4
-  store i8 61, ptr %btmp.i974.sroa.5.0.dst_b.i1002.sroa_idx, align 1
-  %pref32.i1003 = load i32, ptr %hp.i997, align 16
-  %pref64.i1004 = zext i32 %pref32.i1003 to i64
-  %pref_sh.i1005 = shl nuw i64 %pref64.i1004, 32
-  %w0_out.i1006 = or disjoint i64 %pref_sh.i1005, %tot.i982
-  %ls0.i1007 = insertvalue %ArchxStr poison, i64 %w0_out.i1006, 0
-  %ls1.i1008 = insertvalue %ArchxStr %ls0.i1007, i64 %htagged.i1001, 1
-  br label %archx_str_concat.exit1026
+copy_long.i1004:                                  ; preds = %alloc_heap.i1001
+  %hp_i.i1005 = ptrtoint ptr %hp.i1002 to i64
+  %htagged.i1006 = or disjoint i64 %hp_i.i1005, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1002, ptr nonnull align 1 %aptr.i9952006, i64 %alen.i983, i1 false)
+  %dst_b.i1007 = getelementptr inbounds nuw i8, ptr %hp.i1002, i64 %alen.i983
+  store i32 1852140576, ptr %dst_b.i1007, align 1
+  %btmp.i979.sroa.5.0.dst_b.i1007.sroa_idx = getelementptr inbounds nuw i8, ptr %dst_b.i1007, i64 4
+  store i8 61, ptr %btmp.i979.sroa.5.0.dst_b.i1007.sroa_idx, align 1
+  %pref32.i1008 = load i32, ptr %hp.i1002, align 16
+  %pref64.i1009 = zext i32 %pref32.i1008 to i64
+  %pref_sh.i1010 = shl nuw i64 %pref64.i1009, 32
+  %w0_out.i1011 = or disjoint i64 %pref_sh.i1010, %tot.i987
+  %ls0.i1012 = insertvalue %ArchxStr poison, i64 %w0_out.i1011, 0
+  %ls1.i1013 = insertvalue %ArchxStr %ls0.i1012, i64 %htagged.i1006, 1
+  br label %archx_str_concat.exit1031
 
-archx_str_concat.exit1026:                        ; preds = %archx_str_concat.exit972, %build_sso.i1011, %copy_long.i999
-  %common.ret.op.i1009 = phi %ArchxStr [ %rs1.i1019, %build_sso.i1011 ], [ %ls1.i1008, %copy_long.i999 ], [ { i64 7954883201514602501, i64 61 }, %archx_str_concat.exit972 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i973)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i975)
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1557)
-  %n32.i1558 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1557, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 3)
-  %len.i1559 = sext i32 %n32.i1558 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1556)
-  %z.i.i1560 = icmp slt i32 %n32.i1558, 1
-  br i1 %z.i.i1560, label %archx_str_from_int.exit1584, label %chk_sso.i.i1561
+archx_str_concat.exit1031:                        ; preds = %archx_str_concat.exit977, %build_sso.i1016, %copy_long.i1004
+  %common.ret.op.i1014 = phi %ArchxStr [ %rs1.i1024, %build_sso.i1016 ], [ %ls1.i1013, %copy_long.i1004 ], [ { i64 7954883201514602501, i64 61 }, %archx_str_concat.exit977 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i978)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i980)
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1562)
+  %n32.i1563 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1562, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 3)
+  %len.i1564 = sext i32 %n32.i1563 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1561)
+  %z.i.i1565 = icmp slt i32 %n32.i1563, 1
+  br i1 %z.i.i1565, label %archx_str_from_int.exit1589, label %chk_sso.i.i1566
 
-oom.i.i1576:                                      ; preds = %alloc_heap.i.i1563
+oom.i.i1581:                                      ; preds = %alloc_heap.i.i1568
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1561:                                  ; preds = %archx_str_concat.exit1026
-  %short.i.i1562 = icmp samesign ult i32 %n32.i1558, 13
-  br i1 %short.i.i1562, label %pack_sso.i.i1577, label %alloc_heap.i.i1563
+chk_sso.i.i1566:                                  ; preds = %archx_str_concat.exit1031
+  %short.i.i1567 = icmp samesign ult i32 %n32.i1563, 13
+  br i1 %short.i.i1567, label %pack_sso.i.i1582, label %alloc_heap.i.i1568
 
-pack_sso.i.i1577:                                 ; preds = %chk_sso.i.i1561
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1556, i8 0, i64 16, i1 false)
-  store i32 %n32.i1558, ptr %sso.i.i1556, align 8
-  %sso.i.i1556.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1556, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1556.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1557, i64 range(i64 -2147483648, 2147483650) %len.i1559, i1 false)
-  %sso.i.i1556.0.sso.i.i1556.0.sso.i.i1556.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1579 = load i64, ptr %sso.i.i1556, align 8
-  %sso.i.i1556.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1556, i64 8
-  %sso.i.i1556.8.sso.i.i1556.8.sso.i.i1556.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1581 = load i64, ptr %sso.i.i1556.8.sroa_idx, align 8
-  %ss0.i.i1582 = insertvalue %ArchxStr poison, i64 %sso.i.i1556.0.sso.i.i1556.0.sso.i.i1556.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1579, 0
-  %ss1.i.i1583 = insertvalue %ArchxStr %ss0.i.i1582, i64 %sso.i.i1556.8.sso.i.i1556.8.sso.i.i1556.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1581, 1
-  br label %archx_str_from_int.exit1584
+pack_sso.i.i1582:                                 ; preds = %chk_sso.i.i1566
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1561, i8 0, i64 16, i1 false)
+  store i32 %n32.i1563, ptr %sso.i.i1561, align 8
+  %sso.i.i1561.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1561, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1561.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1562, i64 range(i64 -2147483648, 2147483650) %len.i1564, i1 false)
+  %sso.i.i1561.0.sso.i.i1561.0.sso.i.i1561.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1584 = load i64, ptr %sso.i.i1561, align 8
+  %sso.i.i1561.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1561, i64 8
+  %sso.i.i1561.8.sso.i.i1561.8.sso.i.i1561.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1586 = load i64, ptr %sso.i.i1561.8.sroa_idx, align 8
+  %ss0.i.i1587 = insertvalue %ArchxStr poison, i64 %sso.i.i1561.0.sso.i.i1561.0.sso.i.i1561.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1584, 0
+  %ss1.i.i1588 = insertvalue %ArchxStr %ss0.i.i1587, i64 %sso.i.i1561.8.sso.i.i1561.8.sso.i.i1561.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1586, 1
+  br label %archx_str_from_int.exit1589
 
-alloc_heap.i.i1563:                               ; preds = %chk_sso.i.i1561
-  %hp.i.i1564 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1559)
-  %hnull.i.i1565 = icmp eq ptr %hp.i.i1564, null
-  br i1 %hnull.i.i1565, label %oom.i.i1576, label %copy_long.i.i1566
+alloc_heap.i.i1568:                               ; preds = %chk_sso.i.i1566
+  %hp.i.i1569 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1564)
+  %hnull.i.i1570 = icmp eq ptr %hp.i.i1569, null
+  br i1 %hnull.i.i1570, label %oom.i.i1581, label %copy_long.i.i1571
 
-copy_long.i.i1566:                                ; preds = %alloc_heap.i.i1563
-  %hp_i.i.i1567 = ptrtoint ptr %hp.i.i1564 to i64
-  %htagged.i.i1568 = or disjoint i64 %hp_i.i.i1567, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1564, ptr nonnull readonly align 8 %buf.i1557, i64 range(i64 -2147483648, 2147483650) %len.i1559, i1 false)
-  %pref32.i.i1569 = load i32, ptr %hp.i.i1564, align 16
-  %pref64.i.i1570 = zext i32 %pref32.i.i1569 to i64
-  %pref_sh.i.i1571 = shl nuw i64 %pref64.i.i1570, 32
-  %w0_out.i.i1572 = or disjoint i64 %pref_sh.i.i1571, %len.i1559
-  %ls0.i.i1573 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1572, 0
-  %ls1.i.i1574 = insertvalue %ArchxStr %ls0.i.i1573, i64 %htagged.i.i1568, 1
-  br label %archx_str_from_int.exit1584
+copy_long.i.i1571:                                ; preds = %alloc_heap.i.i1568
+  %hp_i.i.i1572 = ptrtoint ptr %hp.i.i1569 to i64
+  %htagged.i.i1573 = or disjoint i64 %hp_i.i.i1572, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1569, ptr nonnull readonly align 8 %buf.i1562, i64 range(i64 -2147483648, 2147483650) %len.i1564, i1 false)
+  %pref32.i.i1574 = load i32, ptr %hp.i.i1569, align 16
+  %pref64.i.i1575 = zext i32 %pref32.i.i1574 to i64
+  %pref_sh.i.i1576 = shl nuw i64 %pref64.i.i1575, 32
+  %w0_out.i.i1577 = or disjoint i64 %pref_sh.i.i1576, %len.i1564
+  %ls0.i.i1578 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1577, 0
+  %ls1.i.i1579 = insertvalue %ArchxStr %ls0.i.i1578, i64 %htagged.i.i1573, 1
+  br label %archx_str_from_int.exit1589
 
-archx_str_from_int.exit1584:                      ; preds = %archx_str_concat.exit1026, %pack_sso.i.i1577, %copy_long.i.i1566
-  %common.ret.op.i.i1575 = phi %ArchxStr [ %ss1.i.i1583, %pack_sso.i.i1577 ], [ %ls1.i.i1574, %copy_long.i.i1566 ], [ zeroinitializer, %archx_str_concat.exit1026 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1556)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1557)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1027)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1028)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1029)
-  %aw0.i1030 = extractvalue %ArchxStr %common.ret.op.i1009, 0
-  %aw1.i1031 = extractvalue %ArchxStr %common.ret.op.i1009, 1
-  %bw0.i1032 = extractvalue %ArchxStr %common.ret.op.i.i1575, 0
-  %bw1.i1033 = extractvalue %ArchxStr %common.ret.op.i.i1575, 1
-  %alen.i1034 = and i64 %aw0.i1030, 4294967295
-  %blen.i1035 = and i64 %bw0.i1032, 4294967295
-  %az.i1036 = icmp eq i64 %alen.i1034, 0
-  br i1 %az.i1036, label %ret_b_clone.i1090, label %chk_bz.i1037
+archx_str_from_int.exit1589:                      ; preds = %archx_str_concat.exit1031, %pack_sso.i.i1582, %copy_long.i.i1571
+  %common.ret.op.i.i1580 = phi %ArchxStr [ %ss1.i.i1588, %pack_sso.i.i1582 ], [ %ls1.i.i1579, %copy_long.i.i1571 ], [ zeroinitializer, %archx_str_concat.exit1031 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1561)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1562)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1032)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1033)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1034)
+  %aw0.i1035 = extractvalue %ArchxStr %common.ret.op.i1014, 0
+  %aw1.i1036 = extractvalue %ArchxStr %common.ret.op.i1014, 1
+  %bw0.i1037 = extractvalue %ArchxStr %common.ret.op.i.i1580, 0
+  %bw1.i1038 = extractvalue %ArchxStr %common.ret.op.i.i1580, 1
+  %alen.i1039 = and i64 %aw0.i1035, 4294967295
+  %blen.i1040 = and i64 %bw0.i1037, 4294967295
+  %az.i1041 = icmp eq i64 %alen.i1039, 0
+  br i1 %az.i1041, label %ret_b_clone.i1095, label %chk_bz.i1042
 
-ret_b_clone.i1090:                                ; preds = %archx_str_from_int.exit1584
-  %long.i1587 = icmp samesign ult i64 %blen.i1035, 13
-  %tag.i1591 = and i64 %bw1.i1033, 3
-  %owned.not.i1592 = icmp eq i64 %tag.i1591, 0
-  %or.cond2060 = select i1 %long.i1587, i1 true, i1 %owned.not.i1592
-  br i1 %or.cond2060, label %archx_str_concat.exit1092, label %dup_heap.i1593
+ret_b_clone.i1095:                                ; preds = %archx_str_from_int.exit1589
+  %long.i1592 = icmp samesign ult i64 %blen.i1040, 13
+  %tag.i1596 = and i64 %bw1.i1038, 3
+  %owned.not.i1597 = icmp eq i64 %tag.i1596, 0
+  %or.cond2079 = select i1 %long.i1592, i1 true, i1 %owned.not.i1597
+  br i1 %or.cond2079, label %archx_str_concat.exit1097, label %dup_heap.i1598
 
-dup_heap.i1593:                                   ; preds = %ret_b_clone.i1090
-  %dst.i1594 = call noalias align 16 ptr @malloc(i64 %blen.i1035)
-  %isnull.i1595 = icmp eq ptr %dst.i1594, null
-  br i1 %isnull.i1595, label %oom.i1602, label %copy.i1596
+dup_heap.i1598:                                   ; preds = %ret_b_clone.i1095
+  %dst.i1599 = call noalias align 16 ptr @malloc(i64 %blen.i1040)
+  %isnull.i1600 = icmp eq ptr %dst.i1599, null
+  br i1 %isnull.i1600, label %oom.i1607, label %copy.i1601
 
-oom.i1602:                                        ; preds = %dup_heap.i1593
+oom.i1607:                                        ; preds = %dup_heap.i1598
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1596:                                       ; preds = %dup_heap.i1593
-  %src_i.i1597 = and i64 %bw1.i1033, -4
-  %src.i1598 = inttoptr i64 %src_i.i1597 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1594, ptr nonnull align 4 %src.i1598, i64 %blen.i1035, i1 false)
-  %dst_i.i1599 = ptrtoint ptr %dst.i1594 to i64
-  %tagged.i1600 = or disjoint i64 %dst_i.i1599, 1
-  %out.i1601 = insertvalue %ArchxStr %common.ret.op.i.i1575, i64 %tagged.i1600, 1
-  br label %archx_str_concat.exit1092
+copy.i1601:                                       ; preds = %dup_heap.i1598
+  %src_i.i1602 = and i64 %bw1.i1038, -4
+  %src.i1603 = inttoptr i64 %src_i.i1602 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1599, ptr nonnull align 4 %src.i1603, i64 %blen.i1040, i1 false)
+  %dst_i.i1604 = ptrtoint ptr %dst.i1599 to i64
+  %tagged.i1605 = or disjoint i64 %dst_i.i1604, 1
+  %out.i1606 = insertvalue %ArchxStr %common.ret.op.i.i1580, i64 %tagged.i1605, 1
+  br label %archx_str_concat.exit1097
 
-chk_bz.i1037:                                     ; preds = %archx_str_from_int.exit1584
-  %bz.i1038 = icmp eq i64 %blen.i1035, 0
-  br i1 %bz.i1038, label %ret_a_clone.i1088, label %calc_tot.i1039
+chk_bz.i1042:                                     ; preds = %archx_str_from_int.exit1589
+  %bz.i1043 = icmp eq i64 %blen.i1040, 0
+  br i1 %bz.i1043, label %ret_a_clone.i1093, label %calc_tot.i1044
 
-ret_a_clone.i1088:                                ; preds = %chk_bz.i1037
-  %long.i1606 = icmp samesign ult i64 %alen.i1034, 13
-  %tag.i1610 = and i64 %aw1.i1031, 3
-  %owned.not.i1611 = icmp eq i64 %tag.i1610, 0
-  %or.cond2061 = select i1 %long.i1606, i1 true, i1 %owned.not.i1611
-  br i1 %or.cond2061, label %archx_str_concat.exit1092, label %dup_heap.i1612
+ret_a_clone.i1093:                                ; preds = %chk_bz.i1042
+  %long.i1611 = icmp samesign ult i64 %alen.i1039, 13
+  %tag.i1615 = and i64 %aw1.i1036, 3
+  %owned.not.i1616 = icmp eq i64 %tag.i1615, 0
+  %or.cond2080 = select i1 %long.i1611, i1 true, i1 %owned.not.i1616
+  br i1 %or.cond2080, label %archx_str_concat.exit1097, label %dup_heap.i1617
 
-dup_heap.i1612:                                   ; preds = %ret_a_clone.i1088
-  %dst.i1613 = call noalias align 16 ptr @malloc(i64 %alen.i1034)
-  %isnull.i1614 = icmp eq ptr %dst.i1613, null
-  br i1 %isnull.i1614, label %oom.i1621, label %copy.i1615
+dup_heap.i1617:                                   ; preds = %ret_a_clone.i1093
+  %dst.i1618 = call noalias align 16 ptr @malloc(i64 %alen.i1039)
+  %isnull.i1619 = icmp eq ptr %dst.i1618, null
+  br i1 %isnull.i1619, label %oom.i1626, label %copy.i1620
 
-oom.i1621:                                        ; preds = %dup_heap.i1612
+oom.i1626:                                        ; preds = %dup_heap.i1617
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1615:                                       ; preds = %dup_heap.i1612
-  %src_i.i1616 = and i64 %aw1.i1031, -4
-  %src.i1617 = inttoptr i64 %src_i.i1616 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1613, ptr nonnull align 4 %src.i1617, i64 %alen.i1034, i1 false)
-  %dst_i.i1618 = ptrtoint ptr %dst.i1613 to i64
-  %tagged.i1619 = or disjoint i64 %dst_i.i1618, 1
-  %out.i1620 = insertvalue %ArchxStr %common.ret.op.i1009, i64 %tagged.i1619, 1
-  br label %archx_str_concat.exit1092
+copy.i1620:                                       ; preds = %dup_heap.i1617
+  %src_i.i1621 = and i64 %aw1.i1036, -4
+  %src.i1622 = inttoptr i64 %src_i.i1621 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1618, ptr nonnull align 4 %src.i1622, i64 %alen.i1039, i1 false)
+  %dst_i.i1623 = ptrtoint ptr %dst.i1618 to i64
+  %tagged.i1624 = or disjoint i64 %dst_i.i1623, 1
+  %out.i1625 = insertvalue %ArchxStr %common.ret.op.i1014, i64 %tagged.i1624, 1
+  br label %archx_str_concat.exit1097
 
-calc_tot.i1039:                                   ; preds = %chk_bz.i1037
-  %tot.i1040 = add nuw nsw i64 %blen.i1035, %alen.i1034
-  %too_big.i1041 = icmp samesign ugt i64 %tot.i1040, 2147483647
-  br i1 %too_big.i1041, label %oom.i1070, label %mat_a.i1042
+calc_tot.i1044:                                   ; preds = %chk_bz.i1042
+  %tot.i1045 = add nuw nsw i64 %blen.i1040, %alen.i1039
+  %too_big.i1046 = icmp samesign ugt i64 %tot.i1045, 2147483647
+  br i1 %too_big.i1046, label %oom.i1075, label %mat_a.i1047
 
-oom.i1070:                                        ; preds = %alloc_heap.i1056, %calc_tot.i1039
+oom.i1075:                                        ; preds = %alloc_heap.i1061, %calc_tot.i1044
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i1042:                                      ; preds = %calc_tot.i1039
-  %ashort.i1043 = icmp samesign ult i64 %alen.i1034, 13
-  br i1 %ashort.i1043, label %mat_a_short.i1084, label %mat_a_long.i1044
+mat_a.i1047:                                      ; preds = %calc_tot.i1044
+  %ashort.i1048 = icmp samesign ult i64 %alen.i1039, 13
+  br i1 %ashort.i1048, label %mat_a_short.i1089, label %mat_a_long.i1049
 
-mat_a_short.i1084:                                ; preds = %mat_a.i1042
-  %ap4.i1085 = lshr i64 %aw0.i1030, 32
-  %ap4_32.i1086 = trunc nuw i64 %ap4.i1085 to i32
-  store i32 %ap4_32.i1086, ptr %atmp.i1027, align 4
-  %atmp4.i1087 = getelementptr inbounds nuw i8, ptr %atmp.i1027, i64 4
-  store i64 %aw1.i1031, ptr %atmp4.i1087, align 4
-  br label %mat_b.i1047
+mat_a_short.i1089:                                ; preds = %mat_a.i1047
+  %ap4.i1090 = lshr i64 %aw0.i1035, 32
+  %ap4_32.i1091 = trunc nuw i64 %ap4.i1090 to i32
+  store i32 %ap4_32.i1091, ptr %atmp.i1032, align 4
+  %atmp4.i1092 = getelementptr inbounds nuw i8, ptr %atmp.i1032, i64 4
+  store i64 %aw1.i1036, ptr %atmp4.i1092, align 4
+  br label %mat_b.i1052
 
-mat_a_long.i1044:                                 ; preds = %mat_a.i1042
-  %araw.i1045 = and i64 %aw1.i1031, -4
-  %alptr.i1046 = inttoptr i64 %araw.i1045 to ptr
-  br label %mat_b.i1047
+mat_a_long.i1049:                                 ; preds = %mat_a.i1047
+  %araw.i1050 = and i64 %aw1.i1036, -4
+  %alptr.i1051 = inttoptr i64 %araw.i1050 to ptr
+  br label %mat_b.i1052
 
-mat_b.i1047:                                      ; preds = %mat_a_long.i1044, %mat_a_short.i1084
-  %aptr.i1048 = phi ptr [ %atmp.i1027, %mat_a_short.i1084 ], [ %alptr.i1046, %mat_a_long.i1044 ]
-  %bshort.i1049 = icmp samesign ult i64 %blen.i1035, 13
-  br i1 %bshort.i1049, label %mat_b_short.i1080, label %mat_b_long.i1050
+mat_b.i1052:                                      ; preds = %mat_a_long.i1049, %mat_a_short.i1089
+  %aptr.i1053 = phi ptr [ %atmp.i1032, %mat_a_short.i1089 ], [ %alptr.i1051, %mat_a_long.i1049 ]
+  %bshort.i1054 = icmp samesign ult i64 %blen.i1040, 13
+  br i1 %bshort.i1054, label %mat_b_short.i1085, label %mat_b_long.i1055
 
-mat_b_short.i1080:                                ; preds = %mat_b.i1047
-  %bp4.i1081 = lshr i64 %bw0.i1032, 32
-  %bp4_32.i1082 = trunc nuw i64 %bp4.i1081 to i32
-  store i32 %bp4_32.i1082, ptr %btmp.i1028, align 4
-  %btmp4.i1083 = getelementptr inbounds nuw i8, ptr %btmp.i1028, i64 4
-  store i64 %bw1.i1033, ptr %btmp4.i1083, align 4
-  br label %build.i1053
+mat_b_short.i1085:                                ; preds = %mat_b.i1052
+  %bp4.i1086 = lshr i64 %bw0.i1037, 32
+  %bp4_32.i1087 = trunc nuw i64 %bp4.i1086 to i32
+  store i32 %bp4_32.i1087, ptr %btmp.i1033, align 4
+  %btmp4.i1088 = getelementptr inbounds nuw i8, ptr %btmp.i1033, i64 4
+  store i64 %bw1.i1038, ptr %btmp4.i1088, align 4
+  br label %build.i1058
 
-mat_b_long.i1050:                                 ; preds = %mat_b.i1047
-  %braw.i1051 = and i64 %bw1.i1033, -4
-  %blptr.i1052 = inttoptr i64 %braw.i1051 to ptr
-  br label %build.i1053
+mat_b_long.i1055:                                 ; preds = %mat_b.i1052
+  %braw.i1056 = and i64 %bw1.i1038, -4
+  %blptr.i1057 = inttoptr i64 %braw.i1056 to ptr
+  br label %build.i1058
 
-build.i1053:                                      ; preds = %mat_b_long.i1050, %mat_b_short.i1080
-  %bptr.i1054 = phi ptr [ %btmp.i1028, %mat_b_short.i1080 ], [ %blptr.i1052, %mat_b_long.i1050 ]
-  %fits_sso.i1055 = icmp samesign ult i64 %tot.i1040, 13
-  br i1 %fits_sso.i1055, label %build_sso.i1071, label %alloc_heap.i1056
+build.i1058:                                      ; preds = %mat_b_long.i1055, %mat_b_short.i1085
+  %bptr.i1059 = phi ptr [ %btmp.i1033, %mat_b_short.i1085 ], [ %blptr.i1057, %mat_b_long.i1055 ]
+  %fits_sso.i1060 = icmp samesign ult i64 %tot.i1045, 13
+  br i1 %fits_sso.i1060, label %build_sso.i1076, label %alloc_heap.i1061
 
-build_sso.i1071:                                  ; preds = %build.i1053
-  %out_sso8.i1072 = getelementptr inbounds nuw i8, ptr %out_sso.i1029, i64 8
-  %tot32.i1073 = trunc nuw nsw i64 %tot.i1040 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1029, i8 0, i64 16, i1 false)
-  store i32 %tot32.i1073, ptr %out_sso.i1029, align 8
-  %sso_dst_a.i1074 = getelementptr inbounds nuw i8, ptr %out_sso.i1029, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1074, ptr nonnull align 1 %aptr.i1048, i64 %alen.i1034, i1 false)
-  %sso_dst_b.i1075 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1074, i64 %alen.i1034
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i1075, ptr nonnull align 1 %bptr.i1054, i64 %blen.i1035, i1 false)
-  %rw0.i1076 = load i64, ptr %out_sso.i1029, align 8
-  %rw1.i1077 = load i64, ptr %out_sso8.i1072, align 8
-  %rs0.i1078 = insertvalue %ArchxStr poison, i64 %rw0.i1076, 0
-  %rs1.i1079 = insertvalue %ArchxStr %rs0.i1078, i64 %rw1.i1077, 1
-  br label %archx_str_concat.exit1092
+build_sso.i1076:                                  ; preds = %build.i1058
+  %out_sso8.i1077 = getelementptr inbounds nuw i8, ptr %out_sso.i1034, i64 8
+  %tot32.i1078 = trunc nuw nsw i64 %tot.i1045 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1034, i8 0, i64 16, i1 false)
+  store i32 %tot32.i1078, ptr %out_sso.i1034, align 8
+  %sso_dst_a.i1079 = getelementptr inbounds nuw i8, ptr %out_sso.i1034, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1079, ptr nonnull align 1 %aptr.i1053, i64 %alen.i1039, i1 false)
+  %sso_dst_b.i1080 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1079, i64 %alen.i1039
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i1080, ptr nonnull align 1 %bptr.i1059, i64 %blen.i1040, i1 false)
+  %rw0.i1081 = load i64, ptr %out_sso.i1034, align 8
+  %rw1.i1082 = load i64, ptr %out_sso8.i1077, align 8
+  %rs0.i1083 = insertvalue %ArchxStr poison, i64 %rw0.i1081, 0
+  %rs1.i1084 = insertvalue %ArchxStr %rs0.i1083, i64 %rw1.i1082, 1
+  br label %archx_str_concat.exit1097
 
-alloc_heap.i1056:                                 ; preds = %build.i1053
-  %hp.i1057 = call noalias align 16 ptr @malloc(i64 %tot.i1040)
-  %hnull.i1058 = icmp eq ptr %hp.i1057, null
-  br i1 %hnull.i1058, label %oom.i1070, label %copy_long.i1059
+alloc_heap.i1061:                                 ; preds = %build.i1058
+  %hp.i1062 = call noalias align 16 ptr @malloc(i64 %tot.i1045)
+  %hnull.i1063 = icmp eq ptr %hp.i1062, null
+  br i1 %hnull.i1063, label %oom.i1075, label %copy_long.i1064
 
-copy_long.i1059:                                  ; preds = %alloc_heap.i1056
-  %hp_i.i1060 = ptrtoint ptr %hp.i1057 to i64
-  %htagged.i1061 = or disjoint i64 %hp_i.i1060, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1057, ptr nonnull align 1 %aptr.i1048, i64 %alen.i1034, i1 false)
-  %dst_b.i1062 = getelementptr inbounds nuw i8, ptr %hp.i1057, i64 %alen.i1034
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i1062, ptr nonnull align 1 %bptr.i1054, i64 %blen.i1035, i1 false)
-  %pref32.i1063 = load i32, ptr %hp.i1057, align 16
-  %pref64.i1064 = zext i32 %pref32.i1063 to i64
-  %pref_sh.i1065 = shl nuw i64 %pref64.i1064, 32
-  %w0_out.i1066 = or disjoint i64 %pref_sh.i1065, %tot.i1040
-  %ls0.i1067 = insertvalue %ArchxStr poison, i64 %w0_out.i1066, 0
-  %ls1.i1068 = insertvalue %ArchxStr %ls0.i1067, i64 %htagged.i1061, 1
-  br label %archx_str_concat.exit1092
+copy_long.i1064:                                  ; preds = %alloc_heap.i1061
+  %hp_i.i1065 = ptrtoint ptr %hp.i1062 to i64
+  %htagged.i1066 = or disjoint i64 %hp_i.i1065, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1062, ptr nonnull align 1 %aptr.i1053, i64 %alen.i1039, i1 false)
+  %dst_b.i1067 = getelementptr inbounds nuw i8, ptr %hp.i1062, i64 %alen.i1039
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i1067, ptr nonnull align 1 %bptr.i1059, i64 %blen.i1040, i1 false)
+  %pref32.i1068 = load i32, ptr %hp.i1062, align 16
+  %pref64.i1069 = zext i32 %pref32.i1068 to i64
+  %pref_sh.i1070 = shl nuw i64 %pref64.i1069, 32
+  %w0_out.i1071 = or disjoint i64 %pref_sh.i1070, %tot.i1045
+  %ls0.i1072 = insertvalue %ArchxStr poison, i64 %w0_out.i1071, 0
+  %ls1.i1073 = insertvalue %ArchxStr %ls0.i1072, i64 %htagged.i1066, 1
+  br label %archx_str_concat.exit1097
 
-archx_str_concat.exit1092:                        ; preds = %copy.i1615, %ret_a_clone.i1088, %copy.i1596, %ret_b_clone.i1090, %build_sso.i1071, %copy_long.i1059
-  %common.ret.op.i1069 = phi %ArchxStr [ %rs1.i1079, %build_sso.i1071 ], [ %ls1.i1068, %copy_long.i1059 ], [ %out.i1601, %copy.i1596 ], [ %common.ret.op.i.i1575, %ret_b_clone.i1090 ], [ %out.i1620, %copy.i1615 ], [ %common.ret.op.i1009, %ret_a_clone.i1088 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1027)
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1028)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1029)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1623)
-  %w0.i1624 = extractvalue %ArchxStr %common.ret.op.i1069, 0
-  %w1.i1625 = extractvalue %ArchxStr %common.ret.op.i1069, 1
-  %len.i1626 = and i64 %w0.i1624, 4294967295
-  %short.i1627 = icmp samesign ult i64 %len.i1626, 13
-  br i1 %short.i1627, label %emit.i1648, label %emit.thread.i1628
+archx_str_concat.exit1097:                        ; preds = %copy.i1620, %ret_a_clone.i1093, %copy.i1601, %ret_b_clone.i1095, %build_sso.i1076, %copy_long.i1064
+  %common.ret.op.i1074 = phi %ArchxStr [ %rs1.i1084, %build_sso.i1076 ], [ %ls1.i1073, %copy_long.i1064 ], [ %out.i1606, %copy.i1601 ], [ %common.ret.op.i.i1580, %ret_b_clone.i1095 ], [ %out.i1625, %copy.i1620 ], [ %common.ret.op.i1014, %ret_a_clone.i1093 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1032)
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1033)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1034)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1628)
+  %w0.i1629 = extractvalue %ArchxStr %common.ret.op.i1074, 0
+  %w1.i1630 = extractvalue %ArchxStr %common.ret.op.i1074, 1
+  %len.i1631 = and i64 %w0.i1629, 4294967295
+  %short.i1632 = icmp samesign ult i64 %len.i1631, 13
+  br i1 %short.i1632, label %emit.i1653, label %emit.thread.i1633
 
-emit.thread.i1628:                                ; preds = %archx_str_concat.exit1092
-  %raw.i1629 = and i64 %w1.i1625, -4
-  %lptr.i1630 = inttoptr i64 %raw.i1629 to ptr
-  br label %chk_nul.i1631
+emit.thread.i1633:                                ; preds = %archx_str_concat.exit1097
+  %raw.i1634 = and i64 %w1.i1630, -4
+  %lptr.i1635 = inttoptr i64 %raw.i1634 to ptr
+  br label %chk_nul.i1636
 
-emit.i1648:                                       ; preds = %archx_str_concat.exit1092
-  %p4.i1649 = lshr i64 %w0.i1624, 32
-  %p4_32.i1650 = trunc nuw i64 %p4.i1649 to i32
-  store i32 %p4_32.i1650, ptr %tmp.i1623, align 4
-  %tmp4.i1651 = getelementptr inbounds nuw i8, ptr %tmp.i1623, i64 4
-  store i64 %w1.i1625, ptr %tmp4.i1651, align 4
-  %pos.not.i1652 = icmp eq i64 %len.i1626, 0
-  br i1 %pos.not.i1652, label %do_nl.i1643, label %chk_nul.i1631
+emit.i1653:                                       ; preds = %archx_str_concat.exit1097
+  %p4.i1654 = lshr i64 %w0.i1629, 32
+  %p4_32.i1655 = trunc nuw i64 %p4.i1654 to i32
+  store i32 %p4_32.i1655, ptr %tmp.i1628, align 4
+  %tmp4.i1656 = getelementptr inbounds nuw i8, ptr %tmp.i1628, i64 4
+  store i64 %w1.i1630, ptr %tmp4.i1656, align 4
+  %pos.not.i1657 = icmp eq i64 %len.i1631, 0
+  br i1 %pos.not.i1657, label %do_nl.i1648, label %chk_nul.i1636
 
-chk_nul.i1631:                                    ; preds = %emit.i1648, %emit.thread.i1628
-  %data3.i1632 = phi ptr [ %lptr.i1630, %emit.thread.i1628 ], [ %tmp.i1623, %emit.i1648 ]
-  %nul.i1633 = call ptr @memchr(ptr nonnull %data3.i1632, i32 0, i64 %len.i1626)
-  %has_nul.not.i1634 = icmp eq ptr %nul.i1633, null
-  br i1 %has_nul.not.i1634, label %fast_printf.i1645, label %byte_loop.i1635
+chk_nul.i1636:                                    ; preds = %emit.i1653, %emit.thread.i1633
+  %data3.i1637 = phi ptr [ %lptr.i1635, %emit.thread.i1633 ], [ %tmp.i1628, %emit.i1653 ]
+  %nul.i1638 = call ptr @memchr(ptr nonnull %data3.i1637, i32 0, i64 %len.i1631)
+  %has_nul.not.i1639 = icmp eq ptr %nul.i1638, null
+  br i1 %has_nul.not.i1639, label %fast_printf.i1650, label %byte_loop.i1640
 
-fast_printf.i1645:                                ; preds = %chk_nul.i1631
-  %len32.i1646 = trunc i64 %w0.i1624 to i32
-  %np.i1647 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1646, ptr nonnull %data3.i1632)
-  br label %archx_str_print.exit1653
+fast_printf.i1650:                                ; preds = %chk_nul.i1636
+  %len32.i1651 = trunc i64 %w0.i1629 to i32
+  %np.i1652 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1651, ptr nonnull %data3.i1637)
+  br label %archx_str_print.exit1658
 
-byte_loop.i1635:                                  ; preds = %chk_nul.i1631, %byte_loop.i1635
-  %bi.i1636 = phi i64 [ %bnext.i1641, %byte_loop.i1635 ], [ 0, %chk_nul.i1631 ]
-  %bp.i1637 = getelementptr inbounds nuw i8, ptr %data3.i1632, i64 %bi.i1636
-  %ch8.i1638 = load i8, ptr %bp.i1637, align 1
-  %ch32.i1639 = zext i8 %ch8.i1638 to i32
-  %pc.i1640 = call i32 @putchar(i32 %ch32.i1639)
-  %bnext.i1641 = add nuw nsw i64 %bi.i1636, 1
-  %exitcond.not.i1642 = icmp eq i64 %bnext.i1641, %len.i1626
-  br i1 %exitcond.not.i1642, label %do_nl.i1643, label %byte_loop.i1635
+byte_loop.i1640:                                  ; preds = %chk_nul.i1636, %byte_loop.i1640
+  %bi.i1641 = phi i64 [ %bnext.i1646, %byte_loop.i1640 ], [ 0, %chk_nul.i1636 ]
+  %bp.i1642 = getelementptr inbounds nuw i8, ptr %data3.i1637, i64 %bi.i1641
+  %ch8.i1643 = load i8, ptr %bp.i1642, align 1
+  %ch32.i1644 = zext i8 %ch8.i1643 to i32
+  %pc.i1645 = call i32 @putchar(i32 %ch32.i1644)
+  %bnext.i1646 = add nuw nsw i64 %bi.i1641, 1
+  %exitcond.not.i1647 = icmp eq i64 %bnext.i1646, %len.i1631
+  br i1 %exitcond.not.i1647, label %do_nl.i1648, label %byte_loop.i1640
 
-do_nl.i1643:                                      ; preds = %byte_loop.i1635, %emit.i1648
-  %nc.i1644 = call i32 @putchar(i32 10)
-  br label %archx_str_print.exit1653
+do_nl.i1648:                                      ; preds = %byte_loop.i1640, %emit.i1653
+  %nc.i1649 = call i32 @putchar(i32 10)
+  br label %archx_str_print.exit1658
 
-archx_str_print.exit1653:                         ; preds = %fast_printf.i1645, %do_nl.i1643
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1623)
-  %tag.i144 = and i64 %w1.i1625, 1
-  %owned.not.i145 = icmp eq i64 %tag.i144, 0
-  %or.cond2062 = select i1 %short.i1627, i1 true, i1 %owned.not.i145
-  br i1 %or.cond2062, label %archx_str_drop.exit149, label %do_free.i146
+archx_str_print.exit1658:                         ; preds = %fast_printf.i1650, %do_nl.i1648
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1628)
+  %tag.i149 = and i64 %w1.i1630, 1
+  %owned.not.i150 = icmp eq i64 %tag.i149, 0
+  %or.cond2081 = select i1 %short.i1632, i1 true, i1 %owned.not.i150
+  br i1 %or.cond2081, label %archx_str_drop.exit154, label %do_free.i151
 
-do_free.i146:                                     ; preds = %archx_str_print.exit1653
-  %raw.i147 = and i64 %w1.i1625, -2
-  %ptr.i148 = inttoptr i64 %raw.i147 to ptr
-  call void @free(ptr %ptr.i148)
-  br label %archx_str_drop.exit149
+do_free.i151:                                     ; preds = %archx_str_print.exit1658
+  %raw.i152 = and i64 %w1.i1630, -2
+  %ptr.i153 = inttoptr i64 %raw.i152 to ptr
+  call void @free(ptr %ptr.i153)
+  br label %archx_str_drop.exit154
 
-archx_str_drop.exit149:                           ; preds = %archx_str_print.exit1653, %do_free.i146
-  %long.i152 = icmp samesign ult i64 %blen.i1035, 13
-  %tag.i155 = and i64 %bw1.i1033, 1
-  %owned.not.i156 = icmp eq i64 %tag.i155, 0
-  %or.cond2063 = select i1 %long.i152, i1 true, i1 %owned.not.i156
-  br i1 %or.cond2063, label %archx_str_drop.exit160, label %do_free.i157
+archx_str_drop.exit154:                           ; preds = %archx_str_print.exit1658, %do_free.i151
+  %long.i157 = icmp samesign ult i64 %blen.i1040, 13
+  %tag.i160 = and i64 %bw1.i1038, 1
+  %owned.not.i161 = icmp eq i64 %tag.i160, 0
+  %or.cond2082 = select i1 %long.i157, i1 true, i1 %owned.not.i161
+  br i1 %or.cond2082, label %archx_str_drop.exit165, label %do_free.i162
 
-do_free.i157:                                     ; preds = %archx_str_drop.exit149
-  %raw.i158 = and i64 %bw1.i1033, -2
-  %ptr.i159 = inttoptr i64 %raw.i158 to ptr
-  call void @free(ptr %ptr.i159)
-  br label %archx_str_drop.exit160
+do_free.i162:                                     ; preds = %archx_str_drop.exit154
+  %raw.i163 = and i64 %bw1.i1038, -2
+  %ptr.i164 = inttoptr i64 %raw.i163 to ptr
+  call void @free(ptr %ptr.i164)
+  br label %archx_str_drop.exit165
 
-archx_str_drop.exit160:                           ; preds = %archx_str_drop.exit149, %do_free.i157
-  %long.i163 = icmp samesign ult i64 %alen.i1034, 13
-  %tag.i166 = and i64 %aw1.i1031, 1
-  %owned.not.i167 = icmp eq i64 %tag.i166, 0
-  %or.cond2064 = select i1 %long.i163, i1 true, i1 %owned.not.i167
-  br i1 %or.cond2064, label %archx_str_drop.exit171, label %do_free.i168
+archx_str_drop.exit165:                           ; preds = %archx_str_drop.exit154, %do_free.i162
+  %long.i168 = icmp samesign ult i64 %alen.i1039, 13
+  %tag.i171 = and i64 %aw1.i1036, 1
+  %owned.not.i172 = icmp eq i64 %tag.i171, 0
+  %or.cond2083 = select i1 %long.i168, i1 true, i1 %owned.not.i172
+  br i1 %or.cond2083, label %archx_str_drop.exit176, label %do_free.i173
 
-do_free.i168:                                     ; preds = %archx_str_drop.exit160
-  %raw.i169 = and i64 %aw1.i1031, -2
-  %ptr.i170 = inttoptr i64 %raw.i169 to ptr
-  call void @free(ptr %ptr.i170)
-  br label %archx_str_drop.exit171
+do_free.i173:                                     ; preds = %archx_str_drop.exit165
+  %raw.i174 = and i64 %aw1.i1036, -2
+  %ptr.i175 = inttoptr i64 %raw.i174 to ptr
+  call void @free(ptr %ptr.i175)
+  br label %archx_str_drop.exit176
 
-archx_str_drop.exit171:                           ; preds = %archx_str_drop.exit160, %do_free.i168
-  %long.i174 = icmp samesign ult i64 %alen.i978, 13
-  %tag.i177 = and i64 %aw1.i977, 1
-  %owned.not.i178 = icmp eq i64 %tag.i177, 0
-  %or.cond2065 = select i1 %long.i174, i1 true, i1 %owned.not.i178
-  br i1 %or.cond2065, label %archx_str_drop.exit182, label %do_free.i179
+archx_str_drop.exit176:                           ; preds = %archx_str_drop.exit165, %do_free.i173
+  %long.i179 = icmp samesign ult i64 %alen.i983, 13
+  %tag.i182 = and i64 %aw1.i982, 1
+  %owned.not.i183 = icmp eq i64 %tag.i182, 0
+  %or.cond2084 = select i1 %long.i179, i1 true, i1 %owned.not.i183
+  br i1 %or.cond2084, label %archx_str_drop.exit187, label %do_free.i184
 
-do_free.i179:                                     ; preds = %archx_str_drop.exit171
-  %raw.i180 = and i64 %aw1.i977, -2
-  %ptr.i181 = inttoptr i64 %raw.i180 to ptr
-  call void @free(ptr %ptr.i181)
-  br label %archx_str_drop.exit182
+do_free.i184:                                     ; preds = %archx_str_drop.exit176
+  %raw.i185 = and i64 %aw1.i982, -2
+  %ptr.i186 = inttoptr i64 %raw.i185 to ptr
+  call void @free(ptr %ptr.i186)
+  br label %archx_str_drop.exit187
 
-archx_str_drop.exit182:                           ; preds = %archx_str_drop.exit171, %do_free.i179
-  %long.i185 = icmp samesign ult i64 %alen.i924, 13
-  %tag.i188 = and i64 %aw1.i923, 1
-  %owned.not.i189 = icmp eq i64 %tag.i188, 0
-  %or.cond2066 = select i1 %long.i185, i1 true, i1 %owned.not.i189
-  br i1 %or.cond2066, label %archx_str_drop.exit193, label %do_free.i190
+archx_str_drop.exit187:                           ; preds = %archx_str_drop.exit176, %do_free.i184
+  %long.i190 = icmp samesign ult i64 %alen.i929, 13
+  %tag.i193 = and i64 %aw1.i928, 1
+  %owned.not.i194 = icmp eq i64 %tag.i193, 0
+  %or.cond2085 = select i1 %long.i190, i1 true, i1 %owned.not.i194
+  br i1 %or.cond2085, label %archx_str_drop.exit198, label %do_free.i195
 
-do_free.i190:                                     ; preds = %archx_str_drop.exit182
-  %raw.i191 = and i64 %aw1.i923, -2
-  %ptr.i192 = inttoptr i64 %raw.i191 to ptr
-  call void @free(ptr %ptr.i192)
-  br label %archx_str_drop.exit193
+do_free.i195:                                     ; preds = %archx_str_drop.exit187
+  %raw.i196 = and i64 %aw1.i928, -2
+  %ptr.i197 = inttoptr i64 %raw.i196 to ptr
+  call void @free(ptr %ptr.i197)
+  br label %archx_str_drop.exit198
 
-archx_str_drop.exit193:                           ; preds = %archx_str_drop.exit182, %do_free.i190
-  %long.i196 = icmp samesign ult i64 %alen.i870, 13
-  %tag.i199 = and i64 %aw1.i869, 1
-  %owned.not.i200 = icmp eq i64 %tag.i199, 0
-  %or.cond2067 = select i1 %long.i196, i1 true, i1 %owned.not.i200
-  br i1 %or.cond2067, label %archx_str_drop.exit204, label %do_free.i201
+archx_str_drop.exit198:                           ; preds = %archx_str_drop.exit187, %do_free.i195
+  %long.i201 = icmp samesign ult i64 %alen.i875, 13
+  %tag.i204 = and i64 %aw1.i874, 1
+  %owned.not.i205 = icmp eq i64 %tag.i204, 0
+  %or.cond2086 = select i1 %long.i201, i1 true, i1 %owned.not.i205
+  br i1 %or.cond2086, label %archx_str_drop.exit209, label %do_free.i206
 
-do_free.i201:                                     ; preds = %archx_str_drop.exit193
-  %raw.i202 = and i64 %aw1.i869, -2
-  %ptr.i203 = inttoptr i64 %raw.i202 to ptr
-  call void @free(ptr %ptr.i203)
-  br label %archx_str_drop.exit204
+do_free.i206:                                     ; preds = %archx_str_drop.exit198
+  %raw.i207 = and i64 %aw1.i874, -2
+  %ptr.i208 = inttoptr i64 %raw.i207 to ptr
+  call void @free(ptr %ptr.i208)
+  br label %archx_str_drop.exit209
 
-archx_str_drop.exit204:                           ; preds = %archx_str_drop.exit193, %do_free.i201
-  %long.i207 = icmp samesign ult i64 %alen.i816, 13
-  %tag.i210 = and i64 %aw1.i815, 1
-  %owned.not.i211 = icmp eq i64 %tag.i210, 0
-  %or.cond2068 = select i1 %long.i207, i1 true, i1 %owned.not.i211
-  br i1 %or.cond2068, label %archx_str_drop.exit215, label %do_free.i212
+archx_str_drop.exit209:                           ; preds = %archx_str_drop.exit198, %do_free.i206
+  %long.i212 = icmp samesign ult i64 %alen.i821, 13
+  %tag.i215 = and i64 %aw1.i820, 1
+  %owned.not.i216 = icmp eq i64 %tag.i215, 0
+  %or.cond2087 = select i1 %long.i212, i1 true, i1 %owned.not.i216
+  br i1 %or.cond2087, label %archx_str_drop.exit220, label %do_free.i217
 
-do_free.i212:                                     ; preds = %archx_str_drop.exit204
-  %raw.i213 = and i64 %aw1.i815, -2
-  %ptr.i214 = inttoptr i64 %raw.i213 to ptr
-  call void @free(ptr %ptr.i214)
-  br label %archx_str_drop.exit215
+do_free.i217:                                     ; preds = %archx_str_drop.exit209
+  %raw.i218 = and i64 %aw1.i820, -2
+  %ptr.i219 = inttoptr i64 %raw.i218 to ptr
+  call void @free(ptr %ptr.i219)
+  br label %archx_str_drop.exit220
 
-archx_str_drop.exit215:                           ; preds = %archx_str_drop.exit204, %do_free.i212
-  %long.i218 = icmp samesign ult i64 %alen.i762, 13
-  %tag.i221 = and i64 %aw1.i761, 1
-  %owned.not.i222 = icmp eq i64 %tag.i221, 0
-  %or.cond2069 = select i1 %long.i218, i1 true, i1 %owned.not.i222
-  br i1 %or.cond2069, label %archx_str_drop.exit226, label %do_free.i223
+archx_str_drop.exit220:                           ; preds = %archx_str_drop.exit209, %do_free.i217
+  %long.i223 = icmp samesign ult i64 %alen.i767, 13
+  %tag.i226 = and i64 %aw1.i766, 1
+  %owned.not.i227 = icmp eq i64 %tag.i226, 0
+  %or.cond2088 = select i1 %long.i223, i1 true, i1 %owned.not.i227
+  br i1 %or.cond2088, label %archx_str_drop.exit231, label %do_free.i228
 
-do_free.i223:                                     ; preds = %archx_str_drop.exit215
-  %raw.i224 = and i64 %aw1.i761, -2
-  %ptr.i225 = inttoptr i64 %raw.i224 to ptr
-  call void @free(ptr %ptr.i225)
-  br label %archx_str_drop.exit226
+do_free.i228:                                     ; preds = %archx_str_drop.exit220
+  %raw.i229 = and i64 %aw1.i766, -2
+  %ptr.i230 = inttoptr i64 %raw.i229 to ptr
+  call void @free(ptr %ptr.i230)
+  br label %archx_str_drop.exit231
 
-archx_str_drop.exit226:                           ; preds = %archx_str_drop.exit215, %do_free.i223
-  %long.i229 = icmp samesign ult i64 %blen.i699, 13
-  %tag.i232 = and i64 %bw1.i697, 1
-  %owned.not.i233 = icmp eq i64 %tag.i232, 0
-  %or.cond2070 = select i1 %long.i229, i1 true, i1 %owned.not.i233
-  br i1 %or.cond2070, label %archx_str_drop.exit237, label %do_free.i234
+archx_str_drop.exit231:                           ; preds = %archx_str_drop.exit220, %do_free.i228
+  %long.i234 = icmp samesign ult i64 %blen.i704, 13
+  %tag.i237 = and i64 %bw1.i702, 1
+  %owned.not.i238 = icmp eq i64 %tag.i237, 0
+  %or.cond2089 = select i1 %long.i234, i1 true, i1 %owned.not.i238
+  br i1 %or.cond2089, label %archx_str_drop.exit242, label %do_free.i239
 
-do_free.i234:                                     ; preds = %archx_str_drop.exit226
-  %raw.i235 = and i64 %bw1.i697, -2
-  %ptr.i236 = inttoptr i64 %raw.i235 to ptr
-  call void @free(ptr %ptr.i236)
-  br label %archx_str_drop.exit237
+do_free.i239:                                     ; preds = %archx_str_drop.exit231
+  %raw.i240 = and i64 %bw1.i702, -2
+  %ptr.i241 = inttoptr i64 %raw.i240 to ptr
+  call void @free(ptr %ptr.i241)
+  br label %archx_str_drop.exit242
 
-archx_str_drop.exit237:                           ; preds = %archx_str_drop.exit226, %do_free.i234
-  %long.i240 = icmp samesign ult i64 %alen.i698, 13
-  %tag.i243 = and i64 %aw1.i695, 1
-  %owned.not.i244 = icmp eq i64 %tag.i243, 0
-  %or.cond2071 = select i1 %long.i240, i1 true, i1 %owned.not.i244
-  br i1 %or.cond2071, label %archx_str_drop.exit248, label %do_free.i245
+archx_str_drop.exit242:                           ; preds = %archx_str_drop.exit231, %do_free.i239
+  %long.i245 = icmp samesign ult i64 %alen.i703, 13
+  %tag.i248 = and i64 %aw1.i700, 1
+  %owned.not.i249 = icmp eq i64 %tag.i248, 0
+  %or.cond2090 = select i1 %long.i245, i1 true, i1 %owned.not.i249
+  br i1 %or.cond2090, label %archx_str_drop.exit253, label %do_free.i250
 
-do_free.i245:                                     ; preds = %archx_str_drop.exit237
-  %raw.i246 = and i64 %aw1.i695, -2
-  %ptr.i247 = inttoptr i64 %raw.i246 to ptr
-  call void @free(ptr %ptr.i247)
-  br label %archx_str_drop.exit248
+do_free.i250:                                     ; preds = %archx_str_drop.exit242
+  %raw.i251 = and i64 %aw1.i700, -2
+  %ptr.i252 = inttoptr i64 %raw.i251 to ptr
+  call void @free(ptr %ptr.i252)
+  br label %archx_str_drop.exit253
 
-archx_str_drop.exit248:                           ; preds = %archx_str_drop.exit237, %do_free.i245
-  %long.i251 = icmp samesign ult i64 %alen.i642, 13
-  %tag.i254 = and i64 %aw1.i641, 1
-  %owned.not.i255 = icmp eq i64 %tag.i254, 0
-  %or.cond2072 = select i1 %long.i251, i1 true, i1 %owned.not.i255
-  br i1 %or.cond2072, label %archx_str_drop.exit259, label %do_free.i256
+archx_str_drop.exit253:                           ; preds = %archx_str_drop.exit242, %do_free.i250
+  %long.i256 = icmp samesign ult i64 %alen.i647, 13
+  %tag.i259 = and i64 %aw1.i646, 1
+  %owned.not.i260 = icmp eq i64 %tag.i259, 0
+  %or.cond2091 = select i1 %long.i256, i1 true, i1 %owned.not.i260
+  br i1 %or.cond2091, label %archx_str_drop.exit264, label %do_free.i261
 
-do_free.i256:                                     ; preds = %archx_str_drop.exit248
-  %raw.i257 = and i64 %aw1.i641, -2
-  %ptr.i258 = inttoptr i64 %raw.i257 to ptr
-  call void @free(ptr %ptr.i258)
-  br label %archx_str_drop.exit259
+do_free.i261:                                     ; preds = %archx_str_drop.exit253
+  %raw.i262 = and i64 %aw1.i646, -2
+  %ptr.i263 = inttoptr i64 %raw.i262 to ptr
+  call void @free(ptr %ptr.i263)
+  br label %archx_str_drop.exit264
 
-archx_str_drop.exit259:                           ; preds = %archx_str_drop.exit248, %do_free.i256
-  %long.i262 = icmp samesign ult i64 %blen.i588, 13
-  %tag.i265 = and i64 %bw1.i587, 1
-  %owned.not.i266 = icmp eq i64 %tag.i265, 0
-  %or.cond2073 = select i1 %long.i262, i1 true, i1 %owned.not.i266
-  br i1 %or.cond2073, label %archx_str_drop.exit270, label %do_free.i267
+archx_str_drop.exit264:                           ; preds = %archx_str_drop.exit253, %do_free.i261
+  %long.i267 = icmp samesign ult i64 %blen.i593, 13
+  %tag.i270 = and i64 %bw1.i592, 1
+  %owned.not.i271 = icmp eq i64 %tag.i270, 0
+  %or.cond2092 = select i1 %long.i267, i1 true, i1 %owned.not.i271
+  br i1 %or.cond2092, label %archx_str_drop.exit275, label %do_free.i272
 
-do_free.i267:                                     ; preds = %archx_str_drop.exit259
-  %raw.i268 = and i64 %bw1.i587, -2
-  %ptr.i269 = inttoptr i64 %raw.i268 to ptr
-  call void @free(ptr %ptr.i269)
-  br label %archx_str_drop.exit270
+do_free.i272:                                     ; preds = %archx_str_drop.exit264
+  %raw.i273 = and i64 %bw1.i592, -2
+  %ptr.i274 = inttoptr i64 %raw.i273 to ptr
+  call void @free(ptr %ptr.i274)
+  br label %archx_str_drop.exit275
 
-archx_str_drop.exit270:                           ; preds = %archx_str_drop.exit259, %do_free.i267
+archx_str_drop.exit275:                           ; preds = %archx_str_drop.exit264, %do_free.i272
   %t6.i = load i64, ptr %t0, align 16
   %t8.i = icmp sgt i64 %t6.i, 20
   br i1 %t8.i, label %archx_fn_find_gt.exit, label %enum.step.2.i
 
-enum.step.2.i:                                    ; preds = %archx_str_drop.exit270
+enum.step.2.i:                                    ; preds = %archx_str_drop.exit275
   %t6.1.i = load i64, ptr %t3, align 8
   %t8.1.i = icmp sgt i64 %t6.1.i, 20
-  br i1 %t8.1.i, label %archx_fn_find_gt.exit.thread1993, label %enum.step.2.1.i
+  br i1 %t8.1.i, label %archx_fn_find_gt.exit.thread2012, label %enum.step.2.1.i
 
 enum.step.2.1.i:                                  ; preds = %enum.step.2.i
   %t6.2.i = load i64, ptr %t4, align 16
   %t8.2.i = icmp sgt i64 %t6.2.i, 20
-  br i1 %t8.2.i, label %archx_fn_find_gt.exit.thread1993, label %enum.step.2.2.i
+  br i1 %t8.2.i, label %archx_fn_find_gt.exit.thread2012, label %enum.step.2.2.i
 
 enum.step.2.2.i:                                  ; preds = %enum.step.2.1.i
   %t6.3.i = load i64, ptr %t5, align 8
   %t8.3.i = icmp sgt i64 %t6.3.i, 20
-  br i1 %t8.3.i, label %archx_fn_find_gt.exit.thread1993, label %enum.step.2.3.i
+  br i1 %t8.3.i, label %archx_fn_find_gt.exit.thread2012, label %enum.step.2.3.i
 
 enum.step.2.3.i:                                  ; preds = %enum.step.2.2.i
   %t6.4.i = load i64, ptr %t6, align 16
   %t8.4.i = icmp sgt i64 %t6.4.i, 20
-  br i1 %t8.4.i, label %archx_fn_find_gt.exit.thread1993, label %enum.step.2.i1657
+  br i1 %t8.4.i, label %archx_fn_find_gt.exit.thread2012, label %enum.step.2.i1662
 
-archx_fn_find_gt.exit.thread1993:                 ; preds = %enum.step.2.i, %enum.step.2.1.i, %enum.step.2.2.i, %enum.step.2.3.i
+archx_fn_find_gt.exit.thread2012:                 ; preds = %enum.step.2.i, %enum.step.2.1.i, %enum.step.2.2.i, %enum.step.2.3.i
   %enum.pos.2.03.lcssa.i.ph = phi i64 [ 4, %enum.step.2.3.i ], [ 3, %enum.step.2.2.i ], [ 2, %enum.step.2.1.i ], [ 1, %enum.step.2.i ]
-  %t11.i1995 = insertvalue { i1, i64 } { i1 true, i64 undef }, i64 %enum.pos.2.03.lcssa.i.ph, 1
-  br label %enum.step.2.i1657
+  %t11.i2014 = insertvalue { i1, i64 } { i1 true, i64 undef }, i64 %enum.pos.2.03.lcssa.i.ph, 1
+  br label %enum.step.2.i1662
 
-archx_fn_find_gt.exit:                            ; preds = %archx_str_drop.exit270
-  %t8.i1656 = icmp samesign ugt i64 %t6.i, 500
-  br i1 %t8.i1656, label %if.then.4.i1674, label %enum.step.2.i1657
+archx_fn_find_gt.exit:                            ; preds = %archx_str_drop.exit275
+  %t8.i1661 = icmp samesign ugt i64 %t6.i, 500
+  br i1 %t8.i1661, label %if.then.4.i1679, label %enum.step.2.i1662
 
-if.then.4.i1674:                                  ; preds = %enum.step.2.3.i1669, %enum.step.2.2.i1665, %enum.step.2.1.i1661, %enum.step.2.i1657, %archx_fn_find_gt.exit
-  %common.ret.op.i16541991 = phi { i1, i64 } [ { i1 true, i64 0 }, %archx_fn_find_gt.exit ], [ %common.ret.op.i16541992, %enum.step.2.i1657 ], [ %common.ret.op.i16541992, %enum.step.2.1.i1661 ], [ %common.ret.op.i16541992, %enum.step.2.2.i1665 ], [ %common.ret.op.i16541992, %enum.step.2.3.i1669 ]
-  %enum.pos.2.03.lcssa.i1675 = phi i64 [ 0, %archx_fn_find_gt.exit ], [ 1, %enum.step.2.i1657 ], [ 2, %enum.step.2.1.i1661 ], [ 3, %enum.step.2.2.i1665 ], [ 4, %enum.step.2.3.i1669 ]
-  %t11.i1676 = insertvalue { i1, i64 } { i1 true, i64 undef }, i64 %enum.pos.2.03.lcssa.i1675, 1
-  br label %archx_fn_find_gt.exit1677
+if.then.4.i1679:                                  ; preds = %enum.step.2.3.i1674, %enum.step.2.2.i1670, %enum.step.2.1.i1666, %enum.step.2.i1662, %archx_fn_find_gt.exit
+  %common.ret.op.i16592010 = phi { i1, i64 } [ { i1 true, i64 0 }, %archx_fn_find_gt.exit ], [ %common.ret.op.i16592011, %enum.step.2.i1662 ], [ %common.ret.op.i16592011, %enum.step.2.1.i1666 ], [ %common.ret.op.i16592011, %enum.step.2.2.i1670 ], [ %common.ret.op.i16592011, %enum.step.2.3.i1674 ]
+  %enum.pos.2.03.lcssa.i1680 = phi i64 [ 0, %archx_fn_find_gt.exit ], [ 1, %enum.step.2.i1662 ], [ 2, %enum.step.2.1.i1666 ], [ 3, %enum.step.2.2.i1670 ], [ 4, %enum.step.2.3.i1674 ]
+  %t11.i1681 = insertvalue { i1, i64 } { i1 true, i64 undef }, i64 %enum.pos.2.03.lcssa.i1680, 1
+  br label %archx_fn_find_gt.exit1682
 
-enum.step.2.i1657:                                ; preds = %enum.step.2.3.i, %archx_fn_find_gt.exit.thread1993, %archx_fn_find_gt.exit
-  %common.ret.op.i16541992 = phi { i1, i64 } [ { i1 true, i64 0 }, %archx_fn_find_gt.exit ], [ %t11.i1995, %archx_fn_find_gt.exit.thread1993 ], [ zeroinitializer, %enum.step.2.3.i ]
-  %t6.1.i1659 = load i64, ptr %t3, align 8
-  %t8.1.i1660 = icmp sgt i64 %t6.1.i1659, 500
-  br i1 %t8.1.i1660, label %if.then.4.i1674, label %enum.step.2.1.i1661
+enum.step.2.i1662:                                ; preds = %enum.step.2.3.i, %archx_fn_find_gt.exit.thread2012, %archx_fn_find_gt.exit
+  %common.ret.op.i16592011 = phi { i1, i64 } [ { i1 true, i64 0 }, %archx_fn_find_gt.exit ], [ %t11.i2014, %archx_fn_find_gt.exit.thread2012 ], [ zeroinitializer, %enum.step.2.3.i ]
+  %t6.1.i1664 = load i64, ptr %t3, align 8
+  %t8.1.i1665 = icmp sgt i64 %t6.1.i1664, 500
+  br i1 %t8.1.i1665, label %if.then.4.i1679, label %enum.step.2.1.i1666
 
-enum.step.2.1.i1661:                              ; preds = %enum.step.2.i1657
-  %t6.2.i1663 = load i64, ptr %t4, align 16
-  %t8.2.i1664 = icmp sgt i64 %t6.2.i1663, 500
-  br i1 %t8.2.i1664, label %if.then.4.i1674, label %enum.step.2.2.i1665
+enum.step.2.1.i1666:                              ; preds = %enum.step.2.i1662
+  %t6.2.i1668 = load i64, ptr %t4, align 16
+  %t8.2.i1669 = icmp sgt i64 %t6.2.i1668, 500
+  br i1 %t8.2.i1669, label %if.then.4.i1679, label %enum.step.2.2.i1670
 
-enum.step.2.2.i1665:                              ; preds = %enum.step.2.1.i1661
-  %t6.3.i1667 = load i64, ptr %t5, align 8
-  %t8.3.i1668 = icmp sgt i64 %t6.3.i1667, 500
-  br i1 %t8.3.i1668, label %if.then.4.i1674, label %enum.step.2.3.i1669
+enum.step.2.2.i1670:                              ; preds = %enum.step.2.1.i1666
+  %t6.3.i1672 = load i64, ptr %t5, align 8
+  %t8.3.i1673 = icmp sgt i64 %t6.3.i1672, 500
+  br i1 %t8.3.i1673, label %if.then.4.i1679, label %enum.step.2.3.i1674
 
-enum.step.2.3.i1669:                              ; preds = %enum.step.2.2.i1665
-  %t6.4.i1671 = load i64, ptr %t6, align 16
-  %t8.4.i1672 = icmp sgt i64 %t6.4.i1671, 500
-  br i1 %t8.4.i1672, label %if.then.4.i1674, label %archx_fn_find_gt.exit1677
+enum.step.2.3.i1674:                              ; preds = %enum.step.2.2.i1670
+  %t6.4.i1676 = load i64, ptr %t6, align 16
+  %t8.4.i1677 = icmp sgt i64 %t6.4.i1676, 500
+  br i1 %t8.4.i1677, label %if.then.4.i1679, label %archx_fn_find_gt.exit1682
 
-archx_fn_find_gt.exit1677:                        ; preds = %if.then.4.i1674, %enum.step.2.3.i1669
-  %common.ret.op.i16541990 = phi { i1, i64 } [ %common.ret.op.i16541991, %if.then.4.i1674 ], [ %common.ret.op.i16541992, %enum.step.2.3.i1669 ]
-  %common.ret.op.i1673 = phi { i1, i64 } [ %t11.i1676, %if.then.4.i1674 ], [ zeroinitializer, %enum.step.2.3.i1669 ]
-  %t57 = extractvalue { i1, i64 } %common.ret.op.i16541990, 0
+archx_fn_find_gt.exit1682:                        ; preds = %if.then.4.i1679, %enum.step.2.3.i1674
+  %common.ret.op.i16592009 = phi { i1, i64 } [ %common.ret.op.i16592010, %if.then.4.i1679 ], [ %common.ret.op.i16592011, %enum.step.2.3.i1674 ]
+  %common.ret.op.i1678 = phi { i1, i64 } [ %t11.i1681, %if.then.4.i1679 ], [ zeroinitializer, %enum.step.2.3.i1674 ]
+  %t57 = extractvalue { i1, i64 } %common.ret.op.i16592009, 0
   br i1 %t57, label %if.then.2, label %if.merge.4
 
-if.then.2:                                        ; preds = %archx_fn_find_gt.exit1677
-  %t58 = extractvalue { i1, i64 } %common.ret.op.i16541990, 1
+if.then.2:                                        ; preds = %archx_fn_find_gt.exit1682
+  %t58 = extractvalue { i1, i64 } %common.ret.op.i16592009, 1
   %t60 = icmp ugt i64 %t58, 4
   br i1 %t60, label %idx.oob.6, label %idx.ok.5
 
@@ -2198,756 +2198,756 @@ idx.oob.6:                                        ; preds = %if.then.2
 idx.ok.5:                                         ; preds = %if.then.2
   %t62 = getelementptr inbounds nuw i64, ptr %t0, i64 %t58
   %t63 = load i64, ptr %t62, align 8
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1679)
-  %n32.i1680 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1679, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t63)
-  %len.i1681 = sext i32 %n32.i1680 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1678)
-  %z.i.i1682 = icmp slt i32 %n32.i1680, 1
-  br i1 %z.i.i1682, label %archx_str_from_int.exit1706, label %chk_sso.i.i1683
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1684)
+  %n32.i1685 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1684, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t63)
+  %len.i1686 = sext i32 %n32.i1685 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1683)
+  %z.i.i1687 = icmp slt i32 %n32.i1685, 1
+  br i1 %z.i.i1687, label %archx_str_from_int.exit1711, label %chk_sso.i.i1688
 
-oom.i.i1698:                                      ; preds = %alloc_heap.i.i1685
+oom.i.i1703:                                      ; preds = %alloc_heap.i.i1690
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1683:                                  ; preds = %idx.ok.5
-  %short.i.i1684 = icmp samesign ult i32 %n32.i1680, 13
-  br i1 %short.i.i1684, label %pack_sso.i.i1699, label %alloc_heap.i.i1685
+chk_sso.i.i1688:                                  ; preds = %idx.ok.5
+  %short.i.i1689 = icmp samesign ult i32 %n32.i1685, 13
+  br i1 %short.i.i1689, label %pack_sso.i.i1704, label %alloc_heap.i.i1690
 
-pack_sso.i.i1699:                                 ; preds = %chk_sso.i.i1683
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1678, i8 0, i64 16, i1 false)
-  store i32 %n32.i1680, ptr %sso.i.i1678, align 8
-  %sso.i.i1678.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1678, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1678.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1679, i64 range(i64 -2147483648, 2147483650) %len.i1681, i1 false)
-  %sso.i.i1678.0.sso.i.i1678.0.sso.i.i1678.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1701 = load i64, ptr %sso.i.i1678, align 8
-  %sso.i.i1678.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1678, i64 8
-  %sso.i.i1678.8.sso.i.i1678.8.sso.i.i1678.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1703 = load i64, ptr %sso.i.i1678.8.sroa_idx, align 8
-  %ss0.i.i1704 = insertvalue %ArchxStr poison, i64 %sso.i.i1678.0.sso.i.i1678.0.sso.i.i1678.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1701, 0
-  %ss1.i.i1705 = insertvalue %ArchxStr %ss0.i.i1704, i64 %sso.i.i1678.8.sso.i.i1678.8.sso.i.i1678.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1703, 1
-  br label %archx_str_from_int.exit1706
+pack_sso.i.i1704:                                 ; preds = %chk_sso.i.i1688
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1683, i8 0, i64 16, i1 false)
+  store i32 %n32.i1685, ptr %sso.i.i1683, align 8
+  %sso.i.i1683.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1683, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1683.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1684, i64 range(i64 -2147483648, 2147483650) %len.i1686, i1 false)
+  %sso.i.i1683.0.sso.i.i1683.0.sso.i.i1683.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1706 = load i64, ptr %sso.i.i1683, align 8
+  %sso.i.i1683.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1683, i64 8
+  %sso.i.i1683.8.sso.i.i1683.8.sso.i.i1683.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1708 = load i64, ptr %sso.i.i1683.8.sroa_idx, align 8
+  %ss0.i.i1709 = insertvalue %ArchxStr poison, i64 %sso.i.i1683.0.sso.i.i1683.0.sso.i.i1683.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1706, 0
+  %ss1.i.i1710 = insertvalue %ArchxStr %ss0.i.i1709, i64 %sso.i.i1683.8.sso.i.i1683.8.sso.i.i1683.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1708, 1
+  br label %archx_str_from_int.exit1711
 
-alloc_heap.i.i1685:                               ; preds = %chk_sso.i.i1683
-  %hp.i.i1686 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1681)
-  %hnull.i.i1687 = icmp eq ptr %hp.i.i1686, null
-  br i1 %hnull.i.i1687, label %oom.i.i1698, label %copy_long.i.i1688
+alloc_heap.i.i1690:                               ; preds = %chk_sso.i.i1688
+  %hp.i.i1691 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1686)
+  %hnull.i.i1692 = icmp eq ptr %hp.i.i1691, null
+  br i1 %hnull.i.i1692, label %oom.i.i1703, label %copy_long.i.i1693
 
-copy_long.i.i1688:                                ; preds = %alloc_heap.i.i1685
-  %hp_i.i.i1689 = ptrtoint ptr %hp.i.i1686 to i64
-  %htagged.i.i1690 = or disjoint i64 %hp_i.i.i1689, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1686, ptr nonnull readonly align 8 %buf.i1679, i64 range(i64 -2147483648, 2147483650) %len.i1681, i1 false)
-  %pref32.i.i1691 = load i32, ptr %hp.i.i1686, align 16
-  %pref64.i.i1692 = zext i32 %pref32.i.i1691 to i64
-  %pref_sh.i.i1693 = shl nuw i64 %pref64.i.i1692, 32
-  %w0_out.i.i1694 = or disjoint i64 %pref_sh.i.i1693, %len.i1681
-  %ls0.i.i1695 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1694, 0
-  %ls1.i.i1696 = insertvalue %ArchxStr %ls0.i.i1695, i64 %htagged.i.i1690, 1
-  br label %archx_str_from_int.exit1706
+copy_long.i.i1693:                                ; preds = %alloc_heap.i.i1690
+  %hp_i.i.i1694 = ptrtoint ptr %hp.i.i1691 to i64
+  %htagged.i.i1695 = or disjoint i64 %hp_i.i.i1694, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1691, ptr nonnull readonly align 8 %buf.i1684, i64 range(i64 -2147483648, 2147483650) %len.i1686, i1 false)
+  %pref32.i.i1696 = load i32, ptr %hp.i.i1691, align 16
+  %pref64.i.i1697 = zext i32 %pref32.i.i1696 to i64
+  %pref_sh.i.i1698 = shl nuw i64 %pref64.i.i1697, 32
+  %w0_out.i.i1699 = or disjoint i64 %pref_sh.i.i1698, %len.i1686
+  %ls0.i.i1700 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1699, 0
+  %ls1.i.i1701 = insertvalue %ArchxStr %ls0.i.i1700, i64 %htagged.i.i1695, 1
+  br label %archx_str_from_int.exit1711
 
-archx_str_from_int.exit1706:                      ; preds = %idx.ok.5, %pack_sso.i.i1699, %copy_long.i.i1688
-  %common.ret.op.i.i1697 = phi %ArchxStr [ %ss1.i.i1705, %pack_sso.i.i1699 ], [ %ls1.i.i1696, %copy_long.i.i1688 ], [ zeroinitializer, %idx.ok.5 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1678)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1679)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1094)
-  %bw0.i1096 = extractvalue %ArchxStr %common.ret.op.i.i1697, 0
-  %bw1.i1097 = extractvalue %ArchxStr %common.ret.op.i.i1697, 1
-  %blen.i1098 = and i64 %bw0.i1096, 4294967295
-  %bz.i1100 = icmp eq i64 %blen.i1098, 0
-  br i1 %bz.i1100, label %archx_str_concat.exit1146, label %calc_tot.i1101
+archx_str_from_int.exit1711:                      ; preds = %idx.ok.5, %pack_sso.i.i1704, %copy_long.i.i1693
+  %common.ret.op.i.i1702 = phi %ArchxStr [ %ss1.i.i1710, %pack_sso.i.i1704 ], [ %ls1.i.i1701, %copy_long.i.i1693 ], [ zeroinitializer, %idx.ok.5 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1683)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1684)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1099)
+  %bw0.i1101 = extractvalue %ArchxStr %common.ret.op.i.i1702, 0
+  %bw1.i1102 = extractvalue %ArchxStr %common.ret.op.i.i1702, 1
+  %blen.i1103 = and i64 %bw0.i1101, 4294967295
+  %bz.i1105 = icmp eq i64 %blen.i1103, 0
+  br i1 %bz.i1105, label %archx_str_concat.exit1151, label %calc_tot.i1106
 
-calc_tot.i1101:                                   ; preds = %archx_str_from_int.exit1706
-  %tot.i1102 = add nuw nsw i64 %blen.i1098, 6
-  %too_big.i1103 = icmp samesign ugt i64 %blen.i1098, 2147483641
-  br i1 %too_big.i1103, label %oom.i1130, label %mat_a.i1104
+calc_tot.i1106:                                   ; preds = %archx_str_from_int.exit1711
+  %tot.i1107 = add nuw nsw i64 %blen.i1103, 6
+  %too_big.i1108 = icmp samesign ugt i64 %blen.i1103, 2147483641
+  br i1 %too_big.i1108, label %oom.i1135, label %mat_a.i1109
 
-oom.i1130:                                        ; preds = %alloc_heap.i1116, %calc_tot.i1101
+oom.i1135:                                        ; preds = %alloc_heap.i1121, %calc_tot.i1106
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i1104:                                      ; preds = %calc_tot.i1101
-  %bshort.i1109 = icmp samesign ult i64 %blen.i1098, 13
-  br i1 %bshort.i1109, label %build.i1113, label %build.i1113.thread
+mat_a.i1109:                                      ; preds = %calc_tot.i1106
+  %bshort.i1114 = icmp samesign ult i64 %blen.i1103, 13
+  br i1 %bshort.i1114, label %build.i1118, label %build.i1118.thread
 
-build.i1113.thread:                               ; preds = %mat_a.i1104
-  %braw.i1111 = and i64 %bw1.i1097, -4
-  %blptr.i1112 = inttoptr i64 %braw.i1111 to ptr
-  br label %alloc_heap.i1116
+build.i1118.thread:                               ; preds = %mat_a.i1109
+  %braw.i1116 = and i64 %bw1.i1102, -4
+  %blptr.i1117 = inttoptr i64 %braw.i1116 to ptr
+  br label %alloc_heap.i1121
 
-build.i1113:                                      ; preds = %mat_a.i1104
-  %bp4.i1141 = lshr i64 %bw0.i1096, 32
-  %bp4_32.i1142 = trunc nuw i64 %bp4.i1141 to i32
-  store i32 %bp4_32.i1142, ptr %btmp.i1094, align 4
-  %btmp4.i1143 = getelementptr inbounds nuw i8, ptr %btmp.i1094, i64 4
-  store i64 %bw1.i1097, ptr %btmp4.i1143, align 4
-  %fits_sso.i1115 = icmp samesign ult i64 %blen.i1098, 7
-  br i1 %fits_sso.i1115, label %build_sso.i1131, label %alloc_heap.i1116
+build.i1118:                                      ; preds = %mat_a.i1109
+  %bp4.i1146 = lshr i64 %bw0.i1101, 32
+  %bp4_32.i1147 = trunc nuw i64 %bp4.i1146 to i32
+  store i32 %bp4_32.i1147, ptr %btmp.i1099, align 4
+  %btmp4.i1148 = getelementptr inbounds nuw i8, ptr %btmp.i1099, i64 4
+  store i64 %bw1.i1102, ptr %btmp4.i1148, align 4
+  %fits_sso.i1120 = icmp samesign ult i64 %blen.i1103, 7
+  br i1 %fits_sso.i1120, label %build_sso.i1136, label %alloc_heap.i1121
 
-build_sso.i1131:                                  ; preds = %build.i1113
-  store i48 0, ptr %out_sso.i1095.sroa.6.sroa.5.sroa.0, align 8
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %out_sso.i1095.sroa.6.sroa.5.sroa.0, ptr nonnull align 4 %btmp.i1094, i64 %blen.i1098, i1 false)
-  %out_sso.i1095.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i1102, 7959390400324567040
-  %out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.0.out_sso.i1095.sroa.6.8.rw1.i1137 = load i48, ptr %out_sso.i1095.sroa.6.sroa.5.sroa.0, align 8
-  %out_sso.i1095.sroa.6.sroa.5.0.insert.ext = zext i48 %out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.sroa.0.0.out_sso.i1095.sroa.6.sroa.5.0.out_sso.i1095.sroa.6.8.rw1.i1137 to i64
-  %out_sso.i1095.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i1095.sroa.6.sroa.5.0.insert.ext, 16
-  %out_sso.i1095.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i1095.sroa.6.sroa.5.0.insert.shift, 15716
-  %rs0.i1138 = insertvalue %ArchxStr poison, i64 %out_sso.i1095.sroa.0.sroa.0.0.insert.insert, 0
-  %rs1.i1139 = insertvalue %ArchxStr %rs0.i1138, i64 %out_sso.i1095.sroa.6.sroa.0.0.insert.insert, 1
-  br label %archx_str_concat.exit1146
+build_sso.i1136:                                  ; preds = %build.i1118
+  store i48 0, ptr %out_sso.i1100.sroa.6.sroa.5.sroa.0, align 8
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %out_sso.i1100.sroa.6.sroa.5.sroa.0, ptr nonnull align 4 %btmp.i1099, i64 %blen.i1103, i1 false)
+  %out_sso.i1100.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i1107, 7959390400324567040
+  %out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.0.out_sso.i1100.sroa.6.8.rw1.i1142 = load i48, ptr %out_sso.i1100.sroa.6.sroa.5.sroa.0, align 8
+  %out_sso.i1100.sroa.6.sroa.5.0.insert.ext = zext i48 %out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.sroa.0.0.out_sso.i1100.sroa.6.sroa.5.0.out_sso.i1100.sroa.6.8.rw1.i1142 to i64
+  %out_sso.i1100.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i1100.sroa.6.sroa.5.0.insert.ext, 16
+  %out_sso.i1100.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i1100.sroa.6.sroa.5.0.insert.shift, 15716
+  %rs0.i1143 = insertvalue %ArchxStr poison, i64 %out_sso.i1100.sroa.0.sroa.0.0.insert.insert, 0
+  %rs1.i1144 = insertvalue %ArchxStr %rs0.i1143, i64 %out_sso.i1100.sroa.6.sroa.0.0.insert.insert, 1
+  br label %archx_str_concat.exit1151
 
-alloc_heap.i1116:                                 ; preds = %build.i1113.thread, %build.i1113
-  %bptr.i11142189 = phi ptr [ %blptr.i1112, %build.i1113.thread ], [ %btmp.i1094, %build.i1113 ]
-  %hp.i1117 = call noalias align 16 ptr @malloc(i64 %tot.i1102)
-  %hnull.i1118 = icmp eq ptr %hp.i1117, null
-  br i1 %hnull.i1118, label %oom.i1130, label %copy_long.i1119
+alloc_heap.i1121:                                 ; preds = %build.i1118.thread, %build.i1118
+  %bptr.i11192211 = phi ptr [ %blptr.i1117, %build.i1118.thread ], [ %btmp.i1099, %build.i1118 ]
+  %hp.i1122 = call noalias align 16 ptr @malloc(i64 %tot.i1107)
+  %hnull.i1123 = icmp eq ptr %hp.i1122, null
+  br i1 %hnull.i1123, label %oom.i1135, label %copy_long.i1124
 
-copy_long.i1119:                                  ; preds = %alloc_heap.i1116
-  %hp_i.i1120 = ptrtoint ptr %hp.i1117 to i64
-  %htagged.i1121 = or disjoint i64 %hp_i.i1120, 1
-  store i32 1853189990, ptr %hp.i1117, align 16
-  %atmp.i1093.sroa.5.0.hp.i1117.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i1117, i64 4
-  store i16 15716, ptr %atmp.i1093.sroa.5.0.hp.i1117.sroa_idx, align 4
-  %dst_b.i1122 = getelementptr inbounds nuw i8, ptr %hp.i1117, i64 6
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 2 %dst_b.i1122, ptr nonnull align 1 %bptr.i11142189, i64 %blen.i1098, i1 false)
-  %w0_out.i1126 = or disjoint i64 %tot.i1102, 7959390400324567040
-  %ls0.i1127 = insertvalue %ArchxStr poison, i64 %w0_out.i1126, 0
-  %ls1.i1128 = insertvalue %ArchxStr %ls0.i1127, i64 %htagged.i1121, 1
-  br label %archx_str_concat.exit1146
+copy_long.i1124:                                  ; preds = %alloc_heap.i1121
+  %hp_i.i1125 = ptrtoint ptr %hp.i1122 to i64
+  %htagged.i1126 = or disjoint i64 %hp_i.i1125, 1
+  store i32 1853189990, ptr %hp.i1122, align 16
+  %atmp.i1098.sroa.5.0.hp.i1122.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i1122, i64 4
+  store i16 15716, ptr %atmp.i1098.sroa.5.0.hp.i1122.sroa_idx, align 4
+  %dst_b.i1127 = getelementptr inbounds nuw i8, ptr %hp.i1122, i64 6
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 2 %dst_b.i1127, ptr nonnull align 1 %bptr.i11192211, i64 %blen.i1103, i1 false)
+  %w0_out.i1131 = or disjoint i64 %tot.i1107, 7959390400324567040
+  %ls0.i1132 = insertvalue %ArchxStr poison, i64 %w0_out.i1131, 0
+  %ls1.i1133 = insertvalue %ArchxStr %ls0.i1132, i64 %htagged.i1126, 1
+  br label %archx_str_concat.exit1151
 
-archx_str_concat.exit1146:                        ; preds = %archx_str_from_int.exit1706, %build_sso.i1131, %copy_long.i1119
-  %common.ret.op.i1129 = phi %ArchxStr [ %rs1.i1139, %build_sso.i1131 ], [ %ls1.i1128, %copy_long.i1119 ], [ { i64 7959390400324567046, i64 15716 }, %archx_str_from_int.exit1706 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1094)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1147)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1149)
-  %aw0.i1150 = extractvalue %ArchxStr %common.ret.op.i1129, 0
-  %aw1.i1151 = extractvalue %ArchxStr %common.ret.op.i1129, 1
-  %alen.i1152 = and i64 %aw0.i1150, 4294967295
-  %az.i1153 = icmp eq i64 %alen.i1152, 0
-  br i1 %az.i1153, label %archx_str_concat.exit1200, label %chk_bz.i1154
+archx_str_concat.exit1151:                        ; preds = %archx_str_from_int.exit1711, %build_sso.i1136, %copy_long.i1124
+  %common.ret.op.i1134 = phi %ArchxStr [ %rs1.i1144, %build_sso.i1136 ], [ %ls1.i1133, %copy_long.i1124 ], [ { i64 7959390400324567046, i64 15716 }, %archx_str_from_int.exit1711 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1099)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1152)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1154)
+  %aw0.i1155 = extractvalue %ArchxStr %common.ret.op.i1134, 0
+  %aw1.i1156 = extractvalue %ArchxStr %common.ret.op.i1134, 1
+  %alen.i1157 = and i64 %aw0.i1155, 4294967295
+  %az.i1158 = icmp eq i64 %alen.i1157, 0
+  br i1 %az.i1158, label %archx_str_concat.exit1205, label %chk_bz.i1159
 
-chk_bz.i1154:                                     ; preds = %archx_str_concat.exit1146
-  %tot.i1156 = add nuw nsw i64 %alen.i1152, 4
-  %too_big.i1157 = icmp samesign ugt i64 %alen.i1152, 2147483643
-  br i1 %too_big.i1157, label %oom.i1184, label %mat_a.i1158
+chk_bz.i1159:                                     ; preds = %archx_str_concat.exit1151
+  %tot.i1161 = add nuw nsw i64 %alen.i1157, 4
+  %too_big.i1162 = icmp samesign ugt i64 %alen.i1157, 2147483643
+  br i1 %too_big.i1162, label %oom.i1189, label %mat_a.i1163
 
-oom.i1184:                                        ; preds = %alloc_heap.i1170, %chk_bz.i1154
+oom.i1189:                                        ; preds = %alloc_heap.i1175, %chk_bz.i1159
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i1158:                                      ; preds = %chk_bz.i1154
-  %ashort.i1159 = icmp samesign ult i64 %alen.i1152, 13
-  br i1 %ashort.i1159, label %mat_b.i1163, label %mat_b.i1163.thread
+mat_a.i1163:                                      ; preds = %chk_bz.i1159
+  %ashort.i1164 = icmp samesign ult i64 %alen.i1157, 13
+  br i1 %ashort.i1164, label %mat_b.i1168, label %mat_b.i1168.thread
 
-mat_b.i1163.thread:                               ; preds = %mat_a.i1158
-  %araw.i1161 = and i64 %aw1.i1151, -4
-  %alptr.i1162 = inttoptr i64 %araw.i1161 to ptr
-  br label %alloc_heap.i1170
+mat_b.i1168.thread:                               ; preds = %mat_a.i1163
+  %araw.i1166 = and i64 %aw1.i1156, -4
+  %alptr.i1167 = inttoptr i64 %araw.i1166 to ptr
+  br label %alloc_heap.i1175
 
-mat_b.i1163:                                      ; preds = %mat_a.i1158
-  %ap4.i1195 = lshr i64 %aw0.i1150, 32
-  %ap4_32.i1196 = trunc nuw i64 %ap4.i1195 to i32
-  store i32 %ap4_32.i1196, ptr %atmp.i1147, align 4
-  %atmp4.i1197 = getelementptr inbounds nuw i8, ptr %atmp.i1147, i64 4
-  store i64 %aw1.i1151, ptr %atmp4.i1197, align 4
-  %fits_sso.i1169 = icmp samesign ult i64 %alen.i1152, 9
-  br i1 %fits_sso.i1169, label %build_sso.i1185, label %alloc_heap.i1170
+mat_b.i1168:                                      ; preds = %mat_a.i1163
+  %ap4.i1200 = lshr i64 %aw0.i1155, 32
+  %ap4_32.i1201 = trunc nuw i64 %ap4.i1200 to i32
+  store i32 %ap4_32.i1201, ptr %atmp.i1152, align 4
+  %atmp4.i1202 = getelementptr inbounds nuw i8, ptr %atmp.i1152, i64 4
+  store i64 %aw1.i1156, ptr %atmp4.i1202, align 4
+  %fits_sso.i1174 = icmp samesign ult i64 %alen.i1157, 9
+  br i1 %fits_sso.i1174, label %build_sso.i1190, label %alloc_heap.i1175
 
-build_sso.i1185:                                  ; preds = %mat_b.i1163
-  %out_sso8.i1186 = getelementptr inbounds nuw i8, ptr %out_sso.i1149, i64 8
-  %tot32.i1187 = trunc nuw nsw i64 %tot.i1156 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1149, i8 0, i64 16, i1 false)
-  store i32 %tot32.i1187, ptr %out_sso.i1149, align 8
-  %sso_dst_a.i1188 = getelementptr inbounds nuw i8, ptr %out_sso.i1149, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1188, ptr nonnull align 4 %atmp.i1147, i64 %alen.i1152, i1 false)
-  %sso_dst_b.i1189 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1188, i64 %alen.i1152
-  store i32 544497952, ptr %sso_dst_b.i1189, align 1
-  %rw0.i1190 = load i64, ptr %out_sso.i1149, align 8
-  %rw1.i1191 = load i64, ptr %out_sso8.i1186, align 8
-  %rs0.i1192 = insertvalue %ArchxStr poison, i64 %rw0.i1190, 0
-  %rs1.i1193 = insertvalue %ArchxStr %rs0.i1192, i64 %rw1.i1191, 1
-  br label %archx_str_concat.exit1200
+build_sso.i1190:                                  ; preds = %mat_b.i1168
+  %out_sso8.i1191 = getelementptr inbounds nuw i8, ptr %out_sso.i1154, i64 8
+  %tot32.i1192 = trunc nuw nsw i64 %tot.i1161 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1154, i8 0, i64 16, i1 false)
+  store i32 %tot32.i1192, ptr %out_sso.i1154, align 8
+  %sso_dst_a.i1193 = getelementptr inbounds nuw i8, ptr %out_sso.i1154, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1193, ptr nonnull align 4 %atmp.i1152, i64 %alen.i1157, i1 false)
+  %sso_dst_b.i1194 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1193, i64 %alen.i1157
+  store i32 544497952, ptr %sso_dst_b.i1194, align 1
+  %rw0.i1195 = load i64, ptr %out_sso.i1154, align 8
+  %rw1.i1196 = load i64, ptr %out_sso8.i1191, align 8
+  %rs0.i1197 = insertvalue %ArchxStr poison, i64 %rw0.i1195, 0
+  %rs1.i1198 = insertvalue %ArchxStr %rs0.i1197, i64 %rw1.i1196, 1
+  br label %archx_str_concat.exit1205
 
-alloc_heap.i1170:                                 ; preds = %mat_b.i1163.thread, %mat_b.i1163
-  %aptr.i11641999 = phi ptr [ %alptr.i1162, %mat_b.i1163.thread ], [ %atmp.i1147, %mat_b.i1163 ]
-  %hp.i1171 = call noalias align 16 ptr @malloc(i64 %tot.i1156)
-  %hnull.i1172 = icmp eq ptr %hp.i1171, null
-  br i1 %hnull.i1172, label %oom.i1184, label %copy_long.i1173
+alloc_heap.i1175:                                 ; preds = %mat_b.i1168.thread, %mat_b.i1168
+  %aptr.i11692018 = phi ptr [ %alptr.i1167, %mat_b.i1168.thread ], [ %atmp.i1152, %mat_b.i1168 ]
+  %hp.i1176 = call noalias align 16 ptr @malloc(i64 %tot.i1161)
+  %hnull.i1177 = icmp eq ptr %hp.i1176, null
+  br i1 %hnull.i1177, label %oom.i1189, label %copy_long.i1178
 
-copy_long.i1173:                                  ; preds = %alloc_heap.i1170
-  %hp_i.i1174 = ptrtoint ptr %hp.i1171 to i64
-  %htagged.i1175 = or disjoint i64 %hp_i.i1174, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1171, ptr nonnull align 1 %aptr.i11641999, i64 %alen.i1152, i1 false)
-  %dst_b.i1176 = getelementptr inbounds nuw i8, ptr %hp.i1171, i64 %alen.i1152
-  store i32 544497952, ptr %dst_b.i1176, align 1
-  %pref32.i1177 = load i32, ptr %hp.i1171, align 16
-  %pref64.i1178 = zext i32 %pref32.i1177 to i64
-  %pref_sh.i1179 = shl nuw i64 %pref64.i1178, 32
-  %w0_out.i1180 = or disjoint i64 %pref_sh.i1179, %tot.i1156
-  %ls0.i1181 = insertvalue %ArchxStr poison, i64 %w0_out.i1180, 0
-  %ls1.i1182 = insertvalue %ArchxStr %ls0.i1181, i64 %htagged.i1175, 1
-  br label %archx_str_concat.exit1200
+copy_long.i1178:                                  ; preds = %alloc_heap.i1175
+  %hp_i.i1179 = ptrtoint ptr %hp.i1176 to i64
+  %htagged.i1180 = or disjoint i64 %hp_i.i1179, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1176, ptr nonnull align 1 %aptr.i11692018, i64 %alen.i1157, i1 false)
+  %dst_b.i1181 = getelementptr inbounds nuw i8, ptr %hp.i1176, i64 %alen.i1157
+  store i32 544497952, ptr %dst_b.i1181, align 1
+  %pref32.i1182 = load i32, ptr %hp.i1176, align 16
+  %pref64.i1183 = zext i32 %pref32.i1182 to i64
+  %pref_sh.i1184 = shl nuw i64 %pref64.i1183, 32
+  %w0_out.i1185 = or disjoint i64 %pref_sh.i1184, %tot.i1161
+  %ls0.i1186 = insertvalue %ArchxStr poison, i64 %w0_out.i1185, 0
+  %ls1.i1187 = insertvalue %ArchxStr %ls0.i1186, i64 %htagged.i1180, 1
+  br label %archx_str_concat.exit1205
 
-archx_str_concat.exit1200:                        ; preds = %archx_str_concat.exit1146, %build_sso.i1185, %copy_long.i1173
-  %common.ret.op.i1183 = phi %ArchxStr [ %rs1.i1193, %build_sso.i1185 ], [ %ls1.i1182, %copy_long.i1173 ], [ { i64 2338600896578977796, i64 0 }, %archx_str_concat.exit1146 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1147)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1149)
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1710)
-  %n32.i1711 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1710, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t58)
-  %len.i1712 = sext i32 %n32.i1711 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1709)
-  %z.i.i1713 = icmp slt i32 %n32.i1711, 1
-  br i1 %z.i.i1713, label %archx_str_from_int.exit1737, label %chk_sso.i.i1714
+archx_str_concat.exit1205:                        ; preds = %archx_str_concat.exit1151, %build_sso.i1190, %copy_long.i1178
+  %common.ret.op.i1188 = phi %ArchxStr [ %rs1.i1198, %build_sso.i1190 ], [ %ls1.i1187, %copy_long.i1178 ], [ { i64 2338600896578977796, i64 0 }, %archx_str_concat.exit1151 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1152)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1154)
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1715)
+  %n32.i1716 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1715, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t58)
+  %len.i1717 = sext i32 %n32.i1716 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1714)
+  %z.i.i1718 = icmp slt i32 %n32.i1716, 1
+  br i1 %z.i.i1718, label %archx_str_from_int.exit1742, label %chk_sso.i.i1719
 
-oom.i.i1729:                                      ; preds = %alloc_heap.i.i1716
+oom.i.i1734:                                      ; preds = %alloc_heap.i.i1721
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1714:                                  ; preds = %archx_str_concat.exit1200
-  %short.i.i1715 = icmp samesign ult i32 %n32.i1711, 13
-  br i1 %short.i.i1715, label %pack_sso.i.i1730, label %alloc_heap.i.i1716
+chk_sso.i.i1719:                                  ; preds = %archx_str_concat.exit1205
+  %short.i.i1720 = icmp samesign ult i32 %n32.i1716, 13
+  br i1 %short.i.i1720, label %pack_sso.i.i1735, label %alloc_heap.i.i1721
 
-pack_sso.i.i1730:                                 ; preds = %chk_sso.i.i1714
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1709, i8 0, i64 16, i1 false)
-  store i32 %n32.i1711, ptr %sso.i.i1709, align 8
-  %sso.i.i1709.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1709, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1709.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1710, i64 range(i64 -2147483648, 2147483650) %len.i1712, i1 false)
-  %sso.i.i1709.0.sso.i.i1709.0.sso.i.i1709.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1732 = load i64, ptr %sso.i.i1709, align 8
-  %sso.i.i1709.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1709, i64 8
-  %sso.i.i1709.8.sso.i.i1709.8.sso.i.i1709.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1734 = load i64, ptr %sso.i.i1709.8.sroa_idx, align 8
-  %ss0.i.i1735 = insertvalue %ArchxStr poison, i64 %sso.i.i1709.0.sso.i.i1709.0.sso.i.i1709.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1732, 0
-  %ss1.i.i1736 = insertvalue %ArchxStr %ss0.i.i1735, i64 %sso.i.i1709.8.sso.i.i1709.8.sso.i.i1709.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1734, 1
-  br label %archx_str_from_int.exit1737
+pack_sso.i.i1735:                                 ; preds = %chk_sso.i.i1719
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1714, i8 0, i64 16, i1 false)
+  store i32 %n32.i1716, ptr %sso.i.i1714, align 8
+  %sso.i.i1714.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1714, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1714.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1715, i64 range(i64 -2147483648, 2147483650) %len.i1717, i1 false)
+  %sso.i.i1714.0.sso.i.i1714.0.sso.i.i1714.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1737 = load i64, ptr %sso.i.i1714, align 8
+  %sso.i.i1714.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1714, i64 8
+  %sso.i.i1714.8.sso.i.i1714.8.sso.i.i1714.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1739 = load i64, ptr %sso.i.i1714.8.sroa_idx, align 8
+  %ss0.i.i1740 = insertvalue %ArchxStr poison, i64 %sso.i.i1714.0.sso.i.i1714.0.sso.i.i1714.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1737, 0
+  %ss1.i.i1741 = insertvalue %ArchxStr %ss0.i.i1740, i64 %sso.i.i1714.8.sso.i.i1714.8.sso.i.i1714.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1739, 1
+  br label %archx_str_from_int.exit1742
 
-alloc_heap.i.i1716:                               ; preds = %chk_sso.i.i1714
-  %hp.i.i1717 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1712)
-  %hnull.i.i1718 = icmp eq ptr %hp.i.i1717, null
-  br i1 %hnull.i.i1718, label %oom.i.i1729, label %copy_long.i.i1719
+alloc_heap.i.i1721:                               ; preds = %chk_sso.i.i1719
+  %hp.i.i1722 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1717)
+  %hnull.i.i1723 = icmp eq ptr %hp.i.i1722, null
+  br i1 %hnull.i.i1723, label %oom.i.i1734, label %copy_long.i.i1724
 
-copy_long.i.i1719:                                ; preds = %alloc_heap.i.i1716
-  %hp_i.i.i1720 = ptrtoint ptr %hp.i.i1717 to i64
-  %htagged.i.i1721 = or disjoint i64 %hp_i.i.i1720, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1717, ptr nonnull readonly align 8 %buf.i1710, i64 range(i64 -2147483648, 2147483650) %len.i1712, i1 false)
-  %pref32.i.i1722 = load i32, ptr %hp.i.i1717, align 16
-  %pref64.i.i1723 = zext i32 %pref32.i.i1722 to i64
-  %pref_sh.i.i1724 = shl nuw i64 %pref64.i.i1723, 32
-  %w0_out.i.i1725 = or disjoint i64 %pref_sh.i.i1724, %len.i1712
-  %ls0.i.i1726 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1725, 0
-  %ls1.i.i1727 = insertvalue %ArchxStr %ls0.i.i1726, i64 %htagged.i.i1721, 1
-  br label %archx_str_from_int.exit1737
+copy_long.i.i1724:                                ; preds = %alloc_heap.i.i1721
+  %hp_i.i.i1725 = ptrtoint ptr %hp.i.i1722 to i64
+  %htagged.i.i1726 = or disjoint i64 %hp_i.i.i1725, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1722, ptr nonnull readonly align 8 %buf.i1715, i64 range(i64 -2147483648, 2147483650) %len.i1717, i1 false)
+  %pref32.i.i1727 = load i32, ptr %hp.i.i1722, align 16
+  %pref64.i.i1728 = zext i32 %pref32.i.i1727 to i64
+  %pref_sh.i.i1729 = shl nuw i64 %pref64.i.i1728, 32
+  %w0_out.i.i1730 = or disjoint i64 %pref_sh.i.i1729, %len.i1717
+  %ls0.i.i1731 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1730, 0
+  %ls1.i.i1732 = insertvalue %ArchxStr %ls0.i.i1731, i64 %htagged.i.i1726, 1
+  br label %archx_str_from_int.exit1742
 
-archx_str_from_int.exit1737:                      ; preds = %archx_str_concat.exit1200, %pack_sso.i.i1730, %copy_long.i.i1719
-  %common.ret.op.i.i1728 = phi %ArchxStr [ %ss1.i.i1736, %pack_sso.i.i1730 ], [ %ls1.i.i1727, %copy_long.i.i1719 ], [ zeroinitializer, %archx_str_concat.exit1200 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1709)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1710)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1201)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1202)
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1203)
-  %aw0.i1204 = extractvalue %ArchxStr %common.ret.op.i1183, 0
-  %aw1.i1205 = extractvalue %ArchxStr %common.ret.op.i1183, 1
-  %bw0.i1206 = extractvalue %ArchxStr %common.ret.op.i.i1728, 0
-  %bw1.i1207 = extractvalue %ArchxStr %common.ret.op.i.i1728, 1
-  %alen.i1208 = and i64 %aw0.i1204, 4294967295
-  %blen.i1209 = and i64 %bw0.i1206, 4294967295
-  %az.i1210 = icmp eq i64 %alen.i1208, 0
-  br i1 %az.i1210, label %ret_b_clone.i1264, label %chk_bz.i1211
+archx_str_from_int.exit1742:                      ; preds = %archx_str_concat.exit1205, %pack_sso.i.i1735, %copy_long.i.i1724
+  %common.ret.op.i.i1733 = phi %ArchxStr [ %ss1.i.i1741, %pack_sso.i.i1735 ], [ %ls1.i.i1732, %copy_long.i.i1724 ], [ zeroinitializer, %archx_str_concat.exit1205 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1714)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1715)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i1206)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1207)
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i1208)
+  %aw0.i1209 = extractvalue %ArchxStr %common.ret.op.i1188, 0
+  %aw1.i1210 = extractvalue %ArchxStr %common.ret.op.i1188, 1
+  %bw0.i1211 = extractvalue %ArchxStr %common.ret.op.i.i1733, 0
+  %bw1.i1212 = extractvalue %ArchxStr %common.ret.op.i.i1733, 1
+  %alen.i1213 = and i64 %aw0.i1209, 4294967295
+  %blen.i1214 = and i64 %bw0.i1211, 4294967295
+  %az.i1215 = icmp eq i64 %alen.i1213, 0
+  br i1 %az.i1215, label %ret_b_clone.i1269, label %chk_bz.i1216
 
-ret_b_clone.i1264:                                ; preds = %archx_str_from_int.exit1737
-  %long.i1740 = icmp samesign ult i64 %blen.i1209, 13
-  %tag.i1744 = and i64 %bw1.i1207, 3
-  %owned.not.i1745 = icmp eq i64 %tag.i1744, 0
-  %or.cond2074 = select i1 %long.i1740, i1 true, i1 %owned.not.i1745
-  br i1 %or.cond2074, label %archx_str_concat.exit1266, label %dup_heap.i1746
+ret_b_clone.i1269:                                ; preds = %archx_str_from_int.exit1742
+  %long.i1745 = icmp samesign ult i64 %blen.i1214, 13
+  %tag.i1749 = and i64 %bw1.i1212, 3
+  %owned.not.i1750 = icmp eq i64 %tag.i1749, 0
+  %or.cond2093 = select i1 %long.i1745, i1 true, i1 %owned.not.i1750
+  br i1 %or.cond2093, label %archx_str_concat.exit1271, label %dup_heap.i1751
 
-dup_heap.i1746:                                   ; preds = %ret_b_clone.i1264
-  %dst.i1747 = call noalias align 16 ptr @malloc(i64 %blen.i1209)
-  %isnull.i1748 = icmp eq ptr %dst.i1747, null
-  br i1 %isnull.i1748, label %oom.i1755, label %copy.i1749
+dup_heap.i1751:                                   ; preds = %ret_b_clone.i1269
+  %dst.i1752 = call noalias align 16 ptr @malloc(i64 %blen.i1214)
+  %isnull.i1753 = icmp eq ptr %dst.i1752, null
+  br i1 %isnull.i1753, label %oom.i1760, label %copy.i1754
 
-oom.i1755:                                        ; preds = %dup_heap.i1746
+oom.i1760:                                        ; preds = %dup_heap.i1751
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1749:                                       ; preds = %dup_heap.i1746
-  %src_i.i1750 = and i64 %bw1.i1207, -4
-  %src.i1751 = inttoptr i64 %src_i.i1750 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1747, ptr nonnull align 4 %src.i1751, i64 %blen.i1209, i1 false)
-  %dst_i.i1752 = ptrtoint ptr %dst.i1747 to i64
-  %tagged.i1753 = or disjoint i64 %dst_i.i1752, 1
-  %out.i1754 = insertvalue %ArchxStr %common.ret.op.i.i1728, i64 %tagged.i1753, 1
-  br label %archx_str_concat.exit1266
+copy.i1754:                                       ; preds = %dup_heap.i1751
+  %src_i.i1755 = and i64 %bw1.i1212, -4
+  %src.i1756 = inttoptr i64 %src_i.i1755 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1752, ptr nonnull align 4 %src.i1756, i64 %blen.i1214, i1 false)
+  %dst_i.i1757 = ptrtoint ptr %dst.i1752 to i64
+  %tagged.i1758 = or disjoint i64 %dst_i.i1757, 1
+  %out.i1759 = insertvalue %ArchxStr %common.ret.op.i.i1733, i64 %tagged.i1758, 1
+  br label %archx_str_concat.exit1271
 
-chk_bz.i1211:                                     ; preds = %archx_str_from_int.exit1737
-  %bz.i1212 = icmp eq i64 %blen.i1209, 0
-  br i1 %bz.i1212, label %ret_a_clone.i1262, label %calc_tot.i1213
+chk_bz.i1216:                                     ; preds = %archx_str_from_int.exit1742
+  %bz.i1217 = icmp eq i64 %blen.i1214, 0
+  br i1 %bz.i1217, label %ret_a_clone.i1267, label %calc_tot.i1218
 
-ret_a_clone.i1262:                                ; preds = %chk_bz.i1211
-  %long.i1759 = icmp samesign ult i64 %alen.i1208, 13
-  %tag.i1763 = and i64 %aw1.i1205, 3
-  %owned.not.i1764 = icmp eq i64 %tag.i1763, 0
-  %or.cond2075 = select i1 %long.i1759, i1 true, i1 %owned.not.i1764
-  br i1 %or.cond2075, label %archx_str_concat.exit1266, label %dup_heap.i1765
+ret_a_clone.i1267:                                ; preds = %chk_bz.i1216
+  %long.i1764 = icmp samesign ult i64 %alen.i1213, 13
+  %tag.i1768 = and i64 %aw1.i1210, 3
+  %owned.not.i1769 = icmp eq i64 %tag.i1768, 0
+  %or.cond2094 = select i1 %long.i1764, i1 true, i1 %owned.not.i1769
+  br i1 %or.cond2094, label %archx_str_concat.exit1271, label %dup_heap.i1770
 
-dup_heap.i1765:                                   ; preds = %ret_a_clone.i1262
-  %dst.i1766 = call noalias align 16 ptr @malloc(i64 %alen.i1208)
-  %isnull.i1767 = icmp eq ptr %dst.i1766, null
-  br i1 %isnull.i1767, label %oom.i1774, label %copy.i1768
+dup_heap.i1770:                                   ; preds = %ret_a_clone.i1267
+  %dst.i1771 = call noalias align 16 ptr @malloc(i64 %alen.i1213)
+  %isnull.i1772 = icmp eq ptr %dst.i1771, null
+  br i1 %isnull.i1772, label %oom.i1779, label %copy.i1773
 
-oom.i1774:                                        ; preds = %dup_heap.i1765
+oom.i1779:                                        ; preds = %dup_heap.i1770
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i1768:                                       ; preds = %dup_heap.i1765
-  %src_i.i1769 = and i64 %aw1.i1205, -4
-  %src.i1770 = inttoptr i64 %src_i.i1769 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1766, ptr nonnull align 4 %src.i1770, i64 %alen.i1208, i1 false)
-  %dst_i.i1771 = ptrtoint ptr %dst.i1766 to i64
-  %tagged.i1772 = or disjoint i64 %dst_i.i1771, 1
-  %out.i1773 = insertvalue %ArchxStr %common.ret.op.i1183, i64 %tagged.i1772, 1
-  br label %archx_str_concat.exit1266
+copy.i1773:                                       ; preds = %dup_heap.i1770
+  %src_i.i1774 = and i64 %aw1.i1210, -4
+  %src.i1775 = inttoptr i64 %src_i.i1774 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i1771, ptr nonnull align 4 %src.i1775, i64 %alen.i1213, i1 false)
+  %dst_i.i1776 = ptrtoint ptr %dst.i1771 to i64
+  %tagged.i1777 = or disjoint i64 %dst_i.i1776, 1
+  %out.i1778 = insertvalue %ArchxStr %common.ret.op.i1188, i64 %tagged.i1777, 1
+  br label %archx_str_concat.exit1271
 
-calc_tot.i1213:                                   ; preds = %chk_bz.i1211
-  %tot.i1214 = add nuw nsw i64 %blen.i1209, %alen.i1208
-  %too_big.i1215 = icmp samesign ugt i64 %tot.i1214, 2147483647
-  br i1 %too_big.i1215, label %oom.i1244, label %mat_a.i1216
+calc_tot.i1218:                                   ; preds = %chk_bz.i1216
+  %tot.i1219 = add nuw nsw i64 %blen.i1214, %alen.i1213
+  %too_big.i1220 = icmp samesign ugt i64 %tot.i1219, 2147483647
+  br i1 %too_big.i1220, label %oom.i1249, label %mat_a.i1221
 
-oom.i1244:                                        ; preds = %alloc_heap.i1230, %calc_tot.i1213
+oom.i1249:                                        ; preds = %alloc_heap.i1235, %calc_tot.i1218
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i1216:                                      ; preds = %calc_tot.i1213
-  %ashort.i1217 = icmp samesign ult i64 %alen.i1208, 13
-  br i1 %ashort.i1217, label %mat_a_short.i1258, label %mat_a_long.i1218
+mat_a.i1221:                                      ; preds = %calc_tot.i1218
+  %ashort.i1222 = icmp samesign ult i64 %alen.i1213, 13
+  br i1 %ashort.i1222, label %mat_a_short.i1263, label %mat_a_long.i1223
 
-mat_a_short.i1258:                                ; preds = %mat_a.i1216
-  %ap4.i1259 = lshr i64 %aw0.i1204, 32
-  %ap4_32.i1260 = trunc nuw i64 %ap4.i1259 to i32
-  store i32 %ap4_32.i1260, ptr %atmp.i1201, align 4
-  %atmp4.i1261 = getelementptr inbounds nuw i8, ptr %atmp.i1201, i64 4
-  store i64 %aw1.i1205, ptr %atmp4.i1261, align 4
-  br label %mat_b.i1221
+mat_a_short.i1263:                                ; preds = %mat_a.i1221
+  %ap4.i1264 = lshr i64 %aw0.i1209, 32
+  %ap4_32.i1265 = trunc nuw i64 %ap4.i1264 to i32
+  store i32 %ap4_32.i1265, ptr %atmp.i1206, align 4
+  %atmp4.i1266 = getelementptr inbounds nuw i8, ptr %atmp.i1206, i64 4
+  store i64 %aw1.i1210, ptr %atmp4.i1266, align 4
+  br label %mat_b.i1226
 
-mat_a_long.i1218:                                 ; preds = %mat_a.i1216
-  %araw.i1219 = and i64 %aw1.i1205, -4
-  %alptr.i1220 = inttoptr i64 %araw.i1219 to ptr
-  br label %mat_b.i1221
+mat_a_long.i1223:                                 ; preds = %mat_a.i1221
+  %araw.i1224 = and i64 %aw1.i1210, -4
+  %alptr.i1225 = inttoptr i64 %araw.i1224 to ptr
+  br label %mat_b.i1226
 
-mat_b.i1221:                                      ; preds = %mat_a_long.i1218, %mat_a_short.i1258
-  %aptr.i1222 = phi ptr [ %atmp.i1201, %mat_a_short.i1258 ], [ %alptr.i1220, %mat_a_long.i1218 ]
-  %bshort.i1223 = icmp samesign ult i64 %blen.i1209, 13
-  br i1 %bshort.i1223, label %mat_b_short.i1254, label %mat_b_long.i1224
+mat_b.i1226:                                      ; preds = %mat_a_long.i1223, %mat_a_short.i1263
+  %aptr.i1227 = phi ptr [ %atmp.i1206, %mat_a_short.i1263 ], [ %alptr.i1225, %mat_a_long.i1223 ]
+  %bshort.i1228 = icmp samesign ult i64 %blen.i1214, 13
+  br i1 %bshort.i1228, label %mat_b_short.i1259, label %mat_b_long.i1229
 
-mat_b_short.i1254:                                ; preds = %mat_b.i1221
-  %bp4.i1255 = lshr i64 %bw0.i1206, 32
-  %bp4_32.i1256 = trunc nuw i64 %bp4.i1255 to i32
-  store i32 %bp4_32.i1256, ptr %btmp.i1202, align 4
-  %btmp4.i1257 = getelementptr inbounds nuw i8, ptr %btmp.i1202, i64 4
-  store i64 %bw1.i1207, ptr %btmp4.i1257, align 4
-  br label %build.i1227
+mat_b_short.i1259:                                ; preds = %mat_b.i1226
+  %bp4.i1260 = lshr i64 %bw0.i1211, 32
+  %bp4_32.i1261 = trunc nuw i64 %bp4.i1260 to i32
+  store i32 %bp4_32.i1261, ptr %btmp.i1207, align 4
+  %btmp4.i1262 = getelementptr inbounds nuw i8, ptr %btmp.i1207, i64 4
+  store i64 %bw1.i1212, ptr %btmp4.i1262, align 4
+  br label %build.i1232
 
-mat_b_long.i1224:                                 ; preds = %mat_b.i1221
-  %braw.i1225 = and i64 %bw1.i1207, -4
-  %blptr.i1226 = inttoptr i64 %braw.i1225 to ptr
-  br label %build.i1227
+mat_b_long.i1229:                                 ; preds = %mat_b.i1226
+  %braw.i1230 = and i64 %bw1.i1212, -4
+  %blptr.i1231 = inttoptr i64 %braw.i1230 to ptr
+  br label %build.i1232
 
-build.i1227:                                      ; preds = %mat_b_long.i1224, %mat_b_short.i1254
-  %bptr.i1228 = phi ptr [ %btmp.i1202, %mat_b_short.i1254 ], [ %blptr.i1226, %mat_b_long.i1224 ]
-  %fits_sso.i1229 = icmp samesign ult i64 %tot.i1214, 13
-  br i1 %fits_sso.i1229, label %build_sso.i1245, label %alloc_heap.i1230
+build.i1232:                                      ; preds = %mat_b_long.i1229, %mat_b_short.i1259
+  %bptr.i1233 = phi ptr [ %btmp.i1207, %mat_b_short.i1259 ], [ %blptr.i1231, %mat_b_long.i1229 ]
+  %fits_sso.i1234 = icmp samesign ult i64 %tot.i1219, 13
+  br i1 %fits_sso.i1234, label %build_sso.i1250, label %alloc_heap.i1235
 
-build_sso.i1245:                                  ; preds = %build.i1227
-  %out_sso8.i1246 = getelementptr inbounds nuw i8, ptr %out_sso.i1203, i64 8
-  %tot32.i1247 = trunc nuw nsw i64 %tot.i1214 to i32
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1203, i8 0, i64 16, i1 false)
-  store i32 %tot32.i1247, ptr %out_sso.i1203, align 8
-  %sso_dst_a.i1248 = getelementptr inbounds nuw i8, ptr %out_sso.i1203, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1248, ptr nonnull align 1 %aptr.i1222, i64 %alen.i1208, i1 false)
-  %sso_dst_b.i1249 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1248, i64 %alen.i1208
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i1249, ptr nonnull align 1 %bptr.i1228, i64 %blen.i1209, i1 false)
-  %rw0.i1250 = load i64, ptr %out_sso.i1203, align 8
-  %rw1.i1251 = load i64, ptr %out_sso8.i1246, align 8
-  %rs0.i1252 = insertvalue %ArchxStr poison, i64 %rw0.i1250, 0
-  %rs1.i1253 = insertvalue %ArchxStr %rs0.i1252, i64 %rw1.i1251, 1
-  br label %archx_str_concat.exit1266
+build_sso.i1250:                                  ; preds = %build.i1232
+  %out_sso8.i1251 = getelementptr inbounds nuw i8, ptr %out_sso.i1208, i64 8
+  %tot32.i1252 = trunc nuw nsw i64 %tot.i1219 to i32
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %out_sso.i1208, i8 0, i64 16, i1 false)
+  store i32 %tot32.i1252, ptr %out_sso.i1208, align 8
+  %sso_dst_a.i1253 = getelementptr inbounds nuw i8, ptr %out_sso.i1208, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso_dst_a.i1253, ptr nonnull align 1 %aptr.i1227, i64 %alen.i1213, i1 false)
+  %sso_dst_b.i1254 = getelementptr inbounds nuw i8, ptr %sso_dst_a.i1253, i64 %alen.i1213
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %sso_dst_b.i1254, ptr nonnull align 1 %bptr.i1233, i64 %blen.i1214, i1 false)
+  %rw0.i1255 = load i64, ptr %out_sso.i1208, align 8
+  %rw1.i1256 = load i64, ptr %out_sso8.i1251, align 8
+  %rs0.i1257 = insertvalue %ArchxStr poison, i64 %rw0.i1255, 0
+  %rs1.i1258 = insertvalue %ArchxStr %rs0.i1257, i64 %rw1.i1256, 1
+  br label %archx_str_concat.exit1271
 
-alloc_heap.i1230:                                 ; preds = %build.i1227
-  %hp.i1231 = call noalias align 16 ptr @malloc(i64 %tot.i1214)
-  %hnull.i1232 = icmp eq ptr %hp.i1231, null
-  br i1 %hnull.i1232, label %oom.i1244, label %copy_long.i1233
+alloc_heap.i1235:                                 ; preds = %build.i1232
+  %hp.i1236 = call noalias align 16 ptr @malloc(i64 %tot.i1219)
+  %hnull.i1237 = icmp eq ptr %hp.i1236, null
+  br i1 %hnull.i1237, label %oom.i1249, label %copy_long.i1238
 
-copy_long.i1233:                                  ; preds = %alloc_heap.i1230
-  %hp_i.i1234 = ptrtoint ptr %hp.i1231 to i64
-  %htagged.i1235 = or disjoint i64 %hp_i.i1234, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1231, ptr nonnull align 1 %aptr.i1222, i64 %alen.i1208, i1 false)
-  %dst_b.i1236 = getelementptr inbounds nuw i8, ptr %hp.i1231, i64 %alen.i1208
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i1236, ptr nonnull align 1 %bptr.i1228, i64 %blen.i1209, i1 false)
-  %pref32.i1237 = load i32, ptr %hp.i1231, align 16
-  %pref64.i1238 = zext i32 %pref32.i1237 to i64
-  %pref_sh.i1239 = shl nuw i64 %pref64.i1238, 32
-  %w0_out.i1240 = or disjoint i64 %pref_sh.i1239, %tot.i1214
-  %ls0.i1241 = insertvalue %ArchxStr poison, i64 %w0_out.i1240, 0
-  %ls1.i1242 = insertvalue %ArchxStr %ls0.i1241, i64 %htagged.i1235, 1
-  br label %archx_str_concat.exit1266
+copy_long.i1238:                                  ; preds = %alloc_heap.i1235
+  %hp_i.i1239 = ptrtoint ptr %hp.i1236 to i64
+  %htagged.i1240 = or disjoint i64 %hp_i.i1239, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i1236, ptr nonnull align 1 %aptr.i1227, i64 %alen.i1213, i1 false)
+  %dst_b.i1241 = getelementptr inbounds nuw i8, ptr %hp.i1236, i64 %alen.i1213
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i1241, ptr nonnull align 1 %bptr.i1233, i64 %blen.i1214, i1 false)
+  %pref32.i1242 = load i32, ptr %hp.i1236, align 16
+  %pref64.i1243 = zext i32 %pref32.i1242 to i64
+  %pref_sh.i1244 = shl nuw i64 %pref64.i1243, 32
+  %w0_out.i1245 = or disjoint i64 %pref_sh.i1244, %tot.i1219
+  %ls0.i1246 = insertvalue %ArchxStr poison, i64 %w0_out.i1245, 0
+  %ls1.i1247 = insertvalue %ArchxStr %ls0.i1246, i64 %htagged.i1240, 1
+  br label %archx_str_concat.exit1271
 
-archx_str_concat.exit1266:                        ; preds = %copy.i1768, %ret_a_clone.i1262, %copy.i1749, %ret_b_clone.i1264, %build_sso.i1245, %copy_long.i1233
-  %common.ret.op.i1243 = phi %ArchxStr [ %rs1.i1253, %build_sso.i1245 ], [ %ls1.i1242, %copy_long.i1233 ], [ %out.i1754, %copy.i1749 ], [ %common.ret.op.i.i1728, %ret_b_clone.i1264 ], [ %out.i1773, %copy.i1768 ], [ %common.ret.op.i1183, %ret_a_clone.i1262 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1201)
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1202)
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1203)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1776)
-  %w0.i1777 = extractvalue %ArchxStr %common.ret.op.i1243, 0
-  %w1.i1778 = extractvalue %ArchxStr %common.ret.op.i1243, 1
-  %len.i1779 = and i64 %w0.i1777, 4294967295
-  %short.i1780 = icmp samesign ult i64 %len.i1779, 13
-  br i1 %short.i1780, label %emit.i1801, label %emit.thread.i1781
+archx_str_concat.exit1271:                        ; preds = %copy.i1773, %ret_a_clone.i1267, %copy.i1754, %ret_b_clone.i1269, %build_sso.i1250, %copy_long.i1238
+  %common.ret.op.i1248 = phi %ArchxStr [ %rs1.i1258, %build_sso.i1250 ], [ %ls1.i1247, %copy_long.i1238 ], [ %out.i1759, %copy.i1754 ], [ %common.ret.op.i.i1733, %ret_b_clone.i1269 ], [ %out.i1778, %copy.i1773 ], [ %common.ret.op.i1188, %ret_a_clone.i1267 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i1206)
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1207)
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i1208)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1781)
+  %w0.i1782 = extractvalue %ArchxStr %common.ret.op.i1248, 0
+  %w1.i1783 = extractvalue %ArchxStr %common.ret.op.i1248, 1
+  %len.i1784 = and i64 %w0.i1782, 4294967295
+  %short.i1785 = icmp samesign ult i64 %len.i1784, 13
+  br i1 %short.i1785, label %emit.i1806, label %emit.thread.i1786
 
-emit.thread.i1781:                                ; preds = %archx_str_concat.exit1266
-  %raw.i1782 = and i64 %w1.i1778, -4
-  %lptr.i1783 = inttoptr i64 %raw.i1782 to ptr
-  br label %chk_nul.i1784
+emit.thread.i1786:                                ; preds = %archx_str_concat.exit1271
+  %raw.i1787 = and i64 %w1.i1783, -4
+  %lptr.i1788 = inttoptr i64 %raw.i1787 to ptr
+  br label %chk_nul.i1789
 
-emit.i1801:                                       ; preds = %archx_str_concat.exit1266
-  %p4.i1802 = lshr i64 %w0.i1777, 32
-  %p4_32.i1803 = trunc nuw i64 %p4.i1802 to i32
-  store i32 %p4_32.i1803, ptr %tmp.i1776, align 4
-  %tmp4.i1804 = getelementptr inbounds nuw i8, ptr %tmp.i1776, i64 4
-  store i64 %w1.i1778, ptr %tmp4.i1804, align 4
-  %pos.not.i1805 = icmp eq i64 %len.i1779, 0
-  br i1 %pos.not.i1805, label %do_nl.i1796, label %chk_nul.i1784
+emit.i1806:                                       ; preds = %archx_str_concat.exit1271
+  %p4.i1807 = lshr i64 %w0.i1782, 32
+  %p4_32.i1808 = trunc nuw i64 %p4.i1807 to i32
+  store i32 %p4_32.i1808, ptr %tmp.i1781, align 4
+  %tmp4.i1809 = getelementptr inbounds nuw i8, ptr %tmp.i1781, i64 4
+  store i64 %w1.i1783, ptr %tmp4.i1809, align 4
+  %pos.not.i1810 = icmp eq i64 %len.i1784, 0
+  br i1 %pos.not.i1810, label %do_nl.i1801, label %chk_nul.i1789
 
-chk_nul.i1784:                                    ; preds = %emit.i1801, %emit.thread.i1781
-  %data3.i1785 = phi ptr [ %lptr.i1783, %emit.thread.i1781 ], [ %tmp.i1776, %emit.i1801 ]
-  %nul.i1786 = call ptr @memchr(ptr nonnull %data3.i1785, i32 0, i64 %len.i1779)
-  %has_nul.not.i1787 = icmp eq ptr %nul.i1786, null
-  br i1 %has_nul.not.i1787, label %fast_printf.i1798, label %byte_loop.i1788
+chk_nul.i1789:                                    ; preds = %emit.i1806, %emit.thread.i1786
+  %data3.i1790 = phi ptr [ %lptr.i1788, %emit.thread.i1786 ], [ %tmp.i1781, %emit.i1806 ]
+  %nul.i1791 = call ptr @memchr(ptr nonnull %data3.i1790, i32 0, i64 %len.i1784)
+  %has_nul.not.i1792 = icmp eq ptr %nul.i1791, null
+  br i1 %has_nul.not.i1792, label %fast_printf.i1803, label %byte_loop.i1793
 
-fast_printf.i1798:                                ; preds = %chk_nul.i1784
-  %len32.i1799 = trunc i64 %w0.i1777 to i32
-  %np.i1800 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1799, ptr nonnull %data3.i1785)
-  br label %archx_str_print.exit1806
+fast_printf.i1803:                                ; preds = %chk_nul.i1789
+  %len32.i1804 = trunc i64 %w0.i1782 to i32
+  %np.i1805 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1804, ptr nonnull %data3.i1790)
+  br label %archx_str_print.exit1811
 
-byte_loop.i1788:                                  ; preds = %chk_nul.i1784, %byte_loop.i1788
-  %bi.i1789 = phi i64 [ %bnext.i1794, %byte_loop.i1788 ], [ 0, %chk_nul.i1784 ]
-  %bp.i1790 = getelementptr inbounds nuw i8, ptr %data3.i1785, i64 %bi.i1789
-  %ch8.i1791 = load i8, ptr %bp.i1790, align 1
-  %ch32.i1792 = zext i8 %ch8.i1791 to i32
-  %pc.i1793 = call i32 @putchar(i32 %ch32.i1792)
-  %bnext.i1794 = add nuw nsw i64 %bi.i1789, 1
-  %exitcond.not.i1795 = icmp eq i64 %bnext.i1794, %len.i1779
-  br i1 %exitcond.not.i1795, label %do_nl.i1796, label %byte_loop.i1788
+byte_loop.i1793:                                  ; preds = %chk_nul.i1789, %byte_loop.i1793
+  %bi.i1794 = phi i64 [ %bnext.i1799, %byte_loop.i1793 ], [ 0, %chk_nul.i1789 ]
+  %bp.i1795 = getelementptr inbounds nuw i8, ptr %data3.i1790, i64 %bi.i1794
+  %ch8.i1796 = load i8, ptr %bp.i1795, align 1
+  %ch32.i1797 = zext i8 %ch8.i1796 to i32
+  %pc.i1798 = call i32 @putchar(i32 %ch32.i1797)
+  %bnext.i1799 = add nuw nsw i64 %bi.i1794, 1
+  %exitcond.not.i1800 = icmp eq i64 %bnext.i1799, %len.i1784
+  br i1 %exitcond.not.i1800, label %do_nl.i1801, label %byte_loop.i1793
 
-do_nl.i1796:                                      ; preds = %byte_loop.i1788, %emit.i1801
-  %nc.i1797 = call i32 @putchar(i32 10)
-  br label %archx_str_print.exit1806
+do_nl.i1801:                                      ; preds = %byte_loop.i1793, %emit.i1806
+  %nc.i1802 = call i32 @putchar(i32 10)
+  br label %archx_str_print.exit1811
 
-archx_str_print.exit1806:                         ; preds = %fast_printf.i1798, %do_nl.i1796
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1776)
-  %tag.i276 = and i64 %w1.i1778, 1
-  %owned.not.i277 = icmp eq i64 %tag.i276, 0
-  %or.cond2076 = select i1 %short.i1780, i1 true, i1 %owned.not.i277
-  br i1 %or.cond2076, label %archx_str_drop.exit281, label %do_free.i278
+archx_str_print.exit1811:                         ; preds = %fast_printf.i1803, %do_nl.i1801
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1781)
+  %tag.i281 = and i64 %w1.i1783, 1
+  %owned.not.i282 = icmp eq i64 %tag.i281, 0
+  %or.cond2095 = select i1 %short.i1785, i1 true, i1 %owned.not.i282
+  br i1 %or.cond2095, label %archx_str_drop.exit286, label %do_free.i283
 
-do_free.i278:                                     ; preds = %archx_str_print.exit1806
-  %raw.i279 = and i64 %w1.i1778, -2
-  %ptr.i280 = inttoptr i64 %raw.i279 to ptr
-  call void @free(ptr %ptr.i280)
-  br label %archx_str_drop.exit281
+do_free.i283:                                     ; preds = %archx_str_print.exit1811
+  %raw.i284 = and i64 %w1.i1783, -2
+  %ptr.i285 = inttoptr i64 %raw.i284 to ptr
+  call void @free(ptr %ptr.i285)
+  br label %archx_str_drop.exit286
 
-archx_str_drop.exit281:                           ; preds = %archx_str_print.exit1806, %do_free.i278
-  %long.i284 = icmp samesign ult i64 %blen.i1209, 13
-  %tag.i287 = and i64 %bw1.i1207, 1
-  %owned.not.i288 = icmp eq i64 %tag.i287, 0
-  %or.cond2077 = select i1 %long.i284, i1 true, i1 %owned.not.i288
-  br i1 %or.cond2077, label %archx_str_drop.exit292, label %do_free.i289
+archx_str_drop.exit286:                           ; preds = %archx_str_print.exit1811, %do_free.i283
+  %long.i289 = icmp samesign ult i64 %blen.i1214, 13
+  %tag.i292 = and i64 %bw1.i1212, 1
+  %owned.not.i293 = icmp eq i64 %tag.i292, 0
+  %or.cond2096 = select i1 %long.i289, i1 true, i1 %owned.not.i293
+  br i1 %or.cond2096, label %archx_str_drop.exit297, label %do_free.i294
 
-do_free.i289:                                     ; preds = %archx_str_drop.exit281
-  %raw.i290 = and i64 %bw1.i1207, -2
-  %ptr.i291 = inttoptr i64 %raw.i290 to ptr
-  call void @free(ptr %ptr.i291)
-  br label %archx_str_drop.exit292
+do_free.i294:                                     ; preds = %archx_str_drop.exit286
+  %raw.i295 = and i64 %bw1.i1212, -2
+  %ptr.i296 = inttoptr i64 %raw.i295 to ptr
+  call void @free(ptr %ptr.i296)
+  br label %archx_str_drop.exit297
 
-archx_str_drop.exit292:                           ; preds = %archx_str_drop.exit281, %do_free.i289
-  %long.i295 = icmp samesign ult i64 %alen.i1208, 13
-  %tag.i298 = and i64 %aw1.i1205, 1
-  %owned.not.i299 = icmp eq i64 %tag.i298, 0
-  %or.cond2078 = select i1 %long.i295, i1 true, i1 %owned.not.i299
-  br i1 %or.cond2078, label %archx_str_drop.exit303, label %do_free.i300
+archx_str_drop.exit297:                           ; preds = %archx_str_drop.exit286, %do_free.i294
+  %long.i300 = icmp samesign ult i64 %alen.i1213, 13
+  %tag.i303 = and i64 %aw1.i1210, 1
+  %owned.not.i304 = icmp eq i64 %tag.i303, 0
+  %or.cond2097 = select i1 %long.i300, i1 true, i1 %owned.not.i304
+  br i1 %or.cond2097, label %archx_str_drop.exit308, label %do_free.i305
 
-do_free.i300:                                     ; preds = %archx_str_drop.exit292
-  %raw.i301 = and i64 %aw1.i1205, -2
-  %ptr.i302 = inttoptr i64 %raw.i301 to ptr
-  call void @free(ptr %ptr.i302)
-  br label %archx_str_drop.exit303
+do_free.i305:                                     ; preds = %archx_str_drop.exit297
+  %raw.i306 = and i64 %aw1.i1210, -2
+  %ptr.i307 = inttoptr i64 %raw.i306 to ptr
+  call void @free(ptr %ptr.i307)
+  br label %archx_str_drop.exit308
 
-archx_str_drop.exit303:                           ; preds = %archx_str_drop.exit292, %do_free.i300
-  %long.i306 = icmp samesign ult i64 %alen.i1152, 13
-  %tag.i309 = and i64 %aw1.i1151, 1
-  %owned.not.i310 = icmp eq i64 %tag.i309, 0
-  %or.cond2079 = select i1 %long.i306, i1 true, i1 %owned.not.i310
-  br i1 %or.cond2079, label %archx_str_drop.exit314, label %do_free.i311
+archx_str_drop.exit308:                           ; preds = %archx_str_drop.exit297, %do_free.i305
+  %long.i311 = icmp samesign ult i64 %alen.i1157, 13
+  %tag.i314 = and i64 %aw1.i1156, 1
+  %owned.not.i315 = icmp eq i64 %tag.i314, 0
+  %or.cond2098 = select i1 %long.i311, i1 true, i1 %owned.not.i315
+  br i1 %or.cond2098, label %archx_str_drop.exit319, label %do_free.i316
 
-do_free.i311:                                     ; preds = %archx_str_drop.exit303
-  %raw.i312 = and i64 %aw1.i1151, -2
-  %ptr.i313 = inttoptr i64 %raw.i312 to ptr
-  call void @free(ptr %ptr.i313)
-  br label %archx_str_drop.exit314
+do_free.i316:                                     ; preds = %archx_str_drop.exit308
+  %raw.i317 = and i64 %aw1.i1156, -2
+  %ptr.i318 = inttoptr i64 %raw.i317 to ptr
+  call void @free(ptr %ptr.i318)
+  br label %archx_str_drop.exit319
 
-archx_str_drop.exit314:                           ; preds = %archx_str_drop.exit303, %do_free.i311
-  %long.i317 = icmp samesign ult i64 %blen.i1098, 13
-  %tag.i320 = and i64 %bw1.i1097, 1
-  %owned.not.i321 = icmp eq i64 %tag.i320, 0
-  %or.cond2080 = select i1 %long.i317, i1 true, i1 %owned.not.i321
-  br i1 %or.cond2080, label %if.merge.4, label %do_free.i322
+archx_str_drop.exit319:                           ; preds = %archx_str_drop.exit308, %do_free.i316
+  %long.i322 = icmp samesign ult i64 %blen.i1103, 13
+  %tag.i325 = and i64 %bw1.i1102, 1
+  %owned.not.i326 = icmp eq i64 %tag.i325, 0
+  %or.cond2099 = select i1 %long.i322, i1 true, i1 %owned.not.i326
+  br i1 %or.cond2099, label %if.merge.4, label %do_free.i327
 
-do_free.i322:                                     ; preds = %archx_str_drop.exit314
-  %raw.i323 = and i64 %bw1.i1097, -2
-  %ptr.i324 = inttoptr i64 %raw.i323 to ptr
-  call void @free(ptr %ptr.i324)
+do_free.i327:                                     ; preds = %archx_str_drop.exit319
+  %raw.i328 = and i64 %bw1.i1102, -2
+  %ptr.i329 = inttoptr i64 %raw.i328 to ptr
+  call void @free(ptr %ptr.i329)
   br label %if.merge.4
 
-if.merge.4:                                       ; preds = %do_free.i322, %archx_str_drop.exit314, %archx_fn_find_gt.exit1677
-  %t70 = extractvalue { i1, i64 } %common.ret.op.i1673, 0
-  br i1 %t70, label %stropt.some.7, label %build.i1287.thread2199
+if.merge.4:                                       ; preds = %do_free.i327, %archx_str_drop.exit319, %archx_fn_find_gt.exit1682
+  %t70 = extractvalue { i1, i64 } %common.ret.op.i1678, 0
+  br i1 %t70, label %stropt.some.7, label %build.i1292.thread2221
 
 stropt.some.7:                                    ; preds = %if.merge.4
-  %t72 = extractvalue { i1, i64 } %common.ret.op.i1673, 1
-  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1808)
-  %n32.i1809 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1808, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t72)
-  %len.i1810 = sext i32 %n32.i1809 to i64
-  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1807)
-  %z.i.i1811 = icmp slt i32 %n32.i1809, 1
-  br i1 %z.i.i1811, label %stropt.done.8, label %chk_sso.i.i1812
+  %t72 = extractvalue { i1, i64 } %common.ret.op.i1678, 1
+  call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i1813)
+  %n32.i1814 = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i1813, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t72)
+  %len.i1815 = sext i32 %n32.i1814 to i64
+  call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i1812)
+  %z.i.i1816 = icmp slt i32 %n32.i1814, 1
+  br i1 %z.i.i1816, label %stropt.done.8, label %chk_sso.i.i1817
 
-oom.i.i1827:                                      ; preds = %alloc_heap.i.i1814
+oom.i.i1832:                                      ; preds = %alloc_heap.i.i1819
   call fastcc void @archx_oom_fail()
   unreachable
 
-chk_sso.i.i1812:                                  ; preds = %stropt.some.7
-  %short.i.i1813 = icmp samesign ult i32 %n32.i1809, 13
-  br i1 %short.i.i1813, label %pack_sso.i.i1828, label %alloc_heap.i.i1814
+chk_sso.i.i1817:                                  ; preds = %stropt.some.7
+  %short.i.i1818 = icmp samesign ult i32 %n32.i1814, 13
+  br i1 %short.i.i1818, label %pack_sso.i.i1833, label %alloc_heap.i.i1819
 
-pack_sso.i.i1828:                                 ; preds = %chk_sso.i.i1812
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1807, i8 0, i64 16, i1 false)
-  store i32 %n32.i1809, ptr %sso.i.i1807, align 8
-  %sso.i.i1807.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1807, i64 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1807.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1808, i64 range(i64 -2147483648, 2147483650) %len.i1810, i1 false)
-  %sso.i.i1807.0.sso.i.i1807.0.sso.i.i1807.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1830 = load i64, ptr %sso.i.i1807, align 8
-  %sso.i.i1807.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1807, i64 8
-  %sso.i.i1807.8.sso.i.i1807.8.sso.i.i1807.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1832 = load i64, ptr %sso.i.i1807.8.sroa_idx, align 8
-  %ss0.i.i1833 = insertvalue %ArchxStr poison, i64 %sso.i.i1807.0.sso.i.i1807.0.sso.i.i1807.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1830, 0
-  %ss1.i.i1834 = insertvalue %ArchxStr %ss0.i.i1833, i64 %sso.i.i1807.8.sso.i.i1807.8.sso.i.i1807.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1832, 1
+pack_sso.i.i1833:                                 ; preds = %chk_sso.i.i1817
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %sso.i.i1812, i8 0, i64 16, i1 false)
+  store i32 %n32.i1814, ptr %sso.i.i1812, align 8
+  %sso.i.i1812.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1812, i64 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %sso.i.i1812.4.sroa_idx, ptr nonnull readonly align 8 %buf.i1813, i64 range(i64 -2147483648, 2147483650) %len.i1815, i1 false)
+  %sso.i.i1812.0.sso.i.i1812.0.sso.i.i1812.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1835 = load i64, ptr %sso.i.i1812, align 8
+  %sso.i.i1812.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i1812, i64 8
+  %sso.i.i1812.8.sso.i.i1812.8.sso.i.i1812.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1837 = load i64, ptr %sso.i.i1812.8.sroa_idx, align 8
+  %ss0.i.i1838 = insertvalue %ArchxStr poison, i64 %sso.i.i1812.0.sso.i.i1812.0.sso.i.i1812.0.sso.i.0.sso.i.0.sso.0.sso.0.sso.0.sw0.i.i1835, 0
+  %ss1.i.i1839 = insertvalue %ArchxStr %ss0.i.i1838, i64 %sso.i.i1812.8.sso.i.i1812.8.sso.i.i1812.8.sso.i.8.sso.i.8.sso.8.sso.8.sso.8.sw1.i.i1837, 1
   br label %stropt.done.8
 
-alloc_heap.i.i1814:                               ; preds = %chk_sso.i.i1812
-  %hp.i.i1815 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1810)
-  %hnull.i.i1816 = icmp eq ptr %hp.i.i1815, null
-  br i1 %hnull.i.i1816, label %oom.i.i1827, label %copy_long.i.i1817
+alloc_heap.i.i1819:                               ; preds = %chk_sso.i.i1817
+  %hp.i.i1820 = call noalias align 16 ptr @malloc(i64 range(i64 -2147483648, 2147483650) %len.i1815)
+  %hnull.i.i1821 = icmp eq ptr %hp.i.i1820, null
+  br i1 %hnull.i.i1821, label %oom.i.i1832, label %copy_long.i.i1822
 
-copy_long.i.i1817:                                ; preds = %alloc_heap.i.i1814
-  %hp_i.i.i1818 = ptrtoint ptr %hp.i.i1815 to i64
-  %htagged.i.i1819 = or disjoint i64 %hp_i.i.i1818, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1815, ptr nonnull readonly align 8 %buf.i1808, i64 range(i64 -2147483648, 2147483650) %len.i1810, i1 false)
-  %pref32.i.i1820 = load i32, ptr %hp.i.i1815, align 16
-  %pref64.i.i1821 = zext i32 %pref32.i.i1820 to i64
-  %pref_sh.i.i1822 = shl nuw i64 %pref64.i.i1821, 32
-  %w0_out.i.i1823 = or disjoint i64 %pref_sh.i.i1822, %len.i1810
-  %ls0.i.i1824 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1823, 0
-  %ls1.i.i1825 = insertvalue %ArchxStr %ls0.i.i1824, i64 %htagged.i.i1819, 1
+copy_long.i.i1822:                                ; preds = %alloc_heap.i.i1819
+  %hp_i.i.i1823 = ptrtoint ptr %hp.i.i1820 to i64
+  %htagged.i.i1824 = or disjoint i64 %hp_i.i.i1823, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %hp.i.i1820, ptr nonnull readonly align 8 %buf.i1813, i64 range(i64 -2147483648, 2147483650) %len.i1815, i1 false)
+  %pref32.i.i1825 = load i32, ptr %hp.i.i1820, align 16
+  %pref64.i.i1826 = zext i32 %pref32.i.i1825 to i64
+  %pref_sh.i.i1827 = shl nuw i64 %pref64.i.i1826, 32
+  %w0_out.i.i1828 = or disjoint i64 %pref_sh.i.i1827, %len.i1815
+  %ls0.i.i1829 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1828, 0
+  %ls1.i.i1830 = insertvalue %ArchxStr %ls0.i.i1829, i64 %htagged.i.i1824, 1
   br label %stropt.done.8
 
-stropt.done.8:                                    ; preds = %copy_long.i.i1817, %pack_sso.i.i1828, %stropt.some.7
-  %common.ret.op.i.i1826 = phi %ArchxStr [ %ss1.i.i1834, %pack_sso.i.i1828 ], [ %ls1.i.i1825, %copy_long.i.i1817 ], [ zeroinitializer, %stropt.some.7 ]
-  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1807)
-  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1808)
-  %t73.fca.0.extract = extractvalue %ArchxStr %common.ret.op.i.i1826, 0
-  %t73.fca.1.extract = extractvalue %ArchxStr %common.ret.op.i.i1826, 1
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1268)
-  call void @llvm.lifetime.start.p0(i64 4, ptr nonnull %out_sso.i1269.sroa.6.sroa.5)
-  %blen.i1272 = and i64 %t73.fca.0.extract, 4294967295
-  %bz.i1274 = icmp eq i64 %blen.i1272, 0
-  br i1 %bz.i1274, label %archx_str_concat.exit1320, label %calc_tot.i1275
+stropt.done.8:                                    ; preds = %copy_long.i.i1822, %pack_sso.i.i1833, %stropt.some.7
+  %common.ret.op.i.i1831 = phi %ArchxStr [ %ss1.i.i1839, %pack_sso.i.i1833 ], [ %ls1.i.i1830, %copy_long.i.i1822 ], [ zeroinitializer, %stropt.some.7 ]
+  call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %sso.i.i1812)
+  call void @llvm.lifetime.end.p0(i64 32, ptr nonnull %buf.i1813)
+  %t73.fca.0.extract = extractvalue %ArchxStr %common.ret.op.i.i1831, 0
+  %t73.fca.1.extract = extractvalue %ArchxStr %common.ret.op.i.i1831, 1
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1273)
+  call void @llvm.lifetime.start.p0(i64 4, ptr nonnull %out_sso.i1274.sroa.6.sroa.5)
+  %blen.i1277 = and i64 %t73.fca.0.extract, 4294967295
+  %bz.i1279 = icmp eq i64 %blen.i1277, 0
+  br i1 %bz.i1279, label %archx_str_concat.exit1325, label %calc_tot.i1280
 
-calc_tot.i1275:                                   ; preds = %stropt.done.8
-  %tot.i1276 = add nuw nsw i64 %blen.i1272, 8
-  %too_big.i1277 = icmp samesign ugt i64 %blen.i1272, 2147483639
-  br i1 %too_big.i1277, label %oom.i1304, label %mat_a.i1278
+calc_tot.i1280:                                   ; preds = %stropt.done.8
+  %tot.i1281 = add nuw nsw i64 %blen.i1277, 8
+  %too_big.i1282 = icmp samesign ugt i64 %blen.i1277, 2147483639
+  br i1 %too_big.i1282, label %oom.i1309, label %mat_a.i1283
 
-build.i1287.thread2199:                           ; preds = %if.merge.4
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1268)
-  call void @llvm.lifetime.start.p0(i64 4, ptr nonnull %out_sso.i1269.sroa.6.sroa.5)
-  store i32 1701736270, ptr %btmp.i1268, align 4
-  %btmp4.i13172206 = getelementptr inbounds nuw i8, ptr %btmp.i1268, i64 4
-  store i64 0, ptr %btmp4.i13172206, align 4
-  br label %build_sso.i1305
+build.i1292.thread2221:                           ; preds = %if.merge.4
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i1273)
+  call void @llvm.lifetime.start.p0(i64 4, ptr nonnull %out_sso.i1274.sroa.6.sroa.5)
+  store i32 1701736270, ptr %btmp.i1273, align 4
+  %btmp4.i13222228 = getelementptr inbounds nuw i8, ptr %btmp.i1273, i64 4
+  store i64 0, ptr %btmp4.i13222228, align 4
+  br label %build_sso.i1310
 
-oom.i1304:                                        ; preds = %alloc_heap.i1290, %calc_tot.i1275
+oom.i1309:                                        ; preds = %alloc_heap.i1295, %calc_tot.i1280
   call fastcc void @archx_oom_fail()
   unreachable
 
-mat_a.i1278:                                      ; preds = %calc_tot.i1275
-  %bshort.i1283 = icmp samesign ult i64 %blen.i1272, 13
-  br i1 %bshort.i1283, label %build.i1287, label %build.i1287.thread
+mat_a.i1283:                                      ; preds = %calc_tot.i1280
+  %bshort.i1288 = icmp samesign ult i64 %blen.i1277, 13
+  br i1 %bshort.i1288, label %build.i1292, label %build.i1292.thread
 
-build.i1287.thread:                               ; preds = %mat_a.i1278
-  %braw.i1285 = and i64 %t73.fca.1.extract, -4
-  %blptr.i1286 = inttoptr i64 %braw.i1285 to ptr
-  br label %alloc_heap.i1290
+build.i1292.thread:                               ; preds = %mat_a.i1283
+  %braw.i1290 = and i64 %t73.fca.1.extract, -4
+  %blptr.i1291 = inttoptr i64 %braw.i1290 to ptr
+  br label %alloc_heap.i1295
 
-build.i1287:                                      ; preds = %mat_a.i1278
-  %bp4.i1315 = lshr i64 %t73.fca.0.extract, 32
-  %bp4_32.i1316 = trunc nuw i64 %bp4.i1315 to i32
-  store i32 %bp4_32.i1316, ptr %btmp.i1268, align 4
-  %btmp4.i1317 = getelementptr inbounds nuw i8, ptr %btmp.i1268, i64 4
-  store i64 %t73.fca.1.extract, ptr %btmp4.i1317, align 4
-  %fits_sso.i1289 = icmp samesign ult i64 %blen.i1272, 5
-  br i1 %fits_sso.i1289, label %build_sso.i1305, label %alloc_heap.i1290
+build.i1292:                                      ; preds = %mat_a.i1283
+  %bp4.i1320 = lshr i64 %t73.fca.0.extract, 32
+  %bp4_32.i1321 = trunc nuw i64 %bp4.i1320 to i32
+  store i32 %bp4_32.i1321, ptr %btmp.i1273, align 4
+  %btmp4.i1322 = getelementptr inbounds nuw i8, ptr %btmp.i1273, i64 4
+  store i64 %t73.fca.1.extract, ptr %btmp4.i1322, align 4
+  %fits_sso.i1294 = icmp samesign ult i64 %blen.i1277, 5
+  br i1 %fits_sso.i1294, label %build_sso.i1310, label %alloc_heap.i1295
 
-build_sso.i1305:                                  ; preds = %build.i1287.thread2199, %build.i1287
-  %tot.i1276201820252210 = phi i64 [ 12, %build.i1287.thread2199 ], [ %tot.i1276, %build.i1287 ]
-  %stropt.res.71.sroa.3.02007201620272209 = phi i64 [ 0, %build.i1287.thread2199 ], [ %t73.fca.1.extract, %build.i1287 ]
-  %blen.i12722008201520302208 = phi i64 [ 4, %build.i1287.thread2199 ], [ %blen.i1272, %build.i1287 ]
-  store i32 0, ptr %out_sso.i1269.sroa.6.sroa.5, align 4
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %out_sso.i1269.sroa.6.sroa.5, ptr nonnull align 4 %btmp.i1268, i64 %blen.i12722008201520302208, i1 false)
-  %out_sso.i1269.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i1276201820252210, 8319108853555789824
-  %out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.8.rw1.i1311 = load i32, ptr %out_sso.i1269.sroa.6.sroa.5, align 4
-  %out_sso.i1269.sroa.6.sroa.5.0.insert.ext = zext i32 %out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.sroa.5.0.out_sso.i1269.sroa.6.8.rw1.i1311 to i64
-  %out_sso.i1269.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i1269.sroa.6.sroa.5.0.insert.ext, 32
-  %out_sso.i1269.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i1269.sroa.6.sroa.5.0.insert.shift, 1030188649
-  %rs0.i1312 = insertvalue %ArchxStr poison, i64 %out_sso.i1269.sroa.0.sroa.0.0.insert.insert, 0
-  %rs1.i1313 = insertvalue %ArchxStr %rs0.i1312, i64 %out_sso.i1269.sroa.6.sroa.0.0.insert.insert, 1
-  br label %archx_str_concat.exit1320
+build_sso.i1310:                                  ; preds = %build.i1292.thread2221, %build.i1292
+  %tot.i1281203720442232 = phi i64 [ 12, %build.i1292.thread2221 ], [ %tot.i1281, %build.i1292 ]
+  %stropt.res.71.sroa.3.02026203520462231 = phi i64 [ 0, %build.i1292.thread2221 ], [ %t73.fca.1.extract, %build.i1292 ]
+  %blen.i12772027203420492230 = phi i64 [ 4, %build.i1292.thread2221 ], [ %blen.i1277, %build.i1292 ]
+  store i32 0, ptr %out_sso.i1274.sroa.6.sroa.5, align 4
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 4 %out_sso.i1274.sroa.6.sroa.5, ptr nonnull align 4 %btmp.i1273, i64 %blen.i12772027203420492230, i1 false)
+  %out_sso.i1274.sroa.0.sroa.0.0.insert.insert = or disjoint i64 %tot.i1281203720442232, 8319108853555789824
+  %out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.8.rw1.i1316 = load i32, ptr %out_sso.i1274.sroa.6.sroa.5, align 4
+  %out_sso.i1274.sroa.6.sroa.5.0.insert.ext = zext i32 %out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.sroa.5.0.out_sso.i1274.sroa.6.8.rw1.i1316 to i64
+  %out_sso.i1274.sroa.6.sroa.5.0.insert.shift = shl nuw i64 %out_sso.i1274.sroa.6.sroa.5.0.insert.ext, 32
+  %out_sso.i1274.sroa.6.sroa.0.0.insert.insert = or disjoint i64 %out_sso.i1274.sroa.6.sroa.5.0.insert.shift, 1030188649
+  %rs0.i1317 = insertvalue %ArchxStr poison, i64 %out_sso.i1274.sroa.0.sroa.0.0.insert.insert, 0
+  %rs1.i1318 = insertvalue %ArchxStr %rs0.i1317, i64 %out_sso.i1274.sroa.6.sroa.0.0.insert.insert, 1
+  br label %archx_str_concat.exit1325
 
-alloc_heap.i1290:                                 ; preds = %build.i1287.thread, %build.i1287
-  %bptr.i12882198 = phi ptr [ %blptr.i1286, %build.i1287.thread ], [ %btmp.i1268, %build.i1287 ]
-  %hp.i1291 = call noalias align 16 ptr @malloc(i64 %tot.i1276)
-  %hnull.i1292 = icmp eq ptr %hp.i1291, null
-  br i1 %hnull.i1292, label %oom.i1304, label %copy_long.i1293
+alloc_heap.i1295:                                 ; preds = %build.i1292.thread, %build.i1292
+  %bptr.i12932220 = phi ptr [ %blptr.i1291, %build.i1292.thread ], [ %btmp.i1273, %build.i1292 ]
+  %hp.i1296 = call noalias align 16 ptr @malloc(i64 %tot.i1281)
+  %hnull.i1297 = icmp eq ptr %hp.i1296, null
+  br i1 %hnull.i1297, label %oom.i1309, label %copy_long.i1298
 
-copy_long.i1293:                                  ; preds = %alloc_heap.i1290
-  %hp_i.i1294 = ptrtoint ptr %hp.i1291 to i64
-  %htagged.i1295 = or disjoint i64 %hp_i.i1294, 1
-  store i32 1936943469, ptr %hp.i1291, align 16
-  %atmp.i1267.sroa.5.0.hp.i1291.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i1291, i64 4
-  store i32 1030188649, ptr %atmp.i1267.sroa.5.0.hp.i1291.sroa_idx, align 4
-  %dst_b.i1296 = getelementptr inbounds nuw i8, ptr %hp.i1291, i64 8
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %dst_b.i1296, ptr nonnull align 1 %bptr.i12882198, i64 %blen.i1272, i1 false)
-  %w0_out.i1300 = or disjoint i64 %tot.i1276, 8319108853555789824
-  %ls0.i1301 = insertvalue %ArchxStr poison, i64 %w0_out.i1300, 0
-  %ls1.i1302 = insertvalue %ArchxStr %ls0.i1301, i64 %htagged.i1295, 1
-  %0 = icmp samesign ult i64 %blen.i1272, 13
-  br label %archx_str_concat.exit1320
+copy_long.i1298:                                  ; preds = %alloc_heap.i1295
+  %hp_i.i1299 = ptrtoint ptr %hp.i1296 to i64
+  %htagged.i1300 = or disjoint i64 %hp_i.i1299, 1
+  store i32 1936943469, ptr %hp.i1296, align 16
+  %atmp.i1272.sroa.5.0.hp.i1296.sroa_idx = getelementptr inbounds nuw i8, ptr %hp.i1296, i64 4
+  store i32 1030188649, ptr %atmp.i1272.sroa.5.0.hp.i1296.sroa_idx, align 4
+  %dst_b.i1301 = getelementptr inbounds nuw i8, ptr %hp.i1296, i64 8
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 8 %dst_b.i1301, ptr nonnull align 1 %bptr.i12932220, i64 %blen.i1277, i1 false)
+  %w0_out.i1305 = or disjoint i64 %tot.i1281, 8319108853555789824
+  %ls0.i1306 = insertvalue %ArchxStr poison, i64 %w0_out.i1305, 0
+  %ls1.i1307 = insertvalue %ArchxStr %ls0.i1306, i64 %htagged.i1300, 1
+  %0 = icmp samesign ult i64 %blen.i1277, 13
+  br label %archx_str_concat.exit1325
 
-archx_str_concat.exit1320:                        ; preds = %stropt.done.8, %build_sso.i1305, %copy_long.i1293
-  %blen.i12722009 = phi i1 [ true, %build_sso.i1305 ], [ %0, %copy_long.i1293 ], [ true, %stropt.done.8 ]
-  %stropt.res.71.sroa.3.02006 = phi i64 [ %stropt.res.71.sroa.3.02007201620272209, %build_sso.i1305 ], [ %t73.fca.1.extract, %copy_long.i1293 ], [ %t73.fca.1.extract, %stropt.done.8 ]
-  %common.ret.op.i1303 = phi %ArchxStr [ %rs1.i1313, %build_sso.i1305 ], [ %ls1.i1302, %copy_long.i1293 ], [ { i64 8319108853555789832, i64 1030188649 }, %stropt.done.8 ]
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1268)
-  call void @llvm.lifetime.end.p0(i64 4, ptr nonnull %out_sso.i1269.sroa.6.sroa.5)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1837)
-  %w0.i1838 = extractvalue %ArchxStr %common.ret.op.i1303, 0
-  %w1.i1839 = extractvalue %ArchxStr %common.ret.op.i1303, 1
-  %len.i1840 = and i64 %w0.i1838, 4294967295
-  %short.i1841 = icmp samesign ult i64 %len.i1840, 13
-  br i1 %short.i1841, label %emit.i1862, label %emit.thread.i1842
+archx_str_concat.exit1325:                        ; preds = %stropt.done.8, %build_sso.i1310, %copy_long.i1298
+  %blen.i12772028 = phi i1 [ true, %build_sso.i1310 ], [ %0, %copy_long.i1298 ], [ true, %stropt.done.8 ]
+  %stropt.res.71.sroa.3.02025 = phi i64 [ %stropt.res.71.sroa.3.02026203520462231, %build_sso.i1310 ], [ %t73.fca.1.extract, %copy_long.i1298 ], [ %t73.fca.1.extract, %stropt.done.8 ]
+  %common.ret.op.i1308 = phi %ArchxStr [ %rs1.i1318, %build_sso.i1310 ], [ %ls1.i1307, %copy_long.i1298 ], [ { i64 8319108853555789832, i64 1030188649 }, %stropt.done.8 ]
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i1273)
+  call void @llvm.lifetime.end.p0(i64 4, ptr nonnull %out_sso.i1274.sroa.6.sroa.5)
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1842)
+  %w0.i1843 = extractvalue %ArchxStr %common.ret.op.i1308, 0
+  %w1.i1844 = extractvalue %ArchxStr %common.ret.op.i1308, 1
+  %len.i1845 = and i64 %w0.i1843, 4294967295
+  %short.i1846 = icmp samesign ult i64 %len.i1845, 13
+  br i1 %short.i1846, label %emit.i1867, label %emit.thread.i1847
 
-emit.thread.i1842:                                ; preds = %archx_str_concat.exit1320
-  %raw.i1843 = and i64 %w1.i1839, -4
-  %lptr.i1844 = inttoptr i64 %raw.i1843 to ptr
-  br label %chk_nul.i1845
+emit.thread.i1847:                                ; preds = %archx_str_concat.exit1325
+  %raw.i1848 = and i64 %w1.i1844, -4
+  %lptr.i1849 = inttoptr i64 %raw.i1848 to ptr
+  br label %chk_nul.i1850
 
-emit.i1862:                                       ; preds = %archx_str_concat.exit1320
-  %p4.i1863 = lshr i64 %w0.i1838, 32
-  %p4_32.i1864 = trunc nuw i64 %p4.i1863 to i32
-  store i32 %p4_32.i1864, ptr %tmp.i1837, align 4
-  %tmp4.i1865 = getelementptr inbounds nuw i8, ptr %tmp.i1837, i64 4
-  store i64 %w1.i1839, ptr %tmp4.i1865, align 4
-  %pos.not.i1866 = icmp eq i64 %len.i1840, 0
-  br i1 %pos.not.i1866, label %do_nl.i1857, label %chk_nul.i1845
+emit.i1867:                                       ; preds = %archx_str_concat.exit1325
+  %p4.i1868 = lshr i64 %w0.i1843, 32
+  %p4_32.i1869 = trunc nuw i64 %p4.i1868 to i32
+  store i32 %p4_32.i1869, ptr %tmp.i1842, align 4
+  %tmp4.i1870 = getelementptr inbounds nuw i8, ptr %tmp.i1842, i64 4
+  store i64 %w1.i1844, ptr %tmp4.i1870, align 4
+  %pos.not.i1871 = icmp eq i64 %len.i1845, 0
+  br i1 %pos.not.i1871, label %do_nl.i1862, label %chk_nul.i1850
 
-chk_nul.i1845:                                    ; preds = %emit.i1862, %emit.thread.i1842
-  %data3.i1846 = phi ptr [ %lptr.i1844, %emit.thread.i1842 ], [ %tmp.i1837, %emit.i1862 ]
-  %nul.i1847 = call ptr @memchr(ptr nonnull %data3.i1846, i32 0, i64 %len.i1840)
-  %has_nul.not.i1848 = icmp eq ptr %nul.i1847, null
-  br i1 %has_nul.not.i1848, label %fast_printf.i1859, label %byte_loop.i1849
+chk_nul.i1850:                                    ; preds = %emit.i1867, %emit.thread.i1847
+  %data3.i1851 = phi ptr [ %lptr.i1849, %emit.thread.i1847 ], [ %tmp.i1842, %emit.i1867 ]
+  %nul.i1852 = call ptr @memchr(ptr nonnull %data3.i1851, i32 0, i64 %len.i1845)
+  %has_nul.not.i1853 = icmp eq ptr %nul.i1852, null
+  br i1 %has_nul.not.i1853, label %fast_printf.i1864, label %byte_loop.i1854
 
-fast_printf.i1859:                                ; preds = %chk_nul.i1845
-  %len32.i1860 = trunc i64 %w0.i1838 to i32
-  %np.i1861 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1860, ptr nonnull %data3.i1846)
-  br label %archx_str_print.exit1867
+fast_printf.i1864:                                ; preds = %chk_nul.i1850
+  %len32.i1865 = trunc i64 %w0.i1843 to i32
+  %np.i1866 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1865, ptr nonnull %data3.i1851)
+  br label %archx_str_print.exit1872
 
-byte_loop.i1849:                                  ; preds = %chk_nul.i1845, %byte_loop.i1849
-  %bi.i1850 = phi i64 [ %bnext.i1855, %byte_loop.i1849 ], [ 0, %chk_nul.i1845 ]
-  %bp.i1851 = getelementptr inbounds nuw i8, ptr %data3.i1846, i64 %bi.i1850
-  %ch8.i1852 = load i8, ptr %bp.i1851, align 1
-  %ch32.i1853 = zext i8 %ch8.i1852 to i32
-  %pc.i1854 = call i32 @putchar(i32 %ch32.i1853)
-  %bnext.i1855 = add nuw nsw i64 %bi.i1850, 1
-  %exitcond.not.i1856 = icmp eq i64 %bnext.i1855, %len.i1840
-  br i1 %exitcond.not.i1856, label %do_nl.i1857, label %byte_loop.i1849
+byte_loop.i1854:                                  ; preds = %chk_nul.i1850, %byte_loop.i1854
+  %bi.i1855 = phi i64 [ %bnext.i1860, %byte_loop.i1854 ], [ 0, %chk_nul.i1850 ]
+  %bp.i1856 = getelementptr inbounds nuw i8, ptr %data3.i1851, i64 %bi.i1855
+  %ch8.i1857 = load i8, ptr %bp.i1856, align 1
+  %ch32.i1858 = zext i8 %ch8.i1857 to i32
+  %pc.i1859 = call i32 @putchar(i32 %ch32.i1858)
+  %bnext.i1860 = add nuw nsw i64 %bi.i1855, 1
+  %exitcond.not.i1861 = icmp eq i64 %bnext.i1860, %len.i1845
+  br i1 %exitcond.not.i1861, label %do_nl.i1862, label %byte_loop.i1854
 
-do_nl.i1857:                                      ; preds = %byte_loop.i1849, %emit.i1862
-  %nc.i1858 = call i32 @putchar(i32 10)
-  br label %archx_str_print.exit1867
+do_nl.i1862:                                      ; preds = %byte_loop.i1854, %emit.i1867
+  %nc.i1863 = call i32 @putchar(i32 10)
+  br label %archx_str_print.exit1872
 
-archx_str_print.exit1867:                         ; preds = %fast_printf.i1859, %do_nl.i1857
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1837)
-  %tag.i331 = and i64 %w1.i1839, 1
-  %owned.not.i332 = icmp eq i64 %tag.i331, 0
-  %or.cond2081 = select i1 %short.i1841, i1 true, i1 %owned.not.i332
-  br i1 %or.cond2081, label %archx_str_drop.exit336, label %do_free.i333
+archx_str_print.exit1872:                         ; preds = %fast_printf.i1864, %do_nl.i1862
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1842)
+  %tag.i336 = and i64 %w1.i1844, 1
+  %owned.not.i337 = icmp eq i64 %tag.i336, 0
+  %or.cond2100 = select i1 %short.i1846, i1 true, i1 %owned.not.i337
+  br i1 %or.cond2100, label %archx_str_drop.exit341, label %do_free.i338
 
-do_free.i333:                                     ; preds = %archx_str_print.exit1867
-  %raw.i334 = and i64 %w1.i1839, -2
-  %ptr.i335 = inttoptr i64 %raw.i334 to ptr
-  call void @free(ptr %ptr.i335)
-  br label %archx_str_drop.exit336
+do_free.i338:                                     ; preds = %archx_str_print.exit1872
+  %raw.i339 = and i64 %w1.i1844, -2
+  %ptr.i340 = inttoptr i64 %raw.i339 to ptr
+  call void @free(ptr %ptr.i340)
+  br label %archx_str_drop.exit341
 
-archx_str_drop.exit336:                           ; preds = %archx_str_print.exit1867, %do_free.i333
-  %tag.i342 = and i64 %stropt.res.71.sroa.3.02006, 1
-  %owned.not.i343 = icmp eq i64 %tag.i342, 0
-  %or.cond2082 = select i1 %blen.i12722009, i1 true, i1 %owned.not.i343
-  br i1 %or.cond2082, label %archx_str_drop.exit347, label %do_free.i344
+archx_str_drop.exit341:                           ; preds = %archx_str_print.exit1872, %do_free.i338
+  %tag.i347 = and i64 %stropt.res.71.sroa.3.02025, 1
+  %owned.not.i348 = icmp eq i64 %tag.i347, 0
+  %or.cond2101 = select i1 %blen.i12772028, i1 true, i1 %owned.not.i348
+  br i1 %or.cond2101, label %archx_str_drop.exit352, label %do_free.i349
 
-do_free.i344:                                     ; preds = %archx_str_drop.exit336
-  %raw.i345 = and i64 %stropt.res.71.sroa.3.02006, -2
-  %ptr.i346 = inttoptr i64 %raw.i345 to ptr
-  call void @free(ptr %ptr.i346)
-  br label %archx_str_drop.exit347
+do_free.i349:                                     ; preds = %archx_str_drop.exit341
+  %raw.i350 = and i64 %stropt.res.71.sroa.3.02025, -2
+  %ptr.i351 = inttoptr i64 %raw.i350 to ptr
+  call void @free(ptr %ptr.i351)
+  br label %archx_str_drop.exit352
 
-archx_str_drop.exit347:                           ; preds = %archx_str_drop.exit336, %do_free.i344
+archx_str_drop.exit352:                           ; preds = %archx_str_drop.exit341, %do_free.i349
   %t109 = call noalias align 16 dereferenceable_or_null(240) ptr @malloc(i64 240)
   %t110 = icmp eq ptr %t109, null
   br i1 %t110, label %alloc.oom.12, label %alloc.ok.11
 
-alloc.oom.12:                                     ; preds = %archx_str_drop.exit347
+alloc.oom.12:                                     ; preds = %archx_str_drop.exit352
   call fastcc void @archx_oom_fail()
   unreachable
 
-alloc.ok.11:                                      ; preds = %archx_str_drop.exit347
+alloc.ok.11:                                      ; preds = %archx_str_drop.exit352
   store i64 0, ptr %t109, align 16
-  %t109.repack20 = getelementptr inbounds nuw i8, ptr %t109, i64 8
-  store i64 4615063718147915776, ptr %t109.repack20, align 8
-  %t109.repack20.repack21 = getelementptr inbounds nuw i8, ptr %t109, i64 16
-  %t112.repack24 = getelementptr inbounds nuw i8, ptr %t109, i64 48
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(32) %t109.repack20.repack21, i8 0, i64 32, i1 false)
-  store i64 4622945017495814144, ptr %t112.repack24, align 16
-  %t112.repack24.repack25 = getelementptr inbounds nuw i8, ptr %t109, i64 56
+  %t109.repack25 = getelementptr inbounds nuw i8, ptr %t109, i64 8
+  store i64 4615063718147915776, ptr %t109.repack25, align 8
+  %t109.repack25.repack26 = getelementptr inbounds nuw i8, ptr %t109, i64 16
+  %t112.repack29 = getelementptr inbounds nuw i8, ptr %t109, i64 48
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(32) %t109.repack25.repack26, i8 0, i64 32, i1 false)
+  store i64 4622945017495814144, ptr %t112.repack29, align 16
+  %t112.repack29.repack30 = getelementptr inbounds nuw i8, ptr %t109, i64 56
   %t113 = getelementptr inbounds nuw i8, ptr %t109, i64 80
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(24) %t112.repack24.repack25, i8 0, i64 24, i1 false)
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(24) %t112.repack29.repack30, i8 0, i64 24, i1 false)
   store i64 1, ptr %t113, align 16
-  %t113.repack28 = getelementptr inbounds nuw i8, ptr %t109, i64 88
-  store i64 4616189618054758400, ptr %t113.repack28, align 8
-  %t113.repack28.repack29 = getelementptr inbounds nuw i8, ptr %t109, i64 96
-  store i64 4616189618054758400, ptr %t113.repack28.repack29, align 16
-  %t113.repack28.repack30 = getelementptr inbounds nuw i8, ptr %t109, i64 104
+  %t113.repack33 = getelementptr inbounds nuw i8, ptr %t109, i64 88
+  store i64 4616189618054758400, ptr %t113.repack33, align 8
+  %t113.repack33.repack34 = getelementptr inbounds nuw i8, ptr %t109, i64 96
+  store i64 4616189618054758400, ptr %t113.repack33.repack34, align 16
+  %t113.repack33.repack35 = getelementptr inbounds nuw i8, ptr %t109, i64 104
   %t114 = getelementptr inbounds nuw i8, ptr %t109, i64 120
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %t113.repack28.repack30, i8 0, i64 16, i1 false)
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(16) %t113.repack33.repack35, i8 0, i64 16, i1 false)
   store i64 1, ptr %t114, align 8
-  %t114.repack32 = getelementptr inbounds nuw i8, ptr %t109, i64 128
-  store i64 4613937818241073152, ptr %t114.repack32, align 16
-  %t114.repack32.repack33 = getelementptr inbounds nuw i8, ptr %t109, i64 136
-  store i64 4617315517961601024, ptr %t114.repack32.repack33, align 8
-  %t114.repack32.repack34 = getelementptr inbounds nuw i8, ptr %t109, i64 144
+  %t114.repack37 = getelementptr inbounds nuw i8, ptr %t109, i64 128
+  store i64 4613937818241073152, ptr %t114.repack37, align 16
+  %t114.repack37.repack38 = getelementptr inbounds nuw i8, ptr %t109, i64 136
+  store i64 4617315517961601024, ptr %t114.repack37.repack38, align 8
+  %t114.repack37.repack39 = getelementptr inbounds nuw i8, ptr %t109, i64 144
   %t115 = getelementptr inbounds nuw i8, ptr %t109, i64 160
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(16) %t114.repack32.repack34, i8 0, i64 16, i1 false)
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(16) %t114.repack37.repack39, i8 0, i64 16, i1 false)
   store <6 x i64> <i64 2, i64 7453016942991900710, i64 ptrtoint (ptr @.str.1 to i64), i64 7, i64 9, i64 3>, ptr %t115, align 16
-  %t116.repack44 = getelementptr inbounds nuw i8, ptr %t109, i64 208
+  %t116.repack49 = getelementptr inbounds nuw i8, ptr %t109, i64 208
   %btmp4.i.i = getelementptr inbounds nuw i8, ptr %btmp.i.i, i64 4
   %btmp4.i191.i = getelementptr inbounds nuw i8, ptr %btmp.i159.i, i64 4
   %btmp4.i291.i = getelementptr inbounds nuw i8, ptr %btmp.i246.i, i64 4
@@ -2966,61 +2966,82 @@ alloc.ok.11:                                      ; preds = %archx_str_drop.exit
   %btmp4.i509.i = getelementptr inbounds nuw i8, ptr %btmp.i454.i, i64 4
   %out_sso8.i498.i = getelementptr inbounds nuw i8, ptr %out_sso.i455.i, i64 8
   %sso_dst_a.i500.i = getelementptr inbounds nuw i8, ptr %out_sso.i455.i, i64 4
-  %tmp4.i1923 = getelementptr inbounds nuw i8, ptr %tmp.i1895, i64 4
-  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(32) %t116.repack44, i8 0, i64 32, i1 false)
+  %tmp4.i1941 = getelementptr inbounds nuw i8, ptr %tmp.i1913, i64 4
+  call void @llvm.memset.p0.i64(ptr noundef nonnull align 16 dereferenceable(32) %t116.repack49, i8 0, i64 32, i1 false)
   %sso.i.i.i.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i.i, i64 4
   %sso.i.i.i.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i.i, i64 8
   %sso.i.i620.i.4.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i620.i, i64 4
   %sso.i.i620.i.8.sroa_idx = getelementptr inbounds nuw i8, ptr %sso.i.i620.i, i64 8
   br label %foreach.body.14
 
-foreach.body.14:                                  ; preds = %alloc.ok.11, %archx_str_drop.exit358
-  %foreach.idx.124.02135 = phi i64 [ 0, %alloc.ok.11 ], [ %t134, %archx_str_drop.exit358 ]
-  %t127 = getelementptr inbounds nuw %ArchxEnum_Shape, ptr %t109, i64 %foreach.idx.124.02135
-  %t128.unpack = load i64, ptr %t127, align 8
-  %t128.elt52 = getelementptr inbounds nuw i8, ptr %t127, i64 8
-  %t128.unpack53.unpack = load i64, ptr %t128.elt52, align 8
-  %t128.unpack53.elt55 = getelementptr inbounds nuw i8, ptr %t127, i64 16
-  %t128.unpack53.unpack56 = load i64, ptr %t128.unpack53.elt55, align 8
-  %t128.unpack53.elt57 = getelementptr inbounds nuw i8, ptr %t127, i64 24
-  %t128.unpack53.unpack58 = load i64, ptr %t128.unpack53.elt57, align 8
-  %t128.unpack53.elt59 = getelementptr inbounds nuw i8, ptr %t127, i64 32
-  %t128.unpack53.unpack60 = load i64, ptr %t128.unpack53.elt59, align 8
-  %cond.i = icmp eq i64 %t128.unpack, 2
-  br i1 %cond.i, label %v.2.i, label %archx_enum_clone_Shape.exit
+foreach.body.14:                                  ; preds = %alloc.ok.11, %archx_str_drop.exit363
+  %var.sh.125.sroa.0.02157 = phi i64 [ 0, %alloc.ok.11 ], [ %t129.unpack, %archx_str_drop.exit363 ]
+  %var.sh.125.sroa.5.02156 = phi i64 [ 0, %alloc.ok.11 ], [ %dst.sroa.2.0.i2059, %archx_str_drop.exit363 ]
+  %var.sh.125.sroa.10.02155 = phi i64 [ 0, %alloc.ok.11 ], [ %dst.sroa.5.0.i2061, %archx_str_drop.exit363 ]
+  %foreach.idx.124.02154 = phi i64 [ 0, %alloc.ok.11 ], [ %t135, %archx_str_drop.exit363 ]
+  %t128 = getelementptr inbounds nuw %ArchxEnum_Shape, ptr %t109, i64 %foreach.idx.124.02154
+  %t129.unpack = load i64, ptr %t128, align 8
+  %t129.elt57 = getelementptr inbounds nuw i8, ptr %t128, i64 8
+  %t129.unpack58.unpack = load i64, ptr %t129.elt57, align 8
+  %t129.unpack58.elt60 = getelementptr inbounds nuw i8, ptr %t128, i64 16
+  %t129.unpack58.unpack61 = load i64, ptr %t129.unpack58.elt60, align 8
+  %t129.unpack58.elt62 = getelementptr inbounds nuw i8, ptr %t128, i64 24
+  %t129.unpack58.unpack63 = load i64, ptr %t129.unpack58.elt62, align 8
+  %t129.unpack58.elt64 = getelementptr inbounds nuw i8, ptr %t128, i64 32
+  %t129.unpack58.unpack65 = load i64, ptr %t129.unpack58.elt64, align 8
+  %cond.i = icmp eq i64 %var.sh.125.sroa.0.02157, 2
+  br i1 %cond.i, label %v.2.i, label %archx_enum_drop_Shape.exit
 
 v.2.i:                                            ; preds = %foreach.body.14
-  %t2.fca.0.insert.i = insertvalue %ArchxStr poison, i64 %t128.unpack53.unpack, 0
-  %t2.fca.1.insert.i = insertvalue %ArchxStr %t2.fca.0.insert.i, i64 %t128.unpack53.unpack56, 1
-  %len.i.i = and i64 %t128.unpack53.unpack, 4294967295
+  %len.i.i = and i64 %var.sh.125.sroa.5.02156, 4294967295
   %long.i.i = icmp samesign ult i64 %len.i.i, 13
-  %tag.i.i = and i64 %t128.unpack53.unpack56, 3
+  %tag.i.i = and i64 %var.sh.125.sroa.10.02155, 1
   %owned.not.i.i = icmp eq i64 %tag.i.i, 0
   %or.cond.i = select i1 %long.i.i, i1 true, i1 %owned.not.i.i
-  br i1 %or.cond.i, label %archx_enum_clone_Shape.exit.thread, label %dup_heap.i.i
+  br i1 %or.cond.i, label %archx_enum_drop_Shape.exit, label %do_free.i.i
 
-dup_heap.i.i:                                     ; preds = %v.2.i
-  %dst.i.i = call noalias align 16 ptr @malloc(i64 %len.i.i)
+do_free.i.i:                                      ; preds = %v.2.i
+  %raw.i.i = and i64 %var.sh.125.sroa.10.02155, -2
+  %ptr.i.i = inttoptr i64 %raw.i.i to ptr
+  call void @free(ptr %ptr.i.i)
+  br label %archx_enum_drop_Shape.exit
+
+archx_enum_drop_Shape.exit:                       ; preds = %foreach.body.14, %v.2.i, %do_free.i.i
+  %cond.i1876 = icmp eq i64 %t129.unpack, 2
+  br i1 %cond.i1876, label %v.2.i1877, label %archx_enum_clone_Shape.exit
+
+v.2.i1877:                                        ; preds = %archx_enum_drop_Shape.exit
+  %t2.fca.0.insert.i = insertvalue %ArchxStr poison, i64 %t129.unpack58.unpack, 0
+  %t2.fca.1.insert.i = insertvalue %ArchxStr %t2.fca.0.insert.i, i64 %t129.unpack58.unpack61, 1
+  %len.i.i1878 = and i64 %t129.unpack58.unpack, 4294967295
+  %long.i.i1879 = icmp samesign ult i64 %len.i.i1878, 13
+  %tag.i.i1880 = and i64 %t129.unpack58.unpack61, 3
+  %owned.not.i.i1881 = icmp eq i64 %tag.i.i1880, 0
+  %or.cond.i1882 = select i1 %long.i.i1879, i1 true, i1 %owned.not.i.i1881
+  br i1 %or.cond.i1882, label %archx_enum_clone_Shape.exit.thread, label %dup_heap.i.i
+
+dup_heap.i.i:                                     ; preds = %v.2.i1877
+  %dst.i.i = call noalias align 16 ptr @malloc(i64 %len.i.i1878)
   %isnull.i.i = icmp eq ptr %dst.i.i, null
-  br i1 %isnull.i.i, label %oom.i.i1871, label %copy.i.i
+  br i1 %isnull.i.i, label %oom.i.i1884, label %copy.i.i
 
-oom.i.i1871:                                      ; preds = %dup_heap.i.i
+oom.i.i1884:                                      ; preds = %dup_heap.i.i
   call fastcc void @archx_oom_fail()
   unreachable
 
 copy.i.i:                                         ; preds = %dup_heap.i.i
-  %src_i.i.i = and i64 %t128.unpack53.unpack56, -4
+  %src_i.i.i = and i64 %t129.unpack58.unpack61, -4
   %src.i.i = inttoptr i64 %src_i.i.i to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i, ptr nonnull align 4 %src.i.i, i64 %len.i.i, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i, ptr nonnull align 4 %src.i.i, i64 %len.i.i1878, i1 false)
   %dst_i.i.i = ptrtoint ptr %dst.i.i to i64
   %tagged.i.i = or disjoint i64 %dst_i.i.i, 1
   %out.i.i = insertvalue %ArchxStr %t2.fca.1.insert.i, i64 %tagged.i.i, 1
   br label %archx_enum_clone_Shape.exit.thread
 
-archx_enum_clone_Shape.exit.thread:               ; preds = %v.2.i, %copy.i.i
-  %common.ret.op.i.i1870 = phi %ArchxStr [ %out.i.i, %copy.i.i ], [ %t2.fca.1.insert.i, %v.2.i ]
-  %t3.fca.0.extract.i = extractvalue %ArchxStr %common.ret.op.i.i1870, 0
-  %t3.fca.1.extract.i = extractvalue %ArchxStr %common.ret.op.i.i1870, 1
+archx_enum_clone_Shape.exit.thread:               ; preds = %v.2.i1877, %copy.i.i
+  %common.ret.op.i.i1883 = phi %ArchxStr [ %out.i.i, %copy.i.i ], [ %t2.fca.1.insert.i, %v.2.i1877 ]
+  %t3.fca.0.extract.i = extractvalue %ArchxStr %common.ret.op.i.i1883, 0
+  %t3.fca.1.extract.i = extractvalue %ArchxStr %common.ret.op.i.i1883, 1
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i247.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i197.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i.sroa.6.sroa.5.sroa.0.i)
@@ -3031,11 +3052,11 @@ archx_enum_clone_Shape.exit.thread:               ; preds = %v.2.i, %copy.i.i
   %or.cond.i.i = select i1 %long.i.i.i, i1 true, i1 %owned.not.i.i.i
   br i1 %or.cond.i.i, label %archx_enum_clone_Shape.exit.thread.i, label %dup_heap.i.i.i
 
-archx_enum_clone_Shape.exit:                      ; preds = %foreach.body.14
+archx_enum_clone_Shape.exit:                      ; preds = %archx_enum_drop_Shape.exit
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i247.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i197.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %out_sso.i.sroa.6.sroa.5.sroa.0.i)
-  switch i64 %t128.unpack, label %archx_enum_drop_Shape.exit710.i [
+  switch i64 %t129.unpack, label %archx_enum_drop_Shape.exit710.i [
     i64 1, label %pat.enum.ok.8.i
     i64 0, label %pat.enum.ok.2.i
   ]
@@ -3055,28 +3076,28 @@ copy.i.i.i:                                       ; preds = %dup_heap.i.i.i
   call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i.i, ptr nonnull align 4 %src.i.i.i, i64 %len.i.i.i, i1 false)
   %dst_i.i.i.i = ptrtoint ptr %dst.i.i.i to i64
   %tagged.i.i.i = or disjoint i64 %dst_i.i.i.i, 1
-  %out.i.i.i = insertvalue %ArchxStr %common.ret.op.i.i1870, i64 %tagged.i.i.i, 1
-  %.pre = extractvalue %ArchxStr %common.ret.op.i.i1870, 0
-  %.pre2176 = and i64 %.pre, 4294967295
+  %out.i.i.i = insertvalue %ArchxStr %common.ret.op.i.i1883, i64 %tagged.i.i.i, 1
+  %.pre = extractvalue %ArchxStr %common.ret.op.i.i1883, 0
+  %.pre2198 = and i64 %.pre, 4294967295
   br label %archx_enum_clone_Shape.exit.thread.i
 
 archx_enum_clone_Shape.exit.thread.i:             ; preds = %copy.i.i.i, %archx_enum_clone_Shape.exit.thread
   %tag.i574.i.pre-phi = phi i64 [ 1, %copy.i.i.i ], [ %tag.i.i.i, %archx_enum_clone_Shape.exit.thread ]
-  %len.i569.i.pre-phi = phi i64 [ %.pre2176, %copy.i.i.i ], [ %len.i.i.i, %archx_enum_clone_Shape.exit.thread ]
+  %len.i569.i.pre-phi = phi i64 [ %.pre2198, %copy.i.i.i ], [ %len.i.i.i, %archx_enum_clone_Shape.exit.thread ]
   %t3.fca.1.extract.i.i.pre-phi = phi i64 [ %tagged.i.i.i, %copy.i.i.i ], [ %t3.fca.1.extract.i, %archx_enum_clone_Shape.exit.thread ]
   %t3.fca.0.extract.i.i.pre-phi = phi i64 [ %.pre, %copy.i.i.i ], [ %t3.fca.0.extract.i, %archx_enum_clone_Shape.exit.thread ]
-  %common.ret.op.i.i.i = phi %ArchxStr [ %out.i.i.i, %copy.i.i.i ], [ %common.ret.op.i.i1870, %archx_enum_clone_Shape.exit.thread ]
+  %common.ret.op.i.i.i = phi %ArchxStr [ %out.i.i.i, %copy.i.i.i ], [ %common.ret.op.i.i1883, %archx_enum_clone_Shape.exit.thread ]
   %long.i570.i = icmp samesign ult i64 %len.i569.i.pre-phi, 13
   %owned.not.i575.i = icmp eq i64 %tag.i574.i.pre-phi, 0
   %or.cond745.i = select i1 %long.i570.i, i1 true, i1 %owned.not.i575.i
-  br i1 %or.cond745.i, label %archx_str_clone.exit.i1894, label %dup_heap.i.i1885
+  br i1 %or.cond745.i, label %archx_str_clone.exit.i1912, label %dup_heap.i.i1903
 
 pat.enum.ok.2.i:                                  ; preds = %archx_enum_clone_Shape.exit
-  %1 = bitcast i64 %t128.unpack53.unpack to double
+  %1 = bitcast i64 %t129.unpack58.unpack to double
   %t10.i = fcmp ult double %1, 1.000000e+01
   %t25.i = call fastcc { i64, i64 } @archx_str_from_float(double %1)
   %newret = extractvalue { i64, i64 } %t25.i, 0
-  %newret2228 = extractvalue { i64, i64 } %t25.i, 1
+  %newret2250 = extractvalue { i64, i64 } %t25.i, 1
   %blen.i162.i = and i64 %newret, 4294967295
   %bz.i163.i = icmp eq i64 %blen.i162.i, 0
   br i1 %t10.i, label %pat.enum.ok.6.i, label %match.body.3.i
@@ -3092,9 +3113,9 @@ archx_str_concat.exit.thread.i:                   ; preds = %match.body.3.i
 calc_tot.i.i:                                     ; preds = %match.body.3.i
   %tot.i.i = add nuw nsw i64 %blen.i162.i, 13
   %too_big.i.i = icmp samesign ugt i64 %blen.i162.i, 2147483634
-  br i1 %too_big.i.i, label %oom.i.i1883, label %mat_a.i.i
+  br i1 %too_big.i.i, label %oom.i.i1901, label %mat_a.i.i
 
-oom.i.i1883:                                      ; preds = %build.i.i, %calc_tot.i.i
+oom.i.i1901:                                      ; preds = %build.i.i, %calc_tot.i.i
   call fastcc void @archx_oom_fail()
   unreachable
 
@@ -3106,39 +3127,39 @@ mat_b_short.i.i:                                  ; preds = %mat_a.i.i
   %bp4.i.i = lshr i64 %newret, 32
   %bp4_32.i.i = trunc nuw i64 %bp4.i.i to i32
   store i32 %bp4_32.i.i, ptr %btmp.i.i, align 4
-  store i64 %newret2228, ptr %btmp4.i.i, align 4
+  store i64 %newret2250, ptr %btmp4.i.i, align 4
   br label %build.i.i
 
 mat_b_long.i.i:                                   ; preds = %mat_a.i.i
-  %braw.i.i = and i64 %newret2228, -4
+  %braw.i.i = and i64 %newret2250, -4
   %blptr.i.i = inttoptr i64 %braw.i.i to ptr
   br label %build.i.i
 
 build.i.i:                                        ; preds = %mat_b_long.i.i, %mat_b_short.i.i
   %bptr.i.i = phi ptr [ %btmp.i.i, %mat_b_short.i.i ], [ %blptr.i.i, %mat_b_long.i.i ]
-  %hp.i.i1873 = call noalias align 16 ptr @malloc(i64 %tot.i.i)
-  %hnull.i.i1874 = icmp eq ptr %hp.i.i1873, null
-  br i1 %hnull.i.i1874, label %oom.i.i1883, label %archx_str_concat.exit.i
+  %hp.i.i1888 = call noalias align 16 ptr @malloc(i64 %tot.i.i)
+  %hnull.i.i1889 = icmp eq ptr %hp.i.i1888, null
+  br i1 %hnull.i.i1889, label %oom.i.i1901, label %archx_str_concat.exit.i
 
 archx_str_concat.exit.i:                          ; preds = %build.i.i
-  %hp_i.i.i1875 = ptrtoint ptr %hp.i.i1873 to i64
-  %htagged.i.i1876 = or disjoint i64 %hp_i.i.i1875, 1
-  call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 16 dereferenceable(13) %hp.i.i1873, ptr noundef nonnull align 4 dereferenceable(13) @.str.0, i64 13, i1 false)
-  %dst_b.i.i = getelementptr inbounds nuw i8, ptr %hp.i.i1873, i64 13
+  %hp_i.i.i1890 = ptrtoint ptr %hp.i.i1888 to i64
+  %htagged.i.i1891 = or disjoint i64 %hp_i.i.i1890, 1
+  call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 16 dereferenceable(13) %hp.i.i1888, ptr noundef nonnull align 4 dereferenceable(13) @.str.0, i64 13, i1 false)
+  %dst_b.i.i = getelementptr inbounds nuw i8, ptr %hp.i.i1888, i64 13
   call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 1 %dst_b.i.i, ptr nonnull align 1 %bptr.i.i, i64 %blen.i162.i, i1 false)
-  %w0_out.i.i1877 = or disjoint i64 %tot.i.i, 7454127449735954432
-  %ls0.i.i1878 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1877, 0
-  %ls1.i.i1879 = insertvalue %ArchxStr %ls0.i.i1878, i64 %htagged.i.i1876, 1
+  %w0_out.i.i1892 = or disjoint i64 %tot.i.i, 7454127449735954432
+  %ls0.i.i1893 = insertvalue %ArchxStr poison, i64 %w0_out.i.i1892, 0
+  %ls1.i.i1894 = insertvalue %ArchxStr %ls0.i.i1893, i64 %htagged.i.i1891, 1
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i.i)
-  %tag.i.i1880 = and i64 %newret2228, 1
-  %owned.not.i.i1881 = icmp eq i64 %tag.i.i1880, 0
-  %or.cond.i1882 = select i1 %bshort.i.i, i1 true, i1 %owned.not.i.i1881
-  br i1 %or.cond.i1882, label %archx_fn_describe_shape.exit, label %do_free.i.i
+  %tag.i.i1895 = and i64 %newret2250, 1
+  %owned.not.i.i1896 = icmp eq i64 %tag.i.i1895, 0
+  %or.cond.i1897 = select i1 %bshort.i.i, i1 true, i1 %owned.not.i.i1896
+  br i1 %or.cond.i1897, label %archx_fn_describe_shape.exit, label %do_free.i.i1898
 
-do_free.i.i:                                      ; preds = %archx_str_concat.exit.i
-  %raw.i.i = and i64 %newret2228, -2
-  %ptr.i.i = inttoptr i64 %raw.i.i to ptr
-  call void @free(ptr %ptr.i.i)
+do_free.i.i1898:                                  ; preds = %archx_str_concat.exit.i
+  %raw.i.i1899 = and i64 %newret2250, -2
+  %ptr.i.i1900 = inttoptr i64 %raw.i.i1899 to ptr
+  call void @free(ptr %ptr.i.i1900)
   br label %archx_fn_describe_shape.exit
 
 pat.enum.ok.6.i:                                  ; preds = %pat.enum.ok.2.i
@@ -3154,7 +3175,7 @@ calc_tot.i164.i:                                  ; preds = %pat.enum.ok.6.i
   %too_big.i166.i = icmp samesign ugt i64 %blen.i162.i, 2147483640
   br i1 %too_big.i166.i, label %oom.i187.i, label %mat_a.i167.i
 
-oom.i187.i:                                       ; preds = %alloc_heap.i.i1884, %calc_tot.i164.i
+oom.i187.i:                                       ; preds = %alloc_heap.i.i1902, %calc_tot.i164.i
   call fastcc void @archx_oom_fail()
   unreachable
 
@@ -3163,17 +3184,17 @@ mat_a.i167.i:                                     ; preds = %calc_tot.i164.i
   br i1 %bshort.i168.i, label %build.i172.i, label %build.i172.thread.i
 
 build.i172.thread.i:                              ; preds = %mat_a.i167.i
-  %braw.i170.i = and i64 %newret2228, -4
+  %braw.i170.i = and i64 %newret2250, -4
   %blptr.i171.i = inttoptr i64 %braw.i170.i to ptr
-  br label %alloc_heap.i.i1884
+  br label %alloc_heap.i.i1902
 
 build.i172.i:                                     ; preds = %mat_a.i167.i
   %bp4.i189.i = lshr i64 %newret, 32
   %bp4_32.i190.i = trunc nuw i64 %bp4.i189.i to i32
   store i32 %bp4_32.i190.i, ptr %btmp.i159.i, align 4
-  store i64 %newret2228, ptr %btmp4.i191.i, align 4
+  store i64 %newret2250, ptr %btmp4.i191.i, align 4
   %fits_sso.i.i = icmp samesign ult i64 %blen.i162.i, 6
-  br i1 %fits_sso.i.i, label %archx_str_concat.exit194.thread769.i, label %alloc_heap.i.i1884
+  br i1 %fits_sso.i.i, label %archx_str_concat.exit194.thread769.i, label %alloc_heap.i.i1902
 
 archx_str_concat.exit194.thread769.i:             ; preds = %build.i172.i
   store i40 0, ptr %out_sso.i.sroa.6.sroa.5.sroa.0.i, align 8
@@ -3188,13 +3209,13 @@ archx_str_concat.exit194.thread769.i:             ; preds = %build.i172.i
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i159.i)
   br label %archx_fn_describe_shape.exit
 
-alloc_heap.i.i1884:                               ; preds = %build.i172.i, %build.i172.thread.i
+alloc_heap.i.i1902:                               ; preds = %build.i172.i, %build.i172.thread.i
   %bptr.i173768.i = phi ptr [ %blptr.i171.i, %build.i172.thread.i ], [ %btmp.i159.i, %build.i172.i ]
   %hp.i174.i = call noalias align 16 ptr @malloc(i64 %tot.i165.i)
   %hnull.i175.i = icmp eq ptr %hp.i174.i, null
   br i1 %hnull.i175.i, label %oom.i187.i, label %archx_str_concat.exit194.i
 
-archx_str_concat.exit194.i:                       ; preds = %alloc_heap.i.i1884
+archx_str_concat.exit194.i:                       ; preds = %alloc_heap.i.i1902
   %hp_i.i177.i = ptrtoint ptr %hp.i174.i to i64
   %htagged.i178.i = or disjoint i64 %hp_i.i177.i, 1
   store i32 1668442467, ptr %hp.i174.i, align 16
@@ -3206,28 +3227,28 @@ archx_str_concat.exit194.i:                       ; preds = %alloc_heap.i.i1884
   %rs0.i.pn.i = insertvalue %ArchxStr poison, i64 %out_sso.i.sroa.0.sroa.0.0.insert.insert.pn.i, 0
   %common.ret.op.i186.i = insertvalue %ArchxStr %rs0.i.pn.i, i64 %htagged.i178.i, 1
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i159.i)
-  %tag.i65.i = and i64 %newret2228, 1
+  %tag.i65.i = and i64 %newret2250, 1
   %owned.not.i66.i = icmp eq i64 %tag.i65.i, 0
   %or.cond742.i = select i1 %bshort.i168.i, i1 true, i1 %owned.not.i66.i
   br i1 %or.cond742.i, label %archx_fn_describe_shape.exit, label %do_free.i67.i
 
 do_free.i67.i:                                    ; preds = %archx_str_concat.exit194.i
-  %raw.i68.i = and i64 %newret2228, -2
+  %raw.i68.i = and i64 %newret2250, -2
   %ptr.i69.i = inttoptr i64 %raw.i68.i to ptr
   call void @free(ptr %ptr.i69.i)
   br label %archx_fn_describe_shape.exit
 
 pat.enum.ok.8.i:                                  ; preds = %archx_enum_clone_Shape.exit
-  %2 = bitcast i64 %t128.unpack53.unpack to double
-  %3 = bitcast i64 %t128.unpack53.unpack56 to double
-  %t40.i = fcmp oeq double %2, %3
-  %t41.i = fmul double %2, %3
-  %t42.i = call fastcc { i64, i64 } @archx_str_from_float(double %t41.i)
-  %newret2230 = extractvalue { i64, i64 } %t42.i, 0
-  %newret2232 = extractvalue { i64, i64 } %t42.i, 1
-  %blen.i200.i = and i64 %newret2230, 4294967295
+  %2 = bitcast i64 %t129.unpack58.unpack to double
+  %3 = bitcast i64 %t129.unpack58.unpack61 to double
+  %t40.i1885 = fcmp oeq double %2, %3
+  %t41.i1886 = fmul double %2, %3
+  %t42.i = call fastcc { i64, i64 } @archx_str_from_float(double %t41.i1886)
+  %newret2252 = extractvalue { i64, i64 } %t42.i, 0
+  %newret2254 = extractvalue { i64, i64 } %t42.i, 1
+  %blen.i200.i = and i64 %newret2252, 4294967295
   %bz.i201.i = icmp eq i64 %blen.i200.i, 0
-  br i1 %t40.i, label %match.body.9.i, label %pat.enum.ok.12.i
+  br i1 %t40.i1885, label %match.body.9.i, label %pat.enum.ok.12.i
 
 match.body.9.i:                                   ; preds = %pat.enum.ok.8.i
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %btmp.i196.i)
@@ -3251,15 +3272,15 @@ mat_a.i205.i:                                     ; preds = %calc_tot.i202.i
   br i1 %bshort.i207.i, label %build.i211.i, label %build.i211.thread.i
 
 build.i211.thread.i:                              ; preds = %mat_a.i205.i
-  %braw.i209.i = and i64 %newret2232, -4
+  %braw.i209.i = and i64 %newret2254, -4
   %blptr.i210.i = inttoptr i64 %braw.i209.i to ptr
   br label %alloc_heap.i214.i
 
 build.i211.i:                                     ; preds = %mat_a.i205.i
-  %bp4.i239.i = lshr i64 %newret2230, 32
+  %bp4.i239.i = lshr i64 %newret2252, 32
   %bp4_32.i240.i = trunc nuw i64 %bp4.i239.i to i32
   store i32 %bp4_32.i240.i, ptr %btmp.i196.i, align 4
-  store i64 %newret2232, ptr %btmp4.i241.i, align 4
+  store i64 %newret2254, ptr %btmp4.i241.i, align 4
   %fits_sso.i213.i = icmp samesign ult i64 %blen.i200.i, 6
   br i1 %fits_sso.i213.i, label %archx_str_concat.exit244.thread780.i, label %alloc_heap.i214.i
 
@@ -3294,13 +3315,13 @@ archx_str_concat.exit244.i:                       ; preds = %alloc_heap.i214.i
   %rs0.i236.pn.i = insertvalue %ArchxStr poison, i64 %out_sso.i197.sroa.0.sroa.0.0.insert.insert.pn.i, 0
   %common.ret.op.i227.i = insertvalue %ArchxStr %rs0.i236.pn.i, i64 %htagged.i219.i, 1
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i196.i)
-  %tag.i76.i = and i64 %newret2232, 1
+  %tag.i76.i = and i64 %newret2254, 1
   %owned.not.i77.i = icmp eq i64 %tag.i76.i, 0
   %or.cond743.i = select i1 %bshort.i207.i, i1 true, i1 %owned.not.i77.i
   br i1 %or.cond743.i, label %archx_fn_describe_shape.exit, label %do_free.i78.i
 
 do_free.i78.i:                                    ; preds = %archx_str_concat.exit244.i
-  %raw.i79.i = and i64 %newret2232, -2
+  %raw.i79.i = and i64 %newret2254, -2
   %ptr.i80.i = inttoptr i64 %raw.i79.i to ptr
   call void @free(ptr %ptr.i80.i)
   br label %archx_fn_describe_shape.exit
@@ -3327,15 +3348,15 @@ mat_a.i255.i:                                     ; preds = %calc_tot.i252.i
   br i1 %bshort.i257.i, label %build.i261.i, label %build.i261.thread.i
 
 build.i261.thread.i:                              ; preds = %mat_a.i255.i
-  %braw.i259.i = and i64 %newret2232, -4
+  %braw.i259.i = and i64 %newret2254, -4
   %blptr.i260.i = inttoptr i64 %braw.i259.i to ptr
   br label %alloc_heap.i264.i
 
 build.i261.i:                                     ; preds = %mat_a.i255.i
-  %bp4.i289.i = lshr i64 %newret2230, 32
+  %bp4.i289.i = lshr i64 %newret2252, 32
   %bp4_32.i290.i = trunc nuw i64 %bp4.i289.i to i32
   store i32 %bp4_32.i290.i, ptr %btmp.i246.i, align 4
-  store i64 %newret2232, ptr %btmp4.i291.i, align 4
+  store i64 %newret2254, ptr %btmp4.i291.i, align 4
   %fits_sso.i263.i = icmp samesign ult i64 %blen.i200.i, 8
   br i1 %fits_sso.i263.i, label %archx_str_concat.exit294.thread791.i, label %alloc_heap.i264.i
 
@@ -3370,46 +3391,46 @@ archx_str_concat.exit294.i:                       ; preds = %alloc_heap.i264.i
   %rs0.i286.pn.i = insertvalue %ArchxStr poison, i64 %out_sso.i247.sroa.0.sroa.0.0.insert.insert.pn.i, 0
   %common.ret.op.i277.i = insertvalue %ArchxStr %rs0.i286.pn.i, i64 %htagged.i269.i, 1
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %btmp.i246.i)
-  %tag.i87.i = and i64 %newret2232, 1
+  %tag.i87.i = and i64 %newret2254, 1
   %owned.not.i88.i = icmp eq i64 %tag.i87.i, 0
   %or.cond744.i = select i1 %bshort.i257.i, i1 true, i1 %owned.not.i88.i
   br i1 %or.cond744.i, label %archx_fn_describe_shape.exit, label %do_free.i89.i
 
 do_free.i89.i:                                    ; preds = %archx_str_concat.exit294.i
-  %raw.i90.i = and i64 %newret2232, -2
+  %raw.i90.i = and i64 %newret2254, -2
   %ptr.i91.i = inttoptr i64 %raw.i90.i to ptr
   call void @free(ptr %ptr.i91.i)
   br label %archx_fn_describe_shape.exit
 
-dup_heap.i.i1885:                                 ; preds = %archx_enum_clone_Shape.exit.thread.i
-  %dst.i.i1886 = call noalias align 16 ptr @malloc(i64 %len.i569.i.pre-phi)
-  %isnull.i.i1887 = icmp eq ptr %dst.i.i1886, null
-  br i1 %isnull.i.i1887, label %oom.i576.i, label %copy.i.i1888
+dup_heap.i.i1903:                                 ; preds = %archx_enum_clone_Shape.exit.thread.i
+  %dst.i.i1904 = call noalias align 16 ptr @malloc(i64 %len.i569.i.pre-phi)
+  %isnull.i.i1905 = icmp eq ptr %dst.i.i1904, null
+  br i1 %isnull.i.i1905, label %oom.i576.i, label %copy.i.i1906
 
-oom.i576.i:                                       ; preds = %dup_heap.i.i1885
+oom.i576.i:                                       ; preds = %dup_heap.i.i1903
   call fastcc void @archx_oom_fail()
   unreachable
 
-copy.i.i1888:                                     ; preds = %dup_heap.i.i1885
-  %src_i.i.i1889 = and i64 %t3.fca.1.extract.i.i.pre-phi, -4
-  %src.i.i1890 = inttoptr i64 %src_i.i.i1889 to ptr
-  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i1886, ptr nonnull align 4 %src.i.i1890, i64 %len.i569.i.pre-phi, i1 false)
-  %dst_i.i.i1891 = ptrtoint ptr %dst.i.i1886 to i64
-  %tagged.i.i1892 = or disjoint i64 %dst_i.i.i1891, 1
-  %.pre2178 = extractvalue %ArchxStr %common.ret.op.i.i.i, 0
-  %.pre2180 = and i64 %.pre2178, 4294967295
-  br label %archx_str_clone.exit.i1894
+copy.i.i1906:                                     ; preds = %dup_heap.i.i1903
+  %src_i.i.i1907 = and i64 %t3.fca.1.extract.i.i.pre-phi, -4
+  %src.i.i1908 = inttoptr i64 %src_i.i.i1907 to ptr
+  call void @llvm.memcpy.p0.p0.i64(ptr nonnull align 16 %dst.i.i1904, ptr nonnull align 4 %src.i.i1908, i64 %len.i569.i.pre-phi, i1 false)
+  %dst_i.i.i1909 = ptrtoint ptr %dst.i.i1904 to i64
+  %tagged.i.i1910 = or disjoint i64 %dst_i.i.i1909, 1
+  %.pre2200 = extractvalue %ArchxStr %common.ret.op.i.i.i, 0
+  %.pre2202 = and i64 %.pre2200, 4294967295
+  br label %archx_str_clone.exit.i1912
 
-archx_str_clone.exit.i1894:                       ; preds = %copy.i.i1888, %archx_enum_clone_Shape.exit.thread.i
-  %alen.i.i.pre-phi = phi i64 [ %.pre2180, %copy.i.i1888 ], [ %len.i569.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
-  %aw1.i.i.pre-phi = phi i64 [ %tagged.i.i1892, %copy.i.i1888 ], [ %t3.fca.1.extract.i.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
-  %aw0.i.i.pre-phi = phi i64 [ %.pre2178, %copy.i.i1888 ], [ %t3.fca.0.extract.i.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
+archx_str_clone.exit.i1912:                       ; preds = %copy.i.i1906, %archx_enum_clone_Shape.exit.thread.i
+  %alen.i.i.pre-phi = phi i64 [ %.pre2202, %copy.i.i1906 ], [ %len.i569.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
+  %aw1.i.i.pre-phi = phi i64 [ %tagged.i.i1910, %copy.i.i1906 ], [ %t3.fca.1.extract.i.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
+  %aw0.i.i.pre-phi = phi i64 [ %.pre2200, %copy.i.i1906 ], [ %t3.fca.0.extract.i.i.pre-phi, %archx_enum_clone_Shape.exit.thread.i ]
   call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %atmp.i295.i)
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %out_sso.i297.i)
   %az.i.i = icmp eq i64 %alen.i.i.pre-phi, 0
   br i1 %az.i.i, label %archx_str_concat.exit332.i, label %chk_bz.i.i
 
-chk_bz.i.i:                                       ; preds = %archx_str_clone.exit.i1894
+chk_bz.i.i:                                       ; preds = %archx_str_clone.exit.i1912
   %tot.i299.i = add nuw nsw i64 %alen.i.i.pre-phi, 1
   %too_big.i300.i = icmp samesign ugt i64 %alen.i.i.pre-phi, 2147483646
   br i1 %too_big.i300.i, label %oom.i321.i, label %mat_a.i301.i
@@ -3468,12 +3489,12 @@ copy_long.i310.i:                                 ; preds = %alloc_heap.i307.i
   %ls1.i319.i = insertvalue %ArchxStr %ls0.i318.i, i64 %htagged.i312.i, 1
   br label %archx_str_concat.exit332.i
 
-archx_str_concat.exit332.i:                       ; preds = %copy_long.i310.i, %build_sso.i322.i, %archx_str_clone.exit.i1894
-  %common.ret.op.i320.i = phi %ArchxStr [ %rs1.i330.i, %build_sso.i322.i ], [ %ls1.i319.i, %copy_long.i310.i ], [ { i64 274877906945, i64 0 }, %archx_str_clone.exit.i1894 ]
+archx_str_concat.exit332.i:                       ; preds = %copy_long.i310.i, %build_sso.i322.i, %archx_str_clone.exit.i1912
+  %common.ret.op.i320.i = phi %ArchxStr [ %rs1.i330.i, %build_sso.i322.i ], [ %ls1.i319.i, %copy_long.i310.i ], [ { i64 274877906945, i64 0 }, %archx_str_clone.exit.i1912 ]
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i295.i)
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i297.i)
   call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i.i)
-  %n32.i.i = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i.i, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t128.unpack53.unpack58)
+  %n32.i.i = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i.i, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t129.unpack58.unpack63)
   %len.i578.i = sext i32 %n32.i.i to i64
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i.i)
   %z.i.i.i = icmp slt i32 %n32.i.i, 1
@@ -3740,7 +3761,7 @@ archx_str_concat.exit452.i:                       ; preds = %copy_long.i425.i, %
   call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %atmp.i399.i)
   call void @llvm.lifetime.end.p0(i64 16, ptr nonnull %out_sso.i401.i)
   call void @llvm.lifetime.start.p0(i64 32, ptr nonnull %buf.i621.i)
-  %n32.i622.i = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i621.i, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t128.unpack53.unpack60)
+  %n32.i622.i = call i32 (ptr, ptr, ...) @sprintf(ptr nonnull dereferenceable(1) %buf.i621.i, ptr nonnull dereferenceable(1) @.fmt.i64s, i64 %t129.unpack58.unpack65)
   %len.i623.i = sext i32 %n32.i622.i to i64
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i620.i)
   %z.i.i624.i = icmp slt i32 %n32.i622.i, 1
@@ -4044,99 +4065,99 @@ do_free.i.i695.i:                                 ; preds = %v.2.i689.i
   br label %archx_fn_describe_shape.exit
 
 archx_enum_drop_Shape.exit710.i:                  ; preds = %archx_enum_clone_Shape.exit
-  %t90.i = icmp eq i64 %t128.unpack, 3
+  %t90.i = icmp eq i64 %t129.unpack, 3
   call void @llvm.assume(i1 %t90.i)
   br label %archx_fn_describe_shape.exit
 
-archx_fn_describe_shape.exit:                     ; preds = %archx_str_concat.exit.thread.i, %archx_str_concat.exit.i, %do_free.i.i, %archx_str_concat.exit194.thread.i, %archx_str_concat.exit194.thread769.i, %archx_str_concat.exit194.i, %do_free.i67.i, %archx_str_concat.exit244.thread.i, %archx_str_concat.exit244.thread780.i, %archx_str_concat.exit244.i, %do_free.i78.i, %archx_str_concat.exit294.thread.i, %archx_str_concat.exit294.thread791.i, %archx_str_concat.exit294.i, %do_free.i89.i, %v.2.i689.i, %do_free.i.i695.i, %archx_enum_drop_Shape.exit710.i
-  %dst.sroa.5.0.i2042 = phi i64 [ %t128.unpack53.unpack56, %archx_enum_drop_Shape.exit710.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit.thread.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit.i ], [ %t128.unpack53.unpack56, %do_free.i.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit194.thread.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit194.i ], [ %t128.unpack53.unpack56, %do_free.i67.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit244.thread.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit244.i ], [ %t128.unpack53.unpack56, %do_free.i78.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit294.thread.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit294.i ], [ %t128.unpack53.unpack56, %do_free.i89.i ], [ %t3.fca.1.extract.i, %v.2.i689.i ], [ %t3.fca.1.extract.i, %do_free.i.i695.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit194.thread769.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit244.thread780.i ], [ %t128.unpack53.unpack56, %archx_str_concat.exit294.thread791.i ]
-  %dst.sroa.2.0.i2040 = phi i64 [ %t128.unpack53.unpack, %archx_enum_drop_Shape.exit710.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit.thread.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit.i ], [ %t128.unpack53.unpack, %do_free.i.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit194.thread.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit194.i ], [ %t128.unpack53.unpack, %do_free.i67.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit244.thread.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit244.i ], [ %t128.unpack53.unpack, %do_free.i78.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit294.thread.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit294.i ], [ %t128.unpack53.unpack, %do_free.i89.i ], [ %t3.fca.0.extract.i, %v.2.i689.i ], [ %t3.fca.0.extract.i, %do_free.i.i695.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit194.thread769.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit244.thread780.i ], [ %t128.unpack53.unpack, %archx_str_concat.exit294.thread791.i ]
-  %common.ret.op.i1872 = phi %ArchxStr [ { i64 8390326386350358533, i64 121 }, %archx_enum_drop_Shape.exit710.i ], [ { i64 7454127449735954445, i64 ptrtoint (ptr @.str.0 to i64) }, %archx_str_concat.exit.thread.i ], [ %ls1.i.i1879, %archx_str_concat.exit.i ], [ %ls1.i.i1879, %do_free.i.i ], [ { i64 7165905831022559239, i64 3827052 }, %archx_str_concat.exit194.thread.i ], [ %common.ret.op.i186.i, %archx_str_concat.exit194.i ], [ %common.ret.op.i186.i, %do_free.i67.i ], [ { i64 7022643932689334279, i64 3827058 }, %archx_str_concat.exit244.thread.i ], [ %common.ret.op.i227.i, %archx_str_concat.exit244.i ], [ %common.ret.op.i227.i, %do_free.i78.i ], [ { i64 8386658471394672645, i64 58 }, %archx_str_concat.exit294.thread.i ], [ %common.ret.op.i277.i, %archx_str_concat.exit294.i ], [ %common.ret.op.i277.i, %do_free.i89.i ], [ %common.ret.op.i495735.i, %v.2.i689.i ], [ %common.ret.op.i495735.i, %do_free.i.i695.i ], [ %common.ret.op.i186773.i, %archx_str_concat.exit194.thread769.i ], [ %common.ret.op.i227784.i, %archx_str_concat.exit244.thread780.i ], [ %common.ret.op.i277795.i, %archx_str_concat.exit294.thread791.i ]
+archx_fn_describe_shape.exit:                     ; preds = %archx_str_concat.exit.thread.i, %archx_str_concat.exit.i, %do_free.i.i1898, %archx_str_concat.exit194.thread.i, %archx_str_concat.exit194.thread769.i, %archx_str_concat.exit194.i, %do_free.i67.i, %archx_str_concat.exit244.thread.i, %archx_str_concat.exit244.thread780.i, %archx_str_concat.exit244.i, %do_free.i78.i, %archx_str_concat.exit294.thread.i, %archx_str_concat.exit294.thread791.i, %archx_str_concat.exit294.i, %do_free.i89.i, %v.2.i689.i, %do_free.i.i695.i, %archx_enum_drop_Shape.exit710.i
+  %dst.sroa.5.0.i2061 = phi i64 [ %t129.unpack58.unpack61, %archx_enum_drop_Shape.exit710.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit.thread.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit.i ], [ %t129.unpack58.unpack61, %do_free.i.i1898 ], [ %t129.unpack58.unpack61, %archx_str_concat.exit194.thread.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit194.i ], [ %t129.unpack58.unpack61, %do_free.i67.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit244.thread.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit244.i ], [ %t129.unpack58.unpack61, %do_free.i78.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit294.thread.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit294.i ], [ %t129.unpack58.unpack61, %do_free.i89.i ], [ %t3.fca.1.extract.i, %v.2.i689.i ], [ %t3.fca.1.extract.i, %do_free.i.i695.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit194.thread769.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit244.thread780.i ], [ %t129.unpack58.unpack61, %archx_str_concat.exit294.thread791.i ]
+  %dst.sroa.2.0.i2059 = phi i64 [ %t129.unpack58.unpack, %archx_enum_drop_Shape.exit710.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit.thread.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit.i ], [ %t129.unpack58.unpack, %do_free.i.i1898 ], [ %t129.unpack58.unpack, %archx_str_concat.exit194.thread.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit194.i ], [ %t129.unpack58.unpack, %do_free.i67.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit244.thread.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit244.i ], [ %t129.unpack58.unpack, %do_free.i78.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit294.thread.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit294.i ], [ %t129.unpack58.unpack, %do_free.i89.i ], [ %t3.fca.0.extract.i, %v.2.i689.i ], [ %t3.fca.0.extract.i, %do_free.i.i695.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit194.thread769.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit244.thread780.i ], [ %t129.unpack58.unpack, %archx_str_concat.exit294.thread791.i ]
+  %common.ret.op.i1887 = phi %ArchxStr [ { i64 8390326386350358533, i64 121 }, %archx_enum_drop_Shape.exit710.i ], [ { i64 7454127449735954445, i64 ptrtoint (ptr @.str.0 to i64) }, %archx_str_concat.exit.thread.i ], [ %ls1.i.i1894, %archx_str_concat.exit.i ], [ %ls1.i.i1894, %do_free.i.i1898 ], [ { i64 7165905831022559239, i64 3827052 }, %archx_str_concat.exit194.thread.i ], [ %common.ret.op.i186.i, %archx_str_concat.exit194.i ], [ %common.ret.op.i186.i, %do_free.i67.i ], [ { i64 7022643932689334279, i64 3827058 }, %archx_str_concat.exit244.thread.i ], [ %common.ret.op.i227.i, %archx_str_concat.exit244.i ], [ %common.ret.op.i227.i, %do_free.i78.i ], [ { i64 8386658471394672645, i64 58 }, %archx_str_concat.exit294.thread.i ], [ %common.ret.op.i277.i, %archx_str_concat.exit294.i ], [ %common.ret.op.i277.i, %do_free.i89.i ], [ %common.ret.op.i495735.i, %v.2.i689.i ], [ %common.ret.op.i495735.i, %do_free.i.i695.i ], [ %common.ret.op.i186773.i, %archx_str_concat.exit194.thread769.i ], [ %common.ret.op.i227784.i, %archx_str_concat.exit244.thread780.i ], [ %common.ret.op.i277795.i, %archx_str_concat.exit294.thread791.i ]
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %out_sso.i247.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %out_sso.i197.sroa.6.sroa.5.sroa.0.i)
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %out_sso.i.sroa.6.sroa.5.sroa.0.i)
-  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1895)
-  %w0.i1896 = extractvalue %ArchxStr %common.ret.op.i1872, 0
-  %w1.i1897 = extractvalue %ArchxStr %common.ret.op.i1872, 1
-  %len.i1898 = and i64 %w0.i1896, 4294967295
-  %short.i1899 = icmp samesign ult i64 %len.i1898, 13
-  br i1 %short.i1899, label %emit.i1920, label %emit.thread.i1900
+  call void @llvm.lifetime.start.p0(i64 12, ptr nonnull %tmp.i1913)
+  %w0.i1914 = extractvalue %ArchxStr %common.ret.op.i1887, 0
+  %w1.i1915 = extractvalue %ArchxStr %common.ret.op.i1887, 1
+  %len.i1916 = and i64 %w0.i1914, 4294967295
+  %short.i1917 = icmp samesign ult i64 %len.i1916, 13
+  br i1 %short.i1917, label %emit.i1938, label %emit.thread.i1918
 
-emit.thread.i1900:                                ; preds = %archx_fn_describe_shape.exit
-  %raw.i1901 = and i64 %w1.i1897, -4
-  %lptr.i1902 = inttoptr i64 %raw.i1901 to ptr
-  br label %chk_nul.i1903
+emit.thread.i1918:                                ; preds = %archx_fn_describe_shape.exit
+  %raw.i1919 = and i64 %w1.i1915, -4
+  %lptr.i1920 = inttoptr i64 %raw.i1919 to ptr
+  br label %chk_nul.i1921
 
-emit.i1920:                                       ; preds = %archx_fn_describe_shape.exit
-  %p4.i1921 = lshr i64 %w0.i1896, 32
-  %p4_32.i1922 = trunc nuw i64 %p4.i1921 to i32
-  store i32 %p4_32.i1922, ptr %tmp.i1895, align 4
-  store i64 %w1.i1897, ptr %tmp4.i1923, align 4
-  %pos.not.i1924 = icmp eq i64 %len.i1898, 0
-  br i1 %pos.not.i1924, label %do_nl.i1915, label %chk_nul.i1903
+emit.i1938:                                       ; preds = %archx_fn_describe_shape.exit
+  %p4.i1939 = lshr i64 %w0.i1914, 32
+  %p4_32.i1940 = trunc nuw i64 %p4.i1939 to i32
+  store i32 %p4_32.i1940, ptr %tmp.i1913, align 4
+  store i64 %w1.i1915, ptr %tmp4.i1941, align 4
+  %pos.not.i1942 = icmp eq i64 %len.i1916, 0
+  br i1 %pos.not.i1942, label %do_nl.i1933, label %chk_nul.i1921
 
-chk_nul.i1903:                                    ; preds = %emit.i1920, %emit.thread.i1900
-  %data3.i1904 = phi ptr [ %lptr.i1902, %emit.thread.i1900 ], [ %tmp.i1895, %emit.i1920 ]
-  %nul.i1905 = call ptr @memchr(ptr nonnull %data3.i1904, i32 0, i64 %len.i1898)
-  %has_nul.not.i1906 = icmp eq ptr %nul.i1905, null
-  br i1 %has_nul.not.i1906, label %fast_printf.i1917, label %byte_loop.i1907
+chk_nul.i1921:                                    ; preds = %emit.i1938, %emit.thread.i1918
+  %data3.i1922 = phi ptr [ %lptr.i1920, %emit.thread.i1918 ], [ %tmp.i1913, %emit.i1938 ]
+  %nul.i1923 = call ptr @memchr(ptr nonnull %data3.i1922, i32 0, i64 %len.i1916)
+  %has_nul.not.i1924 = icmp eq ptr %nul.i1923, null
+  br i1 %has_nul.not.i1924, label %fast_printf.i1935, label %byte_loop.i1925
 
-fast_printf.i1917:                                ; preds = %chk_nul.i1903
-  %len32.i1918 = trunc i64 %w0.i1896 to i32
-  %np.i1919 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1918, ptr nonnull %data3.i1904)
-  br label %archx_str_print.exit1925
+fast_printf.i1935:                                ; preds = %chk_nul.i1921
+  %len32.i1936 = trunc i64 %w0.i1914 to i32
+  %np.i1937 = call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.pstr.nl, i32 %len32.i1936, ptr nonnull %data3.i1922)
+  br label %archx_str_print.exit1943
 
-byte_loop.i1907:                                  ; preds = %chk_nul.i1903, %byte_loop.i1907
-  %bi.i1908 = phi i64 [ %bnext.i1913, %byte_loop.i1907 ], [ 0, %chk_nul.i1903 ]
-  %bp.i1909 = getelementptr inbounds nuw i8, ptr %data3.i1904, i64 %bi.i1908
-  %ch8.i1910 = load i8, ptr %bp.i1909, align 1
-  %ch32.i1911 = zext i8 %ch8.i1910 to i32
-  %pc.i1912 = call i32 @putchar(i32 %ch32.i1911)
-  %bnext.i1913 = add nuw nsw i64 %bi.i1908, 1
-  %exitcond.not.i1914 = icmp eq i64 %bnext.i1913, %len.i1898
-  br i1 %exitcond.not.i1914, label %do_nl.i1915, label %byte_loop.i1907
+byte_loop.i1925:                                  ; preds = %chk_nul.i1921, %byte_loop.i1925
+  %bi.i1926 = phi i64 [ %bnext.i1931, %byte_loop.i1925 ], [ 0, %chk_nul.i1921 ]
+  %bp.i1927 = getelementptr inbounds nuw i8, ptr %data3.i1922, i64 %bi.i1926
+  %ch8.i1928 = load i8, ptr %bp.i1927, align 1
+  %ch32.i1929 = zext i8 %ch8.i1928 to i32
+  %pc.i1930 = call i32 @putchar(i32 %ch32.i1929)
+  %bnext.i1931 = add nuw nsw i64 %bi.i1926, 1
+  %exitcond.not.i1932 = icmp eq i64 %bnext.i1931, %len.i1916
+  br i1 %exitcond.not.i1932, label %do_nl.i1933, label %byte_loop.i1925
 
-do_nl.i1915:                                      ; preds = %byte_loop.i1907, %emit.i1920
-  %nc.i1916 = call i32 @putchar(i32 10)
-  br label %archx_str_print.exit1925
+do_nl.i1933:                                      ; preds = %byte_loop.i1925, %emit.i1938
+  %nc.i1934 = call i32 @putchar(i32 10)
+  br label %archx_str_print.exit1943
 
-archx_str_print.exit1925:                         ; preds = %fast_printf.i1917, %do_nl.i1915
-  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1895)
-  %tag.i353 = and i64 %w1.i1897, 1
-  %owned.not.i354 = icmp eq i64 %tag.i353, 0
-  %or.cond2083 = select i1 %short.i1899, i1 true, i1 %owned.not.i354
-  br i1 %or.cond2083, label %archx_str_drop.exit358, label %do_free.i355
+archx_str_print.exit1943:                         ; preds = %fast_printf.i1935, %do_nl.i1933
+  call void @llvm.lifetime.end.p0(i64 12, ptr nonnull %tmp.i1913)
+  %tag.i358 = and i64 %w1.i1915, 1
+  %owned.not.i359 = icmp eq i64 %tag.i358, 0
+  %or.cond2102 = select i1 %short.i1917, i1 true, i1 %owned.not.i359
+  br i1 %or.cond2102, label %archx_str_drop.exit363, label %do_free.i360
 
-do_free.i355:                                     ; preds = %archx_str_print.exit1925
-  %raw.i356 = and i64 %w1.i1897, -2
-  %ptr.i357 = inttoptr i64 %raw.i356 to ptr
-  call void @free(ptr %ptr.i357)
-  br label %archx_str_drop.exit358
+do_free.i360:                                     ; preds = %archx_str_print.exit1943
+  %raw.i361 = and i64 %w1.i1915, -2
+  %ptr.i362 = inttoptr i64 %raw.i361 to ptr
+  call void @free(ptr %ptr.i362)
+  br label %archx_str_drop.exit363
 
-archx_str_drop.exit358:                           ; preds = %archx_str_print.exit1925, %do_free.i355
-  %t134 = add nuw nsw i64 %foreach.idx.124.02135, 1
-  %exitcond.not = icmp eq i64 %t134, 6
+archx_str_drop.exit363:                           ; preds = %archx_str_print.exit1943, %do_free.i360
+  %t135 = add nuw nsw i64 %foreach.idx.124.02154, 1
+  %exitcond.not = icmp eq i64 %t135, 6
   br i1 %exitcond.not, label %archx_vec_drop_U5_Shape.exit, label %foreach.body.14
 
-archx_vec_drop_U5_Shape.exit:                     ; preds = %archx_str_drop.exit358
+archx_vec_drop_U5_Shape.exit:                     ; preds = %archx_str_drop.exit363
   call void @free(ptr nonnull %t109)
-  br i1 %cond.i, label %v.2.i1935, label %archx_region_release_from.exit
+  br i1 %cond.i1876, label %v.2.i1953, label %archx_region_release_from.exit
 
-v.2.i1935:                                        ; preds = %archx_vec_drop_U5_Shape.exit
-  %len.i.i1936 = and i64 %dst.sroa.2.0.i2040, 4294967295
-  %long.i.i1937 = icmp samesign ult i64 %len.i.i1936, 13
-  %tag.i.i1938 = and i64 %dst.sroa.5.0.i2042, 1
-  %owned.not.i.i1939 = icmp eq i64 %tag.i.i1938, 0
-  %or.cond.i1940 = select i1 %long.i.i1937, i1 true, i1 %owned.not.i.i1939
-  br i1 %or.cond.i1940, label %archx_region_release_from.exit, label %do_free.i.i1941
+v.2.i1953:                                        ; preds = %archx_vec_drop_U5_Shape.exit
+  %len.i.i1954 = and i64 %dst.sroa.2.0.i2059, 4294967295
+  %long.i.i1955 = icmp samesign ult i64 %len.i.i1954, 13
+  %tag.i.i1956 = and i64 %dst.sroa.5.0.i2061, 1
+  %owned.not.i.i1957 = icmp eq i64 %tag.i.i1956, 0
+  %or.cond.i1958 = select i1 %long.i.i1955, i1 true, i1 %owned.not.i.i1957
+  br i1 %or.cond.i1958, label %archx_region_release_from.exit, label %do_free.i.i1959
 
-do_free.i.i1941:                                  ; preds = %v.2.i1935
-  %raw.i.i1942 = and i64 %dst.sroa.5.0.i2042, -2
-  %ptr.i.i1943 = inttoptr i64 %raw.i.i1942 to ptr
-  call void @free(ptr %ptr.i.i1943)
+do_free.i.i1959:                                  ; preds = %v.2.i1953
+  %raw.i.i1960 = and i64 %dst.sroa.5.0.i2061, -2
+  %ptr.i.i1961 = inttoptr i64 %raw.i.i1960 to ptr
+  call void @free(ptr %ptr.i.i1961)
   br label %archx_region_release_from.exit
 
-archx_region_release_from.exit:                   ; preds = %archx_vec_drop_U5_Shape.exit, %v.2.i1935, %do_free.i.i1941
+archx_region_release_from.exit:                   ; preds = %archx_vec_drop_U5_Shape.exit, %v.2.i1953, %do_free.i.i1959
   call void @free(ptr %t0)
   ret i32 0
 }
@@ -4152,7 +4173,7 @@ entry:
 ; Function Attrs: cold nofree noreturn nounwind
 define private fastcc void @archx_oom_fail() unnamed_addr #1 {
 entry:
-  %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @str)
+  %puts = tail call i32 @puts(ptr nonnull dereferenceable(1) @str.1)
   tail call void @exit(i32 101)
   unreachable
 }

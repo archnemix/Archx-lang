@@ -21,12 +21,19 @@ define internal fastcc void @archx_method_5_Stats_add(ptr %arg.self, double %arg
 entry:
   %t0 = getelementptr inbounds %ArchxStruct_Stats, ptr %arg.self, i32 0, i32 0
   %t1 = load i64, ptr %t0, align 8
-  %t2 = add i64 %t1, 1
-  store i64 %t2, ptr %t0, align 8
-  %t3 = getelementptr inbounds %ArchxStruct_Stats, ptr %arg.self, i32 0, i32 1
-  %t4 = load double, ptr %t3, align 8
-  %t5 = fadd double %t4, %arg.value
-  store double %t5, ptr %t3, align 8
+  %t2 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t1, i64 1)
+  %t3 = extractvalue { i64, i1 } %t2, 0
+  %t4 = extractvalue { i64, i1 } %t2, 1
+  br i1 %t4, label %overflow.add.0, label %overflow.ok.1
+overflow.add.0:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.1:
+  store i64 %t3, ptr %t0, align 8
+  %t5 = getelementptr inbounds %ArchxStruct_Stats, ptr %arg.self, i32 0, i32 1
+  %t6 = load double, ptr %t5, align 8
+  %t7 = fadd double %t6, %arg.value
+  store double %t7, ptr %t5, align 8
   ret void
 }
 
@@ -69,17 +76,24 @@ for.body.1:
   store i64 %t4, ptr %for.last.k.3, align 8
   %t6 = load i64, ptr %var.acc.0, align 8
   %t7 = load i64, ptr %for.last.k.3, align 8
-  %t8 = add i64 %t6, %t7
-  store i64 %t8, ptr %var.acc.0, align 8
+  %t8 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t6, i64 %t7)
+  %t9 = extractvalue { i64, i1 } %t8, 0
+  %t10 = extractvalue { i64, i1 } %t8, 1
+  br i1 %t10, label %overflow.add.4, label %overflow.ok.5
+overflow.add.4:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.5:
+  store i64 %t9, ptr %var.acc.0, align 8
   br label %for.step.2
 for.step.2:
-  %t9 = load i64, ptr %for.k.2, align 8
-  %t10 = add i64 %t9, %t1
-  store i64 %t10, ptr %for.k.2, align 8
+  %t11 = load i64, ptr %for.k.2, align 8
+  %t12 = add i64 %t11, %t1
+  store i64 %t12, ptr %for.k.2, align 8
   br label %for.cond.0
 for.end.3:
-  %t11 = load i64, ptr %var.acc.0, align 8
-  ret i64 %t11
+  %t13 = load i64, ptr %var.acc.0, align 8
+  ret i64 %t13
 }
 
 define i32 @main() {
@@ -835,6 +849,15 @@ entry:
   unreachable
 }
 
+@.err.overflow = private unnamed_addr constant [39 x i8] c"archx runtime panic: integer overflow\0A\00", align 1
+
+define private void @archx_int_overflow_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.overflow)
+  call void @exit(i32 101)
+  unreachable
+}
+
 @.err.divz = private unnamed_addr constant [39 x i8] c"archx runtime panic: division by zero\0A\00", align 1
 
 define private void @archx_div_zero_fail() cold noreturn nounwind {
@@ -860,6 +883,8 @@ declare void @free(ptr) nounwind
 declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg)
 declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)
 declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)
 declare void @exit(i32) cold noreturn nounwind

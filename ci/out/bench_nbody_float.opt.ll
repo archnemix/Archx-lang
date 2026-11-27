@@ -100,8 +100,8 @@ calloc.oom.15.i:                                  ; preds = %calloc.ok.12.i
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-vector.ph82:                                      ; preds = %vector.body, %for.step.22.i
-  %for._s.57.028.i = phi i64 [ %t122.i, %for.step.22.i ], [ 0, %vector.body ]
+vector.ph82:                                      ; preds = %vector.body, %for.step.24.i
+  %for._s.60.025.i = phi i64 [ %t127.i, %for.step.24.i ], [ 0, %vector.body ]
   br label %vector.body83
 
 vector.body83:                                    ; preds = %vector.body83, %vector.ph82
@@ -146,56 +146,56 @@ vector.body83:                                    ; preds = %vector.body83, %vec
   store <2 x double> %40, ptr %17, align 16
   %index.next90 = add nuw i64 %index84, 2
   %41 = icmp eq i64 %index.next90, 100000
-  br i1 %41, label %for.step.22.i, label %vector.body83, !llvm.loop !3
+  br i1 %41, label %for.step.24.i, label %vector.body83, !llvm.loop !3
 
-for.step.22.i:                                    ; preds = %vector.body83
-  %t122.i = add nuw nsw i64 %for._s.57.028.i, 1
-  %exitcond32.not.i = icmp eq i64 %t122.i, 60
-  br i1 %exitcond32.not.i, label %for.body.29.i, label %vector.ph82
+for.step.24.i:                                    ; preds = %vector.body83
+  %t127.i = add nuw nsw i64 %for._s.60.025.i, 1
+  %exitcond29.not.i = icmp eq i64 %t127.i, 60
+  br i1 %exitcond29.not.i, label %for.body.31.i, label %vector.ph82
 
-for.body.29.i:                                    ; preds = %for.step.22.i, %for.body.29.i
-  %for.i.124.030.i = phi i64 [ %t153.i.1, %for.body.29.i ], [ 0, %for.step.22.i ]
-  %var.ke.123.029.i = phi double [ %t151.i.1, %for.body.29.i ], [ 0.000000e+00, %for.step.22.i ]
-  %t138.i = getelementptr inbounds nuw double, ptr %t15.i, i64 %for.i.124.030.i
-  %t139.i = load double, ptr %t138.i, align 16
-  %t141.i = getelementptr inbounds nuw double, ptr %t19.i, i64 %for.i.124.030.i
-  %t142.i = load double, ptr %t141.i, align 16
-  %t144.i = getelementptr inbounds nuw double, ptr %t23.i, i64 %for.i.124.030.i
+for.body.31.i:                                    ; preds = %for.step.24.i, %for.body.31.i
+  %for.i.129.027.i = phi i64 [ %t159.i.1, %for.body.31.i ], [ 0, %for.step.24.i ]
+  %var.ke.128.026.i = phi double [ %t157.i.1, %for.body.31.i ], [ 0.000000e+00, %for.step.24.i ]
+  %t144.i = getelementptr inbounds nuw double, ptr %t15.i, i64 %for.i.129.027.i
   %t145.i = load double, ptr %t144.i, align 16
-  %t147.i = getelementptr inbounds nuw double, ptr %t27.i, i64 %for.i.124.030.i
+  %t147.i = getelementptr inbounds nuw double, ptr %t19.i, i64 %for.i.129.027.i
   %t148.i = load double, ptr %t147.i, align 16
-  %t1.i.i = fmul double %t148.i, 5.000000e-01
-  %t4.i.i = fmul double %t139.i, %t139.i
-  %t7.i.i = fmul double %t142.i, %t142.i
+  %t150.i = getelementptr inbounds nuw double, ptr %t23.i, i64 %for.i.129.027.i
+  %t151.i = load double, ptr %t150.i, align 16
+  %t153.i = getelementptr inbounds nuw double, ptr %t27.i, i64 %for.i.129.027.i
+  %t154.i = load double, ptr %t153.i, align 16
+  %t1.i.i = fmul double %t154.i, 5.000000e-01
+  %t4.i.i = fmul double %t145.i, %t145.i
+  %t7.i.i = fmul double %t148.i, %t148.i
   %t8.i.i = fadd double %t4.i.i, %t7.i.i
-  %t11.i.i = fmul double %t145.i, %t145.i
+  %t11.i.i = fmul double %t151.i, %t151.i
   %t12.i.i = fadd double %t11.i.i, %t8.i.i
   %t13.i.i = fmul double %t1.i.i, %t12.i.i
-  %t151.i = fadd double %var.ke.123.029.i, %t13.i.i
-  %t153.i = or disjoint i64 %for.i.124.030.i, 1
-  %t138.i.1 = getelementptr inbounds nuw double, ptr %t15.i, i64 %t153.i
-  %t139.i.1 = load double, ptr %t138.i.1, align 8
-  %t141.i.1 = getelementptr inbounds nuw double, ptr %t19.i, i64 %t153.i
-  %t142.i.1 = load double, ptr %t141.i.1, align 8
-  %t144.i.1 = getelementptr inbounds nuw double, ptr %t23.i, i64 %t153.i
+  %t157.i = fadd double %var.ke.128.026.i, %t13.i.i
+  %t159.i = or disjoint i64 %for.i.129.027.i, 1
+  %t144.i.1 = getelementptr inbounds nuw double, ptr %t15.i, i64 %t159.i
   %t145.i.1 = load double, ptr %t144.i.1, align 8
-  %t147.i.1 = getelementptr inbounds nuw double, ptr %t27.i, i64 %t153.i
+  %t147.i.1 = getelementptr inbounds nuw double, ptr %t19.i, i64 %t159.i
   %t148.i.1 = load double, ptr %t147.i.1, align 8
-  %t1.i.i.1 = fmul double %t148.i.1, 5.000000e-01
-  %t4.i.i.1 = fmul double %t139.i.1, %t139.i.1
-  %t7.i.i.1 = fmul double %t142.i.1, %t142.i.1
+  %t150.i.1 = getelementptr inbounds nuw double, ptr %t23.i, i64 %t159.i
+  %t151.i.1 = load double, ptr %t150.i.1, align 8
+  %t153.i.1 = getelementptr inbounds nuw double, ptr %t27.i, i64 %t159.i
+  %t154.i.1 = load double, ptr %t153.i.1, align 8
+  %t1.i.i.1 = fmul double %t154.i.1, 5.000000e-01
+  %t4.i.i.1 = fmul double %t145.i.1, %t145.i.1
+  %t7.i.i.1 = fmul double %t148.i.1, %t148.i.1
   %t8.i.i.1 = fadd double %t4.i.i.1, %t7.i.i.1
-  %t11.i.i.1 = fmul double %t145.i.1, %t145.i.1
+  %t11.i.i.1 = fmul double %t151.i.1, %t151.i.1
   %t12.i.i.1 = fadd double %t11.i.i.1, %t8.i.i.1
   %t13.i.i.1 = fmul double %t1.i.i.1, %t12.i.i.1
-  %t151.i.1 = fadd double %t151.i, %t13.i.i.1
-  %t153.i.1 = add nuw nsw i64 %for.i.124.030.i, 2
-  %exitcond33.not.i.1 = icmp eq i64 %t153.i.1, 100000
-  br i1 %exitcond33.not.i.1, label %archx_fn_central_field_sim.exit, label %for.body.29.i
+  %t157.i.1 = fadd double %t157.i, %t13.i.i.1
+  %t159.i.1 = add nuw nsw i64 %for.i.129.027.i, 2
+  %exitcond30.not.i.1 = icmp eq i64 %t159.i.1, 100000
+  br i1 %exitcond30.not.i.1, label %archx_fn_central_field_sim.exit, label %for.body.31.i
 
-archx_fn_central_field_sim.exit:                  ; preds = %for.body.29.i
-  %t155.i = fmul double %t151.i.1, 1.000000e+02
-  %t156.i = tail call i64 @llvm.fptosi.sat.i64.f64(double %t155.i)
+archx_fn_central_field_sim.exit:                  ; preds = %for.body.31.i
+  %t161.i = fmul double %t157.i.1, 1.000000e+02
+  %t162.i = tail call i64 @llvm.fptosi.sat.i64.f64(double %t161.i)
   tail call void @free(ptr nonnull %t27.i)
   tail call void @free(ptr nonnull %t23.i)
   tail call void @free(ptr nonnull %t19.i)
@@ -203,7 +203,7 @@ archx_fn_central_field_sim.exit:                  ; preds = %for.body.29.i
   tail call void @free(ptr nonnull %t11.i)
   tail call void @free(ptr nonnull %t7.i)
   tail call void @free(ptr nonnull %t3.i)
-  %t1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %t156.i)
+  %t1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %t162.i)
   %t3.i1 = tail call noalias align 16 dereferenceable_or_null(512) ptr @calloc(i64 64, i64 8)
   %t4.i2 = icmp eq ptr %t3.i1, null
   br i1 %t4.i2, label %calloc.oom.3.i80, label %calloc.ok.2.i3
@@ -283,86 +283,86 @@ vector.body95:                                    ; preds = %calloc.ok.12.i18, %
   %index.next98 = add nuw i64 %index96, 2
   %vec.ind.next99 = add <2 x i64> %vec.ind97, splat (i64 2)
   %53 = icmp eq i64 %index.next98, 64
-  br i1 %53, label %for.cond.24.preheader.i32, label %vector.body95, !llvm.loop !4
+  br i1 %53, label %for.cond.26.preheader.i32, label %vector.body95, !llvm.loop !4
 
 calloc.oom.15.i74:                                ; preds = %calloc.ok.12.i18
   tail call fastcc void @archx_oom_fail()
   unreachable
 
-for.cond.24.preheader.i32:                        ; preds = %vector.body95, %for.step.22.i66
-  %for._s.57.039.i = phi i64 [ %t161.i, %for.step.22.i66 ], [ 0, %vector.body95 ]
-  br label %for.body.25.i33
+for.cond.26.preheader.i32:                        ; preds = %vector.body95, %for.step.24.i66
+  %for._s.60.034.i = phi i64 [ %t168.i, %for.step.24.i66 ], [ 0, %vector.body95 ]
+  br label %for.body.27.i33
 
-for.body.25.i33:                                  ; preds = %for.end.31.i, %for.cond.24.preheader.i32
-  %for.i.60.037.i = phi i64 [ 0, %for.cond.24.preheader.i32 ], [ %t130.i, %for.end.31.i ]
-  %t64.i34 = getelementptr inbounds nuw double, ptr %t3.i1, i64 %for.i.60.037.i
-  %t65.i35 = load double, ptr %t64.i34, align 8
-  %t67.i36 = getelementptr inbounds nuw double, ptr %t7.i4, i64 %for.i.60.037.i
-  %t68.i37 = load double, ptr %t67.i36, align 8
-  %t70.i38 = getelementptr inbounds nuw double, ptr %t11.i7, i64 %for.i.60.037.i
-  %t71.i39 = load double, ptr %t70.i38, align 8
-  %54 = insertelement <2 x double> poison, double %t71.i39, i64 0
-  %55 = insertelement <2 x double> %54, double %t68.i37, i64 1
-  br label %for.body.29.i40
+for.body.27.i33:                                  ; preds = %for.end.33.i, %for.cond.26.preheader.i32
+  %for.i.64.032.i = phi i64 [ 0, %for.cond.26.preheader.i32 ], [ %t136.i, %for.end.33.i ]
+  %t69.i34 = getelementptr inbounds nuw double, ptr %t3.i1, i64 %for.i.64.032.i
+  %t70.i35 = load double, ptr %t69.i34, align 8
+  %t72.i36 = getelementptr inbounds nuw double, ptr %t7.i4, i64 %for.i.64.032.i
+  %t73.i37 = load double, ptr %t72.i36, align 8
+  %t75.i38 = getelementptr inbounds nuw double, ptr %t11.i7, i64 %for.i.64.032.i
+  %t76.i39 = load double, ptr %t75.i38, align 8
+  %54 = insertelement <2 x double> poison, double %t76.i39, i64 0
+  %55 = insertelement <2 x double> %54, double %t73.i37, i64 1
+  br label %for.body.31.i40
 
-for.body.29.i40:                                  ; preds = %for.body.29.i40, %for.body.25.i33
-  %for.j.75.036.i = phi i64 [ 0, %for.body.25.i33 ], [ %t113.i, %for.body.29.i40 ]
-  %var.dvx.72.033.i = phi double [ 0.000000e+00, %for.body.25.i33 ], [ %t105.i, %for.body.29.i40 ]
-  %56 = phi <2 x double> [ zeroinitializer, %for.body.25.i33 ], [ %66, %for.body.29.i40 ]
-  %t79.i41 = getelementptr inbounds nuw double, ptr %t3.i1, i64 %for.j.75.036.i
-  %t80.i = load double, ptr %t79.i41, align 8
-  %t81.i42 = fsub double %t80.i, %t65.i35
-  %t83.i43 = getelementptr inbounds nuw double, ptr %t7.i4, i64 %for.j.75.036.i
-  %t84.i44 = load double, ptr %t83.i43, align 8
-  %t87.i45 = getelementptr inbounds nuw double, ptr %t11.i7, i64 %for.j.75.036.i
-  %t88.i46 = load double, ptr %t87.i45, align 8
-  %t90.i = fmul double %t81.i42, %t81.i42
-  %t97.i = getelementptr inbounds nuw double, ptr %t27.i19, i64 %for.j.75.036.i
-  %t98.i = load double, ptr %t97.i, align 8
-  %t99.i = fmul double %t98.i, 5.000000e-03
-  %57 = insertelement <2 x double> poison, double %t88.i46, i64 0
-  %58 = insertelement <2 x double> %57, double %t84.i44, i64 1
+for.body.31.i40:                                  ; preds = %for.body.31.i40, %for.body.27.i33
+  %for.j.80.031.i = phi i64 [ 0, %for.body.27.i33 ], [ %t119.i, %for.body.31.i40 ]
+  %var.dvx.77.028.i = phi double [ 0.000000e+00, %for.body.27.i33 ], [ %t111.i, %for.body.31.i40 ]
+  %56 = phi <2 x double> [ zeroinitializer, %for.body.27.i33 ], [ %66, %for.body.31.i40 ]
+  %t85.i = getelementptr inbounds nuw double, ptr %t3.i1, i64 %for.j.80.031.i
+  %t86.i41 = load double, ptr %t85.i, align 8
+  %t87.i42 = fsub double %t86.i41, %t70.i35
+  %t89.i43 = getelementptr inbounds nuw double, ptr %t7.i4, i64 %for.j.80.031.i
+  %t90.i = load double, ptr %t89.i43, align 8
+  %t93.i45 = getelementptr inbounds nuw double, ptr %t11.i7, i64 %for.j.80.031.i
+  %t94.i46 = load double, ptr %t93.i45, align 8
+  %t96.i47 = fmul double %t87.i42, %t87.i42
+  %t103.i = getelementptr inbounds nuw double, ptr %t27.i19, i64 %for.j.80.031.i
+  %t104.i = load double, ptr %t103.i, align 8
+  %t105.i = fmul double %t104.i, 5.000000e-03
+  %57 = insertelement <2 x double> poison, double %t94.i46, i64 0
+  %58 = insertelement <2 x double> %57, double %t90.i, i64 1
   %59 = fsub <2 x double> %58, %55
   %60 = fmul <2 x double> %59, %59
   %61 = extractelement <2 x double> %60, i64 1
-  %t92.i49 = fadd double %t90.i, %61
+  %t98.i49 = fadd double %t96.i47, %61
   %62 = extractelement <2 x double> %60, i64 0
-  %t94.i51 = fadd double %t92.i49, %62
-  %t95.i = fadd double %t94.i51, 5.000000e-02
-  %t100.i = tail call double @llvm.sqrt.f64(double %t95.i)
-  %t101.i52 = fmul double %t95.i, %t100.i
-  %t102.i53 = fdiv double %t99.i, %t101.i52
-  %t104.i = fmul double %t81.i42, %t102.i53
-  %t105.i = fadd double %var.dvx.72.033.i, %t104.i
-  %63 = insertelement <2 x double> poison, double %t102.i53, i64 0
+  %t100.i = fadd double %t98.i49, %62
+  %t101.i = fadd double %t100.i, 5.000000e-02
+  %t106.i51 = tail call double @llvm.sqrt.f64(double %t101.i)
+  %t107.i52 = fmul double %t101.i, %t106.i51
+  %t108.i = fdiv double %t105.i, %t107.i52
+  %t110.i = fmul double %t87.i42, %t108.i
+  %t111.i = fadd double %var.dvx.77.028.i, %t110.i
+  %63 = insertelement <2 x double> poison, double %t108.i, i64 0
   %64 = shufflevector <2 x double> %63, <2 x double> poison, <2 x i32> zeroinitializer
   %65 = fmul <2 x double> %59, %64
   %66 = fadd <2 x double> %56, %65
-  %t113.i = add nuw nsw i64 %for.j.75.036.i, 1
-  %exitcond42.not.i = icmp eq i64 %t113.i, 64
-  br i1 %exitcond42.not.i, label %for.end.31.i, label %for.body.29.i40
+  %t119.i = add nuw nsw i64 %for.j.80.031.i, 1
+  %exitcond37.not.i = icmp eq i64 %t119.i, 64
+  br i1 %exitcond37.not.i, label %for.end.33.i, label %for.body.31.i40
 
-for.end.31.i:                                     ; preds = %for.body.29.i40
-  %t115.i = getelementptr inbounds nuw double, ptr %t15.i10, i64 %for.i.60.037.i
-  %t116.i = load double, ptr %t115.i, align 8
-  %t118.i55 = fadd double %t105.i, %t116.i
-  store double %t118.i55, ptr %t115.i, align 8
-  %t120.i56 = getelementptr inbounds nuw double, ptr %t19.i13, i64 %for.i.60.037.i
-  %t121.i = load double, ptr %t120.i56, align 8
+for.end.33.i:                                     ; preds = %for.body.31.i40
+  %t121.i = getelementptr inbounds nuw double, ptr %t15.i10, i64 %for.i.64.032.i
+  %t122.i54 = load double, ptr %t121.i, align 8
+  %t124.i = fadd double %t111.i, %t122.i54
+  store double %t124.i, ptr %t121.i, align 8
+  %t126.i = getelementptr inbounds nuw double, ptr %t19.i13, i64 %for.i.64.032.i
+  %t127.i55 = load double, ptr %t126.i, align 8
   %67 = extractelement <2 x double> %66, i64 1
-  %t123.i = fadd double %67, %t121.i
-  store double %t123.i, ptr %t120.i56, align 8
-  %t125.i = getelementptr inbounds nuw double, ptr %t23.i16, i64 %for.i.60.037.i
-  %t126.i = load double, ptr %t125.i, align 8
+  %t129.i = fadd double %67, %t127.i55
+  store double %t129.i, ptr %t126.i, align 8
+  %t131.i = getelementptr inbounds nuw double, ptr %t23.i16, i64 %for.i.64.032.i
+  %t132.i = load double, ptr %t131.i, align 8
   %68 = extractelement <2 x double> %66, i64 0
-  %t128.i = fadd double %68, %t126.i
-  store double %t128.i, ptr %t125.i, align 8
-  %t130.i = add nuw nsw i64 %for.i.60.037.i, 1
-  %exitcond43.not.i = icmp eq i64 %t130.i, 64
-  br i1 %exitcond43.not.i, label %vector.body104, label %for.body.25.i33
+  %t134.i = fadd double %68, %t132.i
+  store double %t134.i, ptr %t131.i, align 8
+  %t136.i = add nuw nsw i64 %for.i.64.032.i, 1
+  %exitcond38.not.i = icmp eq i64 %t136.i, 64
+  br i1 %exitcond38.not.i, label %vector.body104, label %for.body.27.i33
 
-vector.body104:                                   ; preds = %for.end.31.i, %vector.body104
-  %index105 = phi i64 [ %index.next112, %vector.body104 ], [ 0, %for.end.31.i ]
+vector.body104:                                   ; preds = %for.end.33.i, %vector.body104
+  %index105 = phi i64 [ %index.next112, %vector.body104 ], [ 0, %for.end.33.i ]
   %69 = getelementptr inbounds nuw double, ptr %t3.i1, i64 %index105
   %wide.load106 = load <2 x double>, ptr %69, align 16
   %70 = getelementptr inbounds nuw double, ptr %t15.i10, i64 %index105
@@ -386,56 +386,56 @@ vector.body104:                                   ; preds = %for.end.31.i, %vect
   store <2 x double> %80, ptr %77, align 16
   %index.next112 = add nuw i64 %index105, 2
   %81 = icmp eq i64 %index.next112, 64
-  br i1 %81, label %for.step.22.i66, label %vector.body104, !llvm.loop !5
+  br i1 %81, label %for.step.24.i66, label %vector.body104, !llvm.loop !5
 
-for.step.22.i66:                                  ; preds = %vector.body104
-  %t161.i = add nuw nsw i64 %for._s.57.039.i, 1
-  %exitcond45.not.i = icmp eq i64 %t161.i, 2000
-  br i1 %exitcond45.not.i, label %for.body.37.i, label %for.cond.24.preheader.i32
+for.step.24.i66:                                  ; preds = %vector.body104
+  %t168.i = add nuw nsw i64 %for._s.60.034.i, 1
+  %exitcond40.not.i = icmp eq i64 %t168.i, 2000
+  br i1 %exitcond40.not.i, label %for.body.39.i, label %for.cond.26.preheader.i32
 
-for.body.37.i:                                    ; preds = %for.step.22.i66, %for.body.37.i
-  %for.i.163.041.i = phi i64 [ %t192.i.1, %for.body.37.i ], [ 0, %for.step.22.i66 ]
-  %var.ke.162.040.i = phi double [ %t190.i.1, %for.body.37.i ], [ 0.000000e+00, %for.step.22.i66 ]
-  %t177.i = getelementptr inbounds nuw double, ptr %t15.i10, i64 %for.i.163.041.i
-  %t178.i = load double, ptr %t177.i, align 16
-  %t180.i = getelementptr inbounds nuw double, ptr %t19.i13, i64 %for.i.163.041.i
-  %t181.i = load double, ptr %t180.i, align 16
-  %t183.i = getelementptr inbounds nuw double, ptr %t23.i16, i64 %for.i.163.041.i
-  %t184.i = load double, ptr %t183.i, align 16
-  %t186.i = getelementptr inbounds nuw double, ptr %t27.i19, i64 %for.i.163.041.i
-  %t187.i = load double, ptr %t186.i, align 16
-  %t1.i.i67 = fmul double %t187.i, 5.000000e-01
-  %t4.i.i68 = fmul double %t178.i, %t178.i
-  %t7.i.i69 = fmul double %t181.i, %t181.i
+for.body.39.i:                                    ; preds = %for.step.24.i66, %for.body.39.i
+  %for.i.170.036.i = phi i64 [ %t200.i.1, %for.body.39.i ], [ 0, %for.step.24.i66 ]
+  %var.ke.169.035.i = phi double [ %t198.i.1, %for.body.39.i ], [ 0.000000e+00, %for.step.24.i66 ]
+  %t185.i = getelementptr inbounds nuw double, ptr %t15.i10, i64 %for.i.170.036.i
+  %t186.i = load double, ptr %t185.i, align 16
+  %t188.i = getelementptr inbounds nuw double, ptr %t19.i13, i64 %for.i.170.036.i
+  %t189.i = load double, ptr %t188.i, align 16
+  %t191.i = getelementptr inbounds nuw double, ptr %t23.i16, i64 %for.i.170.036.i
+  %t192.i = load double, ptr %t191.i, align 16
+  %t194.i = getelementptr inbounds nuw double, ptr %t27.i19, i64 %for.i.170.036.i
+  %t195.i = load double, ptr %t194.i, align 16
+  %t1.i.i67 = fmul double %t195.i, 5.000000e-01
+  %t4.i.i68 = fmul double %t186.i, %t186.i
+  %t7.i.i69 = fmul double %t189.i, %t189.i
   %t8.i.i70 = fadd double %t4.i.i68, %t7.i.i69
-  %t11.i.i71 = fmul double %t184.i, %t184.i
+  %t11.i.i71 = fmul double %t192.i, %t192.i
   %t12.i.i72 = fadd double %t11.i.i71, %t8.i.i70
   %t13.i.i73 = fmul double %t1.i.i67, %t12.i.i72
-  %t190.i = fadd double %var.ke.162.040.i, %t13.i.i73
-  %t192.i = or disjoint i64 %for.i.163.041.i, 1
-  %t177.i.1 = getelementptr inbounds nuw double, ptr %t15.i10, i64 %t192.i
-  %t178.i.1 = load double, ptr %t177.i.1, align 8
-  %t180.i.1 = getelementptr inbounds nuw double, ptr %t19.i13, i64 %t192.i
-  %t181.i.1 = load double, ptr %t180.i.1, align 8
-  %t183.i.1 = getelementptr inbounds nuw double, ptr %t23.i16, i64 %t192.i
-  %t184.i.1 = load double, ptr %t183.i.1, align 8
-  %t186.i.1 = getelementptr inbounds nuw double, ptr %t27.i19, i64 %t192.i
-  %t187.i.1 = load double, ptr %t186.i.1, align 8
-  %t1.i.i67.1 = fmul double %t187.i.1, 5.000000e-01
-  %t4.i.i68.1 = fmul double %t178.i.1, %t178.i.1
-  %t7.i.i69.1 = fmul double %t181.i.1, %t181.i.1
+  %t198.i = fadd double %var.ke.169.035.i, %t13.i.i73
+  %t200.i = or disjoint i64 %for.i.170.036.i, 1
+  %t185.i.1 = getelementptr inbounds nuw double, ptr %t15.i10, i64 %t200.i
+  %t186.i.1 = load double, ptr %t185.i.1, align 8
+  %t188.i.1 = getelementptr inbounds nuw double, ptr %t19.i13, i64 %t200.i
+  %t189.i.1 = load double, ptr %t188.i.1, align 8
+  %t191.i.1 = getelementptr inbounds nuw double, ptr %t23.i16, i64 %t200.i
+  %t192.i.1 = load double, ptr %t191.i.1, align 8
+  %t194.i.1 = getelementptr inbounds nuw double, ptr %t27.i19, i64 %t200.i
+  %t195.i.1 = load double, ptr %t194.i.1, align 8
+  %t1.i.i67.1 = fmul double %t195.i.1, 5.000000e-01
+  %t4.i.i68.1 = fmul double %t186.i.1, %t186.i.1
+  %t7.i.i69.1 = fmul double %t189.i.1, %t189.i.1
   %t8.i.i70.1 = fadd double %t4.i.i68.1, %t7.i.i69.1
-  %t11.i.i71.1 = fmul double %t184.i.1, %t184.i.1
+  %t11.i.i71.1 = fmul double %t192.i.1, %t192.i.1
   %t12.i.i72.1 = fadd double %t11.i.i71.1, %t8.i.i70.1
   %t13.i.i73.1 = fmul double %t1.i.i67.1, %t12.i.i72.1
-  %t190.i.1 = fadd double %t190.i, %t13.i.i73.1
-  %t192.i.1 = add nuw nsw i64 %for.i.163.041.i, 2
-  %exitcond46.not.i.1 = icmp eq i64 %t192.i.1, 64
-  br i1 %exitcond46.not.i.1, label %archx_fn_pairwise_nbody.exit, label %for.body.37.i
+  %t198.i.1 = fadd double %t198.i, %t13.i.i73.1
+  %t200.i.1 = add nuw nsw i64 %for.i.170.036.i, 2
+  %exitcond41.not.i.1 = icmp eq i64 %t200.i.1, 64
+  br i1 %exitcond41.not.i.1, label %archx_fn_pairwise_nbody.exit, label %for.body.39.i
 
-archx_fn_pairwise_nbody.exit:                     ; preds = %for.body.37.i
-  %t194.i = fmul double %t190.i.1, 1.000000e+04
-  %t195.i = tail call i64 @llvm.fptosi.sat.i64.f64(double %t194.i)
+archx_fn_pairwise_nbody.exit:                     ; preds = %for.body.39.i
+  %t202.i = fmul double %t198.i.1, 1.000000e+04
+  %t203.i = tail call i64 @llvm.fptosi.sat.i64.f64(double %t202.i)
   tail call void @free(ptr nonnull %t27.i19)
   tail call void @free(ptr nonnull %t23.i16)
   tail call void @free(ptr nonnull %t19.i13)
@@ -443,7 +443,7 @@ archx_fn_pairwise_nbody.exit:                     ; preds = %for.body.37.i
   tail call void @free(ptr nonnull %t11.i7)
   tail call void @free(ptr nonnull %t7.i4)
   tail call void @free(ptr nonnull %t3.i1)
-  %t3 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %t195.i)
+  %t3 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) @.fmt.int, i64 %t203.i)
   ret i32 0
 }
 

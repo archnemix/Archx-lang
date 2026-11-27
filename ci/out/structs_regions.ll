@@ -14,14 +14,14 @@ define internal fastcc i64 @archx_fn_advance(i64 %arg.n, i64 %arg.steps) {
 entry:
   %for.i.29 = alloca i64, align 8
   %for.last.i.30 = alloca i64, align 8
-  %for.t.43 = alloca i64, align 8
-  %for.last.t.44 = alloca i64, align 8
-  %for.i.47 = alloca i64, align 8
-  %for.last.i.48 = alloca i64, align 8
-  %for.i.67 = alloca i64, align 8
-  %for.last.i.68 = alloca i64, align 8
-  %var.total.79 = alloca i64, align 8
-  %foreach.idx.80 = alloca i64, align 8
+  %for.t.47 = alloca i64, align 8
+  %for.last.t.48 = alloca i64, align 8
+  %for.i.51 = alloca i64, align 8
+  %for.last.i.52 = alloca i64, align 8
+  %for.i.75 = alloca i64, align 8
+  %for.last.i.76 = alloca i64, align 8
+  %var.total.89 = alloca i64, align 8
+  %foreach.idx.90 = alloca i64, align 8
   %t0 = icmp ugt i64 %arg.n, 140737488355328
   br i1 %t0, label %repeat.bad.1, label %repeat.ok.0
 repeat.bad.1:
@@ -102,128 +102,177 @@ for.body.17:
   %t33 = load i64, ptr %for.last.i.30, align 8
   %t34 = getelementptr inbounds i64, ptr %t3, i64 %t33
   %t35 = load i64, ptr %for.last.i.30, align 8
-  %t36 = mul i64 %t35, 2
-  store i64 %t36, ptr %t34, align 8
-  %t37 = load i64, ptr %for.last.i.30, align 8
-  %t38 = getelementptr inbounds i64, ptr %t7, i64 %t37
+  %t36 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t35, i64 2)
+  %t37 = extractvalue { i64, i1 } %t36, 0
+  %t38 = extractvalue { i64, i1 } %t36, 1
+  br i1 %t38, label %overflow.mul.20, label %overflow.ok.21
+overflow.mul.20:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.21:
+  store i64 %t37, ptr %t34, align 8
   %t39 = load i64, ptr %for.last.i.30, align 8
-  %t40 = mul i64 %t39, 3
-  store i64 %t40, ptr %t38, align 8
+  %t40 = getelementptr inbounds i64, ptr %t7, i64 %t39
+  %t41 = load i64, ptr %for.last.i.30, align 8
+  %t42 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t41, i64 3)
+  %t43 = extractvalue { i64, i1 } %t42, 0
+  %t44 = extractvalue { i64, i1 } %t42, 1
+  br i1 %t44, label %overflow.mul.22, label %overflow.ok.23
+overflow.mul.22:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.23:
+  store i64 %t43, ptr %t40, align 8
   br label %for.step.18
 for.step.18:
-  %t41 = load i64, ptr %for.i.29, align 8
-  %t42 = add nsw i64 %t41, 1
-  store i64 %t42, ptr %for.i.29, align 8
+  %t45 = load i64, ptr %for.i.29, align 8
+  %t46 = add nsw i64 %t45, 1
+  store i64 %t46, ptr %for.i.29, align 8
   br label %for.cond.16
 for.end.19:
-  store i64 0, ptr %for.t.43, align 8
-  store i64 0, ptr %for.last.t.44, align 8
-  br label %for.cond.20
-for.cond.20:
-  %t45 = load i64, ptr %for.t.43, align 8
-  %t46 = icmp slt i64 %t45, %arg.steps
-  br i1 %t46, label %for.body.21, label %for.end.23
-for.body.21:
-  store i64 %t45, ptr %for.last.t.44, align 8
-  store i64 0, ptr %for.i.47, align 8
-  store i64 0, ptr %for.last.i.48, align 8
+  store i64 0, ptr %for.t.47, align 8
+  store i64 0, ptr %for.last.t.48, align 8
   br label %for.cond.24
 for.cond.24:
-  %t49 = load i64, ptr %for.i.47, align 8
-  %t50 = icmp slt i64 %t49, %arg.n
+  %t49 = load i64, ptr %for.t.47, align 8
+  %t50 = icmp slt i64 %t49, %arg.steps
   br i1 %t50, label %for.body.25, label %for.end.27
 for.body.25:
-  store i64 %t49, ptr %for.last.i.48, align 8
-  %t51 = load i64, ptr %for.last.i.48, align 8
-  %t52 = getelementptr inbounds i64, ptr %t3, i64 %t51
-  %t53 = load i64, ptr %t52, align 8
-  %t54 = load i64, ptr %for.last.i.48, align 8
-  %t55 = getelementptr inbounds i64, ptr %t12, i64 %t54
-  %t56 = load i64, ptr %t55, align 8
-  %t57 = add i64 %t53, %t56
-  store i64 %t57, ptr %t52, align 8
-  %t58 = load i64, ptr %for.last.i.48, align 8
-  %t59 = getelementptr inbounds i64, ptr %t7, i64 %t58
-  %t60 = load i64, ptr %t59, align 8
-  %t61 = load i64, ptr %for.last.i.48, align 8
-  %t62 = getelementptr inbounds i64, ptr %t22, i64 %t61
-  %t63 = load i64, ptr %t62, align 8
-  %t64 = add i64 %t60, %t63
-  store i64 %t64, ptr %t59, align 8
-  br label %for.step.26
-for.step.26:
-  %t65 = load i64, ptr %for.i.47, align 8
-  %t66 = add nsw i64 %t65, 1
-  store i64 %t66, ptr %for.i.47, align 8
-  br label %for.cond.24
-for.end.27:
-  store i64 0, ptr %for.i.67, align 8
-  store i64 0, ptr %for.last.i.68, align 8
+  store i64 %t49, ptr %for.last.t.48, align 8
+  store i64 0, ptr %for.i.51, align 8
+  store i64 0, ptr %for.last.i.52, align 8
   br label %for.cond.28
 for.cond.28:
-  %t69 = load i64, ptr %for.i.67, align 8
-  %t70 = icmp slt i64 %t69, %arg.n
-  br i1 %t70, label %for.body.29, label %for.end.31
+  %t53 = load i64, ptr %for.i.51, align 8
+  %t54 = icmp slt i64 %t53, %arg.n
+  br i1 %t54, label %for.body.29, label %for.end.31
 for.body.29:
-  store i64 %t69, ptr %for.last.i.68, align 8
-  %t71 = load i64, ptr %for.last.i.68, align 8
-  %t72 = getelementptr inbounds i64, ptr %t12, i64 %t71
-  %t73 = load i64, ptr %t72, align 8
-  %t74 = add i64 %t73, 1
-  store i64 %t74, ptr %t72, align 8
+  store i64 %t53, ptr %for.last.i.52, align 8
+  %t55 = load i64, ptr %for.last.i.52, align 8
+  %t56 = getelementptr inbounds i64, ptr %t3, i64 %t55
+  %t57 = load i64, ptr %t56, align 8
+  %t58 = load i64, ptr %for.last.i.52, align 8
+  %t59 = getelementptr inbounds i64, ptr %t12, i64 %t58
+  %t60 = load i64, ptr %t59, align 8
+  %t61 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t57, i64 %t60)
+  %t62 = extractvalue { i64, i1 } %t61, 0
+  %t63 = extractvalue { i64, i1 } %t61, 1
+  br i1 %t63, label %overflow.add.32, label %overflow.ok.33
+overflow.add.32:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.33:
+  store i64 %t62, ptr %t56, align 8
+  %t64 = load i64, ptr %for.last.i.52, align 8
+  %t65 = getelementptr inbounds i64, ptr %t7, i64 %t64
+  %t66 = load i64, ptr %t65, align 8
+  %t67 = load i64, ptr %for.last.i.52, align 8
+  %t68 = getelementptr inbounds i64, ptr %t22, i64 %t67
+  %t69 = load i64, ptr %t68, align 8
+  %t70 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t66, i64 %t69)
+  %t71 = extractvalue { i64, i1 } %t70, 0
+  %t72 = extractvalue { i64, i1 } %t70, 1
+  br i1 %t72, label %overflow.add.34, label %overflow.ok.35
+overflow.add.34:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.35:
+  store i64 %t71, ptr %t65, align 8
   br label %for.step.30
 for.step.30:
-  %t75 = load i64, ptr %for.i.67, align 8
-  %t76 = add nsw i64 %t75, 4
-  store i64 %t76, ptr %for.i.67, align 8
+  %t73 = load i64, ptr %for.i.51, align 8
+  %t74 = add nsw i64 %t73, 1
+  store i64 %t74, ptr %for.i.51, align 8
   br label %for.cond.28
 for.end.31:
-  br label %for.step.22
-for.step.22:
-  %t77 = load i64, ptr %for.t.43, align 8
-  %t78 = add nsw i64 %t77, 1
-  store i64 %t78, ptr %for.t.43, align 8
-  br label %for.cond.20
-for.end.23:
-  store i64 0, ptr %var.total.79, align 8
-  store i64 0, ptr %foreach.idx.80, align 8
-  br label %foreach.cond.32
-foreach.cond.32:
-  %t81 = load i64, ptr %foreach.idx.80, align 8
-  %t82 = icmp slt i64 %t81, %arg.n
-  br i1 %t82, label %foreach.body.33, label %foreach.end.35
-foreach.body.33:
-  %t83 = getelementptr inbounds i64, ptr %t3, i64 %t81
-  %t84 = load i64, ptr %t83, align 8
-  %t85 = insertvalue %ArchxStruct_Body poison, i64 %t84, 0
-  %t86 = getelementptr inbounds i64, ptr %t7, i64 %t81
-  %t87 = load i64, ptr %t86, align 8
-  %t88 = insertvalue %ArchxStruct_Body %t85, i64 %t87, 1
-  %t89 = getelementptr inbounds i64, ptr %t12, i64 %t81
-  %t90 = load i64, ptr %t89, align 8
-  %t91 = insertvalue %ArchxStruct_Body %t88, i64 %t90, 2
-  %t92 = getelementptr inbounds i64, ptr %t22, i64 %t81
-  %t93 = load i64, ptr %t92, align 8
-  %t94 = insertvalue %ArchxStruct_Body %t91, i64 %t93, 3
-  %t95 = load i64, ptr %var.total.79, align 8
-  %t96 = extractvalue %ArchxStruct_Body %t94, 0
-  %t97 = extractvalue %ArchxStruct_Body %t94, 1
-  %t98 = add i64 %t96, %t97
-  %t99 = add i64 %t95, %t98
-  store i64 %t99, ptr %var.total.79, align 8
-  br label %foreach.step.34
-foreach.step.34:
-  %t100 = load i64, ptr %foreach.idx.80, align 8
-  %t101 = add nsw i64 %t100, 1
-  store i64 %t101, ptr %foreach.idx.80, align 8
-  br label %foreach.cond.32
-foreach.end.35:
-  %t102 = load i64, ptr %var.total.79, align 8
+  store i64 0, ptr %for.i.75, align 8
+  store i64 0, ptr %for.last.i.76, align 8
+  br label %for.cond.36
+for.cond.36:
+  %t77 = load i64, ptr %for.i.75, align 8
+  %t78 = icmp slt i64 %t77, %arg.n
+  br i1 %t78, label %for.body.37, label %for.end.39
+for.body.37:
+  store i64 %t77, ptr %for.last.i.76, align 8
+  %t79 = load i64, ptr %for.last.i.76, align 8
+  %t80 = getelementptr inbounds i64, ptr %t12, i64 %t79
+  %t81 = load i64, ptr %t80, align 8
+  %t82 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t81, i64 1)
+  %t83 = extractvalue { i64, i1 } %t82, 0
+  %t84 = extractvalue { i64, i1 } %t82, 1
+  br i1 %t84, label %overflow.add.40, label %overflow.ok.41
+overflow.add.40:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.41:
+  store i64 %t83, ptr %t80, align 8
+  br label %for.step.38
+for.step.38:
+  %t85 = load i64, ptr %for.i.75, align 8
+  %t86 = add nsw i64 %t85, 4
+  store i64 %t86, ptr %for.i.75, align 8
+  br label %for.cond.36
+for.end.39:
+  br label %for.step.26
+for.step.26:
+  %t87 = load i64, ptr %for.t.47, align 8
+  %t88 = add nsw i64 %t87, 1
+  store i64 %t88, ptr %for.t.47, align 8
+  br label %for.cond.24
+for.end.27:
+  store i64 0, ptr %var.total.89, align 8
+  store i64 0, ptr %foreach.idx.90, align 8
+  br label %foreach.cond.42
+foreach.cond.42:
+  %t91 = load i64, ptr %foreach.idx.90, align 8
+  %t92 = icmp slt i64 %t91, %arg.n
+  br i1 %t92, label %foreach.body.43, label %foreach.end.45
+foreach.body.43:
+  %t93 = getelementptr inbounds i64, ptr %t3, i64 %t91
+  %t94 = load i64, ptr %t93, align 8
+  %t95 = insertvalue %ArchxStruct_Body poison, i64 %t94, 0
+  %t96 = getelementptr inbounds i64, ptr %t7, i64 %t91
+  %t97 = load i64, ptr %t96, align 8
+  %t98 = insertvalue %ArchxStruct_Body %t95, i64 %t97, 1
+  %t99 = getelementptr inbounds i64, ptr %t12, i64 %t91
+  %t100 = load i64, ptr %t99, align 8
+  %t101 = insertvalue %ArchxStruct_Body %t98, i64 %t100, 2
+  %t102 = getelementptr inbounds i64, ptr %t22, i64 %t91
+  %t103 = load i64, ptr %t102, align 8
+  %t104 = insertvalue %ArchxStruct_Body %t101, i64 %t103, 3
+  %t105 = load i64, ptr %var.total.89, align 8
+  %t106 = extractvalue %ArchxStruct_Body %t104, 0
+  %t107 = extractvalue %ArchxStruct_Body %t104, 1
+  %t108 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t106, i64 %t107)
+  %t109 = extractvalue { i64, i1 } %t108, 0
+  %t110 = extractvalue { i64, i1 } %t108, 1
+  br i1 %t110, label %overflow.add.46, label %overflow.ok.47
+overflow.add.46:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.47:
+  %t111 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t105, i64 %t109)
+  %t112 = extractvalue { i64, i1 } %t111, 0
+  %t113 = extractvalue { i64, i1 } %t111, 1
+  br i1 %t113, label %overflow.add.48, label %overflow.ok.49
+overflow.add.48:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.49:
+  store i64 %t112, ptr %var.total.89, align 8
+  br label %foreach.step.44
+foreach.step.44:
+  %t114 = load i64, ptr %foreach.idx.90, align 8
+  %t115 = add nsw i64 %t114, 1
+  store i64 %t115, ptr %foreach.idx.90, align 8
+  br label %foreach.cond.42
+foreach.end.45:
+  %t116 = load i64, ptr %var.total.89, align 8
   call void @free(ptr %t22)
   call void @free(ptr %t12)
   call void @free(ptr %t7)
   call void @free(ptr %t3)
-  ret i64 %t102
+  ret i64 %t116
 }
 
 define internal fastcc %ArchxStr @archx_fn_format_report(%ArchxStr %arg.label, i64 %arg.score) {
@@ -757,6 +806,15 @@ entry:
   unreachable
 }
 
+@.err.overflow = private unnamed_addr constant [39 x i8] c"archx runtime panic: integer overflow\0A\00", align 1
+
+define private void @archx_int_overflow_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.overflow)
+  call void @exit(i32 101)
+  unreachable
+}
+
 @.err.oom = private unnamed_addr constant [36 x i8] c"archx runtime panic: out of memory\0A\00", align 1
 
 define private void @archx_oom_fail() cold noreturn nounwind {
@@ -772,6 +830,8 @@ declare noalias ptr @calloc(i64, i64) nounwind allocsize(0, 1)
 declare void @free(ptr) nounwind
 declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)
 declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)
 declare void @exit(i32) cold noreturn nounwind

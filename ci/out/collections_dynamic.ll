@@ -110,129 +110,153 @@ entry:
   %func.region = alloca %ArchxRegion, align 8
   %var.freq.1 = alloca i64, align 8
   %foreach.idx.4 = alloca i64, align 8
-  %var.w.9 = alloca %ArchxStr, align 8
-  %var.total.38 = alloca i64, align 8
-  %foritems.idx.45 = alloca i64, align 8
+  %var.w.5 = alloca %ArchxStr, align 8
+  %var.total.41 = alloca i64, align 8
+  %foritems.idx.48 = alloca i64, align 8
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
   %t0 = call fastcc i64 @archx_dict_new(i64 34359742465, ptr %func.region)
   store i64 %t0, ptr %var.freq.1, align 8
   %t2 = extractvalue %ArchxVec %arg.words, 0
   %t3 = extractvalue %ArchxVec %arg.words, 2
   store i64 0, ptr %foreach.idx.4, align 8
+  store %ArchxStr zeroinitializer, ptr %var.w.5, align 8
   br label %foreach.cond.0
 foreach.cond.0:
-  %t5 = load i64, ptr %foreach.idx.4, align 8
-  %t6 = icmp slt i64 %t5, %t2
-  br i1 %t6, label %foreach.body.1, label %foreach.end.3
+  %t6 = load i64, ptr %foreach.idx.4, align 8
+  %t7 = icmp slt i64 %t6, %t2
+  br i1 %t7, label %foreach.body.1, label %foreach.end.3
 foreach.body.1:
-  %t7 = getelementptr inbounds %ArchxStr, ptr %t3, i64 %t5
-  %t8 = load %ArchxStr, ptr %t7, align 8
-  %t10 = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %t8)
-  store %ArchxStr %t10, ptr %var.w.9, align 8
-  %t11 = load i64, ptr %var.freq.1, align 8
-  %t12 = load %ArchxStr, ptr %var.w.9, align 8
-  %t13 = call fastcc i64 @archx_dict_lookup_str(i64 %t11, %ArchxStr %t12)
-  %t14 = icmp sge i64 %t13, 0
-  br i1 %t14, label %if.then.4, label %if.else.5
+  %t8 = getelementptr inbounds %ArchxStr, ptr %t3, i64 %t6
+  %t9 = load %ArchxStr, ptr %t8, align 8
+  %t10 = load %ArchxStr, ptr %var.w.5, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t10)
+  %t11 = call fastcc %ArchxStr @archx_str_clone(%ArchxStr %t9)
+  store %ArchxStr %t11, ptr %var.w.5, align 8
+  %t12 = load i64, ptr %var.freq.1, align 8
+  %t13 = load %ArchxStr, ptr %var.w.5, align 8
+  %t14 = call fastcc i64 @archx_dict_lookup_str(i64 %t12, %ArchxStr %t13)
+  %t15 = icmp sge i64 %t14, 0
+  br i1 %t15, label %if.then.4, label %if.else.5
 if.then.4:
-  %t15 = load i64, ptr %var.freq.1, align 8
-  %t16 = load %ArchxStr, ptr %var.w.9, align 8
-  %t17 = call fastcc i64 @archx_dict_lookup_str(i64 %t15, %ArchxStr %t16)
-  %t18 = icmp sge i64 %t17, 0
-  br i1 %t18, label %dupd.ok.7, label %dupd.miss.8
+  %t16 = load i64, ptr %var.freq.1, align 8
+  %t17 = load %ArchxStr, ptr %var.w.5, align 8
+  %t18 = call fastcc i64 @archx_dict_lookup_str(i64 %t16, %ArchxStr %t17)
+  %t19 = icmp sge i64 %t18, 0
+  br i1 %t19, label %dupd.ok.7, label %dupd.miss.8
 dupd.miss.8:
   call void @archx_key_fail()
   unreachable
 dupd.ok.7:
-  %t19 = and i64 %t15, -4
-  %t20 = inttoptr i64 %t19 to ptr
-  %t21 = getelementptr inbounds %ArchxDictHdr, ptr %t20, i32 0, i32 6
-  %t22 = load ptr, ptr %t21, align 8
-  %t23 = getelementptr inbounds i64, ptr %t22, i64 %t17
-  %t24 = load i64, ptr %t23, align 8
-  %t25 = add i64 %t24, 1
-  store i64 %t25, ptr %t23, align 8
+  %t20 = and i64 %t16, -4
+  %t21 = inttoptr i64 %t20 to ptr
+  %t22 = getelementptr inbounds %ArchxDictHdr, ptr %t21, i32 0, i32 6
+  %t23 = load ptr, ptr %t22, align 8
+  %t24 = getelementptr inbounds i64, ptr %t23, i64 %t18
+  %t25 = load i64, ptr %t24, align 8
+  %t26 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t25, i64 1)
+  %t27 = extractvalue { i64, i1 } %t26, 0
+  %t28 = extractvalue { i64, i1 } %t26, 1
+  br i1 %t28, label %overflow.add.9, label %overflow.ok.10
+overflow.add.9:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.10:
+  store i64 %t27, ptr %t24, align 8
   br label %if.merge.6
 if.else.5:
-  %t26 = load i64, ptr %var.freq.1, align 8
-  %t27 = load %ArchxStr, ptr %var.w.9, align 8
-  %t28 = call fastcc { i64, i1 } @archx_dict_upsert_str(i64 %t26, %ArchxStr %t27)
-  %t29 = extractvalue { i64, i1 } %t28, 0
-  %t30 = extractvalue { i64, i1 } %t28, 1
-  %t31 = and i64 %t26, -4
-  %t32 = inttoptr i64 %t31 to ptr
-  %t33 = getelementptr inbounds %ArchxDictHdr, ptr %t32, i32 0, i32 6
-  %t34 = load ptr, ptr %t33, align 8
-  %t35 = getelementptr inbounds i64, ptr %t34, i64 %t29
-  store i64 1, ptr %t35, align 8
+  %t29 = load i64, ptr %var.freq.1, align 8
+  %t30 = load %ArchxStr, ptr %var.w.5, align 8
+  %t31 = call fastcc { i64, i1 } @archx_dict_upsert_str(i64 %t29, %ArchxStr %t30)
+  %t32 = extractvalue { i64, i1 } %t31, 0
+  %t33 = extractvalue { i64, i1 } %t31, 1
+  %t34 = and i64 %t29, -4
+  %t35 = inttoptr i64 %t34 to ptr
+  %t36 = getelementptr inbounds %ArchxDictHdr, ptr %t35, i32 0, i32 6
+  %t37 = load ptr, ptr %t36, align 8
+  %t38 = getelementptr inbounds i64, ptr %t37, i64 %t32
+  store i64 1, ptr %t38, align 8
   br label %if.merge.6
 if.merge.6:
   br label %foreach.step.2
 foreach.step.2:
-  %t36 = load i64, ptr %foreach.idx.4, align 8
-  %t37 = add nsw i64 %t36, 1
-  store i64 %t37, ptr %foreach.idx.4, align 8
+  %t39 = load i64, ptr %foreach.idx.4, align 8
+  %t40 = add nsw i64 %t39, 1
+  store i64 %t40, ptr %foreach.idx.4, align 8
   br label %foreach.cond.0
 foreach.end.3:
-  store i64 0, ptr %var.total.38, align 8
-  %t39 = load i64, ptr %var.freq.1, align 8
-  %t40 = and i64 %t39, -4
-  %t41 = icmp eq i64 %t40, 0
-  br i1 %t41, label %dlen.zero.9, label %dlen.load.10
-dlen.zero.9:
-  br label %dlen.done.11
-dlen.load.10:
-  %t42 = inttoptr i64 %t40 to ptr
-  %t43 = load i64, ptr %t42, align 8
-  br label %dlen.done.11
-dlen.done.11:
-  %t44 = phi i64 [ 0, %dlen.zero.9 ], [ %t43, %dlen.load.10 ]
-  store i64 0, ptr %foritems.idx.45, align 8
-  br label %foritems.cond.12
-foritems.cond.12:
-  %t46 = load i64, ptr %foritems.idx.45, align 8
-  %t47 = icmp slt i64 %t46, %t44
-  br i1 %t47, label %foritems.body.13, label %foritems.end.15
-foritems.body.13:
-  %t48 = and i64 %t39, -4
-  %t49 = inttoptr i64 %t48 to ptr
-  %t50 = getelementptr inbounds %ArchxDictHdr, ptr %t49, i32 0, i32 5
-  %t51 = getelementptr inbounds %ArchxDictHdr, ptr %t49, i32 0, i32 6
-  %t52 = load ptr, ptr %t50, align 8
-  %t53 = load ptr, ptr %t51, align 8
-  %t54 = getelementptr inbounds %ArchxStr, ptr %t52, i64 %t46
-  %t55 = load %ArchxStr, ptr %t54, align 8
-  %t56 = getelementptr inbounds i64, ptr %t53, i64 %t46
-  %t57 = load i64, ptr %t56, align 8
-  %t58 = extractvalue %ArchxStr %t55, 0
-  %t59 = and i64 %t58, 4294967295
-  %t60 = icmp sgt i64 %t59, 2
-  br i1 %t60, label %if.then.16, label %if.else.17
-if.then.16:
-  %t61 = load i64, ptr %var.total.38, align 8
-  %t62 = mul i64 %t57, 10
-  %t63 = add i64 %t61, %t62
-  store i64 %t63, ptr %var.total.38, align 8
-  br label %if.merge.18
-if.else.17:
-  br label %if.merge.18
-if.merge.18:
-  br label %foritems.step.14
-foritems.step.14:
-  %t64 = load i64, ptr %foritems.idx.45, align 8
-  %t65 = add nuw nsw i64 %t64, 1
-  store i64 %t65, ptr %foritems.idx.45, align 8
-  br label %foritems.cond.12
-foritems.end.15:
-  %t66 = load i64, ptr %var.total.38, align 8
-  %t67 = load %ArchxStr, ptr %var.w.9, align 8
-  call fastcc void @archx_str_drop(%ArchxStr %t67)
-  %t68 = load i64, ptr %var.freq.1, align 8
-  call fastcc void @archx_dict_drop_s_i(i64 %t68)
-  %t69 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t70 = load ptr, ptr %t69, align 8
-  call fastcc void @archx_region_release_from(ptr %t70)
-  ret i64 %t66
+  store i64 0, ptr %var.total.41, align 8
+  %t42 = load i64, ptr %var.freq.1, align 8
+  %t43 = and i64 %t42, -4
+  %t44 = icmp eq i64 %t43, 0
+  br i1 %t44, label %dlen.zero.11, label %dlen.load.12
+dlen.zero.11:
+  br label %dlen.done.13
+dlen.load.12:
+  %t45 = inttoptr i64 %t43 to ptr
+  %t46 = load i64, ptr %t45, align 8
+  br label %dlen.done.13
+dlen.done.13:
+  %t47 = phi i64 [ 0, %dlen.zero.11 ], [ %t46, %dlen.load.12 ]
+  store i64 0, ptr %foritems.idx.48, align 8
+  br label %foritems.cond.14
+foritems.cond.14:
+  %t49 = load i64, ptr %foritems.idx.48, align 8
+  %t50 = icmp slt i64 %t49, %t47
+  br i1 %t50, label %foritems.body.15, label %foritems.end.17
+foritems.body.15:
+  %t51 = and i64 %t42, -4
+  %t52 = inttoptr i64 %t51 to ptr
+  %t53 = getelementptr inbounds %ArchxDictHdr, ptr %t52, i32 0, i32 5
+  %t54 = getelementptr inbounds %ArchxDictHdr, ptr %t52, i32 0, i32 6
+  %t55 = load ptr, ptr %t53, align 8
+  %t56 = load ptr, ptr %t54, align 8
+  %t57 = getelementptr inbounds %ArchxStr, ptr %t55, i64 %t49
+  %t58 = load %ArchxStr, ptr %t57, align 8
+  %t59 = getelementptr inbounds i64, ptr %t56, i64 %t49
+  %t60 = load i64, ptr %t59, align 8
+  %t61 = extractvalue %ArchxStr %t58, 0
+  %t62 = and i64 %t61, 4294967295
+  %t63 = icmp sgt i64 %t62, 2
+  br i1 %t63, label %if.then.18, label %if.else.19
+if.then.18:
+  %t64 = load i64, ptr %var.total.41, align 8
+  %t65 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %t60, i64 10)
+  %t66 = extractvalue { i64, i1 } %t65, 0
+  %t67 = extractvalue { i64, i1 } %t65, 1
+  br i1 %t67, label %overflow.mul.21, label %overflow.ok.22
+overflow.mul.21:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.22:
+  %t68 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t64, i64 %t66)
+  %t69 = extractvalue { i64, i1 } %t68, 0
+  %t70 = extractvalue { i64, i1 } %t68, 1
+  br i1 %t70, label %overflow.add.23, label %overflow.ok.24
+overflow.add.23:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.24:
+  store i64 %t69, ptr %var.total.41, align 8
+  br label %if.merge.20
+if.else.19:
+  br label %if.merge.20
+if.merge.20:
+  br label %foritems.step.16
+foritems.step.16:
+  %t71 = load i64, ptr %foritems.idx.48, align 8
+  %t72 = add nuw nsw i64 %t71, 1
+  store i64 %t72, ptr %foritems.idx.48, align 8
+  br label %foritems.cond.14
+foritems.end.17:
+  %t73 = load i64, ptr %var.total.41, align 8
+  %t74 = load %ArchxStr, ptr %var.w.5, align 8
+  call fastcc void @archx_str_drop(%ArchxStr %t74)
+  %t75 = load i64, ptr %var.freq.1, align 8
+  call fastcc void @archx_dict_drop_s_i(i64 %t75)
+  %t76 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t77 = load ptr, ptr %t76, align 8
+  call fastcc void @archx_region_release_from(ptr %t77)
+  ret i64 %t73
 }
 
 define i32 @main() {
@@ -1752,6 +1776,15 @@ entry:
   unreachable
 }
 
+@.err.overflow = private unnamed_addr constant [39 x i8] c"archx runtime panic: integer overflow\0A\00", align 1
+
+define private void @archx_int_overflow_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.overflow)
+  call void @exit(i32 101)
+  unreachable
+}
+
 @.err.divz = private unnamed_addr constant [39 x i8] c"archx runtime panic: division by zero\0A\00", align 1
 
 define private void @archx_div_zero_fail() cold noreturn nounwind {
@@ -1778,6 +1811,8 @@ declare void @free(ptr) nounwind
 declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg)
 declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)
 declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare i32 @memcmp(ptr nocapture, ptr nocapture, i64) nounwind readonly
 declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)

@@ -21,7 +21,7 @@ entry:
   %var.hi.11 = alloca i64, align 8
   %var.total.12 = alloca i64, align 8
   %foreach.idx.15 = alloca i64, align 8
-  %var.x.20 = alloca i64, align 8
+  %var.x.16 = alloca i64, align 8
   %t0 = extractvalue %ArchxVec %arg.xs, 0
   %t1 = icmp uge i64 0, %t0
   br i1 %t1, label %idx.oob.1, label %idx.ok.0
@@ -50,53 +50,60 @@ idx.ok.2:
   store i64 0, ptr %foreach.idx.15, align 8
   br label %foreach.cond.4
 foreach.cond.4:
-  %t16 = load i64, ptr %foreach.idx.15, align 8
-  %t17 = icmp slt i64 %t16, %t13
-  br i1 %t17, label %foreach.body.5, label %foreach.end.7
+  %t17 = load i64, ptr %foreach.idx.15, align 8
+  %t18 = icmp slt i64 %t17, %t13
+  br i1 %t18, label %foreach.body.5, label %foreach.end.7
 foreach.body.5:
-  %t18 = getelementptr inbounds i64, ptr %t14, i64 %t16
-  %t19 = load i64, ptr %t18, align 8
-  store i64 %t19, ptr %var.x.20, align 8
-  %t21 = load i64, ptr %var.x.20, align 8
+  %t19 = getelementptr inbounds i64, ptr %t14, i64 %t17
+  %t20 = load i64, ptr %t19, align 8
+  store i64 %t20, ptr %var.x.16, align 8
+  %t21 = load i64, ptr %var.x.16, align 8
   %t22 = load i64, ptr %var.lo.5, align 8
   %t23 = icmp slt i64 %t21, %t22
   br i1 %t23, label %if.then.8, label %if.else.9
 if.then.8:
-  %t24 = load i64, ptr %var.x.20, align 8
+  %t24 = load i64, ptr %var.x.16, align 8
   store i64 %t24, ptr %var.lo.5, align 8
   br label %if.merge.10
 if.else.9:
   br label %if.merge.10
 if.merge.10:
-  %t25 = load i64, ptr %var.x.20, align 8
+  %t25 = load i64, ptr %var.x.16, align 8
   %t26 = load i64, ptr %var.hi.11, align 8
   %t27 = icmp sgt i64 %t25, %t26
   br i1 %t27, label %if.then.11, label %if.else.12
 if.then.11:
-  %t28 = load i64, ptr %var.x.20, align 8
+  %t28 = load i64, ptr %var.x.16, align 8
   store i64 %t28, ptr %var.hi.11, align 8
   br label %if.merge.13
 if.else.12:
   br label %if.merge.13
 if.merge.13:
   %t29 = load i64, ptr %var.total.12, align 8
-  %t30 = load i64, ptr %var.x.20, align 8
-  %t31 = add i64 %t29, %t30
-  store i64 %t31, ptr %var.total.12, align 8
+  %t30 = load i64, ptr %var.x.16, align 8
+  %t31 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t29, i64 %t30)
+  %t32 = extractvalue { i64, i1 } %t31, 0
+  %t33 = extractvalue { i64, i1 } %t31, 1
+  br i1 %t33, label %overflow.add.14, label %overflow.ok.15
+overflow.add.14:
+  call void @archx_int_overflow_fail()
+  unreachable
+overflow.ok.15:
+  store i64 %t32, ptr %var.total.12, align 8
   br label %foreach.step.6
 foreach.step.6:
-  %t32 = load i64, ptr %foreach.idx.15, align 8
-  %t33 = add nsw i64 %t32, 1
-  store i64 %t33, ptr %foreach.idx.15, align 8
+  %t34 = load i64, ptr %foreach.idx.15, align 8
+  %t35 = add nsw i64 %t34, 1
+  store i64 %t35, ptr %foreach.idx.15, align 8
   br label %foreach.cond.4
 foreach.end.7:
-  %t34 = load i64, ptr %var.lo.5, align 8
-  %t35 = load i64, ptr %var.hi.11, align 8
-  %t36 = load i64, ptr %var.total.12, align 8
-  %t37 = insertvalue { i64, i64, i64 } undef, i64 %t34, 0
-  %t38 = insertvalue { i64, i64, i64 } %t37, i64 %t35, 1
-  %t39 = insertvalue { i64, i64, i64 } %t38, i64 %t36, 2
-  ret { i64, i64, i64 } %t39
+  %t36 = load i64, ptr %var.lo.5, align 8
+  %t37 = load i64, ptr %var.hi.11, align 8
+  %t38 = load i64, ptr %var.total.12, align 8
+  %t39 = insertvalue { i64, i64, i64 } undef, i64 %t36, 0
+  %t40 = insertvalue { i64, i64, i64 } %t39, i64 %t37, 1
+  %t41 = insertvalue { i64, i64, i64 } %t40, i64 %t38, 2
+  ret { i64, i64, i64 } %t41
 }
 
 define internal fastcc { i1, i64 } @archx_fn_find_gt(%ArchxVec %arg.xs, i64 %arg.limit) {
@@ -310,7 +317,7 @@ entry:
   %enum.Shape.96 = alloca %ArchxEnum_Shape, align 8
   %var.shapes.120 = alloca %ArchxVec, align 8
   %foreach.idx.124 = alloca i64, align 8
-  %var.sh.129 = alloca %ArchxEnum_Shape, align 8
+  %var.sh.125 = alloca %ArchxEnum_Shape, align 8
   store %ArchxRegion zeroinitializer, ptr %func.region, align 8
   %t0 = call noalias align 16 ptr @malloc(i64 40)
   %t1 = icmp eq ptr %t0, null
@@ -525,39 +532,42 @@ alloc.ok.11:
   %t122 = extractvalue %ArchxVec %t121, 0
   %t123 = extractvalue %ArchxVec %t121, 2
   store i64 0, ptr %foreach.idx.124, align 8
+  store %ArchxEnum_Shape zeroinitializer, ptr %var.sh.125, align 8
   br label %foreach.cond.13
 foreach.cond.13:
-  %t125 = load i64, ptr %foreach.idx.124, align 8
-  %t126 = icmp slt i64 %t125, %t122
-  br i1 %t126, label %foreach.body.14, label %foreach.end.16
+  %t126 = load i64, ptr %foreach.idx.124, align 8
+  %t127 = icmp slt i64 %t126, %t122
+  br i1 %t127, label %foreach.body.14, label %foreach.end.16
 foreach.body.14:
-  %t127 = getelementptr inbounds %ArchxEnum_Shape, ptr %t123, i64 %t125
-  %t128 = load %ArchxEnum_Shape, ptr %t127, align 8
-  %t130 = call fastcc %ArchxEnum_Shape @archx_enum_clone_Shape(%ArchxEnum_Shape %t128)
-  store %ArchxEnum_Shape %t130, ptr %var.sh.129, align 8
-  %t131 = load %ArchxEnum_Shape, ptr %var.sh.129, align 8
-  %t132 = call fastcc %ArchxStr @archx_fn_describe_shape(%ArchxEnum_Shape %t131)
-  call fastcc void @archx_str_print(%ArchxStr %t132, i1 true)
-  call fastcc void @archx_str_drop(%ArchxStr %t132)
+  %t128 = getelementptr inbounds %ArchxEnum_Shape, ptr %t123, i64 %t126
+  %t129 = load %ArchxEnum_Shape, ptr %t128, align 8
+  %t130 = load %ArchxEnum_Shape, ptr %var.sh.125, align 8
+  call fastcc void @archx_enum_drop_Shape(%ArchxEnum_Shape %t130)
+  %t131 = call fastcc %ArchxEnum_Shape @archx_enum_clone_Shape(%ArchxEnum_Shape %t129)
+  store %ArchxEnum_Shape %t131, ptr %var.sh.125, align 8
+  %t132 = load %ArchxEnum_Shape, ptr %var.sh.125, align 8
+  %t133 = call fastcc %ArchxStr @archx_fn_describe_shape(%ArchxEnum_Shape %t132)
+  call fastcc void @archx_str_print(%ArchxStr %t133, i1 true)
+  call fastcc void @archx_str_drop(%ArchxStr %t133)
   br label %foreach.step.15
 foreach.step.15:
-  %t133 = load i64, ptr %foreach.idx.124, align 8
-  %t134 = add nsw i64 %t133, 1
-  store i64 %t134, ptr %foreach.idx.124, align 8
+  %t134 = load i64, ptr %foreach.idx.124, align 8
+  %t135 = add nsw i64 %t134, 1
+  store i64 %t135, ptr %foreach.idx.124, align 8
   br label %foreach.cond.13
 foreach.end.16:
-  %t135 = load %ArchxVec, ptr %var.shapes.120, align 8
-  call fastcc void @archx_vec_drop_U5_Shape(%ArchxVec %t135)
-  %t136 = load %ArchxEnum_Shape, ptr %var.sh.129, align 8
-  call fastcc void @archx_enum_drop_Shape(%ArchxEnum_Shape %t136)
+  %t136 = load %ArchxVec, ptr %var.shapes.120, align 8
+  call fastcc void @archx_vec_drop_U5_Shape(%ArchxVec %t136)
+  %t137 = load %ArchxEnum_Shape, ptr %var.sh.125, align 8
+  call fastcc void @archx_enum_drop_Shape(%ArchxEnum_Shape %t137)
   call fastcc void @archx_region_rewind_root(ptr %func.region)
-  %t137 = load { %ArchxStr, i64, i1 }, ptr %var.pair.34, align 8
-  %t138 = extractvalue { %ArchxStr, i64, i1 } %t137, 0
-  call fastcc void @archx_str_drop(%ArchxStr %t138)
+  %t138 = load { %ArchxStr, i64, i1 }, ptr %var.pair.34, align 8
+  %t139 = extractvalue { %ArchxStr, i64, i1 } %t138, 0
+  call fastcc void @archx_str_drop(%ArchxStr %t139)
   call void @free(ptr %t10)
-  %t139 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
-  %t140 = load ptr, ptr %t139, align 8
-  call fastcc void @archx_region_release_from(ptr %t140)
+  %t140 = getelementptr inbounds %ArchxRegion, ptr %func.region, i32 0, i32 2
+  %t141 = load ptr, ptr %t140, align 8
+  call fastcc void @archx_region_release_from(ptr %t141)
   ret i32 0
 }
 
@@ -1021,6 +1031,15 @@ entry:
   unreachable
 }
 
+@.err.overflow = private unnamed_addr constant [39 x i8] c"archx runtime panic: integer overflow\0A\00", align 1
+
+define private void @archx_int_overflow_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.overflow)
+  call void @exit(i32 101)
+  unreachable
+}
+
 @.err.oom = private unnamed_addr constant [36 x i8] c"archx runtime panic: out of memory\0A\00", align 1
 
 define private void @archx_oom_fail() cold noreturn nounwind {
@@ -1035,6 +1054,8 @@ declare noalias ptr @malloc(i64) nounwind allocsize(0)
 declare void @free(ptr) nounwind
 declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)
 declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) nounwind readnone speculatable
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)
 declare void @exit(i32) cold noreturn nounwind
