@@ -16,3 +16,12 @@
 /examples/*.ll
 /benchmarks/*.ll
 /tests/*.ll
+
+# Local scratch space (leak-hunting harnesses, repro cases). Never committed.
+/.work/
+
+# Stray build outputs from ad-hoc runs
+/W1
+/W2
+/W3
+/ax001-tmp

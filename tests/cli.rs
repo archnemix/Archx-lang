@@ -1784,3 +1784,132 @@ print(total)
 "#;
     assert_eq!(build_and_run("v12_globals_order", ordered), "6\n");
 }
+
+/// AX-001: the leak gate must be able to observe a live allocation.
+///
+/// `ci/leakcheck.c` is the independent check that runs in CI. If the tracker itself regresses
+/// (wrong `--wrap` wiring, silently missing a destructor) every program looks clean and the gate
+/// becomes theatre. This pins the tracker's failing behaviour against a program that leaks by
+/// construction.
+#[test]
+fn leakcheck_tracker_reports_leaks() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("archx-leakcheck-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let leak_src = dir.join("leak.c");
+    fs::write(
+        &leak_src,
+        "#include <stdlib.h>\nvoid *leak_demo(void) { return malloc(1234); }\n",
+    )
+    .unwrap();
+    let drv_src = dir.join("drv.c");
+    fs::write(
+        &drv_src,
+        "extern void *leak_demo(void);\nint main(void) { (void)leak_demo(); return 0; }\n",
+    )
+    .unwrap();
+
+    let tracker = Path::new(env!("CARGO_MANIFEST_DIR")).join("ci/leakcheck.c");
+    let exe = exe_path(&dir, "leakdemo");
+    let build = Command::new("clang")
+        .arg("-O1")
+        .arg(&drv_src)
+        .arg(&leak_src)
+        .arg(&tracker)
+        .args([
+            "-Wl,--wrap=malloc",
+            "-Wl,--wrap=calloc",
+            "-Wl,--wrap=realloc",
+            "-Wl,--wrap=free",
+        ])
+        .arg("-o")
+        .arg(&exe)
+        .output()
+        .unwrap();
+    assert!(
+        build.status.success(),
+        "leakcheck harness failed to build: {}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+
+    let run = Command::new(&exe).output().unwrap();
+    let stderr = String::from_utf8_lossy(&run.stderr);
+    assert!(
+        !run.status.success(),
+        "leakcheck must exit non-zero when a block is still live; stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("LEAKCHECK: FAILED"),
+        "leakcheck must report the failure on stderr; got: {stderr}"
+    );
+    assert!(
+        stderr.contains("1234 byte(s)"),
+        "leakcheck must name the leaked size; got: {stderr}"
+    );
+}
+
+/// AX-001 regression: every construct that used to leak its buffer must still print correctly AND
+/// still be leak-free, so a future change cannot trade a leak for a wrong answer.
+#[test]
+fn v1_leak_free_collections() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+    // Comprehensions, filtered comprehensions, `min`/`max` over generators, nested comprehensions
+    // re-bound through a `for row in grid:` loop variable, and `sorted()` with and without `key=`.
+    let src = r#"def main():
+    n = 200
+    squares = [x * x for x in range(n)]
+    evens = [x for x in squares if x % 2 == 0]
+    print(len(squares), len(evens))
+    print(sum(evens))
+    print(max(x * 2 for x in range(n)))
+    print(min(x * 3 + 1 for x in range(n)))
+    grid = [[r * c for c in range(4)] for r in range(5)]
+    acc = 0
+    for row in grid:
+        for v in row:
+            acc += v
+    print(acc)
+    raw = [(i * 37) % 997 for i in range(n)]
+    asc = sorted(raw)
+    desc = sorted(raw, reverse=True)
+    neg = sorted(raw, key=lambda v: -v)
+    print(asc[0], asc[n - 1], desc[0], neg[0], neg[n - 1])
+main()
+"#;
+    let expected = {
+        // Ground truth computed with the same semantics the compat dialect promises.
+        let n = 200;
+        let squares: Vec<i64> = (0..n).map(|x| x * x).collect();
+        let evens: Vec<i64> = squares.iter().copied().filter(|v| v % 2 == 0).collect();
+        let acc: i64 = (0..5).flat_map(|r| (0..4).map(move |c| r * c)).sum();
+        let raw: Vec<i64> = (0..n).map(|i| (i * 37) % 997).collect();
+        let mut asc = raw.clone();
+        asc.sort();
+        let mut desc = raw.clone();
+        desc.sort_by(|a, b| b.cmp(a));
+        let mut neg = raw.clone();
+        neg.sort_by_key(|v| -v);
+        format!(
+            "{} {}\n{}\n{}\n{}\n{}\n{} {} {} {} {}\n",
+            squares.len(),
+            evens.len(),
+            evens.iter().sum::<i64>(),
+            (0..n).map(|x| x * 2).max().unwrap(),
+            (0..n).map(|x| x * 3 + 1).min().unwrap(),
+            acc,
+            asc[0],
+            asc[n as usize - 1],
+            desc[0],
+            neg[0],
+            neg[n as usize - 1]
+        )
+    };
+    assert_eq!(build_and_run("v1_leak_free", src), expected);
+}

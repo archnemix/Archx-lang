@@ -320,7 +320,13 @@ impl Codegen {
             None => "0".to_string(),
         };
         let elem_sz = self.emit_elem_sizeof(&elem_ty, out);
-        let bytes = self.emit_elem_bytes_val_mul(&capacity, &elem_sz, out);
+        // One slot of headroom: the probe counts the unfiltered length, and Python comprehensions
+        // never exceed it, but `push` triggers growth on `len >= cap`. Reserving `capacity + 1`
+        // keeps the common case on the pre-sized block (no growth, no leak) while still bounding
+        // the allocation to O(n).
+        let headroom = self.next_tmp();
+        let _ = writeln!(out, "  {headroom} = add nuw nsw i64 {capacity}, 1");
+        let bytes = self.emit_elem_bytes_val_mul(&headroom, &elem_sz, out);
         let (data, cap) = if !self.region_stack.is_empty() && !self.type_needs_drop(&elem_ty) {
             let rslot = self.func_region_slot.clone().unwrap();
             let p = self.next_tmp();
@@ -329,10 +335,10 @@ impl Codegen {
                 "  {p} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
             );
             let nc = self.next_tmp();
-            let _ = writeln!(out, "  {nc} = sub nsw i64 0, {capacity}");
+            let _ = writeln!(out, "  {nc} = sub nsw i64 0, {headroom}");
             (p, nc)
         } else {
-            (self.emit_checked_malloc(&bytes, out), capacity)
+            (self.emit_checked_malloc(&bytes, out), headroom)
         };
         let v0 = self.build_vec_val("0", &cap, &data, out);
         let _ = writeln!(out, "  store %ArchxVec {v0}, ptr {out_slot}, align 8");
@@ -1023,6 +1029,10 @@ impl Codegen {
                 let (ty, list) = self.eval_list_comp(elt, clauses, None, span, out)?;
                 let Type::Array(elem_ty) = ty else { unreachable!() };
                 let v = self.emit_minmax_over_vec(&elem_ty, &list, is_min, span, out)?;
+                // The materialized list exists only to be scanned, so release it here rather than
+                // handing it to the caller. Claiming the temporary removes its drop, so dropping it
+                // without freeing would leak the whole buffer.
+                self.emit_drop_value(&Type::Array(elem_ty.clone()), &list, out);
                 self.claim_stmt_temp(&list);
                 Ok(Some(v))
             }

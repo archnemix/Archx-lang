@@ -746,6 +746,25 @@ impl Codegen {
         let _ = writeln!(self.allocas, "  {idx_slot} = alloca i64, align 8");
         let _ = writeln!(out, "  store i64 0, ptr {idx_slot}, align 8");
 
+        // The loop variable lives in the enclosing scope (Python rebinds it there), so its storage
+        // outlives a single iteration. Every iteration stores a fresh clone into it, so the previous
+        // iteration's payload has to be released first. Initialising to zero makes the first
+        // iteration's drop a no-op (`len == 0`, `cap == 0`).
+        let loop_var_slot = self.next_slot(&format!("var.{var}"));
+        let loop_var_ty_ir = ir_type(&elem_ty);
+        let loop_var_align = ir_align(&elem_ty);
+        let loop_var_owns = self.type_needs_drop(&elem_ty);
+        let _ = writeln!(
+            self.allocas,
+            "  {loop_var_slot} = alloca {loop_var_ty_ir}, align {loop_var_align}"
+        );
+        if loop_var_owns {
+            let _ = writeln!(
+                out,
+                "  store {loop_var_ty_ir} zeroinitializer, ptr {loop_var_slot}, align {loop_var_align}"
+            );
+        }
+
         let cond_lbl = self.fresh_label("foreach.cond");
         let body_lbl = self.fresh_label("foreach.body");
         let step_lbl = self.fresh_label("foreach.step");
@@ -774,11 +793,16 @@ impl Codegen {
         // pushed. `pop_scope_with_drops` then cannot take the binding away.
         let outer_depth = self.scopes.len();
         let outer_rdepth = self.region_stack.len();
-        let slot = self.next_slot(&format!("var.{var}"));
-        let ty_ir = ir_type(&elem_ty);
-        let align = ir_align(&elem_ty);
-        let _ = writeln!(self.allocas, "  {slot} = alloca {ty_ir}, align {align}");
-        let init_elem = if self.type_needs_drop(&elem_ty) {
+        let slot = loop_var_slot;
+        let ty_ir = loop_var_ty_ir;
+        let align = loop_var_align;
+        if loop_var_owns {
+            // Release the payload the previous iteration bound to this variable.
+            let prev = self.next_tmp();
+            let _ = writeln!(out, "  {prev} = load {ty_ir}, ptr {slot}, align {align}");
+            self.emit_drop_value(&elem_ty, &prev, out);
+        }
+        let init_elem = if loop_var_owns {
             self.emit_clone_value(&elem_ty, &raw_elem, out)
         } else {
             raw_elem

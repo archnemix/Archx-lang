@@ -117,6 +117,23 @@ jobs:
             echo "CLEAN: $target (0 leaks, 0 invalid accesses)"
           done 2>&1 | tee ci/logs/asan_lsan.log
 
+      - name: Verify zero live allocations (independent leak gate)
+        run: |
+          set -euo pipefail
+          # The ASan/LSan step above covers invalid accesses and is the primary check. This gate
+          # exists because ASan's runtime does not link against Archx IR on every toolchain, and a
+          # leak check that cannot run must not look like a pass. `ci/leakcheck.c` wraps the
+          # allocator and fails the build if the program still owns any block at exit.
+          for target in examples/arrays.archx.lang examples/structs_regions.archx.lang examples/pythonic.archx.lang examples/collections_dynamic.archx.lang examples/enums_matching.archx.lang examples/comparison/full_tour_pythonic.archx.lang examples/comparison/full_tour_speed.archx.lang benchmarks/composite.archx.lang benchmarks/nbody_float.archx.lang benchmarks/dict_bench.archx.lang benchmarks/dict_dynamic.archx.lang benchmarks/pipelines.archx.lang; do
+            echo "== leak check: $target =="
+            ./target/release/archx "$target" --emit-ir > /tmp/leak_target.ll
+            ${CC:-clang} -O1 -Wno-override-module /tmp/leak_target.ll ci/leakcheck.c \
+              -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -Wl,--wrap=free \
+              -lm -o /tmp/leak_target
+            /tmp/leak_target > /dev/null
+            echo "CLEAN: $target (0 live blocks)"
+          done 2>&1 | tee ci/logs/leakcheck.log
+
       - name: Benchmark against Python 3, C, and Rust
         run: |
           set -o pipefail
