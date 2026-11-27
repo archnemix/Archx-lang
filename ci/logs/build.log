@@ -123,4 +123,4 @@
     [1m[94m|[0m            [1m[33m^^^^^^^^^^^[0m
 
 [1m[33mwarning[0m: `archx` (bin "archx") generated 16 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 22.98s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 22.16s

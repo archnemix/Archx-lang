@@ -116,20 +116,6 @@ InstalledDir: C:\Program Files\LLVM\bin
 [1m[96m31[0m [1m[96m|[0m     pub fn name(self) -> &'static str {
    [1m[96m|[0m            [1m[93m^^^^[0m
 
-[1m[93mwarning[0m[1m[97m: struct `DialectRules` is never constructed[0m
-   [1m[96m--> [0msrc\dialect.rs:187:12
-    [1m[96m|[0m
-[1m[96m187[0m [1m[96m|[0m pub struct DialectRules {
-    [1m[96m|[0m            [1m[93m^^^^^^^^^^^^[0m
-
-[1m[93mwarning[0m[1m[97m: associated function `for_dialect` is never used[0m
-   [1m[96m--> [0msrc\dialect.rs:202:12
-    [1m[96m|[0m
-[1m[96m201[0m [1m[96m|[0m impl DialectRules {
-    [1m[96m|[0m [1m[96m-----------------[0m [1m[96massociated function in this implementation[0m
-[1m[96m202[0m [1m[96m|[0m     pub fn for_dialect(dialect: Dialect) -> Self {
-    [1m[96m|[0m            [1m[93m^^^^^^^^^^^[0m
-
 [1m[93mwarning[0m[1m[97m: fields `python_modulo` and `bit_identical_floats` are never read[0m
    [1m[96m--> [0msrc\dialect.rs:196:9
     [1m[96m|[0m
@@ -144,9 +130,23 @@ InstalledDir: C:\Program Files\LLVM\bin
     [1m[96m|[0m
     [1m[96m= [0m[1m[97mnote[0m: `DialectRules` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
 
-[1m[93mwarning[0m: `archx` (bin "archx") generated 16 warnings (run `cargo fix --bin "archx" -p archx` to apply 7 suggestions)
-[1m[93mwarning[0m: `archx` (bin "archx" test) generated 15 warnings (14 duplicates)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 18.96s
+[1m[93mwarning[0m[1m[97m: struct `DialectRules` is never constructed[0m
+   [1m[96m--> [0msrc\dialect.rs:187:12
+    [1m[96m|[0m
+[1m[96m187[0m [1m[96m|[0m pub struct DialectRules {
+    [1m[96m|[0m            [1m[93m^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: associated function `for_dialect` is never used[0m
+   [1m[96m--> [0msrc\dialect.rs:202:12
+    [1m[96m|[0m
+[1m[96m201[0m [1m[96m|[0m impl DialectRules {
+    [1m[96m|[0m [1m[96m-----------------[0m [1m[96massociated function in this implementation[0m
+[1m[96m202[0m [1m[96m|[0m     pub fn for_dialect(dialect: Dialect) -> Self {
+    [1m[96m|[0m            [1m[93m^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m: `archx` (bin "archx" test) generated 15 warnings (4 duplicates) (run `cargo fix --bin "archx" -p archx --tests` to apply 3 suggestions)
+[1m[93mwarning[0m: `archx` (bin "archx") generated 16 warnings (10 duplicates) (run `cargo fix --bin "archx" -p archx` to apply 4 suggestions)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 15.54s
 [1m[92m     Running[0m unittests src\main.rs (target\debug\build\archx/3f5012b0b692fe6f\out\archx-3f5012b0b692fe6f.exe)
 
 running 42 tests
@@ -157,28 +157,28 @@ test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_an
 test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
-test codegen::tests::region_rejects_escape_to_outer_variable ... ok
 test codegen::tests::non_exhaustive_enum_match_and_oob_tuple_index_are_rejected ... ok
+test codegen::tests::region_rejects_escape_to_outer_variable ... ok
 test dialect::tests::field_order_and_spacing_do_not_matter ... ok
-test dialect::tests::malformed_directives_are_errors ... ok
 test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
+test dialect::tests::malformed_directives_are_errors ... ok
 test dialect::tests::ordinary_comments_are_not_directives ... ok
-test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test dialect::tests::parses_both_dialects ... ok
 test dialect::tests::rules_differ_where_the_contracts_differ ... ok
+test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
+test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
 test lexer::tests::equality_operators ... ok
 test lexer::tests::indents_and_dedents ... ok
 test lexer::tests::loop_tokens ... ok
-test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... ok
 test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
 test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
-test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
+test parser::tests::parses_elif_chain ... ok
 test parser::tests::parses_enums_tuples_optionals_match_and_init_class ... ok
 test parser::tests::parses_for_and_break_continue ... ok
 test parser::tests::parses_functions_with_params ... ok
@@ -186,81 +186,60 @@ test parser::tests::parses_if_else ... ok
 test parser::tests::parses_let_and_arithmetic ... ok
 test parser::tests::parses_main_and_print ... ok
 test parser::tests::parses_while_and_assignment ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 test parser::tests::parses_structs_regions_step_and_foreach ... ok
 test parser::tests::rejects_missing_colon ... ok
-test tests::default_output_strips_archx_extensions ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
+test tests::default_output_strips_archx_extensions ... ok
 
 test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
 [1m[92m     Running[0m tests\cli.rs (target\debug\build\archx/74daacc08017e5f5\out\cli-74daacc08017e5f5.exe)
 
-running 37 tests
+running 38 tests
 test break_outside_loop_is_an_error ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
-test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
+test arrays_run ... ok
 test comprehension_and_sorting_example_matches_expected_output ... ok
 test comprehensions_generators_zip_and_inline_sort_work ... ok
-test arrays_run ... ok
+test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
 test dialect_directive_is_required_and_checked ... ok
 test emit_ir_works ... ok
-test full_tour_pythonic_and_speed_editions_match_exactly ... FAILED
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-7772\key_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-7772\key_err.exe`
 test elif_and_compound_assign_run ... ok
 test del_statement_drops_and_forgets_binding ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-1928\key_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-1928\key_err.exe`
 test functions_run ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-7772\type_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-7772\type_err.exe`
-test hello_world_runs ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-1928\type_err.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-v07panic-1928\type_err.exe`
 test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
+test hello_world_runs ... ok
+test leakcheck_tracker_reports_leaks ... ok
 test if_else_runs ... ok
 test loops_run ... ok
+test one_to_one_body_normalises_line_endings_and_requires_the_directive ... ok
 test inline_sort_is_ub_free_across_run_lengths_and_keeps_stability ... ok
-test module_constants_and_global_rebinding_match_python ... ok
 test pep695_generics_and_inline_lambdas_are_monomorphized ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7772\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7772\fail_assert.exe`
-test leakcheck_tracker_reports_leaks ... FAILED
-test planar_simd_dict_set_and_slicing_work ... ok
+test module_constants_and_global_rebinding_match_python ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-1928\fail_assert.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-1928\fail_assert.exe`
 test out_of_bounds_panics_cleanly ... ok
-compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7772\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-7772\zero_step.exe`
+test planar_simd_dict_set_and_slicing_work ... ok
+compiled `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-1928\zero_step.archx.lang` -> `C:\Users\RUNNER~1\AppData\Local\Temp\archx-pypanic-1928\zero_step.exe`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
+test full_tour_pythonic_and_speed_editions_match_exactly ... ok
 test pythonic_defaults_else_keywords_and_map_filter ... ok
 test pythonic_int_float_semantics_match_cpython ... ok
 test pythonic_list_mutation_join_bitwise_and_docstrings ... ok
 test pythonic_formatting_and_set_algebra_match_cpython ... ok
+test pythonic_nested_collection_sorting_matches_cpython ... ok
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
 test regions_step_loops_foreach_and_ownership_churn_work ... ok
-test pythonic_nested_collection_sorting_matches_cpython ... ok
 test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
 test run_flag_default_output_and_str_alias_work ... ok
-test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
+test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 test tuples_optionals_enums_and_pattern_matching_work ... ok
 test v1_leak_free_collections ... ok
 
-failures:
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.22s
 
----- full_tour_pythonic_and_speed_editions_match_exactly stdout ----
-
-thread 'full_tour_pythonic_and_speed_editions_match_exactly' (4052) panicked at tests\cli.rs:1232:5:
-assertion `left == right` failed: full_tour.py and full_tour_pythonic.archx.lang must stay 1:1 identical below the directive
-  left: "# Archx 5-Way Full-Feature Comparison — Edition 1 & 2:\r\n#   - `full_tour.py`                  (Python 3.10+)\r\n#   - `full_tour_pythonic.archx.lang` (Archx 1:1 Pythonic — byte-for-byte identical source!)\r\n#\r\n# Exercises every milestone (v0.1.0 - v0.9.0):\r\n#   classes & float N-body physics, strings & slicing, lists/dicts/sets,\r\n#   adaptive dynamic rebinding, multiple-return tuples, `T | None` optionals\r\n#   with flow-sensitive narrowing, `match`/`case` with `|` & `if` guards,\r\n#   comprehensions & generator folds, PEP 695 generics, zero-heap `lambda`,\r\n#   `zip(...)`, and inline monomorphized `sorted`/`sort(key=...)`/`reverse=True`.\r\n\r\n\r\nclass Body:\r\n    def __init__(self, x: float, y: float, vx: float, vy: float, mass: float):\r\n        self.x = x\r\n        self.y = y\r\n        self.vx = vx\r\n        self.vy = vy\r\n        self.mass = mass\r\n\r\n    def kinetic(self) -> float:\r\n        return 0.5 * self.mass * (self.vx * self.vx + self.vy * self.vy)\r\n\r\n\r\ndef simulate_field(n: int, steps: int) -> int:\r\n    bodies: list[Body] = []\r\n    for i in range(n):\r\n        fi = float(i + 1)\r\n        bodies.append(Body(fi * 0.001, fi * -0.002, 0.02, -0.015, 1.0 + fi * 0.0002))\r\n\r\n    dt = 0.01\r\n    for _s in range(steps):\r\n        for i in range(n):\r\n            bx = bodies[i].x\r\n            by = bodies[i].y\r\n            r2 = bx * bx + by * by + 1.0\r\n            inv = dt / (r2 ** 0.5)\r\n            bodies[i].vx -= bx * inv\r\n            bodies[i].vy -= by * inv\r\n            bodies[i].x += bodies[i].vx * dt\r\n            bodies[i].y += bodies[i].vy * dt\r\n\r\n    ke = 0.0\r\n    for i in range(n):\r\n        ke += bodies[i].kinetic()\r\n    return int(ke * 1000.0)\r\n\r\n\r\ndef dict_and_slicing_tour(rounds: int) -> tuple[int, str]:\r\n    vocab: list[str] = []\r\n    for i in range(512):\r\n        if i % 2 == 0:\r\n            vocab.append(f\"tok_{i}\")\r\n        else:\r\n            raw = f\"   Telemetry_Channel_{i}  \"\r\n            vocab.append(raw.strip().lower())\r\n\r\n    banner = \"archx_systems_python\"[::-1]\r\n    checksum = 0\r\n    miss = \"absent_channel_key\"\r\n\r\n    for r in range(rounds):\r\n        counts = {}\r\n        seen = set()\r\n        for i in range(512):\r\n            counts[vocab[i]] = 1\r\n        for step in range(4096):\r\n            idx = (step * 73 + r * 19) % 512\r\n            key = vocab[idx]\r\n            counts[key] += (step % 5) + 1\r\n            if step < 64:\r\n                seen.add(idx)\r\n        for p in range(1024):\r\n            pk = vocab[(p * 131 + r * 7) % 512]\r\n            checksum += counts.get(pk, 0)\r\n        if miss not in counts:\r\n            checksum += len(seen)\r\n        for _k, v in counts.items():\r\n            checksum += v\r\n\r\n    nums = [10, 25, 40, 55, 70, 85, 100, 115]\r\n    sliced = nums[1:7:2]\r\n    checksum += sliced[0] + sliced[-1] + nums[-1]\r\n    return checksum, banner\r\n\r\n\r\ndef analyze_series(xs: list[int]) -> tuple[int, int, int]:\r\n    lo = xs[0]\r\n    hi = xs[0]\r\n    total = 0\r\n    for x in xs:\r\n        if x < lo:\r\n            lo = x\r\n        if x > hi:\r\n            hi = x\r\n        total += x\r\n    return lo, hi, total\r\n\r\n\r\ndef find_spike(xs: list[int], threshold: int) -> int | None:\r\n    for i, x in enumerate(xs):\r\n        if x >= threshold:\r\n            return i * 1000 + x\r\n\r\n\r\ndef dispatch_events(total_events: int) -> int:\r\n    acc = 0\r\n    for i in range(total_events):\r\n        kind = i % 5\r\n        a = (i * 17 + 3) % 40\r\n        b = (i * 13 + 7) % 25\r\n        ev = (kind, a, b)\r\n        match ev:\r\n            case (0, r, _) if r > 20:\r\n                acc += r * r + 7\r\n            case (0, r, _):\r\n                acc += r * 3 + 1\r\n            case (1, w, h):\r\n                acc += w * h\r\n            case (2, s, _) | (3, s, _):\r\n                acc += s * 4 + 2\r\n            case _:\r\n                acc += 1\r\n    return acc\r\n\r\n\r\ndef pipeline_tour(n: int) -> int:\r\n    # v0.9.0: comprehensions, generator folds, zip, and inline monomorphized sorting.\r\n    squares = [x * x for x in range(n)]\r\n    evens = [x for x in squares if x % 2 == 0]\r\n    acc = sum(evens)\r\n    acc += sum(x for x in range(n) if x % 3 == 0)\r\n    acc += max(x * 2 for x in range(n))\r\n    acc += min(x * 3 + 1 for x in range(n))\r\n    if any(x > n for x in range(n)):\r\n        acc += 1\r\n    if all(x >= 0 for x in range(n)):\r\n        acc += 2\r\n\r\n    left = [i for i in range(n)]\r\n    right = [n - i for i in range(n)]\r\n    for a, b in zip(left, right):\r\n        acc += a * b\r\n\r\n    raw = [(i * 37) % 997 for i in range(n)]\r\n    asc = sorted(raw)\r\n    desc = sorted(raw, reverse=True)\r\n    by_neg = sorted(raw, key=lambda v: -v)\r\n    inplace = [x for x in raw]\r\n    inplace.sort()\r\n    for i in range(8):\r\n        acc += asc[i] + desc[i] + by_neg[i] + inplace[i]\r\n    for v in by_neg:\r\n        acc += v % 7\r\n    return acc\r\n\r\n\r\ndef main():\r\n    # Adaptive dynamic variable (valid Python + Archx Tier-2 `%ArchxAny`)\r\n    mode = \"initializing\"\r\n    mode = 8\r\n\r\n    sim_score = simulate_field(40000, 30)\r\n    dict_score, rev_banner = dict_and_slicing_tour(60)\r\n\r\n    series: list[int] = []\r\n    for i in range(64):\r\n        series.append(((i * 37 + 11) % 97) + mode)\r\n    lo, hi, total = analyze_series(series)\r\n\r\n    hit = find_spike(series, 95)\r\n    miss = find_spike(series, 999)\r\n    hit_out = hit + 1 if hit is not None else -1\r\n    miss_label = \"none\"\r\n    match miss:\r\n        case None:\r\n            miss_label = \"empty\"\r\n        case v:\r\n            miss_label = f\"val_{v}\"\r\n\r\n    dispatch_score = dispatch_events(200000)\r\n    pipeline_score = pipeline_tour(2000)\r\n\r\n    print(f\"sim={sim_score}\")\r\n    print(f\"dict_slice={dict_score},{rev_banner}\")\r\n    print(f\"tuple_opt={lo},{hi},{total},{hit_out},{miss_label}\")\r\n    print(f\"match_dispatch={dispatch_score}\")\r\n    print(f\"pipeline={pipeline_score}\")\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n"
- right: "\r\n# Archx 5-Way Full-Feature Comparison — Edition 1 & 2:\r\n#   - `full_tour.py`                  (Python 3.10+)\r\n#   - `full_tour_pythonic.archx.lang` (Archx 1:1 Pythonic — byte-for-byte identical source!)\r\n#\r\n# Exercises every milestone (v0.1.0 - v0.9.0):\r\n#   classes & float N-body physics, strings & slicing, lists/dicts/sets,\r\n#   adaptive dynamic rebinding, multiple-return tuples, `T | None` optionals\r\n#   with flow-sensitive narrowing, `match`/`case` with `|` & `if` guards,\r\n#   comprehensions & generator folds, PEP 695 generics, zero-heap `lambda`,\r\n#   `zip(...)`, and inline monomorphized `sorted`/`sort(key=...)`/`reverse=True`.\r\n\r\n\r\nclass Body:\r\n    def __init__(self, x: float, y: float, vx: float, vy: float, mass: float):\r\n        self.x = x\r\n        self.y = y\r\n        self.vx = vx\r\n        self.vy = vy\r\n        self.mass = mass\r\n\r\n    def kinetic(self) -> float:\r\n        return 0.5 * self.mass * (self.vx * self.vx + self.vy * self.vy)\r\n\r\n\r\ndef simulate_field(n: int, steps: int) -> int:\r\n    bodies: list[Body] = []\r\n    for i in range(n):\r\n        fi = float(i + 1)\r\n        bodies.append(Body(fi * 0.001, fi * -0.002, 0.02, -0.015, 1.0 + fi * 0.0002))\r\n\r\n    dt = 0.01\r\n    for _s in range(steps):\r\n        for i in range(n):\r\n            bx = bodies[i].x\r\n            by = bodies[i].y\r\n            r2 = bx * bx + by * by + 1.0\r\n            inv = dt / (r2 ** 0.5)\r\n            bodies[i].vx -= bx * inv\r\n            bodies[i].vy -= by * inv\r\n            bodies[i].x += bodies[i].vx * dt\r\n            bodies[i].y += bodies[i].vy * dt\r\n\r\n    ke = 0.0\r\n    for i in range(n):\r\n        ke += bodies[i].kinetic()\r\n    return int(ke * 1000.0)\r\n\r\n\r\ndef dict_and_slicing_tour(rounds: int) -> tuple[int, str]:\r\n    vocab: list[str] = []\r\n    for i in range(512):\r\n        if i % 2 == 0:\r\n            vocab.append(f\"tok_{i}\")\r\n        else:\r\n            raw = f\"   Telemetry_Channel_{i}  \"\r\n            vocab.append(raw.strip().lower())\r\n\r\n    banner = \"archx_systems_python\"[::-1]\r\n    checksum = 0\r\n    miss = \"absent_channel_key\"\r\n\r\n    for r in range(rounds):\r\n        counts = {}\r\n        seen = set()\r\n        for i in range(512):\r\n            counts[vocab[i]] = 1\r\n        for step in range(4096):\r\n            idx = (step * 73 + r * 19) % 512\r\n            key = vocab[idx]\r\n            counts[key] += (step % 5) + 1\r\n            if step < 64:\r\n                seen.add(idx)\r\n        for p in range(1024):\r\n            pk = vocab[(p * 131 + r * 7) % 512]\r\n            checksum += counts.get(pk, 0)\r\n        if miss not in counts:\r\n            checksum += len(seen)\r\n        for _k, v in counts.items():\r\n            checksum += v\r\n\r\n    nums = [10, 25, 40, 55, 70, 85, 100, 115]\r\n    sliced = nums[1:7:2]\r\n    checksum += sliced[0] + sliced[-1] + nums[-1]\r\n    return checksum, banner\r\n\r\n\r\ndef analyze_series(xs: list[int]) -> tuple[int, int, int]:\r\n    lo = xs[0]\r\n    hi = xs[0]\r\n    total = 0\r\n    for x in xs:\r\n        if x < lo:\r\n            lo = x\r\n        if x > hi:\r\n            hi = x\r\n        total += x\r\n    return lo, hi, total\r\n\r\n\r\ndef find_spike(xs: list[int], threshold: int) -> int | None:\r\n    for i, x in enumerate(xs):\r\n        if x >= threshold:\r\n            return i * 1000 + x\r\n\r\n\r\ndef dispatch_events(total_events: int) -> int:\r\n    acc = 0\r\n    for i in range(total_events):\r\n        kind = i % 5\r\n        a = (i * 17 + 3) % 40\r\n        b = (i * 13 + 7) % 25\r\n        ev = (kind, a, b)\r\n        match ev:\r\n            case (0, r, _) if r > 20:\r\n                acc += r * r + 7\r\n            case (0, r, _):\r\n                acc += r * 3 + 1\r\n            case (1, w, h):\r\n                acc += w * h\r\n            case (2, s, _) | (3, s, _):\r\n                acc += s * 4 + 2\r\n            case _:\r\n                acc += 1\r\n    return acc\r\n\r\n\r\ndef pipeline_tour(n: int) -> int:\r\n    # v0.9.0: comprehensions, generator folds, zip, and inline monomorphized sorting.\r\n    squares = [x * x for x in range(n)]\r\n    evens = [x for x in squares if x % 2 == 0]\r\n    acc = sum(evens)\r\n    acc += sum(x for x in range(n) if x % 3 == 0)\r\n    acc += max(x * 2 for x in range(n))\r\n    acc += min(x * 3 + 1 for x in range(n))\r\n    if any(x > n for x in range(n)):\r\n        acc += 1\r\n    if all(x >= 0 for x in range(n)):\r\n        acc += 2\r\n\r\n    left = [i for i in range(n)]\r\n    right = [n - i for i in range(n)]\r\n    for a, b in zip(left, right):\r\n        acc += a * b\r\n\r\n    raw = [(i * 37) % 997 for i in range(n)]\r\n    asc = sorted(raw)\r\n    desc = sorted(raw, reverse=True)\r\n    by_neg = sorted(raw, key=lambda v: -v)\r\n    inplace = [x for x in raw]\r\n    inplace.sort()\r\n    for i in range(8):\r\n        acc += asc[i] + desc[i] + by_neg[i] + inplace[i]\r\n    for v in by_neg:\r\n        acc += v % 7\r\n    return acc\r\n\r\n\r\ndef main():\r\n    # Adaptive dynamic variable (valid Python + Archx Tier-2 `%ArchxAny`)\r\n    mode = \"initializing\"\r\n    mode = 8\r\n\r\n    sim_score = simulate_field(40000, 30)\r\n    dict_score, rev_banner = dict_and_slicing_tour(60)\r\n\r\n    series: list[int] = []\r\n    for i in range(64):\r\n        series.append(((i * 37 + 11) % 97) + mode)\r\n    lo, hi, total = analyze_series(series)\r\n\r\n    hit = find_spike(series, 95)\r\n    miss = find_spike(series, 999)\r\n    hit_out = hit + 1 if hit is not None else -1\r\n    miss_label = \"none\"\r\n    match miss:\r\n        case None:\r\n            miss_label = \"empty\"\r\n        case v:\r\n            miss_label = f\"val_{v}\"\r\n\r\n    dispatch_score = dispatch_events(200000)\r\n    pipeline_score = pipeline_tour(2000)\r\n\r\n    print(f\"sim={sim_score}\")\r\n    print(f\"dict_slice={dict_score},{rev_banner}\")\r\n    print(f\"tuple_opt={lo},{hi},{total},{hit_out},{miss_label}\")\r\n    print(f\"match_dispatch={dispatch_score}\")\r\n    print(f\"pipeline={pipeline_score}\")\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n"
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
----- leakcheck_tracker_reports_leaks stdout ----
-
-thread 'leakcheck_tracker_reports_leaks' (8912) panicked at tests\cli.rs:1852:5:
-leakcheck harness failed to build: clang: error: linker command failed with exit code 1120 (use -v to see invocation)
-
-
-
-failures:
-    full_tour_pythonic_and_speed_editions_match_exactly
-    leakcheck_tracker_reports_leaks
-
-test result: FAILED. 35 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.56s
-
-[1m[91merror[0m: test failed, to rerun pass `--test cli`
