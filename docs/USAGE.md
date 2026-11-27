@@ -31,6 +31,33 @@ Every Archx source file must use one of four double extensions:
 - `.ax.lang`
 - `.ax.lg`
 
+The extension is only a hint for editors. It does **not** choose the language contract — see below.
+
+### Declaring the dialect (required)
+
+Archx has two contracts and a module must state which one it wants. The declaration is the **first
+line** of the file:
+
+```
+# archx: dialect=native, version=1
+```
+
+* `dialect=native` — documented Archx semantics: trapping `i64` `int`, UTF-8 byte strings, IEEE
+  `frem`, static dispatch, `struct`, `Result[T, E]` + `?`.
+* `dialect=compat` — byte-identical stdout to CPython 3.12+: arbitrary-precision `int`, Unicode
+  code-point strings, Python `%`/truthiness/`repr`.
+
+A module **without** this line is a compile error (`E0100`) — the compiler never guesses, because a
+program whose behaviour depends on a compiler default is not reproducible. A malformed or
+unsupported directive is `E0101` and names the offending field.
+
+`--dialect compat|native` overrides a directive that is present; it cannot substitute for a missing
+one:
+
+```sh
+archx examples/pythonic.archx.lang --dialect compat --run
+```
+
 ### CLI commands & flags
 
 ```sh

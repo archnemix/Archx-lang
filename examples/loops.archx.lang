@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Loops: while, for, break, continue -- and assignment.
 #
 # Run:  cargo run -- examples/loops.archx.lang

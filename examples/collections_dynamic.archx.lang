@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Archx v0.7.0 Showcase: Planar SIMD Dict/Set, Slicing & Smart Adaptive Typing
 #
 # Demonstrates how a single Archx program seamlessly mixes:

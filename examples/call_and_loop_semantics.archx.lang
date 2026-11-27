@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # v0.9.1 — Pythonic call & loop semantics, verified byte-identical to CPython
 # (see tests/cli.rs::pythonic_defaults_else_keywords_and_map_filter).
 

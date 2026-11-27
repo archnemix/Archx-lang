@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Milestone 5 showcase: value structs, transparent SoA arrays,
 # 16-byte prefix-SSO strings, strided/foreach loops, and `region:` arenas.
 

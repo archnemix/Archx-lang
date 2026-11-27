@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Suite 5 (Archx Tier-2 Dynamic `%ArchxAny` Mode):
 # Forces unboxed 24-byte `%ArchxAny` dynamic dictionaries (`dict[any, any]`) and
 # untyped dynamic dispatch on the exact same workload to measure the cost of dynamic typing.

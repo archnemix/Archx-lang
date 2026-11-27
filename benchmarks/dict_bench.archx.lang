@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Suite 5 (Archx Tier-1 Static/Specialized): Planar SIMD SwissTable + Prefix-SSO + Regions
 # Written in natural Python syntax -- automatically specialized by Archx's Adaptive Engine
 # to zero-tag Planar `dict[str, int]` and `dict[int, int]` with `<16 x i8>` SIMD probing.

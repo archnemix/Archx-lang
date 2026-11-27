@@ -57,6 +57,8 @@ pub(super) fn expand_generics_and_lambdas(program: &Program) -> Result<Program> 
     funcs.extend(m.closures.into_values());
 
     Ok(Program {
+        // Rewriting preserves the module's declared contract.
+        dialect: rewritten.dialect,
         structs,
         enums: rewritten.enums,
         funcs,
@@ -314,6 +316,7 @@ impl<'a> Monomorphizer<'a> {
         }
         self.drain_queues()?;
         Ok(Rewritten {
+            dialect: program.dialect,
             structs,
             enums: program.enums.clone(),
             funcs,
@@ -1299,6 +1302,8 @@ fn restore_env(env: &mut HashMap<String, Type>, name: &str, prev: Option<Type>) 
 }
 
 struct Rewritten {
+    /// Carried through unchanged: monomorphization never changes the module's contract.
+    dialect: crate::dialect::DialectSpec,
     structs: Vec<StructDef>,
     enums: Vec<EnumDef>,
     funcs: Vec<Func>,

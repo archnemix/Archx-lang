@@ -28,17 +28,27 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "== verifying 1:1 source identity of full_tour.py and full_tour_pythonic.archx.lang =="
-if ! cmp -s examples/comparison/full_tour.py examples/comparison/full_tour_pythonic.archx.lang; then
-  echo "MISMATCH: full_tour.py and full_tour_pythonic.archx.lang must be byte-for-byte identical!"
-  exit 1
-fi
-
-echo "== verifying 1:1 source identity of pipelines.py and pipelines.archx.lang =="
-if ! cmp -s benchmarks/pipelines.py benchmarks/pipelines.archx.lang; then
-  echo "MISMATCH: pipelines.py and pipelines.archx.lang must be byte-for-byte identical!"
-  exit 1
-fi
+# The 1:1 editions must be the Python reference byte-for-byte, apart from the mandatory dialect
+# directive on line 1 (AX-013). Comparing the bodies rather than the files keeps the invariant
+# meaningful: a stray edit anywhere below the header still fails here.
+echo "== verifying 1:1 source identity (below the dialect directive) =="
+check_1to1() {
+  py="$1"
+  ax="$2"
+  want="# archx: dialect=compat, version=1"
+  first=$(head -n 1 "$ax")
+  if [ "$first" != "$want" ]; then
+    echo "MISMATCH: $ax must start with \"$want\" (found: $first)"
+    return 1
+  fi
+  if ! diff -q <(tail -n +2 "$ax") "$py" >/dev/null; then
+    echo "MISMATCH: $ax must be byte-for-byte identical to $py below the directive!"
+    return 1
+  fi
+  return 0
+}
+check_1to1 examples/comparison/full_tour.py examples/comparison/full_tour_pythonic.archx.lang || exit 1
+check_1to1 benchmarks/pipelines.py benchmarks/pipelines.archx.lang || exit 1
 
 echo "== building Archx compiler (release) =="
 cargo build --release >/dev/null 2>&1 || { echo "archx build failed"; exit 1; }

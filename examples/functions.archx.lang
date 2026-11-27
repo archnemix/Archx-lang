@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Function definitions, typed parameters, return values, and recursion.
 
 func add(a: int, b: int) -> int:

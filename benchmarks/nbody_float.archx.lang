@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Suite 4 floating-point & OOP method benchmark — 1:1 Pythonic Archx (`class`, `def`, `range`, `[v] * n`, `float`).
 # `[Body(...)] * n` automatically splits into 7 contiguous `double*` SIMD SoA planes while keeping
 # `bodies[i].kinetic()` method calls and bounds-check elision completely zero-overhead.

@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Composite Milestone 5 benchmark — idiomatic safe Archx:
 #   1. particle_sim: 100,000 6-field `Body` structs (automatically split into
 #      6 contiguous `align 16` SoA planes by Archx), 120 timesteps with

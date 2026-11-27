@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Benchmark workload, shared by C, Rust and Archx.
 #
 #   1. sum of squares, reduced mod 1_000_007 so the accumulator stays small

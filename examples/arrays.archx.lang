@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Arrays, indexing, dynamic push/pop, elif, and compound assignment.
 
 func dot(a: [int], b: [int]) -> int:

@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Showcase of 1:1 Pythonic Archx syntax (`def`, `class`, methods, `range`, `enumerate`,
 # `f"..."`, multi-arg `print(sep=..., end=...)`, `float`, `list[T]`, `with region:`, and script mode).
 

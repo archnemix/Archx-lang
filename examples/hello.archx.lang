@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Archx hello world
 func main():
     print("Hello, Archx!")

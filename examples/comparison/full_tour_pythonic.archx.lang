@@ -1,3 +1,4 @@
+# archx: dialect=compat, version=1
 # Archx 5-Way Full-Feature Comparison — Edition 1 & 2:
 #   - `full_tour.py`                  (Python 3.10+)
 #   - `full_tour_pythonic.archx.lang` (Archx 1:1 Pythonic — byte-for-byte identical source!)

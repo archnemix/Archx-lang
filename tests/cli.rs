@@ -33,6 +33,19 @@ fn exe_path(dir: &Path, stem: &str) -> PathBuf {
     p
 }
 
+/// Native-dialect header for inline test sources.
+///
+/// Every module must declare its dialect (AX-013), so the tests state the contract they are written
+/// against instead of relying on a compiler default. Sources that already carry a directive are
+/// left alone, which is how a test can opt into `compat`.
+fn with_native_directive(source: &str) -> String {
+    if source.trim_start().starts_with("# archx:") {
+        source.to_string()
+    } else {
+        format!("# archx: dialect=native, version=1\n{source}")
+    }
+}
+
 /// Compiles `source` with the freshly built archx binary and returns the
 /// program's stdout (with Windows CRLF normalized to LF). Panics if compilation fails.
 fn build_and_run(tag: &str, source: &str) -> String {
@@ -40,7 +53,7 @@ fn build_and_run(tag: &str, source: &str) -> String {
     fs::create_dir_all(&dir).unwrap();
 
     let src = dir.join(format!("{tag}.archx.lang"));
-    fs::write(&src, source).unwrap();
+    fs::write(&src, with_native_directive(source)).unwrap();
 
     let exe = exe_path(&dir, tag);
     let build = Command::new(archx())
@@ -106,7 +119,7 @@ fn emit_ir_works() {
     fs::create_dir_all(&dir).unwrap();
 
     let src = dir.join("hello.archx.lang");
-    fs::write(&src, "func main():\n    print(\"Hello, Archx!\")\n").unwrap();
+    fs::write(&src, with_native_directive("func main():\n    print(\"Hello, Archx!\")\n")).unwrap();
 
     let output = Command::new(archx())
         .arg(&src)
@@ -331,7 +344,7 @@ fn out_of_bounds_panics_cleanly() {
     let src = dir.join("oob.archx.lang");
     fs::write(
         &src,
-        "func read_at(xs: [int], idx: int) -> int:\n    return xs[idx]\n\nfunc main():\n    let xs = [10, 20, 30]\n    print(read_at(xs, 5))\n",
+        with_native_directive("func read_at(xs: [int], idx: int) -> int:\n    return xs[idx]\n\nfunc main():\n    let xs = [10, 20, 30]\n    print(read_at(xs, 5))\n"),
     )
     .unwrap();
 
@@ -357,7 +370,7 @@ fn out_of_bounds_panics_cleanly() {
     let src2 = dir.join("oob_for.archx.lang");
     fs::write(
         &src2,
-        "func step(dst: [int], a: [int], b: [int]):\n    for i in 0..len(dst):\n        dst[i] = a[i] + b[i]\n\nfunc main():\n    let dst = [0; 4]\n    let a = [1; 4]\n    let b = [2; 2]\n    step(dst, a, b)\n",
+        with_native_directive("func step(dst: [int], a: [int], b: [int]):\n    for i in 0..len(dst):\n        dst[i] = a[i] + b[i]\n\nfunc main():\n    let dst = [0; 4]\n    let a = [1; 4]\n    let b = [2; 2]\n    step(dst, a, b)\n"),
     )
     .unwrap();
     let exe2 = exe_path(&dir, "oob_for");
@@ -383,7 +396,7 @@ fn out_of_bounds_panics_cleanly() {
     let src3 = dir.join("oob_while.archx.lang");
     fs::write(
         &src3,
-        "func bad_sieve(limit: int):\n    let flags = [true; limit]\n    let j = -2\n    while j < limit:\n        flags[j] = false\n        j += 3\n\nfunc main():\n    bad_sieve(10)\n",
+        with_native_directive("func bad_sieve(limit: int):\n    let flags = [true; limit]\n    let j = -2\n    while j < limit:\n        flags[j] = false\n        j += 3\n\nfunc main():\n    bad_sieve(10)\n"),
     )
     .unwrap();
     let exe3 = exe_path(&dir, "oob_while");
@@ -412,7 +425,7 @@ fn break_outside_loop_is_an_error() {
     fs::create_dir_all(&dir).unwrap();
 
     let src = dir.join("brk.archx.lang");
-    fs::write(&src, "func main():\n    break\n").unwrap();
+    fs::write(&src, with_native_directive("func main():\n    break\n")).unwrap();
 
     let output = Command::new(archx())
         .arg(&src)
@@ -435,7 +448,7 @@ fn cli_enforces_double_extensions_and_prevents_source_clobber() {
 
     // Plain `.archx` must be rejected:
     let bad = dir.join("prog.archx");
-    fs::write(&bad, "func main():\n    print(1)\n").unwrap();
+    fs::write(&bad, with_native_directive("func main():\n    print(1)\n")).unwrap();
     let bad_out = Command::new(archx())
         .arg(&bad)
         .arg("--emit-ir")
@@ -451,7 +464,7 @@ fn cli_enforces_double_extensions_and_prevents_source_clobber() {
     // All 4 valid double extensions must work:
     for ext in ["archx.lang", "archx.lg", "ax.lang", "ax.lg"] {
         let p = dir.join(format!("ok.{ext}"));
-        fs::write(&p, "func main():\n    print(7)\n").unwrap();
+        fs::write(&p, with_native_directive("func main():\n    print(7)\n")).unwrap();
         let res = Command::new(archx())
             .arg(&p)
             .arg("--emit-ir")
@@ -466,8 +479,8 @@ fn cli_enforces_double_extensions_and_prevents_source_clobber() {
 
     // `-o` pointing at input source file must be refused before invoking clang:
     let src = dir.join("keep.archx.lang");
-    let orig = "func main():\n    print(42)\n";
-    fs::write(&src, orig).unwrap();
+    let orig = with_native_directive("func main():\n    print(42)\n");
+    fs::write(&src, &orig).unwrap();
     let clobber = Command::new(archx())
         .arg(&src)
         .arg("-o")
@@ -512,7 +525,7 @@ func main():
     let src = dir.join("divz.archx.lang");
     fs::write(
         &src,
-        "func divide(a: int, b: int) -> int:\n    return a // b\n\nfunc main():\n    print(divide(10, 0))\n",
+        with_native_directive("func divide(a: int, b: int) -> int:\n    return a // b\n\nfunc main():\n    print(divide(10, 0))\n"),
     )
     .unwrap();
     let exe = exe_path(&dir, "divz");
@@ -694,7 +707,7 @@ fn run_flag_default_output_and_str_alias_work() {
     let src = dir.join("echo_str.ax.lg");
     fs::write(
         &src,
-        "func tag(s: str) -> str:\n    return \"[\" + s + \"]\"\n\nfunc main():\n    print(tag(\"ok\"))\n",
+        with_native_directive("func tag(s: str) -> str:\n    return \"[\" + s + \"]\"\n\nfunc main():\n    print(tag(\"ok\"))\n"),
     )
     .unwrap();
 
@@ -815,8 +828,7 @@ fn pythonic_stdin_input_with_prompt_and_piped_lines() {
     fs::create_dir_all(&dir).unwrap();
 
     let src = dir.join("stdin_io.archx.lang");
-    fs::write(
-        &src,
+    let program = with_native_directive(
         "\
 name = input(\"Name? \")
 n = int(input())
@@ -829,8 +841,8 @@ long_line = input()
 eof_line = input()
 print(f\"hi {name}: {float(total) * scale} len={len(long_line)} eof={len(eof_line)}\")
 ",
-    )
-    .unwrap();
+    );
+    fs::write(&src, program).unwrap();
 
     let exe = exe_path(&dir, "stdin_io");
     let build = Command::new(archx())
@@ -882,7 +894,7 @@ fn pythonic_assert_and_zero_step_panic_cleanly() {
 
     // 1. Failed assertion with message exits 101 and prints message:
     let src_assert = dir.join("fail_assert.archx.lang");
-    fs::write(&src_assert, "x = 5\nassert x == 9, \"expected nine\"\n").unwrap();
+    fs::write(&src_assert, with_native_directive("x = 5\nassert x == 9, \"expected nine\"\n")).unwrap();
     let exe_assert = exe_path(&dir, "fail_assert");
     assert!(Command::new(archx()).arg(&src_assert).arg("-o").arg(&exe_assert).status().unwrap().success());
     let run_assert = Command::new(&exe_assert).output().unwrap();
@@ -898,7 +910,7 @@ fn pythonic_assert_and_zero_step_panic_cleanly() {
     let src_step = dir.join("zero_step.archx.lang");
     fs::write(
         &src_step,
-        "def bad(s: int):\n    for i in range(0, 10, s):\n        print(i)\nbad(0)\n",
+        with_native_directive("def bad(s: int):\n    for i in range(0, 10, s):\n        print(i)\nbad(0)\n"),
     )
     .unwrap();
     let exe_step = exe_path(&dir, "zero_step");
@@ -1066,7 +1078,7 @@ fn dict_key_error_and_dynamic_type_error_panic_cleanly() {
 
     // 1. Missing dictionary key raises KeyError with exit code 101:
     let src_key = dir.join("key_err.archx.lang");
-    fs::write(&src_key, "d = {\"a\": 1}\nprint(d[\"missing\"])\n").unwrap();
+    fs::write(&src_key, with_native_directive("d = {\"a\": 1}\nprint(d[\"missing\"])\n")).unwrap();
     let exe_key = exe_path(&dir, "key_err");
     assert!(Command::new(archx()).arg(&src_key).arg("-o").arg(&exe_key).status().unwrap().success());
     let run_key = Command::new(&exe_key).output().unwrap();
@@ -1080,7 +1092,7 @@ fn dict_key_error_and_dynamic_type_error_panic_cleanly() {
 
     // 2. Incompatible runtime operation on rebound `any` raises TypeError with exit code 101:
     let src_ty = dir.join("type_err.archx.lang");
-    fs::write(&src_ty, "x = \"Abdullah\"\nif False:\n    x = 18\nprint(x - 5)\n").unwrap();
+    fs::write(&src_ty, with_native_directive("x = \"Abdullah\"\nif False:\n    x = 18\nprint(x - 5)\n")).unwrap();
     let exe_ty = exe_path(&dir, "type_err");
     assert!(Command::new(archx()).arg(&src_ty).arg("-o").arg(&exe_ty).status().unwrap().success());
     let run_ty = Command::new(&exe_ty).output().unwrap();
@@ -1210,9 +1222,16 @@ fn full_tour_pythonic_and_speed_editions_match_exactly() {
     let py_src = fs::read_to_string(root.join("examples/comparison/full_tour.py")).unwrap();
     let ax_py_src =
         fs::read_to_string(root.join("examples/comparison/full_tour_pythonic.archx.lang")).unwrap();
+    // The Archx edition carries the mandatory dialect directive on line 1; the rest of the file must
+    // stay byte-for-byte identical to the Python reference, which is the point of the 1:1 edition.
+    let directive_line = "# archx: dialect=compat, version=1";
+    let ax_body = ax_py_src
+        .strip_prefix(directive_line)
+        .map(|rest| rest.trim_start_matches('\n'))
+        .unwrap_or_else(|| panic!("full_tour_pythonic.archx.lang must start with `{directive_line}`"));
     assert_eq!(
-        py_src, ax_py_src,
-        "full_tour.py and full_tour_pythonic.archx.lang must stay 1:1 identical"
+        py_src, ax_body,
+        "full_tour.py and full_tour_pythonic.archx.lang must stay 1:1 identical below the directive"
     );
 
     let ax_spd_src =
@@ -1732,7 +1751,7 @@ main()
     let dir = std::env::temp_dir().join(format!("archx-del-bad-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
     let src = dir.join("del_bad.archx.lang");
-    fs::write(&src, "def main():\n    x = 5\n    del x\n    print(x)\nmain()\n").unwrap();
+    fs::write(&src, with_native_directive("def main():\n    x = 5\n    del x\n    print(x)\nmain()\n")).unwrap();
     let out = Command::new(archx()).arg(&src).arg("--emit-ir").output().unwrap();
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
@@ -1912,4 +1931,100 @@ main()
         )
     };
     assert_eq!(build_and_run("v1_leak_free", src), expected);
+}
+
+/// AX-013: the dialect is an explicit, checked, per-module decision.
+///
+/// The failure this guards against is a program whose behaviour depends on a compiler default, so
+/// a missing directive must be a hard error rather than a fallback, and a malformed directive must
+/// say what is wrong instead of silently picking one side.
+#[test]
+fn dialect_directive_is_required_and_checked() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("archx-dialect-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    let compile = |name: &str, source: &str| {
+        let path = dir.join(format!("{name}.archx.lang"));
+        fs::write(&path, source).unwrap();
+        Command::new(archx())
+            .arg(&path)
+            .arg("--emit-ir")
+            .output()
+            .unwrap()
+    };
+
+    // 1. A module with no directive is rejected, and the message names the code and the fix.
+    let missing = compile("no_directive", "def main():\n    print(1)\nmain()\n");
+    assert!(!missing.status.success(), "a missing directive must fail");
+    let err = String::from_utf8_lossy(&missing.stderr);
+    assert!(err.contains("E0100"), "expected E0100, got: {err}");
+    assert!(
+        err.contains("dialect=compat") && err.contains("dialect=native"),
+        "the error must show both legal directives, got: {err}"
+    );
+
+    // 2. A malformed directive is a different error, not a silent default.
+    for (name, body, needle) in [
+        ("bad_dialect", "dialect=python, version=1", "unknown dialect"),
+        ("bad_version", "dialect=native, version=99", "version 1"),
+        ("missing_version", "dialect=native", "missing `version=`"),
+        ("unknown_key", "dialect=native, version=1, turbo=on", "unknown directive key"),
+    ] {
+        let out = compile(name, &format!("# archx: {body}\ndef main():\n    print(1)\nmain()\n"));
+        assert!(!out.status.success(), "`{body}` must fail");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("E0101"), "`{body}` must be E0101, got: {err}");
+        assert!(err.contains(needle), "`{body}` must mention `{needle}`, got: {err}");
+    }
+
+    // 3. Both dialects compile the same source, and a normal comment on line 1 is not a directive.
+    for dialect in ["compat", "native"] {
+        let out = compile(
+            &format!("ok_{dialect}"),
+            &format!("# archx: dialect={dialect}, version=1\ndef main():\n    print(2)\nmain()\n"),
+        );
+        assert!(
+            out.status.success(),
+            "`{dialect}` must compile: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    let comment_first = compile(
+        "comment_first",
+        "# just a note\ndef main():\n    print(3)\nmain()\n",
+    );
+    assert!(
+        !comment_first.status.success(),
+        "a leading ordinary comment must not stand in for the directive"
+    );
+
+    // 4. `--dialect` overrides the module's directive.
+    let path = dir.join("override.archx.lang");
+    fs::write(&path, "# archx: dialect=compat, version=1\ndef main():\n    print(4)\nmain()\n")
+        .unwrap();
+    let over = Command::new(archx())
+        .arg(&path)
+        .arg("--dialect")
+        .arg("native")
+        .arg("--emit-ir")
+        .output()
+        .unwrap();
+    assert!(
+        over.status.success(),
+        "--dialect must override a valid directive: {}",
+        String::from_utf8_lossy(&over.stderr)
+    );
+    // ...and an unknown override name is rejected rather than ignored.
+    let bad_over = Command::new(archx())
+        .arg(&path)
+        .arg("--dialect")
+        .arg("cobol")
+        .arg("--emit-ir")
+        .output()
+        .unwrap();
+    assert!(!bad_over.status.success(), "an unknown --dialect must be rejected");
 }

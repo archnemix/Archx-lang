@@ -3,6 +3,7 @@
 mod ast;
 mod codegen;
 mod diag;
+mod dialect;
 mod lexer;
 mod parser;
 mod token;
@@ -23,6 +24,9 @@ struct Options {
     output: Option<PathBuf>,
     emit_ir: bool,
     run: bool,
+    /// `--dialect compat|native`. Overrides the module's own directive (the directive is still
+    /// required, so a module cannot be silently compiled against a contract it never declared).
+    dialect: Option<dialect::Dialect>,
 }
 
 fn main() {
@@ -43,6 +47,7 @@ fn run(args: &[String]) -> Result<i32, String> {
         output: None,
         emit_ir: false,
         run: false,
+        dialect: None,
     };
 
     let mut i = 0;
@@ -55,6 +60,18 @@ fn run(args: &[String]) -> Result<i32, String> {
             "-V" | "--version" => {
                 println!("archx {VERSION}");
                 return Ok(0);
+            }
+            "--dialect" => {
+                i += 1;
+                if i >= args.len() {
+                    return Err("missing value after `--dialect`".to_string());
+                }
+                options.dialect = Some(dialect::Dialect::parse(&args[i]).ok_or_else(|| {
+                    format!(
+                        "unknown dialect `{}` (expected `compat` or `native`)",
+                        args[i]
+                    )
+                })?);
             }
             "--emit-ir" => options.emit_ir = true,
             "--run" => options.run = true,
@@ -92,14 +109,31 @@ fn run(args: &[String]) -> Result<i32, String> {
     let source = fs::read_to_string(&input)
         .map_err(|error| format!("cannot read `{}`: {error}", input.display()))?;
 
+    // The dialect is a checked, per-module decision: a module without a directive is an error, and
+    // `--dialect` can only override a directive that is present.
+    let declared = match dialect::parse_directive(&source) {
+        Ok(Some(spec)) => spec,
+        Ok(None) => return Err(render_error(&source, &dialect::missing_directive())),
+        Err(diagnostic) => return Err(render_error(&source, &diagnostic)),
+    };
+    let spec = match options.dialect {
+        Some(over) if over != declared.dialect => dialect::DialectSpec {
+            dialect: over,
+            version: declared.version,
+            source: dialect::DialectSource::Cli,
+        },
+        _ => declared,
+    };
+
     let tokens = lexer::Lexer::new(&source)
         .tokenize()
         .map_err(|diagnostic| render_error(&source, &diagnostic))?;
 
     let mut parser = parser::Parser::new(tokens);
-    let program = parser
+    let mut program = parser
         .parse_program()
         .map_err(|diagnostic| render_error(&source, &diagnostic))?;
+    program.dialect = spec;
 
     let ir = codegen::lower(&program)
         .map_err(|diagnostic| render_error(&source, &diagnostic))?;
@@ -330,6 +364,7 @@ fn print_help() {
     println!("    -o, --output <file>   output executable (default: input name without extension)");
     println!("    --emit-ir             print the generated LLVM IR and exit");
     println!("    --run                 compile, then run the resulting program");
+    println!("    --dialect <name>      override the module's `# archx: dialect=…` (compat|native)");
     println!("    -h, --help            show this help");
     println!("    -V, --version         show the version");
 }

@@ -1,3 +1,4 @@
+# archx: dialect=native, version=1
 # Conditionals (`if`/`else`), booleans, and short-circuit logical operators (`and`, `or`, `not`).
 
 func sign(n: int) -> int:

@@ -66,3 +66,87 @@ Updated after each round of work per `docs/Rules.md`.
    - *Root cause*: `full_tour_speed.archx.lang` used `let dict_score, rev_banner = ...`, whereas `parse_let` previously expected a single identifier before `:` or `=`.
    - *Fix*: Extended `TokenKind::Let` parsing to support both `let a, b = expr` and `let (a, b) = expr` via `StmtKind::TupleAssign`. All 37 unit + 23 CLI e2e tests on Linux/macOS/Windows, 11/11 ASan+LSan checks (`0` leaks), and all 6 `Python 3` / `C` / `Rust` / `Archx` benchmark suites passed cleanly (`13 ms` 1:1 Pythonic & `12 ms` Speed vs `298 ms` Python 3.14).
 
+
+---
+
+## Round 13 — v1.0 Backlog, Phase P0: Leaks, Trapping `int`, and the Dialect Directive
+
+### 1. AX-001 — Memory Leaks (`src/codegen/{comprehensions,loops}.rs`, `ci/leakcheck.c`)
+
+The audit attributed the leak to "a vec in `user_main`". That was wrong. Reproducing with an
+allocator-wrapping harness and `addr2line` on the backtrace showed the leaks were in *three*
+unrelated places, all in the collection pipeline:
+
+1. **Comprehension growth.** `eval_list_comp` reserved the probed length as `cap`, but `push`
+   grows when `len >= cap`. An unfiltered comprehension over `range(n)` therefore grew exactly
+   once — on its *last* element — allocating a fresh block, copying into it, and dropping the
+   pre-sized block. Fix: reserve `capacity + 1` so the common case stays on the single
+   pre-sized allocation.
+2. **`min`/`max` over a generator.** The sequence was materialized and then handed to
+   `claim_stmt_temp`, which removes the temporary's drop *without freeing it*. The buffer is now
+   released explicitly.
+3. **For-each loop variable.** Python rebinds the loop variable in the *enclosing* scope, so the
+   slot outlives one iteration. Every iteration stored a fresh clone over the previous value
+   without dropping it, leaking one element buffer per iteration. The slot is now zero-initialized
+   once and the previous binding is dropped before the new clone is stored.
+
+**Why a new leak gate.** ASan's runtime does not link against Archx IR in this sandbox
+(`__asan_unregister_elf_globals`), and a check that silently cannot run is worse than no check.
+`ci/leakcheck.c` wraps the allocator and exits non-zero if any block is live at exit; a test feeds
+it a deliberately leaky C program and asserts it *fails*, so the gate cannot rot into a no-op.
+
+### 2. AX-002 — Silent Integer Wrapping (`src/codegen/expr.rs`, `runtime.rs`)
+
+`int` wrapped silently: `MAX + 1` printed `-9223372036854775808` and exited 0. Native `int` is now
+a trapping `i64` (`llvm.{sadd,ssub,smul}.with.overflow.i64` + a cold `@archx_int_overflow_fail`).
+
+**Constant folding had to change too.** The folder used `wrapping_add`/`wrapping_mul`, so a literal
+expression like `MAX * 2` was folded at compile time and the runtime check could *never* fire. It
+now uses `checked_*` and leaves an overflowing fold unfolded, so the emitted check traps.
+
+**The rejected speed-up.** Deferring the check to the end of a basic block (one `br` per region
+instead of per operation) measures faster, and it was briefly implemented. Measurement killed it:
+`print(MAX + 1)` printed the wrapped value *and then* panicked. A trapping language must never
+expose the wrapped value, so immediate checks were restored. The honest cost is ~12 % on
+`benchmarks/composite` (24 → 27 ms), where the program's own dataflow is a chain of live field
+accumulations; `nbody_float`, `dict_bench`, `full_tour_pythonic` and `pipelines` are unchanged.
+The correct recovery is a range proof on provably-safe arithmetic, reusing the
+`loop_bounds`/`proven_bound` machinery that already powers bounds-check elision — that needs a
+proof object on the IR, so it is tracked rather than guessed at.
+
+Two implementation traps worth remembering: the deferred form leaked pending state across
+function and helper-body boundaries (the helpers save/restore `next_tmp`/`next_label` but not new
+fields), which produced `br i1 %t155` in a *different function*. Any new codegen-wide mutable
+field must be added to those save/restore points or reset per function body.
+
+### 3. AX-013 — The Dialect Directive (`src/dialect.rs`, `src/main.rs`)
+
+The blocking discovery: **the lexer discards comments**, so the required
+`# archx: dialect=…` first line was unrepresentable — there was no place to read it from. The
+directive is therefore resolved from the source text by a dedicated module *before* lexing, which
+is the only correct place: it is a property of the file, not of the token stream.
+
+Design decisions:
+
+* `DialectSpec { dialect, version, source }` lives on `ast::Program`, so later passes read the
+  contract instead of inferring it. `source` records whether the `--dialect` flag overrode the
+  module, so a diagnostic can explain which rule applied.
+* `DialectRules` is a plain table (`arbitrary_precision_int`, `trapping_int_overflow`,
+  `unicode_code_points`, `python_modulo`, `bit_identical_floats`). Passes consult the table rather
+  than testing syntax, which is what stops a compat-only feature from changing native behaviour.
+* `E0100` = no directive; `E0101` = malformed or unsupported directive. Keeping them distinct
+  matters because "you forgot the header" and "your header is wrong" need different fixes.
+* `--dialect` overrides a *present* directive but cannot substitute for a missing one, so no
+  program can be compiled against a contract it never declared.
+
+**The 1:1 invariant had to be preserved, not sacrificed.** `full_tour.py` and
+`full_tour_pythonic.archx.lang` were byte-identical, and both `benchmarks/run.sh` and a CLI test
+asserted it with `cmp`. Rather than drop the check, the comparison is now
+"identical *below* the directive line", and the header itself is verified separately. A stray edit
+anywhere in the body still fails.
+
+**Test-harness decision.** Inline test sources are wrapped by `with_native_directive`, so each test
+states the contract it is written against instead of relying on a default. Sources that already
+carry a directive are passed through, which is how a test opts into `compat`. The blanket rewrite
+initially over-matched two non-Archx files (a generated `.ll` and the C sources of the leak
+harness); both were caught by the suite and reverted.

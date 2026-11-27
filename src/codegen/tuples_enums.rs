@@ -19,6 +19,7 @@ pub(crate) struct EnumInfo {
 
 pub(super) fn resolve_program_types(raw: &Program, enum_names: &HashSet<String>) -> Program {
     Program {
+        dialect: raw.dialect,
         structs: raw
             .structs
             .iter()

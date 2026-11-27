@@ -61,6 +61,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
     // templates themselves are absent from the layout tables and must not be validated against
     // them (their fields are spelled with type parameters like `T`).
     let program: Program = Program {
+        dialect: program.dialect,
         structs: program
             .structs
             .iter()

@@ -154,6 +154,13 @@ impl Parser {
         }
 
         Ok(Program {
+            // The driver fills this in after parsing (it owns the CLI override and the file name);
+            // the parser has no view of either.
+            dialect: crate::dialect::DialectSpec {
+                dialect: crate::dialect::Dialect::Native,
+                version: crate::dialect::DIRECTIVE_VERSION,
+                source: crate::dialect::DialectSource::Directive,
+            },
             structs,
             enums,
             funcs,

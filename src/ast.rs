@@ -59,6 +59,9 @@ impl Type {
 
 #[derive(Debug, Clone)]
 pub struct Program {
+    /// The dialect this module declared, and how it was chosen. Later passes read this instead of
+    /// inferring a contract from syntax.
+    pub dialect: crate::dialect::DialectSpec,
     pub structs: Vec<StructDef>,
     pub enums: Vec<EnumDef>,
     pub funcs: Vec<Func>,
