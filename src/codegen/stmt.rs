@@ -171,7 +171,7 @@ impl Codegen {
                                         } else {
                                             loaded
                                         };
-                                        self.flush_stmt_temps(out);
+                                                        self.flush_stmt_temps(out);
                                         self.emit_func_exit_cleanup(Some(&slot_ptr), out);
                                         let _ = writeln!(out, "  ret {ty_ir} {final_val}");
                                         self.terminated = true;
@@ -230,7 +230,7 @@ impl Codegen {
                             } else {
                                 raw_val
                             };
-                            self.flush_stmt_temps(out);
+                                self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             let _ = writeln!(out, "  ret {} {}", ir_type(&ty), owned_val);
                         }
@@ -241,7 +241,7 @@ impl Codegen {
                             } else {
                                 boxed
                             };
-                            self.flush_stmt_temps(out);
+                                self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             let _ = writeln!(out, "  ret %ArchxAny {final_v}");
                         }
@@ -261,7 +261,7 @@ impl Codegen {
                             } else {
                                 unboxed
                             };
-                            self.flush_stmt_temps(out);
+                                self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             let _ = writeln!(out, "  ret {} {}", ir_type(&expected), owned_val);
                         }
@@ -290,13 +290,13 @@ impl Codegen {
                     match &self.current_ret.clone() {
                         Some(Type::Any) => {
                             self.mark_runtime_type(&Type::Any);
-                            self.flush_stmt_temps(out);
+                                    self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             out.push_str("  ret %ArchxAny zeroinitializer\n");
                         }
                         Some(Type::Optional(inner)) => {
                             let opt_ir = ir_type(&Type::Optional(inner.clone()));
-                            self.flush_stmt_temps(out);
+                                self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             let _ = writeln!(out, "  ret {opt_ir} zeroinitializer");
                         }
@@ -307,7 +307,7 @@ impl Codegen {
                             ));
                         }
                         None => {
-                            self.flush_stmt_temps(out);
+                                self.flush_stmt_temps(out);
                             self.emit_func_exit_cleanup(None, out);
                             out.push_str("  ret void\n");
                         }

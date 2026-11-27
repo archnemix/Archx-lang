@@ -32,8 +32,12 @@ func main():
         let ir = lower_src(src).unwrap();
         assert!(ir.contains("define internal fastcc i64 @archx_fn_fib(i64 %arg.n)"));
         assert!(ir.contains("icmp sle i64"));
-        assert!(ir.contains("sub i64"));
-        assert!(ir.contains("add i64"));
+        // AX-002: integer arithmetic is trapping. `n - 1` and the `+` in `fib(n-1) + fib(n-2)`
+        // must go through the overflow-checking intrinsics, never a bare wrapping `add`/`sub`.
+        assert!(ir.contains("@llvm.ssub.with.overflow.i64"));
+        assert!(ir.contains("@llvm.sadd.with.overflow.i64"));
+        assert!(ir.contains("@archx_int_overflow_fail"));
+        assert!(!ir.contains(" = sub i64 "));
     }
 
     #[test]

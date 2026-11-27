@@ -2189,10 +2189,14 @@ impl Codegen {
 
     pub(super) fn emit_int_arith(&mut self, op: BinOp, lhs_val: &str, rhs_val: &str, out: &mut String) -> String {
         if let (Ok(a), Ok(b)) = (lhs_val.parse::<i64>(), rhs_val.parse::<i64>()) {
+            // Constant folding must obey the same trapping contract as emitted code: folding
+            // `MAX + 1` to a wrapped value would hand the program a wrong answer at compile time
+            // that the runtime check could never see. A fold that overflows leaves the expression
+            // unfolded, and the emitted `*.with.overflow` pair traps at run time.
             let folded = match op {
-                BinOp::Add => Some(a.wrapping_add(b)),
-                BinOp::Sub => Some(a.wrapping_sub(b)),
-                BinOp::Mul => Some(a.wrapping_mul(b)),
+                BinOp::Add => a.checked_add(b),
+                BinOp::Sub => a.checked_sub(b),
+                BinOp::Mul => a.checked_mul(b),
                 // `int / int` is true division and produces a `float`; folding it to an
                 // integer here would silently truncate (`7 / 2` -> `3`).
                 BinOp::Div => None,
@@ -2205,7 +2209,7 @@ impl Codegen {
                         q
                     })
                 }
-                BinOp::Pow if (0..=62).contains(&b) => Some(ipow_wrapping(a, b as u64)),
+                BinOp::Pow if (0..=62).contains(&b) => ipow_checked(a, b as u64),
                 BinOp::Mod if b != 0 => Some(a.wrapping_rem(b)),
                 _ => None,
             };
@@ -2418,15 +2422,42 @@ impl Codegen {
             return reg;
         }
 
-        let reg = self.next_tmp();
-        let instr = match op {
-            BinOp::Add => "add",
-            BinOp::Sub => "sub",
-            BinOp::Mul => "mul",
+        // The native dialect's `int` is a trapping `i64`: it never wraps. Python's `int` is
+        // arbitrary precision, so wrapping would hand the program a *wrong answer* with no signal,
+        // which is the worst possible outcome. Overflow traps instead, before the value is used.
+        //
+        // The check is immediate on purpose. Deferring it to the end of the basic block batches the
+        // branches (which is tempting: each `br` inhibits vectorisation of the surrounding loop),
+        // but it makes the wrapped value observable — `print(MAX + 1)` would print
+        // `-9223372036854775808` and *then* panic. A trapping language must not expose that value at
+        // all. The cost this buys is measured and recorded in `docs/Change.md`.
+        let (intr, name) = match op {
+            BinOp::Add => ("sadd.with.overflow", "overflow.add"),
+            BinOp::Sub => ("ssub.with.overflow", "overflow.sub"),
+            BinOp::Mul => ("smul.with.overflow", "overflow.mul"),
             _ => unreachable!(),
         };
-        let _ = writeln!(out, "  {reg} = {instr} i64 {lhs_val}, {rhs_val}");
-        reg
+        self.used_int_overflow_fail = true;
+        let pair = self.next_tmp();
+        let _ = writeln!(
+            out,
+            "  {pair} = call {{ i64, i1 }} @llvm.{intr}.i64(i64 {lhs_val}, i64 {rhs_val})"
+        );
+        let res = self.next_tmp();
+        let _ = writeln!(out, "  {res} = extractvalue {{ i64, i1 }} {pair}, 0");
+        let ovf = self.next_tmp();
+        let _ = writeln!(out, "  {ovf} = extractvalue {{ i64, i1 }} {pair}, 1");
+        let bad_lbl = self.fresh_label(name);
+        let ok_lbl = self.fresh_label("overflow.ok");
+        self.emit_cond_br(&ovf, &bad_lbl, &ok_lbl, out);
+
+        self.start_block(&bad_lbl, out);
+        let _ = writeln!(out, "  call void @archx_int_overflow_fail()");
+        let _ = writeln!(out, "  unreachable");
+        self.terminated = true;
+
+        self.start_block(&ok_lbl, out);
+        res
     }
 
     pub(super) fn gen_short_circuit(
@@ -2471,16 +2502,20 @@ impl Codegen {
 
 }
 
-pub(super) fn ipow_wrapping(mut base: i64, mut exp: u64) -> i64 {
-    let mut acc = 1i64;
+/// `base ** exp` for a non-negative `exp`, or `None` when the exact result does not fit in an
+/// `i64`. Wrapping here would let constant folding disagree with the trapping runtime.
+pub(super) fn ipow_checked(mut base: i64, mut exp: u64) -> Option<i64> {
+    let mut acc: i64 = 1;
     while exp > 0 {
-        if exp & 1 != 0 {
-            acc = acc.wrapping_mul(base);
+        if exp & 1 == 1 {
+            acc = acc.checked_mul(base)?;
         }
-        base = base.wrapping_mul(base);
         exp >>= 1;
+        if exp > 0 {
+            base = base.checked_mul(base)?;
+        }
     }
-    acc
+    Some(acc)
 }
 
 pub(super) fn pack_sso_str_words(bytes: &[u8]) -> (i64, i64) {

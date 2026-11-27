@@ -529,6 +529,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
         used_neg_len_fail: false,
         used_pop_empty_fail: false,
         used_div_zero_fail: false,
+        used_int_overflow_fail: false,
         used_neg_exp_fail: false,
         used_zero_step_fail: false,
         used_parse_fail: false,
@@ -1127,6 +1128,8 @@ pub(super) struct Codegen {
     pub(super) used_neg_len_fail: bool,
     pub(super) used_pop_empty_fail: bool,
     pub(super) used_div_zero_fail: bool,
+    /// Emit the `@archx_int_overflow_fail` panic handler in this module.
+    pub(super) used_int_overflow_fail: bool,
     pub(super) used_neg_exp_fail: bool,
     pub(super) used_zero_step_fail: bool,
     pub(super) used_parse_fail: bool,

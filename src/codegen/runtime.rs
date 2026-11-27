@@ -12,6 +12,7 @@ impl Codegen {
             || self.used_pop_empty_fail
             || self.used_oom_fail
             || self.used_div_zero_fail
+            || self.used_int_overflow_fail
             || self.used_neg_exp_fail
             || self.used_zero_step_fail
             || self.used_parse_fail
@@ -662,6 +663,25 @@ entry:
             );
         }
 
+        if self.used_int_overflow_fail {
+            emit_cstr_global(
+                out,
+                "@.err.overflow",
+                "archx runtime panic: integer overflow\n",
+            );
+            out.push_str(
+                r#"
+define private void @archx_int_overflow_fail() cold noreturn nounwind {
+entry:
+  %c = call i32 (ptr, ...) @printf(ptr @.err.overflow)
+  call void @exit(i32 101)
+  unreachable
+}
+
+"#,
+            );
+        }
+
         if self.used_div_zero_fail {
             emit_cstr_global(out, "@.err.divz", "archx runtime panic: division by zero\n");
             out.push_str(
@@ -715,8 +735,21 @@ entry:
                 "declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg)\n",
             );
         }
+        // `smul` is also used directly for allocation-size math, so declare each intrinsic once and
+        // only when the module actually references it.
         if self.used_smul_ovf {
             out.push_str("declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable\n");
+        }
+        if self.used_int_overflow_fail {
+            for intr in ["sadd", "ssub"] {
+                let _ = writeln!(
+                    out,
+                    "declare {{ i64, i1 }} @llvm.{intr}.with.overflow.i64(i64, i64) nounwind readnone speculatable"
+                );
+            }
+            if !self.used_smul_ovf {
+                out.push_str("declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable\n");
+            }
         }
         if self.used_str_eq || self.used_str_cmp {
             out.push_str("declare i32 @memcmp(ptr nocapture, ptr nocapture, i64) nounwind readonly\n");
