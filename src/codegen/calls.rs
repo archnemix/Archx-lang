@@ -834,12 +834,32 @@ impl Codegen {
         let (ty, val) = self.eval_expr(&args[0], out)?;
         match ty {
             Type::Int => {
+                // `abs(i64::MIN)` has no representable result, and the naive `0 - val` wraps to
+                // itself, so it would return a *negative* number (AX-002: a trapping language must
+                // never answer with the wrong value). The negation goes through the checked
+                // intrinsic, so the one input that cannot be represented raises instead.
+                self.used_int_overflow_fail = true;
+                let pair = self.next_tmp();
+                let _ = writeln!(
+                    out,
+                    "  {pair} = call {{ i64, i1 }} @llvm.ssub.with.overflow.i64(i64 0, i64 {val})"
+                );
+                let sub = self.next_tmp();
+                let _ = writeln!(out, "  {sub} = extractvalue {{ i64, i1 }} {pair}, 0");
+                let ovf = self.next_tmp();
+                let _ = writeln!(out, "  {ovf} = extractvalue {{ i64, i1 }} {pair}, 1");
                 let neg = self.next_tmp();
                 let _ = writeln!(out, "  {neg} = icmp slt i64 {val}, 0");
-                let sub = self.next_tmp();
-                let _ = writeln!(out, "  {sub} = sub i64 0, {val}");
                 let r = self.next_tmp();
                 let _ = writeln!(out, "  {r} = select i1 {neg}, i64 {sub}, i64 {val}");
+                let bad_lbl = self.fresh_label("abs.overflow");
+                let ok_lbl = self.fresh_label("abs.ok");
+                self.emit_cond_br(&ovf, &bad_lbl, &ok_lbl, out);
+                self.start_block(&bad_lbl, out);
+                let _ = writeln!(out, "  call void @archx_int_overflow_fail()");
+                let _ = writeln!(out, "  unreachable");
+                self.terminated = true;
+                self.start_block(&ok_lbl, out);
                 Ok((Type::Int, r))
             }
             Type::Float => {

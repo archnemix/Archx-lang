@@ -576,6 +576,156 @@ func main():
     assert!(String::from_utf8_lossy(&run.stdout).contains("division by zero"));
 }
 
+/// The `-O` level is an explicit, validated opt-in (AX-012), and every level must be
+/// behaviour-preserving: a faster pipeline may not change one byte of stdout or hide a check.
+#[test]
+fn optimisation_levels_are_selectable_and_behaviour_preserving() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("archx-optlevel-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("opt.archx.lang");
+    fs::write(
+        &src,
+        with_native_directive(
+            "func main():\n    let xs = [5, 3, 9, 1]\n    let total = 0\n    for i in 0..len(xs):\n        total += xs[i] * (i + 1)\n    print(total, 2.5 * 4.0, 7 // 2, 7 % 3)\n",
+        ),
+    )
+    .unwrap();
+
+    let mut reference: Option<String> = None;
+    // Fused (`-O3`) and separated (`-O 3`) spellings must both work, and all four levels must agree.
+    for (tag, flag, level) in [
+        ("fused2", "-O2", None),
+        ("split1", "-O", Some("1")),
+        ("fused3", "-O3", None),
+        ("split0", "-O", Some("0")),
+    ] {
+        let exe = dir.join(format!("opt-{tag}"));
+        let mut cmd = Command::new(archx());
+        cmd.arg(&src).arg(flag);
+        if let Some(level) = level {
+            cmd.arg(level);
+        }
+        let build = cmd.arg("-o").arg(&exe).output().unwrap();
+        let spelling = match level {
+            Some(level) => format!("{flag} {level}"),
+            None => flag.to_string(),
+        };
+        assert!(
+            build.status.success(),
+            "`{spelling}` must build: {}",
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let run = Command::new(&exe).output().unwrap();
+        assert!(run.status.success(), "`{spelling}` must run");
+        let out = String::from_utf8_lossy(&run.stdout).replace("\r\n", "\n");
+        match &reference {
+            None => reference = Some(out),
+            Some(want) => assert_eq!(&out, want, "`{spelling}` changed the output"),
+        }
+    }
+
+    // An out-of-range level is rejected rather than silently treated as the default.
+    let bad = Command::new(archx())
+        .arg(&src)
+        .arg("-O9")
+        .arg("--emit-ir")
+        .output()
+        .unwrap();
+    assert!(!bad.status.success(), "`-O9` must be rejected");
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("unknown optimisation level"));
+}
+
+/// AX-002: an `int` operation that cannot be represented must trap, never wrap.
+///
+/// The failure mode this guards against is the worst one for a systems language: a *plausible* wrong
+/// answer with no signal (`i64::MAX + 1` printing `-9223372036854775808`, `abs(i64::MIN)` printing a
+/// negative number). Each case is its own program, so one missing check cannot hide behind another
+/// check trapping first.
+#[test]
+fn overflowing_integer_operations_trap_instead_of_wrapping() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+    let cases: [(&str, &str); 6] = [
+        ("add_max", "func main():\n    print(9223372036854775807 + 1)\n"),
+        ("mul_max", "func main():\n    print(9223372036854775807 * 2)\n"),
+        (
+            "square",
+            "func main():\n    print(3037000500 * 3037000500)\n",
+        ),
+        (
+            "runtime_add",
+            "func main():\n    let a = 9223372036854775800\n    let b = 100\n    print(a + b)\n",
+        ),
+        (
+            "abs_min",
+            // `abs(i64::MIN)` has no representable result; the naive `0 - val` wraps to itself.
+            "func main():\n    let min_val = -9223372036854775807 - 1\n    print(abs(min_val))\n",
+        ),
+        ("pow_two_63", "func main():\n    print(2 ** 63)\n"),
+    ];
+
+    for (tag, source) in cases {
+        let dir = std::env::temp_dir().join(format!("archx-ovf-{tag}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let src = dir.join(format!("{tag}.archx.lang"));
+        fs::write(&src, with_native_directive(source)).unwrap();
+        let exe = exe_path(&dir, tag);
+
+        let build = Command::new(archx())
+            .arg(&src)
+            .arg("-o")
+            .arg(&exe)
+            .output()
+            .unwrap();
+        // A constant that overflows may be rejected at compile time instead of trapping at run time;
+        // both are correct answers, and neither may produce a binary that wraps.
+        if !build.status.success() {
+            let err = String::from_utf8_lossy(&build.stderr);
+            assert!(
+                err.contains("overflow"),
+                "`{tag}` failed without mentioning overflow: {err}"
+            );
+            continue;
+        }
+
+        let run = Command::new(&exe).output().unwrap();
+        assert_eq!(
+            run.status.code(),
+            Some(101),
+            "`{tag}` must trap with exit 101, stdout was {:?}",
+            String::from_utf8_lossy(&run.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("integer overflow"),
+            "`{tag}` must report `archx runtime panic: integer overflow`, stdout was {:?}",
+            String::from_utf8_lossy(&run.stdout)
+        );
+    }
+
+    // The other half of the contract: a check that fires on representable results is a bug too.
+    // `2 ** 40` squares the base past the top bit and then never reads it, `(-2) ** 63` is exactly
+    // `i64::MIN`, and the constant folder must agree with the runtime loop on both.
+    let representable: [(&str, &str, &str); 4] = [
+        ("pow_2_40", "2 ** 40", "1099511627776"),
+        ("pow_2_62", "2 ** 62", "4611686018427387904"),
+        ("pow_neg2_63", "(-2) ** 63", "-9223372036854775808"),
+        ("pow_one", "1 ** 100", "1"),
+    ];
+    for (tag, expr, want) in representable {
+        let out = build_and_run(
+            tag,
+            &format!("func main():\n    print({expr})\n"),
+        );
+        assert_eq!(out, format!("{want}\n"), "`{expr}` must not trap");
+    }
+}
+
 #[test]
 fn strings_sso_heap_concat_equality_and_embedded_nul_work() {
     if !has_clang() {

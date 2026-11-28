@@ -18,6 +18,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VALID_EXTENSIONS: [&str; 4] = [".archx.lang", ".archx.lg", ".ax.lang", ".ax.lg"];
+
+/// The optimisation level `archx` compiles with unless `-O` says otherwise.
+///
+/// `-O2` rather than `-O3` is a measured choice, not a default inherited from habit: on the seven
+/// benchmark suites `-O3` moved wall-clock time by under 2% and changed no stdout, while `-O3`'s
+/// larger unrolling and vectorisation widen the surface where a miscompile could hide a safety check.
+/// `-O` exists so this can be re-measured per program (`docs/Thinking.md`, AX-012) instead of assumed.
+const DEFAULT_OPT_LEVEL: &str = "-O2";
 static TMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 struct Options {
@@ -28,6 +36,8 @@ struct Options {
     /// `--dialect compat|native`. Overrides the module's own directive (the directive is still
     /// required, so a module cannot be silently compiled against a contract it never declared).
     dialect: Option<dialect::Dialect>,
+    /// The `clang` optimisation level. Pinned at `-O2` by default: see `optimisation_level`.
+    opt_level: String,
 }
 
 fn main() {
@@ -42,6 +52,24 @@ fn main() {
     }
 }
 
+/// Shared by `-O3` and `-O 3`: validate the level text and store the clang flag for it.
+fn args_i_split(options: &mut Options, level: &str) -> Result<(), String> {
+    options.opt_level = match level {
+        "0" => "-O0",
+        "1" => "-O1",
+        "2" => "-O2",
+        "3" => "-O3",
+        "s" => "-Os",
+        other => {
+            return Err(format!(
+                "unknown optimisation level `{other}` (expected 0, 1, 2, 3 or s)"
+            ))
+        }
+    }
+    .to_string();
+    Ok(())
+}
+
 fn run(args: &[String]) -> Result<i32, String> {
     let mut options = Options {
         input: None,
@@ -49,6 +77,7 @@ fn run(args: &[String]) -> Result<i32, String> {
         emit_ir: false,
         run: false,
         dialect: None,
+        opt_level: DEFAULT_OPT_LEVEL.to_string(),
     };
 
     let mut i = 0;
@@ -74,6 +103,13 @@ fn run(args: &[String]) -> Result<i32, String> {
                     )
                 })?);
             }
+            "-O" | "--opt-level" => {
+                i += 1;
+                if i >= args.len() {
+                    return Err("missing value after `-O` (expected 0, 1, 2, 3 or s)".to_string());
+                }
+                args_i_split(&mut options, &args[i])?;
+            }
             "--emit-ir" => options.emit_ir = true,
             "--run" => options.run = true,
             "-o" | "--output" => {
@@ -82,6 +118,10 @@ fn run(args: &[String]) -> Result<i32, String> {
                     return Err("missing value after `-o`".to_string());
                 }
                 options.output = Some(PathBuf::from(&args[i]));
+            }
+            // Accept the fused spelling too: `-O3` is what everyone types.
+            other if other.len() > 2 && other.starts_with("-O") => {
+                args_i_split(&mut options, &other[2..])?;
             }
             other if other.starts_with('-') => {
                 return Err(format!("unknown option `{other}` (try `archx --help`)"));
@@ -167,7 +207,7 @@ fn run(args: &[String]) -> Result<i32, String> {
     let mut clang_cmd = Command::new(&clang);
     clang_cmd
         .arg(&ir_path)
-        .arg("-O2")
+        .arg(&options.opt_level)
         // One IEEE-754 operation per source operation. Recent clang makes contraction
         // (`a*b+c` -> `fma`) the default even at `-O2`, which changes the *last bits* of any
         // floating-point result versus Python, Rust, and the interpreter-style evaluation this
@@ -363,6 +403,7 @@ fn print_help() {
     println!();
     println!("OPTIONS:");
     println!("    -o, --output <file>   output executable (default: input name without extension)");
+    println!("    -O <0|1|2|3|s>        clang optimisation level (default `-O2`, see docs/USAGE.md)");
     println!("    --emit-ir             print the generated LLVM IR and exit");
     println!("    --run                 compile, then run the resulting program");
     println!("    --dialect <name>      override the module's `# archx: dialect=…` (compat|native)");

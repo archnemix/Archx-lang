@@ -228,3 +228,38 @@ for the shell gate to verify (so a feature that produces *wrong* IR fails here).
 the shell script would have been two definitions of "every runtime feature" that could drift apart.
 The gate was watched failing on a planted `%nonexistent_label` phi before being wired into CI.
 
+---
+
+## Round 13 — AX-002: the trapping contract had three more holes, found by writing the test first
+
+The work order asks for a *differential* test: every overflowing operation must trap. Writing it
+turned up two defects that the existing `MAX + 1` / `MAX * 2` checks could not catch, because they
+were on different code paths than the ones already covered:
+
+1. **`abs(i64::MIN)` printed `-9223372036854775808`.** The naive lowering was `select (val < 0)
+   (0 - val) val`, and `0 - i64::MIN` wraps to itself, so the "absolute value" came back negative —
+   the precise failure mode the trapping contract exists to prevent: a plausible wrong answer with no
+   signal. Negation now goes through `llvm.ssub.with.overflow` and traps. The constant folder agrees.
+2. **`2 ** 63` printed `-9223372036854775808`.** Integer `**` was lowered as an unchecked binary
+   exponentiation loop with plain `mul`. Both multiplies now use `llvm.smul.with.overflow`.
+
+Fixing (2) surfaced the interesting part: a *conservative* check here is wrong, not merely slow.
+`2 ** 40` squares the base past the top bit in the final iteration and never reads it, and
+`(2 ** 40) ** 2` overflows only in a squaring step whose result is dead. So the flags are gated on
+whether the value is used at all — the product is checked only when the current exponent bit is 1,
+the squared base only when another iteration follows (`e2 != 0`). With that gating, `2 ** 40`,
+`2 ** 62`, `(-2) ** 63` (= `i64::MIN`, representable) and `1 ** 100` all answer correctly, while
+`2 ** 63`, `(2 ** 40) ** 2` and `3 ** 40` trap. Both directions are asserted in
+`tests/cli.rs::overflowing_integer_operations_trap_instead_of_wrapping`, because a check that fires on
+a representable result is just as much a bug.
+
+**On "is there more optimization to get?"** — I measured instead of assuming. `-O3`, `-O3` with a
+larger unrolling threshold, `-march=native` and `-ffast-math` were all built from the same `.ll` and
+timed on four suites (`docs/OPTIMIZATION_AB.md`). Every delta was inside noise except a 2% change on
+an 8.5 ms program, and all variants produced byte-identical stdout. So the default stays `-O2`, close
+overflow/bounds-checked code being exactly where one wants the fewest new transformations, and the
+level became an explicit, validated `-O <0|1|2|3|s>` flag instead of a hard-coded argument. `-ffast-math`
+is refused on principle (it breaks the CPython-identical float contract), and `-march=native` on
+portability (the artifact would depend on the build host). I also verified at both `-O2` and `-O3`
+that an out-of-bounds read and a loop overflow still trap, i.e. the optimizer is not deleting checks.
+

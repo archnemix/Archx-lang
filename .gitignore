@@ -33,6 +33,9 @@
 /full_tour_pythonic
 /hello
 /pipelines
+# Default output names `archx <file>` produces when no `-o` is given.
+/a
+/p1
 
 # Stray build outputs from ad-hoc runs
 /W1

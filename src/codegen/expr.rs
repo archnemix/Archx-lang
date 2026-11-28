@@ -2266,16 +2266,57 @@ impl Codegen {
             let _ = writeln!(out, "  {bit} = and i64 {e}, 1");
             let odd = self.next_tmp();
             let _ = writeln!(out, "  {odd} = icmp ne i64 {bit}, 0");
+            // Both multiplies are checked, for the same reason every other `int` op is (AX-002):
+            // `2 ** 63` used to multiply with a plain `mul` and print `-9223372036854775808`. The
+            // squaring step has to be checked as well, otherwise a base that overflows on a bit the
+            // exponent never uses would trap for an answer that is perfectly representable.
+            self.used_int_overflow_fail = true;
+            self.used_smul_ovf = true;
+            let acc_pair = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {acc_pair} = call {{ i64, i1 }} @llvm.smul.with.overflow.i64(i64 {acc}, i64 {b})"
+            );
             let prod = self.next_tmp();
-            let _ = writeln!(out, "  {prod} = mul i64 {acc}, {b}");
+            let _ = writeln!(out, "  {prod} = extractvalue {{ i64, i1 }} {acc_pair}, 0");
+            let acc_ovf = self.next_tmp();
+            let _ = writeln!(out, "  {acc_ovf} = extractvalue {{ i64, i1 }} {acc_pair}, 1");
+            let base_pair = self.next_tmp();
+            let _ = writeln!(
+                out,
+                "  {base_pair} = call {{ i64, i1 }} @llvm.smul.with.overflow.i64(i64 {b}, i64 {b})"
+            );
+            let b2 = self.next_tmp();
+            let _ = writeln!(out, "  {b2} = extractvalue {{ i64, i1 }} {base_pair}, 0");
+            let base_ovf = self.next_tmp();
+            let _ = writeln!(out, "  {base_ovf} = extractvalue {{ i64, i1 }} {base_pair}, 1");
             let next_acc = self.next_tmp();
             let _ = writeln!(out, "  {next_acc} = select i1 {odd}, i64 {prod}, i64 {acc}");
             let _ = writeln!(out, "  store i64 {next_acc}, ptr {acc_slot}, align 8");
-            let b2 = self.next_tmp();
-            let _ = writeln!(out, "  {b2} = mul i64 {b}, {b}");
             let _ = writeln!(out, "  store i64 {b2}, ptr {base_slot}, align 8");
             let e2 = self.next_tmp();
             let _ = writeln!(out, "  {e2} = lshr i64 {e}, 1");
+            // A flag only matters if the value it protects is actually used. The product is used only
+            // on an odd bit of the exponent, and the squared base only if another iteration follows:
+            // without this, `(2 ** 40) ** 2` would trap on a dead square instead of answering, and
+            // `2 ** 40` (base squared past the top bit, never read again) would trap on a correct
+            // result. Being conservative here would make the check *wrong*, not just slower.
+            let again = self.next_tmp();
+            let _ = writeln!(out, "  {again} = icmp ne i64 {e2}, 0");
+            let use_acc = self.next_tmp();
+            let _ = writeln!(out, "  {use_acc} = and i1 {odd}, {acc_ovf}");
+            let use_base = self.next_tmp();
+            let _ = writeln!(out, "  {use_base} = and i1 {again}, {base_ovf}");
+            let ovf = self.next_tmp();
+            let _ = writeln!(out, "  {ovf} = or i1 {use_acc}, {use_base}");
+            let ovf_lbl = self.fresh_label("pow.overflow");
+            let step_lbl = self.fresh_label("pow.step");
+            self.emit_cond_br(&ovf, &ovf_lbl, &step_lbl, out);
+            self.start_block(&ovf_lbl, out);
+            let _ = writeln!(out, "  call void @archx_int_overflow_fail()");
+            let _ = writeln!(out, "  unreachable");
+            self.terminated = true;
+            self.start_block(&step_lbl, out);
             let _ = writeln!(out, "  store i64 {e2}, ptr {exp_slot}, align 8");
             self.emit_br(&cond_lbl, out);
 

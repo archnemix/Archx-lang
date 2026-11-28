@@ -73,6 +73,11 @@ than a silent choice between two incompatible `int` definitions.
 
 ### CLI commands & flags
 
+`-O <0|1|2|3|s>` selects the `clang` optimisation level (default `-O2`). Every level is
+behaviour-preserving: the suite asserts identical stdout across `-O0`…`-O3`, and the bounds/overflow
+checks survive all of them (`docs/OPTIMIZATION_AB.md` records why `-O2` is the default, and why
+`-ffast-math` and `-march=native` are not options).
+
 ```sh
 # 1. Compile to native executable in current directory (e.g. ./pythonic or .\pythonic.exe):
 archx examples/pythonic.archx.lang

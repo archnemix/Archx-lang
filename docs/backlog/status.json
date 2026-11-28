@@ -6,7 +6,7 @@
   },
   "AX-002": {
     "state": "partial",
-    "note": "Trapping `i64` via llvm.s*.with.overflow + checked_* const folding (e55ea1d): MAX+1, MAX*2, 2**63 all trap with exit 101, and a literal can no longer bypass the check by folding. REMAINING: explicit `wrapping_*` intrinsics for the native dialect, and `add nsw` only with a proof (the immediate check costs ~12% on composite; batching was rejected because it exposes the wrapped value before the panic)."
+    "note": "Trapping i64 via llvm.s*.with.overflow + checked const folding (e55ea1d), and this round closed the last two silent-wrap paths: `abs(i64::MIN)` used to print a NEGATIVE number (negation is now the checked intrinsic, so it traps) and `2 ** 63` used to print i64::MIN (integer `**` used a plain unchecked `mul`; both multiplies are now checked, gated on whether the value is actually used, so `2 ** 40`, `2 ** 62`, `(-2) ** 63` and `1 ** 100` still answer correctly while `2 ** 63`, `(2 ** 40) ** 2` and `3 ** 40` trap). tests/cli.rs::overflowing_integer_operations_trap_instead_of_wrapping asserts six trapping cases and four representable ones. REMAINING: the explicit `wrapping_*` intrinsics for the native dialect (an API for opting out where the program means modular arithmetic) — not started, so AX-002 stays partial."
   },
   "AX-003": {
     "state": "done",
@@ -35,5 +35,9 @@
   "AX-009": {
     "state": "done",
     "note": "ci/verify_ir.sh lowers every example, every benchmark and a targeted runtime corpus and passes each module to clang -c (a real LLVM parse + verify); it is wired into CI and currently verifies 29 modules with 0 failures. The corpus that reaches every runtime subsystem (ints/floats, %ArchxAny incl. the binop helper that was broken, dict/set, regions, SoA structs, tuples/enums/match, comprehensions/sort/zip/generics, input/assert) lives once in src/codegen/tests.rs::RUNTIME_CORPUS, is lowered by the unit test every_runtime_feature_lowers_to_ir, and is written to ci/out/runtime-corpus/ for the shell gate. The gate was proven to fail on a planted bad phi predecessor (the exact v0.9.1 bug shape) before being trusted. NOTE: `llvm-as`/`opt` are not installed in the development sandbox or on the CI images' default PATH, so the frontend is clang's IR parser/verifier, not llvm-as."
+  },
+  "AX-012": {
+    "state": "partial",
+    "note": "The optimisation level is now explicit and validated (`-O <0|1|2|3|s>`, default `-O2`, pinned `-ffp-contract=off`), with a test asserting identical stdout across -O0..-O3, and docs/OPTIMIZATION_AB.md records the measured A/B of -O3 / -O3+unroll / -march=native / -ffast-math (all within noise; the last two rejected on contract and portability grounds). Bounds and overflow checks were verified to still trap at -O2 and -O3. REMAINING: the clang version pin in CI, `ci/out/toolchain.txt` already exists via ci/logs/toolchain.log but is not enforced, hashing inputs, and the byte-identity gate over all 7 suites."
   }
 }
