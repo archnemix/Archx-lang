@@ -5,6 +5,7 @@
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00", align 1
+@.fmt.str.repr = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.0 = private unnamed_addr constant [4 x i8] c"big\00", align 4
 @.str.1 = private unnamed_addr constant [6 x i8] c"small\00", align 4
 

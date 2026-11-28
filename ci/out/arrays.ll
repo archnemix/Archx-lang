@@ -8,6 +8,7 @@
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 @.str.true = private unnamed_addr constant [5 x i8] c"true\00", align 1
 @.str.false = private unnamed_addr constant [6 x i8] c"false\00", align 1
+@.fmt.str.repr = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.fmt.int.elem = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
 @.fmt.str.elem = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.none = private unnamed_addr constant [5 x i8] c"None\00", align 1
@@ -741,6 +742,15 @@ ret_false:
 
 @.fmt.pstr.nl = private unnamed_addr constant [6 x i8] c"%.*s\0A\00", align 1
 @.fmt.pstr = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+; Compat `repr()` spelling for an element inside a container: CPython shows quotes around a string.
+define private void @archx_str_print_repr(%ArchxStr %s) nounwind {
+entry:
+  %q1 = call i32 @putchar(i32 39)
+  call fastcc void @archx_str_print(%ArchxStr %s, i1 false)
+  %q2 = call i32 @putchar(i32 39)
+  ret void
+}
 
 define private fastcc void @archx_str_print(%ArchxStr %s, i1 %newline) {
 entry:
