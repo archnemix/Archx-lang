@@ -9,8 +9,8 @@
     "note": "Trapping `i64` via llvm.s*.with.overflow + checked_* const folding (e55ea1d): MAX+1, MAX*2, 2**63 all trap with exit 101, and a literal can no longer bypass the check by folding. REMAINING: explicit `wrapping_*` intrinsics for the native dialect, and `add nsw` only with a proof (the immediate check costs ~12% on composite; batching was rejected because it exposes the wrapped value before the panic)."
   },
   "AX-003": {
-    "state": "partial",
-    "note": "The CLI already reads CARGO_PKG_VERSION, so the binary's version is single-sourced. REMAINING: regenerate the README/docs numbers from ci/out/benchmarks.txt, fix the test count, drop \"(Current)\" from the v0.8.0 changelog, and add the CI drift script."
+    "state": "done",
+    "note": "Version single-sourced: Cargo.toml 0.9.0 -> 0.9.1 (the CLI already read CARGO_PKG_VERSION; `archx --version` now prints 0.9.1) and benchmarks/run.sh now derives every version string from Cargo.toml instead of hard-coding 0.9.0. The README benchmark table is GENERATED from ci/out/benchmarks.txt by tools/sync_readme_benchmarks.py, which also rewrites the two perf claims; `--check` fails on drift and was verified to fail on an injected stale number. tools/check_test_count.py asserts the quoted count equals the `#[test]` attributes (79 = 41 unit + 38 CLI; the old 68 was stale). \"(Current)\" removed from the v0.8.0 changerog heading. Both checks run in CI. HONESTY FIX: the old claim `4.1x-69.8x faster than Python 3` silently omitted Suite 1 where Archx is 0.3x; the range is now `4.0x-71.2x` over Suites 2-7 with the Suite 1 loss stated in the same sentence, and the full_tour sentence no longer says it beats C (the CI run has C at 12 ms vs Archx 17 ms)."
   },
   "AX-005": {
     "state": "done",

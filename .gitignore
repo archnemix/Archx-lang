@@ -35,3 +35,7 @@
 /W2
 /W3
 /ax001-tmp
+
+# Python bytecode from the repo's tools/ scripts.
+__pycache__/
+*.pyc

@@ -196,3 +196,22 @@ installed in this sandbox either, so the gate became `tools/check_binaries.py`, 
 four bytes of each `git ls-files` entry. It was proven to fail on a planted ELF before being wired
 into CI — a gate nobody has watched fail is not a gate.
 
+**AX-003 — the stale numbers were not just stale, they were flattering.** Regenerating the README
+table from `ci/out/benchmarks.txt` exposed three separate misstatements that no test could catch
+because nothing compared prose to an artifact:
+
+* the quoted range `4.1×–69.8×` covered only the suites where Archx wins; Suite 1 (`primes`) is
+  **0.3×**, slower than CPython, and the old text simply did not mention it. The range is now over
+  Suites 2–7 with a different denominator (`4.0×` is `pipelines`, not `dict`), and the losing suite is
+  named in the same sentence;
+* `full_tour` was described as "beating `clang -O2` `25 ms` and `rustc -O` `19 ms`" — the very CI
+  report the sentence cites has C at **12 ms** and Rust at **17 ms**, i.e. Archx ties Rust and loses
+  to C. The sentence now states the comparison without claiming a win;
+* the test count (`68`) was four tests behind, and the version was `0.9.0` in `Cargo.toml`,
+  `benchmarks/run.sh` and the report header while the docs claimed `v0.9.1`.
+
+The fix is structural rather than textual: `tools/sync_readme_benchmarks.py` owns the table *and* the
+two claim sentences, `tools/check_test_count.py` owns the count, and CI runs both with `--check`.
+Both gates were watched failing (an injected `999 ms` row, and a mismatched count) before being
+trusted. A prose number is only as good as the check that recomputes it.
+

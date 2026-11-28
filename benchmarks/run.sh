@@ -23,6 +23,14 @@ trap 'rm -rf "$TMP"' EXIT
 
 cd "$ROOT" || exit 1
 
+# Single source of truth for the version (AX-003): every number printed below is derived from
+# Cargo.toml, so a release bump cannot leave this report claiming an old version.
+VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+if [ -z "$VERSION" ]; then
+  echo "error: cannot read the version from Cargo.toml" >&2
+  exit 1
+fi
+
 if ! command -v python3 >/dev/null 2>&1; then
   echo "error: python3 is required to run head-to-head benchmarks" >&2
   exit 1
@@ -348,7 +356,7 @@ read -r TC_KB  TC_SKB  <<<"$(measure_sizes "$TMP/tour_c")"
 read -r TR_KB  TR_SKB  <<<"$(measure_sizes "$TMP/tour_rs")"
 
 REPORT=$(cat <<EOF
-Archx vs Python 3 vs C vs Rust -- head-to-head benchmarks (v0.9.0)
+Archx vs Python 3 vs C vs Rust -- head-to-head benchmarks (v${VERSION})
 ==================================================================
 
 Toolchain
@@ -356,7 +364,7 @@ Toolchain
 $(python3 --version)
 $(clang --version | head -1)
 $(rustc --version)
-archx v0.9.0 (this repo, cargo build --release)
+archx v${VERSION} (this repo, cargo build --release)
 optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= opt-level 2) for Rust, clang -O2 -ffp-contract=off for Archx
 
 1. Scalar loops (benchmarks/primes.*)
