@@ -101,6 +101,21 @@ jobs:
           set -o pipefail
           cargo build --release 2>&1 | tee ci/logs/build.log
 
+      - name: Compat gate on the shipped examples (AX-017)
+        # The probes are already covered by the test above; this runs the *same* gate a user runs, over
+        # the files a user reads, from the shipped binary. It is a second, independent opinion: the
+        # harness proves the probes, `archx check` proves the documentation. Exit code 2 (nothing could
+        # be compared) fails too, so a runner without python3 cannot turn this into a green no-op.
+        run: |
+          set -o pipefail
+          ./target/release/archx check --against-python \
+              examples/comparison/full_tour.py \
+              examples/comparison/full_tour_pythonic.archx.lang \
+              benchmarks/pipelines.py \
+              benchmarks/pipelines.archx.lang \
+              --format=junit --output=ci/records/conformance-gate.xml 2>&1 \
+            | tee ci/logs/compat-gate.log
+
       - name: Verify builds are reproducible (AX-012)
         # Two clean compilations must agree byte for byte: emitted IR, the linked binary, and the
         # program's stdout/stderr. This is the gate that keeps hash-map iteration order, temp paths and

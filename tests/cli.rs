@@ -2526,3 +2526,133 @@ fn dialect_matrix_is_the_table_the_compiler_obeys() {
     // The summary count is derived from the rows, so it cannot go stale.
     assert!(text.contains("of 8 rules differ between the contracts"), "{text}");
 }
+
+/// Writes `source` into a fresh temp directory under `name` and returns the directory.
+fn temp_src(name: &str, file: &str, source: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("archx-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(dir.join(file).parent().unwrap()).unwrap();
+    fs::write(dir.join(file), source).unwrap();
+    dir
+}
+
+fn have_python() -> bool {
+    Command::new("python3")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+#[test]
+fn the_python_gate_passes_a_matching_module_and_invents_no_directive() {
+    if !has_clang() || !have_python() {
+        return;
+    }
+    // No directive at all: the check must supply `compat` on its own copy and say so, rather than
+    // silently compiling the file under some other contract.
+    let dir = temp_src("gateok", "plain.py", "x = 21\nprint(x * 2)\n");
+    let out = Command::new(archx())
+        .arg("check")
+        .arg("--against-python")
+        .arg(dir.join("plain.py"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "stdout: {stdout}");
+    assert!(stdout.contains("ok      "), "{stdout}");
+    assert!(stdout.contains("dialect=compat; the file declares none"), "{stdout}");
+    assert!(stdout.contains("1 matched"), "{stdout}");
+}
+
+#[test]
+fn the_python_gate_fails_on_a_divergence_and_names_the_rule_that_explains_it() {
+    if !has_clang() || !have_python() {
+        return;
+    }
+    // `int` overflow traps under both contracts (AX-002) while CPython produces the exact value, so
+    // stdout really does differ. The gate must fail *and* attribute the difference.
+    let source = "# archx: dialect=compat, version=1\nx = 9223372036854775807\nprint(x + 1)\n";
+    let dir = temp_src("gatebad", "diverges.archx.lang", source);
+    let out = Command::new(archx())
+        .arg("check")
+        .arg("--against-python")
+        .arg(dir.join("diverges.archx.lang"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "a divergence must fail the gate; stdout: {stdout}"
+    );
+    assert!(stdout.contains("FAILED"), "{stdout}");
+    assert!(
+        stdout.contains("int overflow") || stdout.contains("no dialect rule predicts"),
+        "a divergence must be explained or explicitly called a bug:\n{stdout}"
+    );
+}
+
+#[test]
+fn the_python_gate_reports_skips_and_stale_xfail_markers_instead_of_passing() {
+    if !has_clang() || !have_python() {
+        return;
+    }
+    // A documented gap stays green...
+    // `int` overflow is a real, documented divergence under both contracts, so the marker is honest.
+    let gap = "# archx: dialect=compat, version=1\n# conformance: xfail int overflow\n\
+                x = 9223372036854775807\nprint(x + 1)\n";
+    let dir = temp_src("gategap", "gap.py", gap);
+    let out = Command::new(archx())
+        .arg("check")
+        .arg("--against-python")
+        .arg(dir.join("gap.py"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "stdout: {stdout}");
+    assert!(stdout.contains("xfail   "), "{stdout}");
+    assert!(stdout.contains("1 xfail"), "{stdout}");
+
+    // ...but a native-only module is not Python at all, so it is a skip (exit 2), never a pass.
+    let native = "# archx: dialect=native, version=1\nwith region:\n    print(1)\n";
+    let dir = temp_src("gateskip", "notpython.archx.lang", native);
+    let out = Command::new(archx())
+        .arg("check")
+        .arg("--against-python")
+        .arg(dir.join("notpython.archx.lang"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "an incomparable file must not exit 0; stdout: {stdout}"
+    );
+    assert!(stdout.contains("SKIPPED"), "{stdout}");
+    assert!(stdout.contains("python3"), "{stdout}");
+}
+
+#[test]
+fn the_python_gate_emits_junit_that_a_ci_system_can_read() {
+    if !has_clang() || !have_python() {
+        return;
+    }
+    let dir = temp_src("gatejunit", "suite/a.py", "print(1)\n");
+    let report = dir.join("report.xml");
+    let out = Command::new(archx())
+        .arg("check")
+        .arg("--against-python")
+        .arg("--format=junit")
+        .arg(format!("--output={}", report.display()))
+        .arg(dir.join("suite"))
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{:?}", out.status);
+    let xml = fs::read_to_string(&report).unwrap();
+    assert!(xml.starts_with("<?xml version=\"1.0\""), "{xml}");
+    assert!(xml.contains("<testsuite name=\"archx.conformance\""), "{xml}");
+    assert!(xml.contains("suite/a.py"), "{xml}");
+    // The document must be well-formed: equal opening and closing tags for the suite.
+    assert!(xml.trim_end().ends_with("</testsuite>"), "{xml}");
+}

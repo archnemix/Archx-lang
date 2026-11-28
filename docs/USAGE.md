@@ -158,6 +158,52 @@ turns that report into one object per line, which is what editors and build syst
 the message says so. The full registry — one entry per code, each with an explanation — is
 [`docs/ERROR_CODES.md`](ERROR_CODES.md), generated from the compiler itself.
 
+### Checking a module against CPython (`archx check --against-python`)
+
+Because an Archx module is also a Python file — line 1 is the dialect directive, which Python reads as
+a comment — the compiler can answer the only question that really matters about a compat module:
+
+```console
+$ archx check --against-python demo.archx.lang
+ok      demo.archx.lang
+        matches Python 3.12.1
+```
+
+It compiles the file, runs the binary and `python3` on the same bytes, and compares **stdout** byte for
+byte. When a line differs, it says where and, when the difference is one the dialect matrix predicts,
+which rule explains it:
+
+```console
+$ archx check --against-python overflow.archx.lang
+FAILED  overflow.archx.lang
+        stdout differs at line 2:
+          python3: 9223372036854775808
+          archx:   archx runtime panic: integer overflow
+        this looks like the `int overflow` divergence; run `archx --dialect-matrix` for the contract
+```
+
+A difference that **no** rule predicts is reported as a conformance bug, not excused:
+
+```console
+        no dialect rule predicts this difference, so it is a conformance bug
+```
+
+Points worth knowing:
+
+* **Directories work.** `archx check --against-python tests/conformance` checks every probe; it is the
+  same gate the test suite runs, available to users.
+* **Only stdout is judged.** The exit code and stderr are *reported but not compared*: a compat module
+  traps where CPython raises (that is the `runtime failure` row), and treating that as a failure would
+  make the gate useless for real programs.
+* **A file without a directive is compiled as `compat`**, and the report says so — the check never
+  implies a module declared a contract it did not.
+* **Known gaps stay green.** A `# conformance: xfail <reason>` marker on line 2 (the same marker the
+  probes use) turns an expected difference into `xfail`, and a marker that starts matching now
+  **fails** as stale. Exit codes: `0` all agree, `1` a divergence or compile failure, `2` nothing could
+  be compared — so a machine without `python3` cannot turn the gate into a passing no-op.
+* **`--format=junit --output=report.xml`** writes a JUnit report, which every CI system renders and
+  which distinguishes `skipped` from `passed` natively.
+
 ---
 
 ## 3. Program Structure: Pythonic Script Mode & `def main():`

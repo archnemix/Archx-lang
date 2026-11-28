@@ -452,3 +452,37 @@ rather than a claim.
 keeps the printed order and the table from drifting apart — and it is what makes both functions used,
 so `deny(dead_code)` cannot be satisfied by an unused helper.
 
+## Round 20 — AX-017: a gate that cannot be green by doing nothing
+
+The work order asks for `archx check --against-python` and says CI must fail on any diff. Written
+naively, three of those words are traps, and each one produces a gate that passes without checking
+anything:
+
+1. **"all 94 probes pass"** — but 40 of the probes are *documented* gaps marked `xfail`. A gate that
+   demands every probe match is red forever and gets deleted within a week. So the check reads the same
+   `# conformance: xfail <reason>` marker the harness reads, and — the part that matters — a marker that
+   *starts* matching is a **failure** (`stale xfail`), because the only thing worse than an unfixed gap
+   is a list of gaps that lies about itself.
+2. **"compare with CPython"** — but a compat module *traps* where CPython raises; that is the documented
+   `runtime failure` row. Comparing exit codes or stderr would make the tool unusable on the programs
+   people actually write, so only stdout is judged, and the exit code is still printed so nothing is
+   hidden. Judging less is what makes judging reliably possible.
+3. **"CI fails on any diff"** — a runner without `python3`, or a file that is not Python at all (a native
+   module with `with region:`), must not look like agreement. Exit 2, and `<skipped/>` in the JUnit
+   report, so "nothing ran" and "everything agreed" are distinguishable by a machine.
+
+The interesting design question was *where the reference answer comes from*. I could have shelled out
+to the harness, but then the tool would only work inside this repository. Instead the compiler reads the
+file itself: the fact that a probe is one file for both languages is the whole trick, so the gate is a
+first-class feature rather than a test fixture.
+
+Two details I want to keep. **The attributed rule is a hint, and it is narrow on purpose**: `attribute`
+has to match a concrete shape (`True`→`true`, quotes added inside a container, a trapped overflow, a
+truncated quotient) before it names anything. A mismatch that fits no shape is reported as a conformance
+bug, because a wrong explanation is worse than none — the user stops looking. And **the compiler under
+test is `current_exe()`**, so the gate can never verify a different build than the one invoked.
+
+Finally the numbers: the gate over `tests/conformance` reports *exactly* what the harness reports —
+65 matched, 40 xfail, 0 diverged, 0 failed to compile. Two independent implementations of the same
+question agreeing is the point; if they ever disagree, one of them is broken and now we hear about it.
+

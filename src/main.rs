@@ -6,6 +6,7 @@ mod codegen;
 mod diag;
 mod diagnose;
 mod dialect;
+mod check;
 mod dialect_rules;
 mod error_codes;
 mod lexer;
@@ -241,6 +242,9 @@ fn run(args: &[String], json: bool) -> DriverResult<i32> {
             "-V" | "--version" => {
                 println!("archx {VERSION}");
                 return Ok(0);
+            }
+            "check" => {
+                return check_command(&args[i + 1..]);
             }
             "--dialect-matrix" => {
                 // The matrix the compiler actually obeys, for both humans and the docs generator.
@@ -687,11 +691,120 @@ fn print_help() {
     println!("    --message-format=json  emit diagnostics as one JSON object per line on stderr");
     println!("    --explain [CODE]      explain an error code, or list them all");
     println!("    --dialect-matrix      print every compat/native divergence the compiler decides");
+    println!("    check --against-python [--format=junit] [--output=FILE] <path>...");
+    println!("                          run CPython on the same file and compare stdout (see docs/USAGE.md)");
     println!("    --emit-ir             print the generated LLVM IR and exit");
     println!("    --run                 compile, then run the resulting program");
     println!("    --dialect <name>      override the module's `# archx: dialect=…` (compat|native)");
     println!("    -h, --help            show this help");
     println!("    -V, --version         show the version");
+}
+
+/// `archx check --against-python <path>...`: the compat gate (AX-017).
+///
+/// Compiles every file, runs it next to CPython on the same bytes, and compares stdout. Exits 0 only
+/// when everything that ran agreed; 2 when nothing could be compared, so a machine without `python3`
+/// cannot silently pass.
+fn check_command(args: &[String]) -> Result<i32, DriverError> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut format = check::Format::Human;
+    let mut output: Option<PathBuf> = None;
+    let mut against_python = false;
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        match arg {
+            "--against-python" => against_python = true,
+            "--format" => {
+                i += 1;
+                let name = args.get(i).ok_or_else(|| {
+                    DriverError::new(
+                        error_codes::Code::MissingOptionValue,
+                        "missing value after `--format`",
+                    )
+                })?;
+                format = check::Format::parse(name).ok_or_else(|| {
+                    DriverError::new(
+                        error_codes::Code::UnknownOption,
+                        format!("unknown format `{name}` (expected `human` or `junit`)"),
+                    )
+                })?;
+            }
+            "--output" => {
+                i += 1;
+                let path = args.get(i).ok_or_else(|| {
+                    DriverError::new(
+                        error_codes::Code::MissingOptionValue,
+                        "missing value after `--output`",
+                    )
+                })?;
+                output = Some(PathBuf::from(path));
+            }
+            other if other.starts_with("--format=") => {
+                let name = &other["--format=".len()..];
+                format = check::Format::parse(name).ok_or_else(|| {
+                    DriverError::new(
+                        error_codes::Code::UnknownOption,
+                        format!("unknown format `{name}` (expected `human` or `junit`)"),
+                    )
+                })?;
+            }
+            other if other.starts_with("--output=") => {
+                output = Some(PathBuf::from(&other["--output=".len()..]));
+            }
+            other if other.starts_with('-') => {
+                return Err(DriverError::new(
+                    error_codes::Code::UnknownOption,
+                    format!("unknown option `{other}` for `check`"),
+                ));
+            }
+            other => files.push(PathBuf::from(other)),
+        }
+        i += 1;
+    }
+
+    if !against_python {
+        return Err(DriverError::new(
+            error_codes::Code::UnknownOption,
+            "`archx check` needs a reference implementation: `--against-python`",
+        ));
+    }
+    if files.is_empty() {
+        return Err(DriverError::new(
+            error_codes::Code::MissingOptionValue,
+            "`archx check` needs at least one file or directory",
+        ));
+    }
+
+    let files = check::collect(&files).map_err(|error| {
+        DriverError::new(error_codes::Code::UnreadableInput, format!("{error}"))
+    })?;
+
+    // The compiler under test is this binary, so the gate can never test a different build than the
+    // one the user invoked.
+    let self_path = env::current_exe().map_err(|error| {
+        DriverError::new(
+            error_codes::Code::UnreadableInput,
+            format!("cannot locate this compiler: {error}"),
+        )
+    })?;
+    let work_dir = env::temp_dir().join(format!("archx-check-{}", std::process::id()));
+    let (exit, text) = check::run(&self_path, &files, &work_dir, format);
+    let _ = std::fs::remove_dir_all(&work_dir);
+
+    match output {
+        Some(path) => {
+            std::fs::write(&path, text).map_err(|error| {
+                DriverError::new(
+                    error_codes::Code::UnreadableInput,
+                    format!("cannot write `{}`: {error}", path.display()),
+                )
+            })?;
+            println!("wrote {} (exit code {exit})", path.display());
+        }
+        None => print!("{text}"),
+    }
+    Ok(exit)
 }
 
 #[cfg(test)]
