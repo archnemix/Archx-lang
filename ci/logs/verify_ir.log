@@ -1,0 +1,2 @@
+== verifying emitted IR for every example, benchmark and runtime corpus ==
+verified 29 modules, 0 failures
