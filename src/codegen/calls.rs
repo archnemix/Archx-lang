@@ -1333,7 +1333,7 @@ impl Codegen {
         };
 
         let val = self.eval_owned_for_slot(&elem_ty, val_expr, out)?;
-        self.emit_list_push_raw(arr_name, &slot_ptr, &elem_ty, &val, out)?;
+        self.emit_list_push_raw(&slot_ptr, &elem_ty, &val, out)?;
         Ok((Type::Void, String::new()))
     }
 
@@ -1341,7 +1341,6 @@ impl Codegen {
     /// Shared by `append`/`push`, `extend`, and `insert`.
     pub(super) fn emit_list_push_raw(
         &mut self,
-        arr_name: &str,
         slot_ptr: &str,
         elem_ty: &Type,
         val: &str,

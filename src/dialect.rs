@@ -1,5 +1,5 @@
 //! Dialect selection for a source module: the `# archx: dialect=…, version=…` directive parser and
-//! the `DialectRules` table that every later pass reads instead of guessing from syntax.
+//! the `DialectSpec` that every later pass reads instead of guessing from syntax.
 //!
 //! Archx has two contracts, and a program must say which one it wants:
 //!
@@ -178,47 +178,6 @@ pub fn missing_directive() -> Diagnostic {
     )
 }
 
-/// Per-dialect capabilities.
-///
-/// This table is the single place that decides what a dialect means for the rest of the compiler.
-/// Passes ask the table rather than testing syntax, so adding a compat-only feature cannot
-/// accidentally change native behaviour.
-#[derive(Debug, Clone, Copy)]
-pub struct DialectRules {
-    /// `int` is arbitrary precision (compat) or a trapping `i64` (native).
-    pub arbitrary_precision_int: bool,
-    /// Integer overflow traps (native) or is not reachable because values are unbounded (compat).
-    pub trapping_int_overflow: bool,
-    /// String indexing/`len` count Unicode code points (compat) or bytes (native).
-    pub unicode_code_points: bool,
-    /// `%` is Python's floor modulus; native uses the same definition, recorded separately so the
-    /// distinction stays visible if either side ever changes.
-    pub python_modulo: bool,
-    /// Float arithmetic must be bit-identical to CPython, which forbids contraction/reassociation.
-    pub bit_identical_floats: bool,
-}
-
-impl DialectRules {
-    pub fn for_dialect(dialect: Dialect) -> Self {
-        match dialect {
-            Dialect::Compat => Self {
-                arbitrary_precision_int: true,
-                trapping_int_overflow: false,
-                unicode_code_points: true,
-                python_modulo: true,
-                bit_identical_floats: true,
-            },
-            Dialect::Native => Self {
-                arbitrary_precision_int: false,
-                trapping_int_overflow: true,
-                unicode_code_points: false,
-                python_modulo: true,
-                bit_identical_floats: true,
-            },
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,14 +214,5 @@ mod tests {
         assert!(parse_directive("# archx: dialect=python, version=1\n").is_err());
         assert!(parse_directive("# archx: dialect=native, version=1, turbo=on\n").is_err());
         assert!(parse_directive("# archx: dialect=native, version=9\n").is_err());
-    }
-
-    #[test]
-    fn rules_differ_where_the_contracts_differ() {
-        let c = DialectRules::for_dialect(Dialect::Compat);
-        let n = DialectRules::for_dialect(Dialect::Native);
-        assert!(c.arbitrary_precision_int && !n.arbitrary_precision_int);
-        assert!(!c.trapping_int_overflow && n.trapping_int_overflow);
-        assert!(c.unicode_code_points && !n.unicode_code_points);
     }
 }

@@ -150,3 +150,40 @@ states the contract it is written against instead of relying on a default. Sourc
 carry a directive are passed through, which is how a test opts into `compat`. The blanket rewrite
 initially over-matched two non-Archx files (a generated `.ll` and the C sources of the leak
 harness); both were caught by the suite and reverted.
+
+---
+
+## Round 12 — AX-004 & AX-010: Zero Warnings, One `for…else` Node, and the Dialect Flag in the IR
+
+**AX-010 — one AST node for `for…else`.** `StmtKind::ForElse` was never constructed: `For`,
+`ForEach`, `ForEnumerate`, `ForDictItems`, `ForZip` and `ForTupleUnpack` each already carry
+`else_body: Option<Vec<Stmt>>`. Keeping the variant meant nine match arms (analysis, generics, the
+parser's call-rewriting and value-return walks, statement lowering) described a node no parser could
+produce — a second representation of the same syntax that no test could ever cover. It was removed
+rather than populated: making it canonical would have meant moving every `else_body` off the loop
+nodes, a large refactor whose only product is the same IR.
+
+**A line-oriented regex cannot delete a Rust match arm.** The first attempt ran a pattern over four
+files and stripped only the header line of each multi-line arm, leaving orphaned bodies
+(`error: unexpected closing delimiter`). `git checkout --` restored the files and each arm was then
+removed by exact-block replacement. `codegen/mod.rs` also needed a real fix rather than a deletion:
+its or-pattern ended in `StmtKind::Region { body } => find_global_assigns(...)`, so removing the last
+alternative left the pattern without a `=>`.
+
+**AX-004 — 15 warnings to 0, gated.** Dead helpers (`emit_pack_dict_key`, `clauses_carry`,
+`param_as_expr`, `declare_loop_var_in_outer_scope`, `forget_drop_target`) were deleted, not
+`#[allow]`ed; parameters no callee ever read (`arr_name` in `emit_list_push_raw`/`emit_list_scan_var`,
+`span` in four loop helpers) were removed from the signatures so a future caller cannot pass a value
+that is silently ignored. The gate is `RUSTFLAGS="-D warnings" cargo build --all-targets` on Linux
+**and** both cross-platform runners, because a warning that only appears under a different target is
+exactly the class of defect a single-OS gate misses.
+
+The last three warnings were `src/dialect.rs`'s `Dialect::name` and `DialectRules`, and they were a
+signal, not noise: AX-013's acceptance says the IR must carry `!archx.dialect`, which nothing emitted.
+Two of the three are now consumed for real — `name()` spells the flag and `DialectRules` was removed
+because nothing read it (AX-016 replaces it with the table that passes actually consult). The flag is
+`llvm.module.flags` metadata with behaviour bit `1` (`Error`), so linking a compat object against a
+native one fails instead of choosing one `int` definition silently; a named node `!archx.dialect =
+!{"native"}` was rejected by the LLVM verifier (`expected integer`) — module flags are the only
+metadata form a frontend may use for a module-level property.
+

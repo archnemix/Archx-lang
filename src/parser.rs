@@ -2858,10 +2858,6 @@ impl Parser {
 fn rewrite_main_calls_in_stmts(stmts: &mut [Stmt]) {
     for s in stmts {
         match &mut s.kind {
-            StmtKind::ForElse { body, else_body } => {
-                rewrite_main_calls_in_stmts(body);
-                rewrite_main_calls_in_stmts(else_body);
-            }
             StmtKind::Let { value, .. } => rewrite_main_calls_in_expr(value),
             StmtKind::Assign { target, value, .. } => {
                 match target {
@@ -2998,11 +2994,6 @@ fn stmts_have_value_return(stmts: &[Stmt]) -> bool {
             | StmtKind::ForTupleUnpack { body, .. }
             | StmtKind::Region { body } => {
                 if stmts_have_value_return(body) {
-                    return true;
-                }
-            }
-            StmtKind::ForElse { body, else_body } => {
-                if stmts_have_value_return(body) || stmts_have_value_return(else_body) {
                     return true;
                 }
             }

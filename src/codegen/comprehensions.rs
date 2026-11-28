@@ -583,7 +583,7 @@ impl Codegen {
                 args[1].span,
             )
         })?;
-        let (elem_ty, tuple_vars): (Type, Vec<String>) = match &src_ty {
+        let (_, tuple_vars): (Type, Vec<String>) = match &src_ty {
             Type::Array(t) => (t.as_ref().clone(), Vec::new()),
             Type::Set(t) => (t.as_ref().clone(), Vec::new()),
             Type::Str => (Type::Str, Vec::new()),
@@ -1268,19 +1268,6 @@ enum FoldKind {
     Count,
     Any,
     All,
-}
-
-/// Clones a clause list so it can be consumed by `eval_list_comp`.
-fn clauses_carry(clauses: Vec<CompClause>) -> Vec<CompClause> {
-    clauses
-}
-
-/// `lambda x: ...` parameter -> the `Expr` naming it inside the inlined body.
-fn param_as_expr(param: &Param, span: Span) -> Expr {
-    Expr {
-        kind: ExprKind::Var(param.name.clone()),
-        span,
-    }
 }
 
 /// Textually renames a variable inside an inlined `lambda` body (no shadowing analysis needed:

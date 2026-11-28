@@ -1287,20 +1287,7 @@ impl Codegen {
         format!("{{ {}, i1 }}", Self::dict_key_storage_ir(k_ty))
     }
 
-    /// Re-wrap a loaded key value back into the `{ {ty}, i1 }` pair the
-    /// `archx_dict_{find,upsert}_*` entry points take.
-    pub(super) fn emit_pack_dict_key(&mut self, k_ty: &Type, val: &str, out: &mut String) -> String {
-        // The pair aggregate needs a name to be usable as a call argument.
-        let kir = Self::dict_key_storage_ir(k_ty);
-        let pair_ty = format!("{{ {kir}, i1 }}");
-        let tyreg = self.next_tmp();
-        let _ = writeln!(out, "  {tyreg} = insertvalue {pair_ty} undef, {kir} {val}, 0");
-        let full = self.next_tmp();
-        let _ = writeln!(out, "  {full} = insertvalue {pair_ty} {tyreg}, i1 true, 1");
-        full
-    }
-
-    /// The inverse of `emit_pack_dict_key`, for values loaded straight out of the keys plane.
+    /// Unwrap a `{ key, present }` pair loaded straight out of the keys plane.
     /// A value loaded straight out of the keys plane is already the raw key: no unpacking needed.
     pub(super) fn emit_unpack_dict_key(
         &mut self,
@@ -1499,7 +1486,7 @@ impl Codegen {
 
         // Iterate the *dense* side: keys and values are stored 0..len, and the control plane only
         // maps buckets to those dense indices, so every index below `len` is live.
-        let mut iterate_operand = |cg: &mut Self,
+        let iterate_operand = |cg: &mut Self,
                                    src: &str,
                                    body: &dyn Fn(&mut Self, &str, &str, &mut String),
                                    out: &mut String| {

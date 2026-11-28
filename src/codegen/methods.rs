@@ -267,7 +267,7 @@ impl Codegen {
                                     span,
                                 ));
                             }
-                            let found = self.emit_list_scan_var(vname, &entry, elem_ty, &args[0], span, out, true)?;
+                            let found = self.emit_list_scan_var(&entry, elem_ty, &args[0], span, out, true)?;
                             Ok((Type::Int, found))
                         }
                         "count" => {
@@ -277,7 +277,7 @@ impl Codegen {
                                     span,
                                 ));
                             }
-                            let found = self.emit_list_scan_var(vname, &entry, elem_ty, &args[0], span, out, false)?;
+                            let found = self.emit_list_scan_var(&entry, elem_ty, &args[0], span, out, false)?;
                             Ok((Type::Int, found))
                         }
                         other => Err(Diagnostic::new(
@@ -731,7 +731,7 @@ impl Codegen {
         let VarStorage::Slot(slot_ptr) = entry.storage.clone() else {
             return Err(Diagnostic::new("internal error: extend slot missing", span));
         };
-        self.emit_list_push_raw(arr_name, &slot_ptr, elem_ty, &owned, out)?;
+        self.emit_list_push_raw(&slot_ptr, elem_ty, &owned, out)?;
         let ni = self.next_tmp();
         let _ = writeln!(out, "  {ni} = add nuw nsw i64 {i}, 1");
         let _ = writeln!(out, "  store i64 {ni}, ptr {i_slot}, align 8");
@@ -813,7 +813,7 @@ impl Codegen {
                 span,
             ));
         };
-        self.emit_list_push_raw(arr_name, &slot_ptr, elem_ty, &owned, out)?;
+        self.emit_list_push_raw(&slot_ptr, elem_ty, &owned, out)?;
 
         // Now shift [pos, len) one slot right and store the value at `pos`.
         let entry2 = self
@@ -1007,7 +1007,6 @@ impl Codegen {
     /// `xs.index(v)` / `xs.count(v)` — one pass over a scalar element list.
     fn emit_list_scan_var(
         &mut self,
-        arr_name: &str,
         entry: &VarEntry,
         elem_ty: &Type,
         value: &Expr,
@@ -1115,7 +1114,7 @@ impl Codegen {
         let chars: Vec<char> = template.chars().collect();
         let mut i = 0usize;
 
-        let mut push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
+        let push_lit = |lit: &str, cg: &mut Self, acc: &mut Option<String>, out: &mut String| {
             if lit.is_empty() {
                 return;
             }

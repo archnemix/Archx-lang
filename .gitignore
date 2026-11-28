@@ -25,3 +25,8 @@
 /W2
 /W3
 /ax001-tmp
+# Work directory: the local build toolchain and scratch harnesses.
+#
+# The sandbox ships no Rust and no C compiler, and both /tmp and the workspace are wiped
+# between sessions, so everything here is rebuilt by .work/env.sh and never committed.
+/.work/

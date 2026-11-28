@@ -183,14 +183,13 @@ impl Codegen {
         iter: &Expr,
         body: &[Stmt],
         else_body: &[Stmt],
-        span: Span,
         out: &mut String,
     ) -> Result<()> {
         let flag = self.next_slot("forelse.flag");
         let _ = writeln!(self.allocas, "  {flag} = alloca i1, align 8");
         let _ = writeln!(out, "  store i1 true, ptr {flag}, align 8");
         self.pending_break_flag = Some(flag.clone());
-        self.gen_foreach(var, iter, body, span, out)?;
+        self.gen_foreach(var, iter, body, out)?;
         // A `break` already cleared the flag and jumped past the body; anything else flows here.
         let ok = self.next_tmp();
         let _ = writeln!(out, "  {ok} = load i1, ptr {flag}, align 8");
@@ -217,7 +216,6 @@ impl Codegen {
         step: Option<&Expr>,
         body: &[Stmt],
         else_body: &[Stmt],
-        span: Span,
         out: &mut String,
     ) -> Result<()> {
         let needs_flag = stmts_contain_break(body);
@@ -230,7 +228,7 @@ impl Codegen {
         } else {
             None
         };
-        self.gen_for(var, start, end, step, body, span, out)?;
+        self.gen_for(var, start, end, step, body, out)?;
         // Every path that reaches here either fell out of the loop's `end` label (the body never
         // breaks, so `end` is a normal-completion point) or is already a loop end.
         match &flag {
@@ -261,7 +259,6 @@ impl Codegen {
         end: &Expr,
         step_opt: Option<&Expr>,
         body: &[Stmt],
-        span: Span,
         out: &mut String,
     ) -> Result<()> {
         let (start_ty, raw_start) = self.eval_expr(start, out)?;
@@ -573,42 +570,11 @@ impl Codegen {
         Ok(())
     }
 
-    /// Bind a `for` loop variable in the enclosing scope so it survives the loop, matching
-    /// Python's function-scoped loop variables.
-    fn declare_loop_var_in_outer_scope(
-        &mut self,
-        var: &str,
-        elem_ty: &Type,
-        outer_rdepth: usize,
-        out: &mut String,
-    ) {
-        let ty_ir = ir_type(elem_ty);
-        let align = ir_align(elem_ty);
-        let sptr = self.next_slot(&format!("var.{var}"));
-        let _ = writeln!(self.allocas, "  {sptr} = alloca {ty_ir}, align {align}");
-        let zero = match elem_ty {
-            Type::Int | Type::Bool => "0",
-            _ => "zeroinitializer",
-        };
-        let _ = writeln!(out, "  store {ty_ir} {zero}, ptr {sptr}, align {align}");
-        let _ = out;
-        bind_fn_scope(self, 
-            var.to_string(),
-            VarEntry {
-                ty: elem_ty.clone(),
-                storage: VarStorage::Slot(sptr),
-                is_param: false,
-                region_depth: outer_rdepth,
-            },
-        );
-    }
-
     pub(super) fn gen_foreach(
         &mut self,
         var: &str,
         iter: &Expr,
         body: &[Stmt],
-        span: Span,
         out: &mut String,
     ) -> Result<()> {
 

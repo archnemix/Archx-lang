@@ -419,8 +419,9 @@ pub fn lower(raw_program: &Program) -> Result<String> {
                 | StmtKind::ForDictItems { body, .. }
                 | StmtKind::ForZip { body, .. }
                 | StmtKind::ForTupleUnpack { body, .. }
-                | StmtKind::Region { body }
-                | StmtKind::ForElse { body, .. } => find_global_assigns(body, globals, out),
+                | StmtKind::Region { body } => {
+                    find_global_assigns(body, globals, out);
+                }
                 StmtKind::Match { cases, .. } => {
                     for c in cases {
                         find_global_assigns(&c.body, globals, out);
@@ -612,7 +613,9 @@ pub fn lower(raw_program: &Program) -> Result<String> {
     }
 
     let mut out = String::new();
-    out.push_str("; Archx LLVM IR module\n\n");
+    out.push_str("; Archx LLVM IR module\n");
+    out.push_str(&dialect_flag(&program.dialect));
+    out.push('\n');
 
     if cg.used_vec_type {
         out.push_str("%ArchxVec = type { i64, i64, ptr }\n");
@@ -699,7 +702,41 @@ pub fn lower(raw_program: &Program) -> Result<String> {
     cg.emit_pythonic_runtime_helpers(&mut out);
     cg.emit_hash_any_runtime_helpers(&mut out);
 
+    out.push_str(&dialect_flag_defs(&program.dialect));
     Ok(out)
+}
+
+/// The module flag that records which contract this IR was lowered against (AX-013).
+///
+/// It is carried as a comment *and* as LLVM named metadata, so the flag survives in the `.ll` file:
+/// anyone holding only the IR can tell compat from native without reparsing the source, and two
+/// dialect builds of one module never produce byte-identical IR.
+fn dialect_flag(spec: &crate::dialect::DialectSpec) -> String {
+    let source = match spec.source {
+        crate::dialect::DialectSource::Directive => "directive",
+        crate::dialect::DialectSource::Cli => "cli",
+    };
+    format!(
+        "; archx.dialect={} version={} source={source}\n",
+        spec.dialect.name(),
+        spec.version
+    )
+}
+
+/// The same flag for a machine reader, as an `llvm.module.flags` metadata pair.
+///
+/// Module flags are the only place LLVM lets a frontend record a module-level property that
+/// survives `llvm-as`/`opt`/`clang` without being attached to a declaration. Behaviour bit 1 means
+/// `Error`: a linker that sees two modules claiming different dialects fails instead of silently
+/// picking one — exactly the mistake this flag exists to prevent.
+fn dialect_flag_defs(spec: &crate::dialect::DialectSpec) -> String {
+    format!(
+        "\n!llvm.module.flags = !{{!0, !1}}\n\
+         !0 = !{{i32 1, !\"archx.dialect\", !\"{}\"}}\n\
+         !1 = !{{i32 1, !\"archx.directive_version\", !\"{}\"}}\n",
+        spec.dialect.name(),
+        spec.version
+    )
 }
 
 pub(super) fn validate_type<V>(

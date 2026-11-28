@@ -2038,7 +2038,8 @@ fn dialect_directive_is_required_and_checked() {
         assert!(err.contains(needle), "`{body}` must mention `{needle}`, got: {err}");
     }
 
-    // 3. Both dialects compile the same source, and a normal comment on line 1 is not a directive.
+    // 3. Both dialects compile the same source, the emitted IR records which contract it was
+    //    lowered against, and a normal comment on line 1 is not a directive.
     for dialect in ["compat", "native"] {
         let out = compile(
             &format!("ok_{dialect}"),
@@ -2048,6 +2049,15 @@ fn dialect_directive_is_required_and_checked() {
             out.status.success(),
             "`{dialect}` must compile: {}",
             String::from_utf8_lossy(&out.stderr)
+        );
+        let ir = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            ir.contains(&format!("!0 = !{{i32 1, !\"archx.dialect\", !\"{dialect}\"}}")),
+            "the IR must carry the dialect module flag, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("!1 = !{i32 1, !\"archx.directive_version\", !\"1\"}"),
+            "the IR must carry the directive version, got:\n{ir}"
         );
     }
     let comment_first = compile(

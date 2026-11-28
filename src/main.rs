@@ -1,5 +1,6 @@
 //! CLI entry point and compiler driver: parses flags, runs frontend + LLVM IR codegen, and invokes `clang`.
 
+#[deny(dead_code)] // AX-004: a stale AST variant is a lie about the language; fail the build instead.
 mod ast;
 mod codegen;
 mod diag;

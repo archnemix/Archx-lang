@@ -58,6 +58,19 @@ one:
 archx examples/pythonic.archx.lang --dialect compat --run
 ```
 
+The chosen contract is recorded in the emitted IR, both as a comment and as an LLVM module flag, so
+an object file can be attributed to a contract without the source:
+
+```
+; archx.dialect=native version=1 source=directive
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}
+```
+
+Behaviour bit `1` (`Error`) means linking a compat module against a native one is an error rather
+than a silent choice between two incompatible `int` definitions.
+
 ### CLI commands & flags
 
 ```sh

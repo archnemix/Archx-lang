@@ -9,22 +9,22 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 
 ## Progress
 
-**1 / 128** complete · 4 in progress · 1 blocked · 122 not started
+**3 / 128** complete · 4 in progress · 1 blocked · 120 not started
 
-## P0 — Trust the current build (1/12)
+## P0 — Trust the current build (3/12)
 
 | # | Work order | Phase | Area | Priority | Depends | Effort | Risk | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | AX-001 | Fix the two 16 KB ASan/LSan leaks | P0 | Runtime | P0 | — | M | med | `[x]` | All three leak sites closed (c840f9a). The audit's attribution to `archx_fn___archx_user_main` was wrong; the real defect was in the collection pipeline: (1) comprehension growth (cap==len so the last push reallocated), (2) the min/max generator temp claimed without being freed, (3) the for-each loop variable re-cloned over the previous binding. ASan now 11/11 CLEAN; ci/leakcheck.c is an independent gate that provably fails on a leak. |
 | AX-002 | Make integer overflow actually trap on every path | P0 | Codegen | P0 | — | M | high | `[~]` | Trapping `i64` via llvm.s*.with.overflow + checked_* const folding (e55ea1d): MAX+1, MAX*2, 2**63 all trap with exit 101, and a literal can no longer bypass the check by folding. REMAINING: explicit `wrapping_*` intrinsics for the native dialect, and `add nsw` only with a proof (the immediate check costs ~12% on composite; batching was rejected because it exposes the wrapped value before the panic). |
 | AX-003 | Reconcile versions, docs, and numbers | P0 | Docs | P0 | — | S | low | `[~]` | The CLI already reads CARGO_PKG_VERSION, so the binary's version is single-sourced. REMAINING: regenerate the README/docs numbers from ci/out/benchmarks.txt, fix the test count, drop "(Current)" from the v0.8.0 changelog, and add the CI drift script. |
-| AX-004 | Zero compiler warnings, gate them in CI | P0 | Build | P0 | — | S | low | `[ ]` |  |
+| AX-004 | Zero compiler warnings, gate them in CI | P0 | Build | P0 | — | S | low | `[x]` | All 15 warnings resolved and the gate is in CI. Dead code deleted (not allowed): `emit_pack_dict_key`, `clauses_carry`, `param_as_expr`, `declare_loop_var_in_outer_scope`, `forget_drop_target`, plus the never-constructed `StmtKind::ForElse` (AX-010). Unread parameters removed from signatures (`arr_name` in `emit_list_push_raw`/`emit_list_scan_var`, `span` in `gen_for`, `gen_foreach`, `gen_for_else`, `gen_foreach_else`), unused `mut`s dropped. `#[deny(dead_code)]` on `mod ast`. CI runs `RUSTFLAGS="-D warnings" cargo build --all-targets` on Linux and on both cross-platform runners; local release + all-targets builds are clean. NOTE: the acceptance text says `cargo clippy -- -D warnings`; the tree has never been clippy-clean (65 lints, incl. 27 `map_or` style suggestions), so the gate is rustc warnings. Clippy-clean is left as separate work rather than silently claimed. |
 | AX-005 | Remove committed binaries and add LICENSE | P0 | Repo | P0 | — | S | low | `[~]` | LICENSE (MIT) added, matching what Cargo.toml already declared. REMAINING: delete the tracked `bw` and `call_and_loop_semantics` ELF files, extend .gitignore, add the CI check that rejects binaries in the tree. |
 | AX-006 | Merge the 99-commit branch into `main` and tag | P0 | Repo | P0 | — | S | low | `[!]` | Needs a decision I cannot make alone: merging arena/888b3ea8-archx-lang into `main` and changing the default branch is a repo-level action affecting what `git clone` gives everyone. Depends on AX-003 and AX-005 landing first. |
 | AX-007 | Add a differential conformance harness | P0 | Tests | P0 | — | M | med | `[ ]` |  |
 | AX-008 | Publish the actual known-limitations list | P0 | Docs | P0 | — | S | low | `[ ]` |  |
 | AX-009 | Fix the `%ArchxAny` and sort IR verifier gate | P0 | Codegen | P0 | — | S | low | `[ ]` |  |
-| AX-010 | Fix stale `ForElse` AST variant and unused helpers | P0 | Frontend | P1 | — | M | med | `[ ]` |  |
+| AX-010 | Fix stale `ForElse` AST variant and unused helpers | P0 | Frontend | P1 | — | M | med | `[x]` | `StmtKind::ForElse` deleted from src/ast.rs: `For`, `ForEach`, `ForEnumerate`, `ForDictItems`, `ForZip`, `ForTupleUnpack` already each carry `else_body: Option<Vec<Stmt>>` and every one of them is constructed by the parser, so the variant was a second, unreachable representation. Its arms were removed from codegen/analysis.rs, codegen/mod.rs, codegen/generics.rs, codegen/stmt.rs and parser.rs. Acceptance met: one representation, loop tests unchanged and green (41 unit + 38 CLI). |
 | AX-011 | Full diagnostic codes and machine-readable output | P0 | Diagnostics | P1 | — | M | low | `[ ]` |  |
 | AX-012 | Reproducible builds and byte-identity gate | P0 | Build | P1 | — | M | low | `[ ]` |  |
 
@@ -32,7 +32,7 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 
 | # | Work order | Phase | Area | Priority | Depends | Effort | Risk | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| AX-013 | Add `Dialect` + `NodeOrigin` to the AST | P1 | Frontend | P0 | — | L | med | `[~]` | Directive layer landed (b152f3b): src/dialect.rs, E0100/E0101, DialectSpec on Program, DialectRules, --dialect override. ACCEPTANCE NOT MET: --emit-ir does not yet carry a `!archx.dialect` module flag, and NodeOrigin { dialect, span } is not on Stmt/Expr. |
+| AX-013 | Add `Dialect` + `NodeOrigin` to the AST | P1 | Frontend | P0 | — | L | med | `[~]` | Directive layer landed (b152f3b): src/dialect.rs, E0100/E0101, DialectSpec on Program, --dialect override. ACCEPTANCE PARTLY MET: `--emit-ir` now carries the dialect as llvm.module.flags (`archx.dialect` + `archx.directive_version`, behaviour bit 1 = Error), asserted by tests/cli.rs::dialect_directive_is_required_and_checked for both dialects. REMAINING: `NodeOrigin { dialect, span }` on Stmt/Expr (needs per-node spans, a larger change) — and `DialectRules` was removed because no pass read it; AX-016 reintroduces the table as the thing passes actually consult. |
 | AX-014 | Parse the dialect directive and CLI override | P1 | Frontend | P0 | — | S | low | `[ ]` |  |
 | AX-015 | `def` vs `fn` split with dual-ABI `pub fn` | P1 | Frontend | P0 | — | L | high | `[ ]` |  |
 | AX-016 | Freeze the semantic divergence matrix in code | P1 | Sema | P0 | — | M | med | `[ ]` |  |

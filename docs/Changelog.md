@@ -4,6 +4,9 @@
 
 ## `v0.9.1` — Pythonic Call & Loop Semantics
 - **Added**:
+  - **Dialect module flag**: `--emit-ir` now records the contract the module was lowered against as
+    `llvm.module.flags` (`archx.dialect`, `archx.directive_version`, behaviour `Error`), so two
+    dialect builds never produce identical objects and a mismatched link fails.
   - **Default parameters**: `def greet(name: str, punct: str = "!")` — omitted trailing arguments are filled from their declared defaults at the call site, for positional, keyword, and (monomorphized) generic calls alike.
   - **Keyword arguments for user functions**: `rect(h=3, w=4)` matches keywords against declared parameter names, diagnoses unknown/duplicate keywords, and combines with defaults (`greet(loud=true, name="hey")`).
   - **`for ... else`**: the `else` body runs only when the loop finished without `break` (`for i in 0..n:` and `for x in xs:`), so `for i in range(n): if hit: break` … `else: return None` works as in Python. The completion flag is only materialized when the body can actually break.

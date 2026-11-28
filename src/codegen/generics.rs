@@ -468,16 +468,6 @@ impl<'a> Monomorphizer<'a> {
     fn rewrite_stmt(&mut self, stmt: &Stmt) -> Result<Stmt> {
         let span = stmt.span;
         let kind = match &stmt.kind {
-            StmtKind::ForElse { body, else_body } => StmtKind::ForElse {
-                body: body
-                    .iter()
-                    .map(|s| self.rewrite_stmt(s))
-                    .collect::<Result<_>>()?,
-                else_body: else_body
-                    .iter()
-                    .map(|s| self.rewrite_stmt(s))
-                    .collect::<Result<_>>()?,
-            },
             StmtKind::Let { name, ty, value } => {
                 let declared = match ty {
                     Some(t) => Some(self.rewrite_ty(t)?),

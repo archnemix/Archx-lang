@@ -233,11 +233,6 @@ pub enum StmtKind {
     Pass,
     Break,
     Continue,
-    /// `for ...: ... else: ...` — the body runs when the loop finishes without `break`.
-    ForElse {
-        body: Vec<Stmt>,
-        else_body: Vec<Stmt>,
-    },
 }
 
 #[derive(Debug, Clone)]

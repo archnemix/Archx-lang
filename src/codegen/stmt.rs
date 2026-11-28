@@ -69,12 +69,6 @@ impl Codegen {
                 Ok(())
             }
 
-            // `for ... else` is carried by `ForEach` now; a bare wrapper cannot be reached.
-            StmtKind::ForElse { .. } => Err(Diagnostic::new(
-                "internal error: unwrapped `for ... else`",
-                stmt.span,
-            )),
-
             StmtKind::Assert { cond, msg } => {
                 let cond_val = self.eval_cond_bool(cond, "assert", out)?;
                 let ok_lbl = self.fresh_label("assert.ok");
@@ -366,9 +360,9 @@ impl Codegen {
                 else_body,
             } => match else_body {
                 Some(eb) => {
-                    self.gen_for_else(var, start, end, step.as_ref(), body, eb, stmt.span, out)
+                    self.gen_for_else(var, start, end, step.as_ref(), body, eb, out)
                 }
-                None => self.gen_for(var, start, end, step.as_ref(), body, stmt.span, out),
+                None => self.gen_for(var, start, end, step.as_ref(), body, out),
             },
 
             StmtKind::ForEach {
@@ -379,8 +373,8 @@ impl Codegen {
             } => {
                 let _ = rest_in_block;
                 match else_body {
-                    Some(eb) => self.gen_foreach_else(var, iter, body, eb, stmt.span, out),
-                    None => self.gen_foreach(var, iter, body, stmt.span, out),
+                    Some(eb) => self.gen_foreach_else(var, iter, body, eb, out),
+                    None => self.gen_foreach(var, iter, body, out),
                 }
             }
 
