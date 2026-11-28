@@ -2478,3 +2478,51 @@ fn dialect_directive_is_unambiguous_and_its_suggestion_is_sound() {
         "the IR must record that the CLI chose the contract: {overridden}"
     );
 }
+
+#[test]
+fn dialect_matrix_is_the_table_the_compiler_obeys() {
+    let out = Command::new(archx()).arg("--dialect-matrix").output().unwrap();
+    assert!(out.status.success());
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+
+    // Every rule the backend actually implements must appear, with both contracts stated.
+    for rule in [
+        "int overflow",
+        "bool repr",
+        "container repr",
+        "wrapping opt-out",
+        "int division",
+        "str index unit",
+        "mixed numeric arithmetic",
+        "runtime failure",
+    ] {
+        assert!(text.contains(rule), "matrix is missing `{rule}`:\n{text}");
+    }
+    assert!(text.contains("`True` / `False`") && text.contains("`true` / `false`"));
+    assert!(text.contains("rejected with `E0802`") && text.contains("available"));
+
+    // The flags must match reality. `wrapping opt-out` is enforced: a compat module really is
+    // rejected, so the matrix may not describe it as merely planned.
+    let wrapping = text
+        .split("wrapping opt-out")
+        .nth(1)
+        .and_then(|tail| tail.split("status: ").nth(1))
+        .map(|s| s.lines().next().unwrap_or("").trim())
+        .unwrap_or("");
+    assert_eq!(wrapping, "enforced", "{text}");
+
+    // And a row that is *not* implemented must say so rather than claim completion.
+    let index_unit = text
+        .split("str index unit")
+        .nth(1)
+        .and_then(|tail| tail.split("status: ").nth(1))
+        .map(|s| s.lines().next().unwrap_or("").trim())
+        .unwrap_or("");
+    assert_eq!(
+        index_unit, "planned",
+        "`str` indexing by code point is not implemented, so it must not claim to be:\n{text}"
+    );
+
+    // The summary count is derived from the rows, so it cannot go stale.
+    assert!(text.contains("of 8 rules differ between the contracts"), "{text}");
+}

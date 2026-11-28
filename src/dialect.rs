@@ -16,6 +16,7 @@
 //! The file extension is only a hint for editor tooling — it never selects the dialect.
 
 use crate::diag::{Diagnostic, Span};
+use crate::dialect_rules::ForDialect as _;
 
 /// Which contract a module is compiled against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -37,19 +38,21 @@ impl Dialect {
 
     /// The words `print` uses for a `bool`: `repr()` in compat, and the systems spelling in native.
     ///
-    /// This is a real contract difference, not cosmetic: a compat program that prints a comparison must
-    /// match CPython byte for byte, while a native program is free to spell its values the way its
-    /// documentation does.
+    /// The answer comes from [`dialect_rules`](crate::dialect_rules), which is the only place a
+    /// compat/native difference is decided (AX-016); this helper is just the shape `print` wants.
     pub fn bool_words(self) -> (&'static str, &'static str) {
-        match self {
-            Dialect::Compat => ("True", "False"),
-            Dialect::Native => ("true", "false"),
+        match self.rule(crate::dialect_rules::Rule::BoolRepr) {
+            crate::dialect_rules::RuleValue::PythonWords => ("True", "False"),
+            _ => ("true", "false"),
         }
     }
 
     /// Whether a container's elements are printed with `repr()` (quoting strings) or as raw values.
     pub fn container_repr(self) -> bool {
-        matches!(self, Dialect::Compat)
+        matches!(
+            self.rule(crate::dialect_rules::Rule::ContainerRepr),
+            crate::dialect_rules::RuleValue::Repr
+        )
     }
 
     pub fn parse(text: &str) -> Option<Self> {

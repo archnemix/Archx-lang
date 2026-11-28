@@ -1181,7 +1181,14 @@ impl Codegen {
         span: Span,
         out: &mut String,
     ) -> Result<(Type, String)> {
-        if self.dialect != crate::dialect::Dialect::Native {
+        // The table decides (AX-016); this is not a special case local to the builtin.
+        if !matches!(
+            crate::dialect_rules::value(
+                crate::dialect_rules::Rule::WrappingOptOut,
+                self.dialect
+            ),
+            crate::dialect_rules::RuleValue::Allowed
+        ) {
             return Err(Diagnostic::new(
                 format!(
                     "`{name}()` is native-only: a `compat` module promises CPython's arbitrary-precision \

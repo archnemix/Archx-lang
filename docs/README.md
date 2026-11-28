@@ -5,6 +5,7 @@
 All user-facing guides, architectural specifications, and engineering tracking files for Archx live here.
 
 ## User & Language Documentation
+- [`DIALECTS.md`](DIALECTS.md) — the compat/native divergence matrix, generated from the table the compiler obeys.
 - [`ERROR_CODES.md`](ERROR_CODES.md) — every diagnostic code, generated from the compiler (`archx explain`).
 - [`LIMITATIONS.md`](LIMITATIONS.md) — the measured list of what is not supported yet, generated from the conformance probes.
 - [`USAGE.md`](USAGE.md) — **Start here**: complete guide to everything built so far (`v0.8.0`) and how to use every CLI option and language construct.

@@ -69,6 +69,7 @@ jobs:
           # The code registry is rendered from the compiler itself, so build before checking it.
           cargo build --quiet
           python3 tools/gen_error_codes.py --check
+          python3 tools/gen_dialect_matrix.py --check
 
       - name: Reject a stale work-order tracker (AX-000)
         run: python3 tools/gen_tracker.py --check

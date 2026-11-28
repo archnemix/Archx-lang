@@ -427,3 +427,28 @@ The lesson I want to keep: **an audit has to be phrased as a question about the 
 test suite.** "Do the tests pass?" would have passed. "Is every claim in this IR true?" found three
 bugs, one of them visible to users.
 
+## Round 19 — AX-016: a table is only useful if something is forced through it
+
+The tempting version of this work order is to write `DialectRules` as a struct full of fields, have
+codegen read the fields, and declare victory. I did something narrower and, I think, more useful:
+treat the matrix as **data** (`ROWS`) and make `value(rule, dialect)` the only accessor, then
+*hierarchically reduce* the existing checks to reads of it. `Dialect::bool_words`, `container_repr` and
+the `wrapping_*` gate are now one line each, and no backend code compares the dialect enum any more.
+
+The part I want to record is the honesty problem I hit. My first pass listed eight rules and marked all
+eight `enforced`. Four of them were not: `str` indexes by byte today, `1 + 1.5` is rejected rather than
+widened, `7 / 2` is `3.5`, and a runtime failure traps instead of raising. None of that is a secret —
+it is in `LIMITATIONS.md` — but a *matrix* that says `enforced` on those rows would be a new lie, and a
+generated document cannot be corrected by editing it. So the row carries its own status, the docs print
+`planned`, and a test asserts the specific rows that must remain `planned` cannot silently flip.
+
+That also settled the "shared rule" question. `int overflow` and `int division` have the *same* value in
+both contracts, so they are not divergences — but they are the two questions a reader actually asks
+("does `int` overflow under compat?"). Keeping them with a test that asserts their values still coincide
+means a future divergence is a one-cell change, and it keeps `6 of 8 rules differ` a generated number
+rather than a claim.
+
+`render_matrix` iterates `all()` and `is_enforced()` rather than the raw rows, which is the detail that
+keeps the printed order and the table from drifting apart — and it is what makes both functions used,
+so `deny(dead_code)` cannot be satisfied by an unused helper.
+

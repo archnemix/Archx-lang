@@ -6,6 +6,7 @@ mod codegen;
 mod diag;
 mod diagnose;
 mod dialect;
+mod dialect_rules;
 mod error_codes;
 mod lexer;
 mod parser;
@@ -239,6 +240,11 @@ fn run(args: &[String], json: bool) -> DriverResult<i32> {
             }
             "-V" | "--version" => {
                 println!("archx {VERSION}");
+                return Ok(0);
+            }
+            "--dialect-matrix" => {
+                // The matrix the compiler actually obeys, for both humans and the docs generator.
+                print!("{}", dialect_rules::render_matrix());
                 return Ok(0);
             }
             "--explain" => {
@@ -680,6 +686,7 @@ fn print_help() {
     println!("    --dialect <compat|native>  override the module's dialect directive");
     println!("    --message-format=json  emit diagnostics as one JSON object per line on stderr");
     println!("    --explain [CODE]      explain an error code, or list them all");
+    println!("    --dialect-matrix      print every compat/native divergence the compiler decides");
     println!("    --emit-ir             print the generated LLVM IR and exit");
     println!("    --run                 compile, then run the resulting program");
     println!("    --dialect <name>      override the module's `# archx: dialect=…` (compat|native)");
