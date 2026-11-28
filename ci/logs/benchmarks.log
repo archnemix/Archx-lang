@@ -1,21 +1,21 @@
 == verifying 1:1 source identity (below the dialect directive) ==
 == building Archx compiler (release) ==
 == building Suite 1: scalar benchmark (primes) ==
-compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/primes_ax`
+compiled `benchmarks/primes.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/primes_ax`
 == building Suite 2: array benchmark (arrays) ==
-compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/arrays_ax`
+compiled `benchmarks/arrays.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/arrays_ax`
 == building Suite 3: composite Milestone 5 benchmark (composite) ==
-compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/comp_ax`
+compiled `benchmarks/composite.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/comp_ax`
 == building Suite 4: Pythonic floating-point N-body benchmark (nbody_float) ==
-compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/nbody_ax`
+compiled `benchmarks/nbody_float.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/nbody_ax`
 == building Suite 5: Planar SIMD dict + Adaptive Static vs Dynamic (dict_bench) ==
-compiled `benchmarks/dict_bench.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/dict_ax`
-compiled `benchmarks/dict_dynamic.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/dict_ax_dyn`
+compiled `benchmarks/dict_bench.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/dict_ax`
+compiled `benchmarks/dict_dynamic.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/dict_ax_dyn`
 == building Suite 7: comprehension/generator pipelines & inline sorting (pipelines) ==
-compiled `benchmarks/pipelines.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/pipe_ax`
+compiled `benchmarks/pipelines.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/pipe_ax`
 == building Suite 6: 5-Way Full-Feature Tour (examples/comparison/full_tour.*) ==
-compiled `examples/comparison/full_tour_pythonic.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/tour_ax_py`
-compiled `examples/comparison/full_tour_speed.archx.lang` -> `/tmp/tmp.ELiyVLfNvL/tour_ax_spd`
+compiled `examples/comparison/full_tour_pythonic.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/tour_ax_py`
+compiled `examples/comparison/full_tour_speed.archx.lang` -> `/tmp/tmp.oRLgfmq7lO/tour_ax_spd`
 
 == verifying Suite 1 (primes) outputs match (Python 3, C, Rust, Archx) ==
 75517
@@ -72,10 +72,10 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 75517,33860
 
   Language                     Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3  (python3)              29 (29)        1.0x          n/a         n/a
-  C         (clang -O2)            87 (87)        0.3x          16          14
-  Rust      (rustc -O)             86 (87)        0.3x        4388         330
-  Archx     (archx -O2)            96 (98)        0.3x          16          14
+  Python 3  (python3)              31 (31)        1.0x          n/a         n/a
+  C         (clang -O2)            98 (98)        0.3x          16          14
+  Rust      (rustc -O)             98 (98)        0.3x        4388         330
+  Archx     (archx -O2)            112 (112)        0.3x          16          14
 
 2. Array loops & bounds checking (benchmarks/arrays*)
 -----------------------------------------------------
@@ -83,11 +83,11 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 57243166,348513
 
   Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3    (python3)              2093 (2113)        1.0x          n/a         n/a
-  C raw ptr   (unchecked -O2)        37 (38)        56.6x          16          14
-  C checked   (slice struct -O2)     39 (39)        53.7x          16          14
-  Rust        (safe Vec -O)          37 (38)        56.6x        4389         331
-  Archx       (safe [T] -O2)         56 (56)        37.4x          16          14
+  Python 3    (python3)              2622 (2664)        1.0x          n/a         n/a
+  C raw ptr   (unchecked -O2)        76 (76)        34.5x          16          14
+  C checked   (slice struct -O2)     75 (75)        35.0x          16          14
+  Rust        (safe Vec -O)          76 (76)        34.5x        4389         331
+  Archx       (safe [T] -O2)         81 (81)        32.4x          16          14
 
 3. Structs (SoA vs AoS), Regions & Prefix-SSO Strings (benchmarks/composite.*)
 ------------------------------------------------------------------------------
@@ -95,10 +95,10 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 14248875,421461999
 
   Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3  (python3)              493 (509)        1.0x          n/a         n/a
-  C         (AoS + malloc -O2)     13 (13)        37.9x          16          14
-  Rust      (Vec<Body> + String)   15 (15)        32.9x        4390         332
-  Archx     (SoA + region + SSO)   14 (14)        35.2x          16          14
+  Python 3  (python3)              652 (655)        1.0x          n/a         n/a
+  C         (AoS + malloc -O2)     32 (32)        20.4x          16          14
+  Rust      (Vec<Body> + String)   34 (34)        19.2x        4390         332
+  Archx     (SoA + region + SSO)   25 (25)        26.1x          16          14
 
 4. Floating-Point N-Body & OOP Methods in 1:1 Pythonic Syntax (benchmarks/nbody_float.*)
 ----------------------------------------------------------------------------------------
@@ -106,10 +106,10 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 11232960,3595406
 
   Language                       Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3  (python3)              1989 (2054)        1.0x          n/a         n/a
-  C         (AoS Body* -O2 -lm)    39 (40)        51.0x          16          14
-  Rust      (Vec<Body> -O)         41 (41)        48.5x        4390         332
-  Archx     (Pythonic class + SoA) 37 (38)        53.8x          16          14
+  Python 3  (python3)              2551 (2560)        1.0x          n/a         n/a
+  C         (AoS Body* -O2 -lm)    41 (41)        62.2x          16          14
+  Rust      (Vec<Body> -O)         41 (41)        62.2x        4390         332
+  Archx     (Pythonic class + SoA) 37 (37)        68.9x          16          14
 
 5. Planar SIMD Dict & Smart Adaptive Typing (benchmarks/dict_bench.* & dict_dynamic.*)
 --------------------------------------------------------------------------------------
@@ -117,11 +117,11 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 12163680,27629691796536
 
   Language                            Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3       (python3 built-in dict)  156 (158)        1.0x          n/a         n/a
-  C              (AoS open-addressing)    42 (42)        3.7x          16          14
-  Rust           (std::HashMap -O)        30 (30)        5.2x        4424         354
-  Archx Static   (Planar SIMD + region)   33 (33)        4.7x          24          22
-  Archx Dynamic  (%ArchxAny dict[any])    51 (51)        3.1x          24          22
+  Python 3       (python3 built-in dict)  173 (173)        1.0x          n/a         n/a
+  C              (AoS open-addressing)    51 (51)        3.4x          16          14
+  Rust           (std::HashMap -O)        37 (37)        4.7x        4424         354
+  Archx Static   (Planar SIMD + region)   36 (36)        4.8x          24          22
+  Archx Dynamic  (%ArchxAny dict[any])    58 (58)        3.0x          24          22
 
 6. 5-Way Full-Feature Tour (examples/comparison/full_tour.* -- v0.1.0 through v0.9.0)
 -------------------------------------------------------------------------------------
@@ -129,11 +129,11 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: sim=7684989 dict_slice=2307705,nohtyp_smetsys_xhcra|tuple_opt=8,104,3543,10099,empty match_dispatch=33780000 pipeline=2665359250
 
   Language                                 Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3          (full_tour.py)             259 (261)        1.0x          n/a         n/a
-  Archx Pythonic    (1:1 == full_tour.py -O2)  13 (13)        19.9x          44          42
-  Archx Speed       (SoA + region + enum -O2)  12 (12)        21.6x          40          38
-  Clang C           (full_tour.c -O2 -lm)      10 (10)        25.9x          20          18
-  Rust              (full_tour.rs rustc -O)    13 (13)        19.9x        4452         377
+  Python 3          (full_tour.py)             301 (302)        1.0x          n/a         n/a
+  Archx Pythonic    (1:1 == full_tour.py -O2)  13 (13)        23.2x          44          42
+  Archx Speed       (SoA + region + enum -O2)  13 (13)        23.2x          40          38
+  Clang C           (full_tour.c -O2 -lm)      9 (9)        33.4x          20          18
+  Rust              (full_tour.rs rustc -O)    13 (13)        23.2x        4452         377
 
 7. Comprehensions, Generator Folds, zip & Inline Sorting (benchmarks/pipelines.* -- v0.9.0)
 -------------------------------------------------------------------------------------------
@@ -142,9 +142,9 @@ optimisation: python3 (CPython), clang -O2 -ffp-contract=off for C, rustc -O (= 
   Output: 5333140919445
 
   Language                                 Best ms (mean)   vs Python 3   Raw KB   Stripped KB
-  Python 3          (pipelines.py)             29 (29)        1.0x          n/a         n/a
-  Archx Pythonic    (1:1 == pipelines.py -O2)  8 (8)        3.6x          40          38
-  Clang C           (pipelines.c -O2)          8 (8)        3.6x          20          18
-  Rust              (pipelines.rs rustc -O)    9 (9)        3.2x        4471         400
+  Python 3          (pipelines.py)             31 (31)        1.0x          n/a         n/a
+  Archx Pythonic    (1:1 == pipelines.py -O2)  8 (8)        3.9x          40          38
+  Clang C           (pipelines.c -O2)          8 (8)        3.9x          20          18
+  Rust              (pipelines.rs rustc -O)    7 (7)        4.4x        4471         400
 
 saved -> /home/runner/work/Archx-lang/Archx-lang/ci/out/benchmarks.txt
