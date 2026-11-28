@@ -54,3 +54,13 @@ __pycache__/
 /r
 /opt
 /ovf
+
+# Ad-hoc `archx <file>` runs write the executable next to the source, named after the stem. These are
+# the names the backend tests use while iterating; listing them keeps `git status` honest so a stray
+# binary cannot be committed by accident (AX-005 checks the tree for this too).
+/div
+/hx
+/hx[0-9]
+/ovf
+/truediv
+/wrap

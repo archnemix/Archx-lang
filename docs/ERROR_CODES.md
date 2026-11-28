@@ -88,5 +88,6 @@ Dialect contract (E01xx)
   E0703  non-exhaustive match
   E0704  invalid range
   E0801  construct not available in this dialect
+  E0802  safety opt-out not allowed in this dialect
   E0901  internal compiler error
 ```

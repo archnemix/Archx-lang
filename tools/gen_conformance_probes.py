@@ -60,7 +60,21 @@ PROBES: list[tuple[str, str, str | None]] = [
     ("num_float_repr", "print(1.5, -0.25, 2.0, 0.1 + 0.2)\n", None),
     ("num_float_ops", "print(1.0 / 3.0, 2.0 ** 0.5, abs(-2.5), round(2.567, 2))\n", None),
     ("num_int_float_mix", "print(1 + 2.5, 3 * 1.5, 7 / 2, int(2.9), float(3))\n", None),
-    ("num_bases", "print(int('ff', 16), int('101', 2), hex(255), oct(8), bin(5))\n", "`int(x, base)` and `hex`/`oct`/`bin` are not implemented"),
+    # `int(x, base)` is the part that is missing. The `hex`/`oct`/`bin` assertions below it are the
+    # regression probe for a bug that shipped: the digit loop chose a letter whenever the *base* was
+    # 16 instead of when the *digit* was >= 10, so `hex(1)` printed `0xX`. Every small value that is
+    # not already a letter was wrong, which is why the cases here start at 0.
+    ("num_bases", "print(int('ff', 16), int('101', 2))\n", "`int(x, base)` is not implemented"),
+    (
+        "num_base_str_values",
+        "print(hex(0), hex(1), hex(9), hex(10), hex(15), hex(16), hex(255), hex(4095))\n"
+        "print(oct(0), oct(1), oct(8), oct(511))\n"
+        "print(bin(0), bin(1), bin(5), bin(1023))\n"
+        "print(hex(-1), hex(-255), oct(-8), bin(-5))\n"
+        "print(hex(9223372036854775807), hex(-9223372036854775807 - 1))\n"
+        "print(f'{255:x} {255:X} {255:o} {255:b} {10:x}')\n",
+        None,
+    ),
     ("num_minmax", "print(min(3, 1, 2), max(3, 1, 2), min([4, 2]), max([4, 2]), min(2.5, 1.5))\n", None),
     ("num_abs_sign", "print(abs(-7), abs(7), abs(-0.5), -(-3))\n", None),
     ("num_division_edges", "print(0 / 5, 5 // 1, 0 % 3, 2 ** 0)\n", None),

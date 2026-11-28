@@ -2,9 +2,9 @@
 
 # Known limitations
 
-Every claim here is measured, not remembered. `tests/conformance/` holds 104 programs that are simultaneously legal Python and legal Archx; each is executed by `python3` and compiled by `archx`, and stdout is compared byte for byte (`cargo test --test conformance`).
+Every claim here is measured, not remembered. `tests/conformance/` holds 105 programs that are simultaneously legal Python and legal Archx; each is executed by `python3` and compiled by `archx`, and stdout is compared byte for byte (`cargo test --test conformance`).
 
-40 of those 104 programs are known **not** to reproduce CPython yet. Each one is marked `# conformance: xfail <reason>` in its own source file, and this document is generated from those markers.
+40 of those 105 programs are known **not** to reproduce CPython yet. Each one is marked `# conformance: xfail <reason>` in its own source file, and this document is generated from those markers.
 
 A gap is removed from this list only by making the probe pass, which turns it into an *unexpected pass* and fails CI until the marker is deleted. A new gap cannot be added by editing this file: it needs a probe and a reason.
 
@@ -14,46 +14,46 @@ These constructs are rejected at compile time. Rejection is a documented limitat
 
 | Area | Probe | What is missing |
 |---|---|---|
-| `dict` | `072-dict_items` | `dict.items()` is not implemented (only `get`, `pop`, `keys`, `values`, `clear`) |
-| `dict` | `073-dict_delete` | `del d[k]` is not implemented; `del` only accepts a variable name |
-| `err` | `081-err_try_except` | try/except is not implemented |
-| `err` | `082-err_raise` | raise is not implemented |
-| `err` | `083-err_zero_division` | compat division by zero traps instead of raising ZeroDivisionError |
-| `err` | `084-err_index_error` | compat index errors trap instead of raising IndexError |
-| `err` | `085-err_key_error` | compat missing keys trap instead of raising KeyError |
-| `err` | `086-err_else_finally` | try/except/else/finally is not implemented |
+| `dict` | `073-dict_items` | `dict.items()` is not implemented (only `get`, `pop`, `keys`, `values`, `clear`) |
+| `dict` | `074-dict_delete` | `del d[k]` is not implemented; `del` only accepts a variable name |
+| `err` | `082-err_try_except` | try/except is not implemented |
+| `err` | `083-err_raise` | raise is not implemented |
+| `err` | `084-err_zero_division` | compat division by zero traps instead of raising ZeroDivisionError |
+| `err` | `085-err_index_error` | compat index errors trap instead of raising IndexError |
+| `err` | `086-err_key_error` | compat missing keys trap instead of raising KeyError |
+| `err` | `087-err_else_finally` | try/except/else/finally is not implemented |
 | `func` | `015-func_closure_scope` | nested `def` is not implemented |
 | `func` | `016-func_multiple_return` | `min(seq)`/`max(seq)` accept only `list[int]`/`list[float]`, not a general iterable |
 | `func` | `017-func_varargs` | *args is not implemented |
 | `func` | `018-func_kwargs_star` | **kwargs is not implemented |
 | `func` | `020-func_global` | `global` is not implemented |
-| `list` | `059-list_append_pop` | arguments to one call are formatted before later ones run, so `print(xs, xs.pop())` shows the post-pop list |
-| `list` | `060-list_insert_remove` | internal error: `list.insert` rejects a list that has no storage slot (a `list()` call result) |
-| `list` | `063-list_reverse` | `reversed()` is not implemented |
-| `list` | `064-list_concat_repeat` | `list * int` repetition is not implemented |
-| `list` | `065-list_index_count` | internal error: `list.index`/`list.count` reject a list that has no storage slot |
-| `misc` | `101-misc_type` | `type(x)` prints the Archx type name (`int`), not CPython's `<class 'int'>` |
-| `misc` | `104-misc_idiom_wordcount` | `sorted()` accepts only lists, not a dict's keys |
-| `mod` | `087-mod_import_math` | import is not implemented |
-| `mod` | `088-mod_from_import` | import is not implemented |
-| `mod` | `089-mod_sys_argv` | import is not implemented |
-| `mod` | `090-mod_open_file` | file I/O is not implemented |
-| `mod` | `092-mod_os_path` | import is not implemented |
-| `mod` | `093-mod_json` | import is not implemented |
-| `mod` | `094-mod_datetime` | import is not implemented |
-| `num` | `035-num_bases` | `int(x, base)` and `hex`/`oct`/`bin` are not implemented |
-| `num` | `039-num_bool_is_int` | `bool` is not a subtype of `int` (`True + 1` is rejected) |
+| `list` | `060-list_append_pop` | arguments to one call are formatted before later ones run, so `print(xs, xs.pop())` shows the post-pop list |
+| `list` | `061-list_insert_remove` | internal error: `list.insert` rejects a list that has no storage slot (a `list()` call result) |
+| `list` | `064-list_reverse` | `reversed()` is not implemented |
+| `list` | `065-list_concat_repeat` | `list * int` repetition is not implemented |
+| `list` | `066-list_index_count` | internal error: `list.index`/`list.count` reject a list that has no storage slot |
+| `misc` | `102-misc_type` | `type(x)` prints the Archx type name (`int`), not CPython's `<class 'int'>` |
+| `misc` | `105-misc_idiom_wordcount` | `sorted()` accepts only lists, not a dict's keys |
+| `mod` | `088-mod_import_math` | import is not implemented |
+| `mod` | `089-mod_from_import` | import is not implemented |
+| `mod` | `090-mod_sys_argv` | import is not implemented |
+| `mod` | `091-mod_open_file` | file I/O is not implemented |
+| `mod` | `093-mod_os_path` | import is not implemented |
+| `mod` | `094-mod_json` | import is not implemented |
+| `mod` | `095-mod_datetime` | import is not implemented |
+| `num` | `035-num_bases` | `int(x, base)` is not implemented |
+| `num` | `040-num_bool_is_int` | `bool` is not a subtype of `int` (`True + 1` is rejected) |
 | `pass` | `009-pass_and_truthiness` | `if` requires `bool`; Python truthiness (`if 0:`, `bool([])`) is not implemented |
-| `set` | `075-set_ops` | `sorted()` accepts only lists, not sets |
-| `sorted` | `078-sorted_key` | `key=` accepts only a `lambda`, not a named function such as `len` |
-| `str` | `043-str_methods` | `str.title` is not implemented |
-| `str` | `045-str_replace_find` | `str.count` is not implemented |
-| `str` | `054-str_strip_chars` | `str.strip(chars)` with an argument is not implemented |
-| `str` | `055-str_zfill_rjust` | `str.zfill`/`ljust`/`rjust` are not implemented |
-| `str` | `056-str_unicode_len` | compat strings are byte-indexed, not code-point |
-| `str` | `057-str_isalpha` | `str.isalpha`/`isdigit` are not implemented |
-| `sum` | `079-sum_any_all` | `any`/`all` are not implemented |
-| `tuple` | `076-tuple_basic` | tuple slicing is not implemented |
+| `set` | `076-set_ops` | `sorted()` accepts only lists, not sets |
+| `sorted` | `079-sorted_key` | `key=` accepts only a `lambda`, not a named function such as `len` |
+| `str` | `044-str_methods` | `str.title` is not implemented |
+| `str` | `046-str_replace_find` | `str.count` is not implemented |
+| `str` | `055-str_strip_chars` | `str.strip(chars)` with an argument is not implemented |
+| `str` | `056-str_zfill_rjust` | `str.zfill`/`ljust`/`rjust` are not implemented |
+| `str` | `057-str_unicode_len` | compat strings are byte-indexed, not code-point |
+| `str` | `058-str_isalpha` | `str.isalpha`/`isdigit` are not implemented |
+| `sum` | `080-sum_any_all` | `any`/`all` are not implemented |
+| `tuple` | `077-tuple_basic` | tuple slicing is not implemented |
 
 ## Divergences that are deliberate
 

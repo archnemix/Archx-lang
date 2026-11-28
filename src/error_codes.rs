@@ -121,6 +121,8 @@ pub enum Code {
     // ---- E08xx: dialect semantics -----------------------------------------------------------
     /// `E0801`: the construct exists in the other dialect only, or lowers differently per dialect.
     DialectSpecific,
+    /// `E0802`: an explicit opt-out from a safety check was used where the contract forbids it.
+    UnsafeOptOutInDialect,
 
     // ---- E09xx: internal --------------------------------------------------------------------
     /// `E0901`: a compiler invariant was violated. Always an Archx bug.
@@ -167,6 +169,7 @@ impl Code {
             Code::NonExhaustiveMatch => "E0703",
             Code::BadRange => "E0704",
             Code::DialectSpecific => "E0801",
+            Code::UnsafeOptOutInDialect => "E0802",
             Code::InternalInvariant => "E0901",
         }
     }
@@ -210,6 +213,7 @@ impl Code {
             Code::NonExhaustiveMatch => "non-exhaustive match",
             Code::BadRange => "invalid range",
             Code::DialectSpecific => "construct not available in this dialect",
+            Code::UnsafeOptOutInDialect => "safety opt-out not allowed in this dialect",
             Code::InternalInvariant => "internal compiler error",
         }
     }
@@ -376,6 +380,14 @@ impl Code {
                 "A loop range is malformed: a non-integer bound, mismatched bound types, or a step of \
                  zero. A zero step is rejected because the loop would never terminate."
             }
+            Code::UnsafeOptOutInDialect => {
+                "A construct that turns off a safety guarantee was used in a contract that does not \
+                 permit it. The clearest case is `wrapping_add`/`wrapping_sub`/`wrapping_mul`: they \
+                 ask for modular `i64` arithmetic, which never traps, and they are available in \
+                 `dialect=native` only. A `compat` module promises CPython's arbitrary-precision \
+                 `int`, where wrapping would hand the program a wrong answer with no signal, so the \
+                 opt-out is rejected there instead of being silently honoured."
+            }
             Code::DialectSpecific => {
                 "The construct belongs to the other dialect, or means something different in each. \
                  Archx refuses to pick silently: change the module's directive (or pass `--dialect`) \
@@ -434,6 +446,7 @@ impl Code {
             Code::NonExhaustiveMatch,
             Code::BadRange,
             Code::DialectSpecific,
+            Code::UnsafeOptOutInDialect,
             Code::InternalInvariant,
         ]
     }

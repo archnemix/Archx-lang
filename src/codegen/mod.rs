@@ -569,6 +569,7 @@ fn lower_module(raw_program: &Program) -> Result<String> {
         used_pop_empty_fail: false,
         used_div_zero_fail: false,
         used_int_overflow_fail: false,
+        used_wrapping: false,
         used_neg_exp_fail: false,
         used_zero_step_fail: false,
         used_parse_fail: false,
@@ -747,7 +748,7 @@ fn lower_module(raw_program: &Program) -> Result<String> {
     cg.emit_pythonic_runtime_helpers(&mut out);
     cg.emit_hash_any_runtime_helpers(&mut out);
 
-    out.push_str(&dialect_flag_defs(&program.dialect));
+    out.push_str(&dialect_flag_defs(&program.dialect, cg.used_wrapping));
     Ok(out)
 }
 
@@ -774,13 +775,19 @@ fn dialect_flag(spec: &crate::dialect::DialectSpec) -> String {
 /// survives `llvm-as`/`opt`/`clang` without being attached to a declaration. Behaviour bit 1 means
 /// `Error`: a linker that sees two modules claiming different dialects fails instead of silently
 /// picking one — exactly the mistake this flag exists to prevent.
-fn dialect_flag_defs(spec: &crate::dialect::DialectSpec) -> String {
+fn dialect_flag_defs(spec: &crate::dialect::DialectSpec, wrapping: bool) -> String {
+    // `archx.wrapping` records that this module deliberately uses modular arithmetic through
+    // `wrapping_*`. It is part of the artifact, so a binary that opted out of trapping `int`
+    // arithmetic is identifiable from its IR alone — the opt-out cannot be a silent property of a
+    // source file nobody kept (AX-002).
     format!(
-        "\n!llvm.module.flags = !{{!0, !1}}\n\
+        "\n!llvm.module.flags = !{{!0, !1, !2}}\n\
          !0 = !{{i32 1, !\"archx.dialect\", !\"{}\"}}\n\
-         !1 = !{{i32 1, !\"archx.directive_version\", !\"{}\"}}\n",
+         !1 = !{{i32 1, !\"archx.directive_version\", !\"{}\"}}\n\
+         !2 = !{{i32 1, !\"archx.wrapping\", !\"{}\"}}\n",
         spec.dialect.name(),
-        spec.version
+        spec.version,
+        if wrapping { "true" } else { "false" }
     )
 }
 
@@ -1217,6 +1224,9 @@ pub(super) struct Codegen {
     pub(super) used_div_zero_fail: bool,
     /// Emit the `@archx_int_overflow_fail` panic handler in this module.
     pub(super) used_int_overflow_fail: bool,
+    /// The module called `wrapping_add/sub/mul`, i.e. it deliberately opted out of trapping `int`
+    /// arithmetic on at least one path. Recorded in the module flags (AX-002).
+    pub(super) used_wrapping: bool,
     pub(super) used_neg_exp_fail: bool,
     pub(super) used_zero_step_fail: bool,
     pub(super) used_parse_fail: bool,

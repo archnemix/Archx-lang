@@ -544,6 +544,10 @@ impl Codegen {
                             out,
                             "  {pr} = call fastcc nonnull align 16 ptr @archx_region_alloc(ptr {rslot}, i64 {bytes})"
                         );
+                        // `nsw` is sound here because `emit_repeat_count_check` (just above) already
+                        // trapped unless `0 <= count <= MAX_ARRAY_LEN`, so the negation cannot
+                        // overflow. It is written next to that check for that reason: an `nsw`
+                        // separated from its proof is exactly the kind of claim that rots (AX-002).
                         let neg_c = self.next_tmp();
                         let _ = writeln!(out, "  {neg_c} = sub nsw i64 0, {count_val}");
                         (pr, neg_c)
@@ -1775,8 +1779,12 @@ impl Codegen {
             self.emit_br(&end_lbl, out);
 
             self.start_block(&step_lbl, out);
+            // The counter is bounded by the list length checked on entry, so it cannot overflow — but
+            // no attribute is emitted anyway: `nsw` on a loop exit comparison is exactly the kind of
+            // assumed fact that costs correctness when a future change widens the bound (AX-002:
+            // never claim a proof that is not written down next to the check that makes it true).
             let nxt = self.next_tmp();
-            let _ = writeln!(out, "  {nxt} = add nsw i64 {cur}, 1");
+            let _ = writeln!(out, "  {nxt} = add i64 {cur}, 1");
             let _ = writeln!(out, "  store i64 {nxt}, ptr {islot}, align 8");
             self.emit_br(&cond_lbl, out);
 
@@ -1865,7 +1873,7 @@ impl Codegen {
                 ci.clone()
             } else {
                 let d = self.next_tmp();
-                let _ = writeln!(out, "  {d} = add nuw nsw i64 {dst_off}, {ci}");
+                let _ = writeln!(out, "  {d} = add i64 {dst_off}, {ci}");
                 d
             };
             let dp = self.next_tmp();
@@ -1875,7 +1883,7 @@ impl Codegen {
             );
             self.emit_elem_store(elem_ty, &v, &dp, out);
             let ni = self.next_tmp();
-            let _ = writeln!(out, "  {ni} = add nuw nsw i64 {ci}, 1");
+            let _ = writeln!(out, "  {ni} = add i64 {ci}, 1");
             let _ = writeln!(out, "  store i64 {ni}, ptr {islot}, align 8");
             self.emit_br(&cl, out);
             self.start_block(&el, out);
@@ -2154,24 +2162,18 @@ impl Codegen {
         let plain = self.next_tmp();
         let _ = writeln!(out, "  {plain} = fdiv double {cast_l}, {cast_r}");
 
-        let neg_l = self.next_tmp();
-        let _ = writeln!(out, "  {neg_l} = icmp slt i64 {lhs_val}, 0");
-        let neg_lv = self.next_tmp();
-        let _ = writeln!(out, "  {neg_lv} = sub nsw i64 0, {lhs_val}");
-        let abs_l = self.next_tmp();
-        let _ = writeln!(out, "  {abs_l} = select i1 {neg_l}, i64 {neg_lv}, i64 {lhs_val}");
-        let neg_r = self.next_tmp();
-        let _ = writeln!(out, "  {neg_r} = icmp slt i64 {safe_rhs}, 0");
-        let neg_rv = self.next_tmp();
-        let _ = writeln!(out, "  {neg_rv} = sub nsw i64 0, {safe_rhs}");
-        let abs_r = self.next_tmp();
-        let _ = writeln!(out, "  {abs_r} = select i1 {neg_r}, i64 {neg_rv}, i64 {safe_rhs}");
-        let big_l = self.next_tmp();
-        let _ = writeln!(out, "  {big_l} = icmp sgt i64 {abs_l}, 9007199254740992");
-        let big_r = self.next_tmp();
-        let _ = writeln!(out, "  {big_r} = icmp sgt i64 {abs_r}, 9007199254740992");
+        // "Is |value| > 2^53?" decides whether the correction term is needed, but computing |x| by
+        // negating is unsafe: `x = i64::MIN` has no positive counterpart, so `sub nsw i64 0, x` is
+        // poison — and poison is exactly what LLVM may exploit by deleting the branch that reads it,
+        // which would be the wrong answer (`i64::MIN / 3` would lose its correction term). The test
+        // below is total instead: it splits on sign and compares against +2^53 and -2^53, so no
+        // negation is ever formed and no `nsw` is needed.
+        let limit: i64 = 1 << 53;
+        let neg_limit: i64 = -limit;
+        let lhs_big = self.exceeds_2_53(lhs_val, limit, neg_limit, out);
+        let rhs_big = self.exceeds_2_53(&safe_rhs, limit, neg_limit, out);
         let big = self.next_tmp();
-        let _ = writeln!(out, "  {big} = or i1 {big_l}, {big_r}");
+        let _ = writeln!(out, "  {big} = or i1 {lhs_big}, {rhs_big}");
         let res = self.next_tmp();
         let _ = writeln!(out, "  {res} = select i1 {big}, double {slow}, double {plain}");
         // i64::MIN / -1 lands here with safe_rhs = 1, so `slow` already reads 2^63.
@@ -2185,6 +2187,21 @@ impl Codegen {
             Ok(v) => v < 0,
             Err(_) => false,
         }
+    }
+
+    /// `true` when the `i64` value in `val` has magnitude greater than `limit` (2^53).
+    ///
+    /// Written as a pure comparison on purpose: the obvious `|x| > limit` needs a negation, and
+    /// negating `i64::MIN` overflows. Emitting that negation with `nsw` would be undefined behaviour
+    /// the optimiser is entitled to exploit, so the sign is tested instead of removed.
+    fn exceeds_2_53(&mut self, val: &str, limit: i64, neg_limit: i64, out: &mut String) -> String {
+        let above = self.next_tmp();
+        let _ = writeln!(out, "  {above} = icmp sgt i64 {val}, {limit}");
+        let below = self.next_tmp();
+        let _ = writeln!(out, "  {below} = icmp slt i64 {val}, {neg_limit}");
+        let big = self.next_tmp();
+        let _ = writeln!(out, "  {big} = or i1 {above}, {below}");
+        big
     }
 
     pub(super) fn emit_int_arith(&mut self, op: BinOp, lhs_val: &str, rhs_val: &str, out: &mut String) -> String {

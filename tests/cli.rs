@@ -78,6 +78,21 @@ fn with_native_directive(source: &str) -> String {
     }
 }
 
+/// Compiles `source_path` and returns the emitted LLVM IR (`--emit-ir` on stdout).
+fn emit_ir(source_path: &Path) -> String {
+    let output = Command::new(archx())
+        .arg(source_path)
+        .arg("--emit-ir")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).to_string()
+}
+
 /// Compiles `source` with the freshly built archx binary and returns the
 /// program's stdout (with Windows CRLF normalized to LF). Panics if compilation fails.
 fn build_and_run(tag: &str, source: &str) -> String {
@@ -2244,4 +2259,132 @@ fn dialect_directive_is_required_and_checked() {
         .output()
         .unwrap();
     assert!(!bad_over.status.success(), "an unknown --dialect must be rejected");
+}
+
+#[test]
+fn wrapping_builtins_give_modular_arithmetic_and_record_the_opt_out() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    // The contract AX-002 left open: a program that genuinely means modular arithmetic (hashing,
+    // PRNGs, checksums) needs a legal way to say so, because plain `int` now traps. `wrapping_*` is
+    // that way, and its results are exactly CPython's with `& (2**64 - 1)` reinterpretation, i.e.
+    // two's complement wrapping.
+    let out = build_and_run(
+        "wrapping_ok",
+        "\
+def main():
+    big: int = 9223372036854775807
+    print(wrapping_add(big, 1))
+    print(wrapping_mul(3037000500, 3037000500))
+    print(wrapping_sub(0, big))
+    print(wrapping_add(1, 2))
+    print(wrapping_add(big, 0))
+",
+    );
+    assert_eq!(
+        out,
+        "-9223372036854775808\n-9223372036709301616\n-9223372036854775807\n3\n9223372036854775807\n"
+    );
+
+    // Runtime (non-constant) operands take the instruction path rather than the folder, and must
+    // still wrap instead of trapping.
+    let out = build_and_run(
+        "wrapping_runtime",
+        "\
+def main():
+    let a = 3037000500
+    let b = 3037000500
+    print(wrapping_mul(a, b))
+    let c = 9223372036854775807
+    let one = 1
+    print(wrapping_add(c, one))
+",
+    );
+    assert_eq!(out, "-9223372036709301616\n-9223372036854775808\n");
+
+    // The opt-out is part of the artifact, not just of the source: a program that used it says so in
+    // its module flags, so a binary that may wrap is identifiable from its IR alone.
+    let dir = std::env::temp_dir().join(format!("archx-wrapping-flag-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let wrapping_src = dir.join("wrapping.archx.lang");
+    fs::write(
+        &wrapping_src,
+        with_native_directive("def main():\n    print(wrapping_add(1, 2))\n"),
+    )
+    .unwrap();
+    let plain_src = dir.join("plain.archx.lang");
+    fs::write(&plain_src, with_native_directive("def main():\n    print(1 + 2)\n")).unwrap();
+
+    let wrapping_ir = emit_ir(&wrapping_src);
+    assert!(
+        wrapping_ir.contains(r#"!"archx.wrapping", !"true""#),
+        "the opt-out must be recorded in the module flags:\n{wrapping_ir}"
+    );
+    let plain_ir = emit_ir(&plain_src);
+    assert!(
+        plain_ir.contains(r#"!"archx.wrapping", !"false""#),
+        "a module that did not opt out must say so explicitly:\n{plain_ir}"
+    );
+
+    // The opt-out is native-only. A compat module promises arbitrary-precision `int`, so wrapping
+    // would be a wrong answer there and the compiler must refuse rather than silently comply.
+    let compat_src = dir.join("compat_wrapping.archx.lang");
+    fs::write(
+        &compat_src,
+        "# archx: dialect=compat, version=1\nprint(wrapping_add(1, 2))\n",
+    )
+    .unwrap();
+    let rejected = Command::new(archx()).arg(&compat_src).output().unwrap();
+    assert_eq!(rejected.status.code(), Some(1));
+    let err = String::from_utf8_lossy(&rejected.stderr);
+    assert!(
+        err.contains("E0802") && err.contains("native-only"),
+        "a compat module must be refused with a coded error, got: {err}"
+    );
+}
+
+#[test]
+fn integer_true_division_is_correct_and_never_emits_poison_negation() {
+    if !has_clang() {
+        eprintln!("skipping: clang not found");
+        return;
+    }
+
+    // `int / int` is true division, so it must convert to `double` even when a cpython-compatible
+    // correction term is needed for magnitudes above 2^53. The correction used to be selected by
+    // computing `|x|`, which negates — and `sub nsw i64 0, i64::MIN` is poison, so LLVM was free to
+    // delete the branch that reads it and silently drop the correction for exactly the operand most
+    // likely to need it. The test pins both the values and the absence of that instruction.
+    let source = "\
+def main():
+    let m = -9223372036854775807 - 1
+    let three = 3
+    print(m / three)
+    print(-7 / three)
+    print(7 / three)
+    print(m / -3)
+    let big = 9223372036854775807
+    print(big / three)
+";
+    let dir = std::env::temp_dir().join(format!("archx-truediv-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("truediv.archx.lang");
+    fs::write(&src, with_native_directive(source)).unwrap();
+
+    let ir = emit_ir(&src);
+    assert!(
+        !ir.contains("sub nsw i64 0,"),
+        "a negation of a possibly-minimal i64 is poison; use a total comparison instead:\n{ir}"
+    );
+
+    let out = build_and_run("truediv", source);
+    assert_eq!(
+        out,
+        "-3.0744573456182584e+18\n-2.3333333333333335\n2.3333333333333335\n3.0744573456182584e+18\n\
+         3.0744573456182584e+18\n",
+        "true division of 64-bit ints must match Python's float result"
+    );
 }

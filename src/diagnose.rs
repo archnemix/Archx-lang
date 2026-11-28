@@ -222,6 +222,7 @@ const RULES: &[(&str, &str)] = &[
     ("not support dynamic", "E0402"),
     ("has no supported method", "E0504"),
     ("does not format", "E0402"),
+    ("is native-only", "E0802"),
     ("unsupported compound assignment", "E0401"),
     ("isinstance` second argument must be a type name", "E0404"),
     ("single-argument `", "E0402"),

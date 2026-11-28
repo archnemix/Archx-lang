@@ -389,3 +389,41 @@ Two smaller decisions worth recording:
 benchmark table and the limitations list are generated: a document that restates behaviour will
 eventually describe a compiler that no longer exists.
 
+---
+
+## Round 18 — AX-002: the audit that matters is "is this claim true?", not "does it pass?"
+
+AX-002's remaining item was an opt-out (`wrapping_*`), which is the pleasant half: hashing, PRNGs and
+checksums genuinely mean modular arithmetic and previously had no legal way to say so. The
+implementation is small, and three decisions make it an opt-out rather than a hole in the guarantee:
+native-only (a `compat` module promises arbitrary-precision `int`, where wrapping is simply a wrong
+answer, so it is `E0802` there rather than a silent yes), recorded in the module flags so the artifact
+admits what it did, and *local* — only the operations you wrap can wrap.
+
+The unpleasant half was the acceptance clause I had been treating as already satisfied: **"no `add nsw`
+without a proof"**. I re-read every `nsw` in the backend to check it against that sentence rather than
+against the tests, and that found three defects, two of which no test could have caught because
+undefined behaviour is invisible until an optimiser decides to use it:
+
+1. `int / int` computed `|x|` by negating to choose between the fast and corrected float paths.
+   `sub nsw i64 0, x` is **poison** when `x == i64::MIN` — so LLVM may conclude the branch that reads
+   it is unreachable and delete the correction term for exactly the operand most in need of it. The
+   output was correct on this LLVM release, which is precisely why a test would not have found it.
+   Replaced with a total sign-split comparison that never forms a negation.
+2. `hex`/`oct`/`bin` did the same unconditional negating on a user value; now a plain `sub`, whose bit
+   pattern *is* the unsigned magnitude the digit loop consumes.
+3. Removing the `nuw nsw` from the list-copy and search counters was free: those counters are bounded
+   by a length that was already checked, so the attributes bought nothing and only added claims.
+
+Verifying (2) surfaced a genuine, user-visible bug that had been shipping: the digit loop selected a
+letter when the **base** was 16 instead of when the **digit** was ≥ 10, so `hex(1)` printed `0xX` and
+`hex(16)` printed `0xXW`. Every small value that was not already a letter came out wrong. The
+conformance harness had not caught it because every probe value I happened to write (`255`, `4095`,
+`0xff`) was already in the letters-adjacent range — a reminder that a differential harness only tests
+the values you think to write. The corpus now starts at zero and includes `i64::MIN`/`MAX`, negatives,
+and the `:x`/`:X`/`:o`/`:b` format specs.
+
+The lesson I want to keep: **an audit has to be phrased as a question about the artifact, not about the
+test suite.** "Do the tests pass?" would have passed. "Is every claim in this IR true?" found three
+bugs, one of them visible to users.
+

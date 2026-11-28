@@ -188,6 +188,9 @@ impl Codegen {
             "dict" => return self.gen_builtin_dict_ctor(args, span, out),
             "set" => return self.gen_builtin_set_ctor(args, span, out),
             "list" => return self.gen_builtin_list_ctor(args, span, out),
+            "wrapping_add" | "wrapping_sub" | "wrapping_mul" => {
+                return self.gen_builtin_wrapping(name, args, span, out)
+            }
             "map" | "filter" => return self.eval_map_filter(name, args, span, out),
             _ => {}
         }
@@ -1150,6 +1153,86 @@ impl Codegen {
         let res = self.next_tmp();
         let _ = writeln!(out, "  {res} = load {ty_ir}, ptr {aslot}, align 8");
         Ok((*elem_ty, res))
+    }
+
+    /// `wrapping_add/sub/mul(a, b)` — explicit modular `i64` arithmetic (AX-002).
+    ///
+    /// The default contract is that `int` traps rather than wrapping, because a wrapped value is a
+    /// *wrong answer* with no signal. That contract is right for almost every program, but it leaves
+    /// none for the programs that genuinely mean modular arithmetic: hashing, PRNGs, checksums,
+    /// bit-mixing. Those programs previously had no legal way to say so, so they either avoided the
+    /// language or reached for a different bit width.
+    ///
+    /// This is the way to say so. It is deliberately explicit and deliberately loud:
+    ///
+    /// * **native dialect only.** A compat module promises CPython's arbitrary-precision `int`, where
+    ///   `2**63` is `9223372036854775808`; wrapping to a negative number would be a wrong answer in
+    ///   that contract, so the name is rejected there with an explanation rather than quietly doing
+    ///   something the module never agreed to.
+    /// * **the artifact records it.** Emitting `wrapping_add` sets `archx.wrapping` in the module
+    ///   flags, so a binary that depends on modular arithmetic is identifiable without the source.
+    ///
+    /// Two constant operands are folded with `wrapping_*` at compile time, so `wrapping_add(MAX, 1)`
+    /// is a literal and costs nothing.
+    fn gen_builtin_wrapping(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+        span: Span,
+        out: &mut String,
+    ) -> Result<(Type, String)> {
+        if self.dialect != crate::dialect::Dialect::Native {
+            return Err(Diagnostic::new(
+                format!(
+                    "`{name}()` is native-only: a `compat` module promises CPython's arbitrary-precision \
+                     `int`, where wrapping would be a wrong answer. Change the directive to \
+                     `dialect=native`, or keep the trapping arithmetic"
+                ),
+                span,
+            ));
+        }
+        if args.len() != 2 {
+            return Err(Diagnostic::new(
+                format!("`{name}()` takes exactly 2 arguments"),
+                span,
+            ));
+        }
+        let (lt, lv) = self.eval_expr(&args[0], out)?;
+        let (rt, rv) = self.eval_expr(&args[1], out)?;
+        for (ty, expr, which) in [(&lt, &args[0], "first"), (&rt, &args[1], "second")] {
+            if *ty != Type::Int {
+                return Err(Diagnostic::new(
+                    format!("`{name}()` {which} argument must be `int`, found `{}`", ty.name()),
+                    expr.span,
+                ));
+            }
+        }
+
+        // Set before folding: the flag records that the *source* opted out, and a fold that removes
+        // the instruction entirely must not erase that fact from the artifact.
+        self.used_wrapping = true;
+        let folded = match (lv.parse::<i64>(), rv.parse::<i64>()) {
+            (Ok(a), Ok(b)) => Some(match name {
+                "wrapping_add" => a.wrapping_add(b),
+                "wrapping_sub" => a.wrapping_sub(b),
+                _ => a.wrapping_mul(b),
+            }),
+            _ => None,
+        };
+        if let Some(value) = folded {
+            return Ok((Type::Int, value.to_string()));
+        }
+
+        // The plain instruction is exactly LLVM's modular arithmetic; no `nsw`/`nuw` attribute may
+        // appear, since either would let the backend assume the wrap cannot happen.
+        let instr = match name {
+            "wrapping_add" => "add",
+            "wrapping_sub" => "sub",
+            _ => "mul",
+        };
+        let dst = self.next_tmp();
+        let _ = writeln!(out, "  {dst} = {instr} i64 {lv}, {rv}");
+        Ok((Type::Int, dst))
     }
 
     fn gen_builtin_ord(

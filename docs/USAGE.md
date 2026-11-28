@@ -103,6 +103,32 @@ archx explain E0402
 archx explain
 ```
 
+### Modular arithmetic: `wrapping_add`, `wrapping_sub`, `wrapping_mul`
+
+`int` traps on overflow; that is the point — a wrapped value is a wrong answer with no signal. But
+hashing, PRNGs, checksums and bit-mixing genuinely mean modular arithmetic, so there is an explicit way
+to ask for it:
+
+```python
+# archx: dialect=native, version=1
+def hash_step(h: int, byte: int) -> int:
+    return wrapping_add(wrapping_mul(h, 31), byte)
+
+def main():
+    print(wrapping_add(9223372036854775807, 1))   # -9223372036854775808
+```
+
+Three properties make this an opt-out rather than a hole in the guarantee:
+
+* **It is native-only.** A `compat` module promises CPython's arbitrary-precision `int`, where wrapping
+  would be a wrong answer, so the compiler rejects the name there with `E0802` instead of complying.
+* **The artifact records it.** Emitting any `wrapping_*` sets `archx.wrapping = "true"` in the IR
+  module flags, so a binary that may wrap is identifiable without its source.
+* **It is local.** Only the operations you wrap can wrap; the rest of the program keeps trapping.
+
+Constant operands are folded with the same modular semantics, so `wrapping_add(MAX, 1)` costs nothing
+at run time.
+
 ### Diagnostics and error codes
 
 Every error carries a stable code, printed as `error[E0402]: …` with the source line and a caret:

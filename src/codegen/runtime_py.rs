@@ -279,7 +279,11 @@ entry:
   %buf = alloca [80 x i8], align 8
   %end = getelementptr inbounds i8, ptr %buf, i64 80
   %neg = icmp slt i64 %n, 0
-  %mag0 = sub nsw i64 0, %n
+  ; Plain `sub`, never `sub nsw`: the digit loop consumes the magnitude as *unsigned* (`urem`), and
+  ; the bits of `0 - i64::MIN` are exactly 2^63, which is the magnitude `hex`/`oct`/`bin` must render
+  ; for that one input. With `nsw` this instruction would be poison for exactly that value, and the
+  ; optimiser could then treat the sign branch as impossible.
+  %mag0 = sub i64 0, %n
   %mag = select i1 %neg, i64 %mag0, i64 %n
   %zerocase = icmp eq i64 %mag, 0
   br i1 %zerocase, label %zero, label %loop
@@ -292,6 +296,8 @@ loop:
   %v = phi i64 [ %mag, %entry ], [ %vnext, %step ]
   %b64 = sext i32 %base to i64
   %rem = urem i64 %v, %b64
+  ; `dec` picks the digit form and `alpha` picks the letter case; both are needed, so the first
+  ; select must not be folded into one comparison (the earlier version tested only the base).
   %dec = icmp ult i64 %rem, 10
   %digit0 = add i64 %rem, 48
   %lower_a = add i64 %rem, 87
@@ -1733,7 +1739,11 @@ entry:
   %buf = alloca [80 x i8], align 8
   %end = getelementptr inbounds i8, ptr %buf, i64 80
   %neg = icmp slt i64 %n, 0
-  %mag0 = sub nsw i64 0, %n
+  ; Plain `sub`, never `sub nsw`: the digit loop consumes the magnitude as *unsigned* (`urem`), and
+  ; the bits of `0 - i64::MIN` are exactly 2^63, which is the magnitude `hex`/`oct`/`bin` must render
+  ; for that one input. With `nsw` this instruction would be poison for exactly that value, and the
+  ; optimiser could then treat the sign branch as impossible.
+  %mag0 = sub i64 0, %n
   %mag = select i1 %neg, i64 %mag0, i64 %n
   %zerocase = icmp eq i64 %mag, 0
   br i1 %zerocase, label %zero, label %loop
@@ -1746,10 +1756,14 @@ loop:
   %v = phi i64 [ %mag, %entry ], [ %vnext, %step ]
   %b64 = sext i32 %base to i64
   %rem = urem i64 %v, %b64
-  %ishex = icmp eq i32 %base, 16
+  ; A digit is a letter when its *value* reaches 10, not when the base is 16. Selecting on the base
+  ; printed `hex(1)` as `0xX` (it emitted the digit for 33) — every digit that was not already a
+  ; letter came out as one of the six letters `V`-`z`. Only bases 16 and 8 reach this code with a
+  ; digit >= 10 (octal never does), and both use the same `a`-`f` run, so one comparison suffices.
+  %isalpha = icmp uge i64 %rem, 10
   %dig10 = add i64 %rem, 48
   %digalpha = add i64 %rem, 87
-  %dig = select i1 %ishex, i64 %digalpha, i64 %dig10
+  %dig = select i1 %isalpha, i64 %digalpha, i64 %dig10
   %d8 = trunc i64 %dig to i8
   %pnext = getelementptr inbounds i8, ptr %p, i64 -1
   store i8 %d8, ptr %pnext, align 1
