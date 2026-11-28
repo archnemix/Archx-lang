@@ -9,9 +9,9 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 
 ## Progress
 
-**3 / 128** complete · 4 in progress · 1 blocked · 120 not started
+**4 / 128** complete · 3 in progress · 1 blocked · 120 not started
 
-## P0 — Trust the current build (3/12)
+## P0 — Trust the current build (4/12)
 
 | # | Work order | Phase | Area | Priority | Depends | Effort | Risk | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -19,7 +19,7 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 | AX-002 | Make integer overflow actually trap on every path | P0 | Codegen | P0 | — | M | high | `[~]` | Trapping `i64` via llvm.s*.with.overflow + checked_* const folding (e55ea1d): MAX+1, MAX*2, 2**63 all trap with exit 101, and a literal can no longer bypass the check by folding. REMAINING: explicit `wrapping_*` intrinsics for the native dialect, and `add nsw` only with a proof (the immediate check costs ~12% on composite; batching was rejected because it exposes the wrapped value before the panic). |
 | AX-003 | Reconcile versions, docs, and numbers | P0 | Docs | P0 | — | S | low | `[~]` | The CLI already reads CARGO_PKG_VERSION, so the binary's version is single-sourced. REMAINING: regenerate the README/docs numbers from ci/out/benchmarks.txt, fix the test count, drop "(Current)" from the v0.8.0 changelog, and add the CI drift script. |
 | AX-004 | Zero compiler warnings, gate them in CI | P0 | Build | P0 | — | S | low | `[x]` | All 15 warnings resolved and the gate is in CI. Dead code deleted (not allowed): `emit_pack_dict_key`, `clauses_carry`, `param_as_expr`, `declare_loop_var_in_outer_scope`, `forget_drop_target`, plus the never-constructed `StmtKind::ForElse` (AX-010). Unread parameters removed from signatures (`arr_name` in `emit_list_push_raw`/`emit_list_scan_var`, `span` in `gen_for`, `gen_foreach`, `gen_for_else`, `gen_foreach_else`), unused `mut`s dropped. `#[deny(dead_code)]` on `mod ast`. CI runs `RUSTFLAGS="-D warnings" cargo build --all-targets` on Linux and on both cross-platform runners; local release + all-targets builds are clean. NOTE: the acceptance text says `cargo clippy -- -D warnings`; the tree has never been clippy-clean (65 lints, incl. 27 `map_or` style suggestions), so the gate is rustc warnings. Clippy-clean is left as separate work rather than silently claimed. |
-| AX-005 | Remove committed binaries and add LICENSE | P0 | Repo | P0 | — | S | low | `[~]` | LICENSE (MIT) added, matching what Cargo.toml already declared. REMAINING: delete the tracked `bw` and `call_and_loop_semantics` ELF files, extend .gitignore, add the CI check that rejects binaries in the tree. |
+| AX-005 | Remove committed binaries and add LICENSE | P0 | Repo | P0 | — | S | low | `[x]` | LICENSE (MIT) added earlier. The binary problem was larger than the work order described: SIX tracked executables, not two (`bw`, `call_and_loop_semantics`, `d1`, `full_tour_pythonic`, `hello`, `pipelines`) — the other four are build output from `benchmarks/run.sh` that was committed by accident. All six are removed from the index and ignored by name; `tools/check_binaries.py` scans the magic number of every tracked blob (so it needs no `file(1)` and cannot miss an extensionless binary), is wired into CI, and was verified to fail on a planted ELF before being trusted. Acceptance met: zero ELF/Mach-O/PE files tracked. |
 | AX-006 | Merge the 99-commit branch into `main` and tag | P0 | Repo | P0 | — | S | low | `[!]` | Needs a decision I cannot make alone: merging arena/888b3ea8-archx-lang into `main` and changing the default branch is a repo-level action affecting what `git clone` gives everyone. Depends on AX-003 and AX-005 landing first. |
 | AX-007 | Add a differential conformance harness | P0 | Tests | P0 | — | M | med | `[ ]` |  |
 | AX-008 | Publish the actual known-limitations list | P0 | Docs | P0 | — | S | low | `[ ]` |  |

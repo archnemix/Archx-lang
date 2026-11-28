@@ -13,8 +13,8 @@
     "note": "The CLI already reads CARGO_PKG_VERSION, so the binary's version is single-sourced. REMAINING: regenerate the README/docs numbers from ci/out/benchmarks.txt, fix the test count, drop \"(Current)\" from the v0.8.0 changelog, and add the CI drift script."
   },
   "AX-005": {
-    "state": "partial",
-    "note": "LICENSE (MIT) added, matching what Cargo.toml already declared. REMAINING: delete the tracked `bw` and `call_and_loop_semantics` ELF files, extend .gitignore, add the CI check that rejects binaries in the tree."
+    "state": "done",
+    "note": "LICENSE (MIT) added earlier. The binary problem was larger than the work order described: SIX tracked executables, not two (`bw`, `call_and_loop_semantics`, `d1`, `full_tour_pythonic`, `hello`, `pipelines`) — the other four are build output from `benchmarks/run.sh` that was committed by accident. All six are removed from the index and ignored by name; `tools/check_binaries.py` scans the magic number of every tracked blob (so it needs no `file(1)` and cannot miss an extensionless binary), is wired into CI, and was verified to fail on a planted ELF before being trusted. Acceptance met: zero ELF/Mach-O/PE files tracked."
   },
   "AX-006": {
     "state": "blocked",

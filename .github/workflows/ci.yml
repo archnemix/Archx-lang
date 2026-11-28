@@ -49,6 +49,12 @@ jobs:
             clang --version || true
           } | tee ci/logs/toolchain.log
 
+      - name: Reject committed binaries (AX-005)
+        # The tree once carried six executables (`bw`, `d1`, `hello`, …) because local build output was
+        # committed by accident. The check reads the magic number of every *tracked* blob, so it works
+        # without `file(1)` and cannot be fooled by a missing extension.
+        run: python3 tools/check_binaries.py
+
       - name: Reject compiler warnings (AX-004)
         # AX-004: a warning is a defect that has not been triaged yet. Gating on `-D warnings` keeps
         # the count at zero instead of letting it drift back up between releases.

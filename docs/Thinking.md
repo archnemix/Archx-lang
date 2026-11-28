@@ -187,3 +187,12 @@ native one fails instead of choosing one `int` definition silently; a named node
 !{"native"}` was rejected by the LLVM verifier (`expected integer`) — module flags are the only
 metadata form a frontend may use for a module-level property.
 
+**AX-005 — the binary problem was three times the reported size.** The work order named two tracked
+executables; scanning every tracked blob for ELF/Mach-O/PE magic found **six**: `bw`,
+`call_and_loop_semantics`, and four bare build outputs (`d1`, `full_tour_pythonic`, `hello`,
+`pipelines`) that `benchmarks/run.sh` produces. A name-based check (the obvious implementation) would
+have removed the two named files and left four loaded executables in history. `file(1)` is not
+installed in this sandbox either, so the gate became `tools/check_binaries.py`, which reads the first
+four bytes of each `git ls-files` entry. It was proven to fail on a planted ELF before being wired
+into CI — a gate nobody has watched fail is not a gate.
+

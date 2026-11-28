@@ -17,16 +17,21 @@
 /benchmarks/*.ll
 /tests/*.ll
 
-# Local scratch space (leak-hunting harnesses, repro cases). Never committed.
+# Local scratch space (leak-hunting harnesses, repro cases, the sandbox toolchain). Never committed.
+# `.work/env.sh` rebuilds it from scratch, so nothing here is worth keeping in history.
 /.work/
+
+# Compiled binaries are build output, never source. The root-level names below were committed by
+# mistake once (AX-005) and are ignored by name as well as by the CI binary scan.
+/bw
+/call_and_loop_semantics
+/d1
+/full_tour_pythonic
+/hello
+/pipelines
 
 # Stray build outputs from ad-hoc runs
 /W1
 /W2
 /W3
 /ax001-tmp
-# Work directory: the local build toolchain and scratch harnesses.
-#
-# The sandbox ships no Rust and no C compiler, and both /tmp and the workspace are wiped
-# between sessions, so everything here is rebuilt by .work/env.sh and never committed.
-/.work/
