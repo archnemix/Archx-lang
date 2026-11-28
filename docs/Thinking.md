@@ -292,3 +292,16 @@ Result: 104 probes, 64 reproducing CPython exactly, 40 documented gaps, 0 undocu
 Two of those gaps are internal compiler errors (`list.insert`/`list.index` on a list with no storage
 slot) and are recorded as such rather than dressed up as "not implemented".
 
+**Portability bug the harness exposed in itself.** `tests/conformance.rs` first derived the compiler
+path from `current_exe()`, assuming `target/<profile>/deps`. On the CI runner Cargo placed the test
+binary under `target/debug/build/archx/<hash>/out/`, so the harness looked for a compiler that was
+never there. The fix is `env!("CARGO_BIN_EXE_archx")`, which is Cargo's own answer to "where is the
+binary this crate builds" and is correct on every profile, OS and layout. Worth recording because the
+mistake is invisible locally and only a different runner surfaces it.
+
+**Toolchain currency.** The sandbox's Rust index offers exactly one version, 1.97.0, and that is what
+is installed; the C toolchain is clang 22.1.8 (via zig). CI tracks `dtolnay/rust-toolchain@stable`, so
+the runners are at least as new. The optimization A/B in `docs/OPTIMIZATION_AB.md` was therefore taken
+on current LLVM, and the `-O2` default is a measurement from this toolchain rather than a habit carried
+over from an older one.
+

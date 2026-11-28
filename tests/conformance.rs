@@ -28,17 +28,14 @@ fn root() -> PathBuf {
 }
 
 fn archx_bin() -> PathBuf {
-    // `cargo test` puts integration test binaries in `target/<profile>/deps`; the compiler is two
-    // levels up. ARCHX_BIN overrides this for a release build or a system install.
+    // `CARGO_BIN_EXE_archx` is Cargo's own answer to "where is the binary this crate builds": it is
+    // set for integration tests and works on every profile and every OS. Deriving it from
+    // `current_exe()` was wrong — Cargo may place a test binary under `target/<profile>/build/...`,
+    // which CI caught. ARCHX_BIN still overrides it for a system install.
     if let Ok(path) = std::env::var("ARCHX_BIN") {
         return PathBuf::from(path);
     }
-    let mut dir = std::env::current_exe().expect("test binary path");
-    dir.pop();
-    if dir.ends_with("deps") {
-        dir.pop();
-    }
-    dir.join(if cfg!(windows) { "archx.exe" } else { "archx" })
+    PathBuf::from(env!("CARGO_BIN_EXE_archx"))
 }
 
 fn have_clang() -> bool {
