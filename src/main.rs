@@ -4,7 +4,9 @@
 mod ast;
 mod codegen;
 mod diag;
+mod diagnose;
 mod dialect;
+mod error_codes;
 mod lexer;
 mod parser;
 mod token;
@@ -40,20 +42,167 @@ struct Options {
     opt_level: String,
 }
 
+/// A failure the driver reports itself (bad flags, I/O, toolchain), as opposed to a source diagnostic.
+///
+/// It carries a code for the same reason every other error does: a script that drives `archx` should
+/// be able to tell "you passed a bad flag" (`E0001`) from "your program does not typecheck" (`E0402`)
+/// without reading English.
+#[derive(Debug)]
+struct DriverError {
+    code: error_codes::Code,
+    message: String,
+    /// Whether `message` is already the complete report (a rendered source snippet with its code and
+    /// caret, or a JSON object), as opposed to a bare sentence that still needs its code prepended.
+    rendered: bool,
+}
+
+impl DriverError {
+    fn new(code: error_codes::Code, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            rendered: false,
+        }
+    }
+
+    /// A failure whose message is already the finished text (see `rendered`).
+    fn rendered(code: error_codes::Code, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            rendered: true,
+        }
+    }
+}
+
+impl std::fmt::Display for DriverError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.code.as_str(), self.message)
+    }
+}
+
+impl DriverError {
+    /// The human line for a driver failure: `E0001: unknown option …`.
+    fn render_human(&self) -> String {
+        format!("{}: {}", self.code.as_str(), self.message)
+    }
+}
+
+type DriverResult<T> = std::result::Result<T, DriverError>;
+
+/// One diagnostic in the machine-readable format: a single JSON object per line.
+///
+/// Hand-rolled rather than serde: the compiler has no dependencies by design (a 14 KB binary is a
+/// feature), and the shape is fixed. Strings are escaped by `json_escape`, which is tested against a
+/// real JSON parser in `tests/cli.rs`.
+fn diagnostic_json(
+    code: error_codes::Code,
+    severity: &str,
+    message: &str,
+    file: Option<&str>,
+    span: Option<diag::Span>,
+) -> String {
+    let mut out = String::from("{");
+    out.push_str(&format!("\"code\":\"{}\",", code.as_str()));
+    out.push_str(&format!("\"severity\":\"{severity}\","));
+    out.push_str(&format!("\"message\":\"{}\",", json_escape(message)));
+    out.push_str(&format!(
+        "\"summary\":\"{}\",",
+        json_escape(code.summary())
+    ));
+    if let Some(file) = file {
+        out.push_str(&format!("\"file\":\"{}\",", json_escape(file)));
+    }
+    match span {
+        Some(span) => out.push_str(&format!(
+            "\"line\":{},\"column\":{},",
+            span.line, span.col
+        )),
+        None => out.push_str("\"line\":null,\"column\":null,"),
+    }
+    out.push_str(&format!("\"internal\":{}}}", code.is_internal()));
+    out
+}
+
+/// Escapes a string for a JSON string literal, including the control characters a source file can
+/// contain. Lone surrogates cannot occur in Rust `String`s, so UTF-8 passes through unchanged.
+fn json_escape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
-    match run(&args) {
+    // `--message-format=json` is parsed before anything else, because it decides *how* every later
+    // failure is reported, including a bad flag.
+    let (args, json) = extract_message_format(&args);
+    match run(&args, json) {
         Ok(code) => std::process::exit(code),
-        Err(message) => {
-            eprintln!("archx: error: {message}");
+        Err(error) => {
+            if json {
+                // A JSON diagnostic is already a complete object when the failing stage produced one
+                // (source diagnostics carry their span and file); driver errors are wrapped here.
+                if error.rendered {
+                    eprintln!("{}", error.message);
+                } else {
+                    eprintln!(
+                        "{}",
+                        diagnostic_json(error.code, "error", &error.message, None, None)
+                    );
+                }
+            } else if error.rendered {
+                // A source diagnostic renders itself, rustc-style: `error[E0402]: …` plus the snippet.
+                eprint!("{}", error.message);
+            } else {
+                eprintln!("archx: error: {}", error.render_human());
+            }
             std::process::exit(1);
         }
     }
 }
 
+/// Pulls `--message-format` out of the argument list, returning the remaining arguments.
+///
+/// Done first and unconditionally so that a *malformed* invocation can still be reported in the
+/// requested format: a build tool that asked for JSON should not have to parse English just because
+/// another flag was also wrong.
+fn extract_message_format(args: &[String]) -> (Vec<String>, bool) {
+    let mut kept = Vec::with_capacity(args.len());
+    let mut json = false;
+    let mut i = 0;
+    while i < args.len() {
+        let arg = &args[i];
+        if arg == "--message-format=json" || arg == "--message-format" && args.get(i + 1).map(String::as_str) == Some("json") {
+            json = true;
+            if arg == "--message-format" {
+                i += 1;
+            }
+        } else if arg == "--message-format=human" || arg == "--message-format" && args.get(i + 1).map(String::as_str) == Some("human") {
+            if arg == "--message-format" {
+                i += 1;
+            }
+        } else {
+            kept.push(arg.clone());
+        }
+        i += 1;
+    }
+    (kept, json)
+}
+
 /// Shared by `-O3` and `-O 3`: validate the level text and store the clang flag for it.
-fn args_i_split(options: &mut Options, level: &str) -> Result<(), String> {
+fn args_i_split(options: &mut Options, level: &str) -> DriverResult<()> {
     options.opt_level = match level {
         "0" => "-O0",
         "1" => "-O1",
@@ -61,8 +210,9 @@ fn args_i_split(options: &mut Options, level: &str) -> Result<(), String> {
         "3" => "-O3",
         "s" => "-Os",
         other => {
-            return Err(format!(
-                "unknown optimisation level `{other}` (expected 0, 1, 2, 3 or s)"
+            return Err(DriverError::new(
+                error_codes::Code::MissingOptionValue,
+                format!("unknown optimisation level `{other}` (expected 0, 1, 2, 3 or s)"),
             ))
         }
     }
@@ -70,7 +220,7 @@ fn args_i_split(options: &mut Options, level: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn run(args: &[String]) -> Result<i32, String> {
+fn run(args: &[String], json: bool) -> DriverResult<i32> {
     let mut options = Options {
         input: None,
         output: None,
@@ -91,22 +241,49 @@ fn run(args: &[String]) -> Result<i32, String> {
                 println!("archx {VERSION}");
                 return Ok(0);
             }
+            "--explain" => {
+                // `archx explain` with no code lists every code; with a code it prints the entry.
+                let code = args.get(i + 1).filter(|text| !text.starts_with('-'));
+                match code {
+                    Some(text) => match error_codes::Code::parse(text) {
+                        Some(code) => print!("{}", error_codes::explain(Some(code))),
+                        None => {
+                            return Err(DriverError::new(
+                                error_codes::Code::UnknownOption,
+                                format!("unknown error code `{text}` (try `archx explain`)"),
+                            ))
+                        }
+                    },
+                    None => print!("{}", error_codes::explain(None)),
+                }
+                return Ok(0);
+            }
             "--dialect" => {
                 i += 1;
                 if i >= args.len() {
-                    return Err("missing value after `--dialect`".to_string());
+                    return Err(DriverError::new(
+                        error_codes::Code::MissingOptionValue,
+                        "missing value after `--dialect`",
+                    ));
                 }
-                options.dialect = Some(dialect::Dialect::parse(&args[i]).ok_or_else(|| {
-                    format!(
-                        "unknown dialect `{}` (expected `compat` or `native`)",
-                        args[i]
-                    )
-                })?);
+                options.dialect =
+                    Some(dialect::Dialect::parse(&args[i]).ok_or_else(|| {
+                        DriverError::new(
+                            error_codes::Code::UnknownOption,
+                            format!(
+                                "unknown dialect `{}` (expected `compat` or `native`)",
+                                args[i]
+                            ),
+                        )
+                    })?);
             }
             "-O" | "--opt-level" => {
                 i += 1;
                 if i >= args.len() {
-                    return Err("missing value after `-O` (expected 0, 1, 2, 3 or s)".to_string());
+                    return Err(DriverError::new(
+                        error_codes::Code::MissingOptionValue,
+                        "missing value after `-O` (expected 0, 1, 2, 3 or s)",
+                    ));
                 }
                 args_i_split(&mut options, &args[i])?;
             }
@@ -115,7 +292,10 @@ fn run(args: &[String]) -> Result<i32, String> {
             "-o" | "--output" => {
                 i += 1;
                 if i >= args.len() {
-                    return Err("missing value after `-o`".to_string());
+                    return Err(DriverError::new(
+                        error_codes::Code::MissingOptionValue,
+                        "missing value after `-o`",
+                    ));
                 }
                 options.output = Some(PathBuf::from(&args[i]));
             }
@@ -124,11 +304,17 @@ fn run(args: &[String]) -> Result<i32, String> {
                 args_i_split(&mut options, &other[2..])?;
             }
             other if other.starts_with('-') => {
-                return Err(format!("unknown option `{other}` (try `archx --help`)"));
+                return Err(DriverError::new(
+                    error_codes::Code::UnknownOption,
+                    format!("unknown option `{other}` (try `archx --help`)"),
+                ));
             }
             path => {
                 if options.input.is_some() {
-                    return Err("only one input file is supported".to_string());
+                    return Err(DriverError::new(
+                        error_codes::Code::MultipleInputs,
+                        "only one input file is supported",
+                    ));
                 }
                 options.input = Some(PathBuf::from(path));
             }
@@ -136,26 +322,36 @@ fn run(args: &[String]) -> Result<i32, String> {
         i += 1;
     }
 
-    let input = options
-        .input
-        .ok_or_else(|| "no input file (try `archx --help`)".to_string())?;
+    let input = options.input.ok_or_else(|| {
+        DriverError::new(
+            error_codes::Code::MissingOptionValue,
+            "no input file (try `archx --help`)",
+        )
+    })?;
 
     if !has_valid_archx_extension(&input) {
-        return Err(format!(
-            "invalid source file extension for `{}` (expected `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`)",
-            input.display()
+        return Err(DriverError::new(
+            error_codes::Code::UnknownOption,
+            format!(
+                "invalid source file extension for `{}` (expected `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`)",
+                input.display()
+            ),
         ));
     }
 
-    let source = fs::read_to_string(&input)
-        .map_err(|error| format!("cannot read `{}`: {error}", input.display()))?;
+    let source = fs::read_to_string(&input).map_err(|error| {
+        DriverError::new(
+            error_codes::Code::UnreadableInput,
+            format!("cannot read `{}`: {error}", input.display()),
+        )
+    })?;
 
     // The dialect is a checked, per-module decision: a module without a directive is an error, and
     // `--dialect` can only override a directive that is present.
     let declared = match dialect::parse_directive(&source) {
         Ok(Some(spec)) => spec,
-        Ok(None) => return Err(render_error(&source, &dialect::missing_directive())),
-        Err(diagnostic) => return Err(render_error(&source, &diagnostic)),
+        Ok(None) => return Err(source_failure(&source, &input, &dialect::missing_directive(), json)),
+        Err(diagnostic) => return Err(source_failure(&source, &input, &diagnostic, json)),
     };
     let spec = match options.dialect {
         Some(over) if over != declared.dialect => dialect::DialectSpec {
@@ -168,16 +364,16 @@ fn run(args: &[String]) -> Result<i32, String> {
 
     let tokens = lexer::Lexer::new(&source)
         .tokenize()
-        .map_err(|diagnostic| render_error(&source, &diagnostic))?;
+        .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
 
     let mut parser = parser::Parser::new(tokens);
     let mut program = parser
         .parse_program()
-        .map_err(|diagnostic| render_error(&source, &diagnostic))?;
+        .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
     program.dialect = spec;
 
     let ir = codegen::lower_with_source(&program, Some(&source_name_for_debug(&input)))
-        .map_err(|diagnostic| render_error(&source, &diagnostic))?;
+        .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
 
     if options.emit_ir {
         print!("{ir}");
@@ -189,20 +385,27 @@ fn run(args: &[String]) -> Result<i32, String> {
         .unwrap_or_else(|| default_output(&input));
 
     if paths_refer_to_same_file(&input, &output) {
-        return Err(format!(
-            "refusing to overwrite source file `{}` with `-o`",
-            input.display()
+        return Err(DriverError::new(
+            error_codes::Code::OutputWouldClobberSource,
+            format!(
+                "refusing to overwrite source file `{}` with `-o`",
+                input.display()
+            ),
         ));
     }
 
     let clang = find_clang().ok_or_else(|| {
-        "no `clang` found. Archx emits LLVM IR and uses clang to compile it.\n\
-         Install clang (for example `apt install clang` or `brew install llvm`) and make sure it is on PATH,\n\
-         or set ARCHX_CC=/path/to/clang."
-            .to_string()
+        DriverError::new(
+            error_codes::Code::ToolchainFailed,
+            "no `clang` found. Archx emits LLVM IR and uses clang to compile it.\n\
+             Install clang (for example `apt install clang` or `brew install llvm`) and make sure it is on PATH,\n\
+             or set ARCHX_CC=/path/to/clang.",
+        )
     })?;
 
-    let ir_path = write_exclusive_temp_ir(&ir)?;
+    let ir_path = write_exclusive_temp_ir(&ir).map_err(|message| {
+        DriverError::new(error_codes::Code::TemporaryFileFailed, message)
+    })?;
 
     let mut clang_cmd = Command::new(&clang);
     clang_cmd
@@ -230,11 +433,18 @@ fn run(args: &[String]) -> Result<i32, String> {
 
     let _ = fs::remove_file(&ir_path);
 
-    let status = clang_res
-        .map_err(|error| format!("failed to run `{}`: {error}", clang.display()))?;
+    let status = clang_res.map_err(|error| {
+        DriverError::new(
+            error_codes::Code::ToolchainFailed,
+            format!("failed to run `{}`: {error}", clang.display()),
+        )
+    })?;
 
     if !status.success() {
-        return Err("clang failed to compile generated LLVM IR".to_string());
+        return Err(DriverError::new(
+            error_codes::Code::ToolchainFailed,
+            "clang failed to compile generated LLVM IR",
+        ));
     }
 
     if options.run {
@@ -245,7 +455,12 @@ fn run(args: &[String]) -> Result<i32, String> {
         };
         let status = Command::new(&run_path)
             .status()
-            .map_err(|error| format!("failed to run `{}`: {error}", run_path.display()))?;
+            .map_err(|error| {
+                DriverError::new(
+                    error_codes::Code::ToolchainFailed,
+                    format!("failed to run `{}`: {error}", run_path.display()),
+                )
+            })?;
         return Ok(status.code().unwrap_or(0));
     }
 
@@ -384,6 +599,34 @@ fn clang_uses_msvc_target(clang: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// Turns a source diagnostic into the driver's error type.
+///
+/// In human format the rendered snippet is the message, so the text a user sees is unchanged. In JSON
+/// format a single object carries the code, span and file instead, because a multi-line snippet is
+/// useless to a tool.
+fn source_failure(
+    source: &str,
+    input: &Path,
+    diagnostic: &diag::Diagnostic,
+    json: bool,
+) -> DriverError {
+    let code = diagnostic.code.unwrap_or(error_codes::Code::InternalInvariant);
+    if json {
+        DriverError::rendered(
+            code,
+            diagnostic_json(
+                code,
+                "error",
+                &diagnostic.message,
+                Some(&input.display().to_string()),
+                Some(diagnostic.span),
+            ),
+        )
+    } else {
+        DriverError::rendered(code, render_error(source, diagnostic))
+    }
+}
+
 fn render_error(source: &str, diagnostic: &diag::Diagnostic) -> String {
     let line = source
         .lines()
@@ -391,7 +634,17 @@ fn render_error(source: &str, diagnostic: &diag::Diagnostic) -> String {
         .unwrap_or("");
 
     let mut out = String::new();
-    out.push_str(&format!("error: {}\n", diagnostic.message));
+    // The code leads, because it is what users search for and what `--message-format=json` reports.
+    // A message that already begins with its code (the dialect layer) is not prefixed twice.
+    if diagnostic.message.starts_with(diagnostic.code_str()) {
+        out.push_str(&format!("error: {}\n", diagnostic.message));
+    } else {
+        out.push_str(&format!(
+            "error[{}]: {}\n",
+            diagnostic.code_str(),
+            diagnostic.message
+        ));
+    }
     out.push_str(&format!(
         "  --> {}:{}\n",
         diagnostic.span.line, diagnostic.span.col
@@ -417,6 +670,9 @@ fn print_help() {
     println!("OPTIONS:");
     println!("    -o, --output <file>   output executable (default: input name without extension)");
     println!("    -O <0|1|2|3|s>        clang optimisation level (default `-O2`, see docs/USAGE.md)");
+    println!("    --dialect <compat|native>  override the module's dialect directive");
+    println!("    --message-format=json  emit diagnostics as one JSON object per line on stderr");
+    println!("    --explain [CODE]      explain an error code, or list them all");
     println!("    --emit-ir             print the generated LLVM IR and exit");
     println!("    --run                 compile, then run the resulting program");
     println!("    --dialect <name>      override the module's `# archx: dialect=…` (compat|native)");

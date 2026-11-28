@@ -66,6 +66,7 @@ jobs:
           python3 tools/sync_readme_benchmarks.py --check
           python3 tools/check_test_count.py
           python3 tools/gen_limitations.py --check
+          python3 tools/gen_error_codes.py --check
 
       - name: Reject a stale work-order tracker (AX-000)
         run: python3 tools/gen_tracker.py --check

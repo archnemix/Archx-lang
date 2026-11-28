@@ -352,3 +352,40 @@ The genuinely useful conclusion from this round is that **the remaining performa
 compiler flags** — it is in the IR Archx emits and in the checks it can prove away. Flags moved nothing;
 removing a bounds check from a hot loop would. That is where the next optimization work should look.
 
+---
+
+## Round 17 — AX-011: codes that are a closed set, not a string prefix
+
+The acceptance criterion is "every diagnostic has a code". The obvious implementation is to visit all
+465 `Diagnostic::new(...)` sites and write the code into each message. I did not do that, for two
+reasons:
+
+1. **It makes the taxonomy everybody's business.** Every future `Err(...)` re-decides which code
+   applies, and nothing notices when two sites disagree. The mapping belongs in one place.
+2. **It conflates "the code" with "the text".** If the code lives inside the message string, then
+   rewording a message changes the code, which is the one thing a code must not do.
+
+So `src/diagnose.rs` holds a single ordered table: message fragment → code, specific rules before
+general ones (`internal error … slot` before anything mentioning `expects`). `Diagnostic::new`
+classifies. The message stays the precise, human-facing description; the code becomes a small closed
+set (37 codes) that tooling can switch on.
+
+The catch with a hand-written table is drift, and the answer is a test that reads the compiler's own
+source: `tests/error_codes.rs` extracts every diagnostic literal (handling multi-line strings, `r#"…"#`,
+and `format!` templates) and fails if any does not classify. It passes on all 464 literals today, and
+adding an uncoded diagnostic now turns CI red. That test is the difference between "we coded the errors
+once" and "no error can ship uncoded".
+
+Two smaller decisions worth recording:
+
+* **`E09xx` means "we broke".** Internal invariants get their own range and an `internal: true` flag in
+  JSON, so a report is never ambiguous about whose fault it is. That flag matters because the alternative
+  — reporting a compiler bug as a type error — sends users debugging code that is correct.
+* **The output is rustc-shaped.** `error[E0402]: …` with a span and a caret. I chose that over inventing
+  a format because every editor and CI log parser already understands it, and because it makes the code
+  the most prominent token on the line, which is the whole point of having codes.
+
+`docs/ERROR_CODES.md` is generated from `archx --explain`, with a drift gate, for the same reason the
+benchmark table and the limitations list are generated: a document that restates behaviour will
+eventually describe a compiler that no longer exists.
+

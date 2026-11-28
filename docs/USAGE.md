@@ -94,7 +94,37 @@ archx examples/pythonic.archx.lang --emit-ir
 # 5. Show help or compiler version:
 archx --help
 archx --version
+
+# 6. Machine-readable diagnostics (one JSON object per line on stderr):
+archx examples/pythonic.archx.lang --message-format=json
+
+# 7. Explain an error code, or list every code:
+archx explain E0402
+archx explain
 ```
+
+### Diagnostics and error codes
+
+Every error carries a stable code, printed as `error[E0402]: …` with the source line and a caret:
+
+```
+error[E0402]: type mismatch: expected `int`, found `str`
+  --> demo.archx.lang:3:14
+   |
+ 3 |     x: int = "hello"
+   |              ^
+```
+
+The code is the part to script against: messages get reworded, codes do not. `--message-format=json`
+turns that report into one object per line, which is what editors and build systems should consume:
+
+```json
+{"code":"E0402","severity":"error","message":"type mismatch: expected `int`, found `str`","summary":"type mismatch","file":"demo.archx.lang","line":3,"column":14,"internal":false}
+```
+
+`internal: true` means the `E09xx` range: the compiler broke an invariant. Those are Archx bugs and
+the message says so. The full registry — one entry per code, each with an explanation — is
+[`docs/ERROR_CODES.md`](ERROR_CODES.md), generated from the compiler itself.
 
 ---
 
