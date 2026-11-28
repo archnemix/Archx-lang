@@ -444,6 +444,7 @@ pub fn lower(raw_program: &Program) -> Result<String> {
     }
 
     let mut cg = Codegen {
+        dialect: program.dialect.dialect,
         strings: StringTable::new(),
         structs: struct_map,
         enums: enum_layouts,
@@ -668,8 +669,16 @@ pub fn lower(raw_program: &Program) -> Result<String> {
 
     emit_cstr_global(&mut out, "@.fmt.str", "%s\n");
     emit_cstr_global(&mut out, "@.fmt.int", "%lld\n");
-    emit_cstr_global(&mut out, "@.str.true", "true");
-    emit_cstr_global(&mut out, "@.str.false", "false");
+    // The compat contract prints `repr()`: `True`/`False`, exactly as CPython does (AX-007).
+    let (true_word, false_word) = program.dialect.dialect.bool_words();
+    emit_cstr_global(&mut out, "@.str.true", true_word);
+    emit_cstr_global(&mut out, "@.str.false", false_word);
+    // A container's elements are rendered with `repr()` in compat, so a `list[str]` prints `['a']`.
+    if program.dialect.dialect.container_repr() {
+        emit_cstr_global(&mut out, "@.fmt.str.repr", "'%s'");
+    } else {
+        emit_cstr_global(&mut out, "@.fmt.str.repr", "%s");
+    }
     if cg.used_print_inline || cg.used_array_print {
         emit_cstr_global(&mut out, "@.fmt.int.elem", "%lld");
         emit_cstr_global(&mut out, "@.fmt.str.elem", "%s");
@@ -1069,6 +1078,10 @@ impl StringTable {
 }
 
 pub(super) struct Codegen {
+    /// The contract this module is being lowered against. Behaviour that legitimately differs between
+    /// the two dialects (value `repr`, integer width, string indexing) is selected from here and
+    /// nowhere else, so "which dialect am I in?" has exactly one answer per module.
+    pub(super) dialect: crate::dialect::Dialect,
     pub(super) strings: StringTable,
     pub(super) structs: HashMap<String, Vec<Param>>,
     pub(super) enums: HashMap<String, EnumInfo>,

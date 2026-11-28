@@ -263,3 +263,32 @@ is refused on principle (it breaks the CPython-identical float contract), and `-
 portability (the artifact would depend on the build host). I also verified at both `-O2` and `-O3`
 that an out-of-bounds read and a loop overflow still trap, i.e. the optimizer is not deleting checks.
 
+---
+
+## Round 14 — AX-007/AX-008: a conformance harness that immediately paid for itself
+
+The valuable design decision was that **one file is both programs**. Each probe starts with
+`# archx: dialect=compat, version=1`, which Python reads as a comment, so `python3 probe.py` and
+`archx probe.archx.lang` run the *same bytes*. Hand-writing a `.py` and an `.archx.lang` pair would
+have let the two drift, and a drift is indistinguishable from a conformance bug.
+
+The harness found two real contract violations within minutes of existing:
+
+1. compat printed `true`/`false`; CPython prints `True`/`False`. The `bool` words now come from
+   `Dialect::bool_words`.
+2. compat printed `[a, b]` for a `list[str]`; CPython prints `['a', 'b']`, because a container renders
+   its elements with `repr()` while `print` renders them with `str()`. Fixing this properly needed a
+   new `in_container` parameter on `emit_print_inline_val` — the first attempt made *every* string
+   print quoted (`'archx'`), which the probes caught immediately. That distinction (`print('a')` vs
+   `print(['a'])`) only exists because the harness compares real CPython output.
+
+**xfail with a mandatory reason, and xpass fails too.** A probe that does not reproduce CPython carries
+`# conformance: xfail <reason>`; the reason is required, and `docs/LIMITATIONS.md` is *generated* from
+those markers. A gap that gets fixed turns into an "unexpected pass" and fails CI until the marker is
+deleted, so the limitations document cannot rot in either direction. This is the only way I could see
+to keep a known-limitations list honest: it is derived from measurement, not from memory.
+
+Result: 104 probes, 64 reproducing CPython exactly, 40 documented gaps, 0 undocumented divergences.
+Two of those gaps are internal compiler errors (`list.insert`/`list.index` on a list with no storage
+slot) and are recorded as such rather than dressed up as "not implemented".
+

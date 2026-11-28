@@ -1488,7 +1488,7 @@ impl Codegen {
                 self.start_block(&some_lbl, out);
                 let iv = self.next_tmp();
                 let _ = writeln!(out, "  {iv} = extractvalue {opt_ir} {val}, 1");
-                self.emit_print_inline_val(inner, &iv, span, out)?;
+                self.emit_print_inline_val(inner, &iv, true, span, out)?;
                 self.emit_br(&done_lbl, out);
 
                 self.start_block(&none_lbl, out);
@@ -1514,7 +1514,7 @@ impl Codegen {
                     }
                     let fv = self.next_tmp();
                     let _ = writeln!(out, "  {fv} = extractvalue {tup_ir} {val}, {i}");
-                    self.emit_print_inline_val(item_ty, &fv, span, out)?;
+                    self.emit_print_inline_val(item_ty, &fv, true, span, out)?;
                 }
                 if items.len() == 1 {
                     let cm = self.next_tmp();
@@ -1577,7 +1577,7 @@ impl Codegen {
                             ir_type(fty),
                             ir_align(fty)
                         );
-                        self.emit_print_inline_val(fty, &fv, span, out)?;
+                        self.emit_print_inline_val(fty, &fv, true, span, out)?;
                     }
                     if !fs.is_empty() {
                         let rp = self.next_tmp();

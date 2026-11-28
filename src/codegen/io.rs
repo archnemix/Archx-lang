@@ -171,7 +171,7 @@ impl Codegen {
                     let _ = writeln!(out, "  {pc} = call i32 @putchar(i32 32)");
                 }
             }
-            self.emit_print_inline_val(ty, val, *aspan, out)?;
+            self.emit_print_inline_val(ty, val, false, *aspan, out)?;
         }
 
         if let Some(ev) = &end_val {
@@ -189,21 +189,35 @@ impl Codegen {
         Ok((Type::Void, String::new()))
     }
 
+    /// Prints one value with no separators.
+    ///
+    /// `in_container` selects the element rendering: a compat module must use `repr()` inside a list,
+    /// tuple, dict or set (`['a']`), but the bare spelling at the top level (`print('a')` → `a`). The
+    /// two are not the same function in CPython either — `print` calls `str`, a container calls `repr`.
     pub(super) fn emit_print_inline_val(
         &mut self,
         ty: &Type,
         val: &str,
+        in_container: bool,
         span: Span,
         out: &mut String,
     ) -> Result<()> {
         self.used_print_inline = true;
         match ty {
             Type::Str => {
-                self.used_str_print = true;
-                let _ = writeln!(
-                    out,
-                    "  call fastcc void @archx_str_print(%ArchxStr {val}, i1 false)"
-                );
+                if in_container && self.dialect.container_repr() {
+                    self.used_str_print = true;
+                    let _ = writeln!(
+                        out,
+                        "  call fastcc void @archx_str_print_repr(%ArchxStr {val})"
+                    );
+                } else {
+                    self.used_str_print = true;
+                    let _ = writeln!(
+                        out,
+                        "  call fastcc void @archx_str_print(%ArchxStr {val}, i1 false)"
+                    );
+                }
             }
             Type::Int => {
                 let r = self.next_tmp();
@@ -226,6 +240,7 @@ impl Codegen {
                     "  {sel} = select i1 {val}, ptr @.str.true, ptr @.str.false"
                 );
                 let r = self.next_tmp();
+                // `True`/`False` are keywords in Python, never quoted, so this stays the plain format.
                 let _ = writeln!(
                     out,
                     "  {r} = call i32 (ptr, ...) @printf(ptr @.fmt.str.elem, ptr {sel})"
@@ -339,7 +354,7 @@ impl Codegen {
             "  {ep} = getelementptr inbounds {mem_ty}, ptr {data}, i64 {pi}"
         );
         let elem_val = self.emit_elem_load(elem_ty, &ep, out);
-        self.emit_print_inline_val(elem_ty, &elem_val, span, out)?;
+        self.emit_print_inline_val(elem_ty, &elem_val, true, span, out)?;
         let pnext = self.next_tmp();
         let _ = writeln!(out, "  {pnext} = add nsw i64 {pi}, 1");
         let _ = writeln!(out, "  store i64 {pnext}, ptr {idx_slot}, align 8");
@@ -435,7 +450,7 @@ impl Codegen {
         let kep = self.next_tmp();
         let _ = writeln!(out, "  {kep} = getelementptr inbounds {kstore}, ptr {kp}, i64 {pi}");
         let kv = self.emit_load_dict_key(k_ty, &kep, out);
-        self.emit_print_inline_val(k_ty, &kv, span, out)?;
+        self.emit_print_inline_val(k_ty, &kv, true, span, out)?;
 
         if let Some(vt) = v_ty {
             let col = self.next_tmp();
@@ -451,7 +466,7 @@ impl Codegen {
             let vep = self.next_tmp();
             let _ = writeln!(out, "  {vep} = getelementptr inbounds {vmem}, ptr {vp}, i64 {pi}");
             let vv = self.emit_elem_load(vt, &vep, out);
-            self.emit_print_inline_val(vt, &vv, span, out)?;
+            self.emit_print_inline_val(vt, &vv, true, span, out)?;
         }
 
         let pnext = self.next_tmp();

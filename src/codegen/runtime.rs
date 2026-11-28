@@ -397,6 +397,15 @@ ret_len:
             emit_cstr_global(out, "@.fmt.pstr", "%.*s");
             out.push_str(
                 r#"
+; Compat `repr()` spelling for an element inside a container: CPython shows quotes around a string.
+define private void @archx_str_print_repr(%ArchxStr %s) nounwind {
+entry:
+  %q1 = call i32 @putchar(i32 39)
+  call fastcc void @archx_str_print(%ArchxStr %s, i1 false)
+  %q2 = call i32 @putchar(i32 39)
+  ret void
+}
+
 define private fastcc void @archx_str_print(%ArchxStr %s, i1 %newline) {
 entry:
   %tmp = alloca [12 x i8], align 4

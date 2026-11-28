@@ -35,6 +35,23 @@ impl Dialect {
         }
     }
 
+    /// The words `print` uses for a `bool`: `repr()` in compat, and the systems spelling in native.
+    ///
+    /// This is a real contract difference, not cosmetic: a compat program that prints a comparison must
+    /// match CPython byte for byte, while a native program is free to spell its values the way its
+    /// documentation does.
+    pub fn bool_words(self) -> (&'static str, &'static str) {
+        match self {
+            Dialect::Compat => ("True", "False"),
+            Dialect::Native => ("true", "false"),
+        }
+    }
+
+    /// Whether a container's elements are printed with `repr()` (quoting strings) or as raw values.
+    pub fn container_repr(self) -> bool {
+        matches!(self, Dialect::Compat)
+    }
+
     pub fn parse(text: &str) -> Option<Self> {
         match text {
             "compat" => Some(Dialect::Compat),

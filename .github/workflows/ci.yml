@@ -61,6 +61,7 @@ jobs:
         run: |
           python3 tools/sync_readme_benchmarks.py --check
           python3 tools/check_test_count.py
+          python3 tools/gen_limitations.py --check
 
       - name: Reject a stale work-order tracker (AX-000)
         run: python3 tools/gen_tracker.py --check
@@ -76,6 +77,16 @@ jobs:
         run: |
           set -o pipefail
           cargo test -- --nocapture 2>&1 | tee ci/logs/test.log
+
+      - name: Conformance vs CPython (AX-007)
+        # Every probe in tests/conformance/ is one file that is legal Python and legal Archx: the same
+        # bytes are executed by python3 and compiled by archx, and stdout must match byte for byte. A
+        # divergence has to be marked `# conformance: xfail <reason>` in the probe, so a gap is
+        # documented rather than quietly tolerated (docs/LIMITATIONS.md is generated from the same data).
+        run: |
+          set -o pipefail
+          cargo build 2>&1 | tee -a ci/logs/build.log
+          cargo test --test conformance -- --nocapture 2>&1 | tee ci/logs/conformance.log
 
       - name: Build release
         run: |

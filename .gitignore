@@ -46,3 +46,11 @@
 # Python bytecode from the repo's tools/ scripts.
 __pycache__/
 *.pyc
+
+# Default output names from ad-hoc `archx <file>` runs used while testing.
+/b
+/b2
+/pop
+/r
+/opt
+/ovf
