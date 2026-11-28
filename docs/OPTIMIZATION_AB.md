@@ -35,6 +35,38 @@ so a user (and a future benchmark gate) can select a level explicitly, and
 `tests/cli.rs::optimisation_levels_are_selectable_and_behaviour_preserving` asserts that every level
 produces identical stdout on a mixed int/float/list program.
 
+## Re-measurement on the current toolchain (Rust 1.97.0, clang 22.1.8)
+
+Because the default level is pinned by measurement, it has to be re-checked when the toolchain moves.
+Re-run on the toolchain in this environment (best of 9 runs, and the median, so noise is visible):
+
+| suite | `-O2` best | `-O2` median | `-O3` best | `-O3` median |
+|---|---:|---:|---:|---:|
+| `composite` | 27.8 ms | 29.2 ms | 28.4 ms | 29.2 ms |
+| `nbody_float` | 48.2 ms | 50.0 ms | 47.5 ms | 48.4 ms |
+| `pipelines` | 8.7 ms | 8.9 ms | 8.6 ms | 8.8 ms |
+
+`-O3` is ahead by 1.4% on `nbody_float` and 1.1% on `pipelines`, behind by 2.2% on `composite`, and the
+two levels are indistinguishable at the median. The conclusion is unchanged: no repeatable win, so the
+default stays at `-O2`, where fewer aggressive passes are in play over code containing
+`llvm.s*.with.overflow` and bounds checks.
+
+One further flag was measured because it is **contract-safe** rather than merely fast: `-fno-math-errno`
+tells LLVM that no observer reads `errno` after a math call. That is true for every Archx program — the
+runtime has no `errno` API, and a compat module cannot import libm — so it is a legitimate permission
+rather than a relaxation of the float contract (unlike `-ffast-math`, which changes results).
+
+| suite | `-O2` | `-O2 -fno-math-errno` | delta |
+|---|---:|---:|---:|
+| `nbody_float` | 47.6 ms | 47.5 ms | −0.2% |
+| `composite` | 30.3 ms | 29.5 ms | −2.6% |
+| `pipelines` | 8.9 ms | 8.9 ms | 0.0% |
+| `primes` | 128.6 ms | 128.1 ms | −0.4% |
+
+All four deltas are inside run-to-run spread, so the flag is **not** adopted: an extra flag in the
+driver is a permanent compatibility surface, and it should be paid for by a measured win. The
+measurement is recorded so the decision does not have to be repeated from scratch.
+
 ## Safety checks verified to survive both levels
 
 Programs written specifically to exercise the checks at `-O2` and `-O3` (both printed the panic and

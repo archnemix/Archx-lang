@@ -4,6 +4,11 @@
     use crate::lexer::Lexer;
     use crate::parser::Parser;
 
+    /// Lowers without a `source_filename`; the driver passes the real name to `lower_with_source`.
+    fn lower(program: &crate::ast::Program) -> Result<String> {
+        lower_with_source(program, None)
+    }
+
     fn lower_src(src: &str) -> Result<String> {
         let toks = Lexer::new(src).tokenize()?;
         let prog = Parser::new(toks).parse_program()?;
@@ -346,3 +351,50 @@ def main():
         let err2 = lower_src(oob_tup).unwrap_err();
         assert!(err2.message.contains("out of range"), "got: {}", err2.message);
     }
+
+// ============================================================================
+// AX-012: the emitted module must be a function of the source text alone
+// ============================================================================
+
+#[test]
+fn monomorphized_definitions_have_canonical_order() {
+    // Instances were previously collected in `HashMap`s and appended with `into_values()`, so the
+    // order of `define` blocks — and therefore LLVM's symbol numbering and code layout — changed
+    // between runs. Both dialects use `T`, so there are two instances to order.
+    let src = "\
+def ident[T](x: T) -> T:
+    return x
+
+def main():
+    print(ident(1), ident(\"s\"))
+";
+    let toks = Lexer::new(src).tokenize().unwrap();
+    let prog = Parser::new(toks).parse_program().unwrap();
+    let first = lower(&prog).unwrap();
+    for _ in 0..8 {
+        assert_eq!(lower(&prog).unwrap(), first, "lowering is not deterministic");
+    }
+    let int_pos = first.find("@archx_fn_ident__i").expect("int instance");
+    let str_pos = first.find("@archx_fn_ident__s").expect("str instance");
+    assert!(
+        int_pos < str_pos,
+        "instances must be emitted in sorted order (`ident__i` before `ident__s`)"
+    );
+}
+
+#[test]
+fn source_filename_names_the_module_and_escapes_safely() {
+    let src = "func main():\n    print(1)\n";
+    let toks = Lexer::new(src).tokenize().unwrap();
+    let prog = Parser::new(toks).parse_program().unwrap();
+    let ir = lower_with_source(&prog, Some("demo.archx.lang")).unwrap();
+    assert!(
+        ir.contains("source_filename = \"demo.archx.lang\""),
+        "the module should name its source: {ir}"
+    );
+    // A quote or backslash in a path must not break the IR literal.
+    let escaped = lower_with_source(&prog, Some("odd\"name\\x.archx.lang")).unwrap();
+    assert!(escaped.contains(r#"source_filename = "odd\22name\5Cx.archx.lang""#));
+    // Omitting the name leaves the module unchanged, so `lower` keeps its old output.
+    assert!(!lower(&prog).unwrap().contains("source_filename"));
+}

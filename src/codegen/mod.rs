@@ -46,7 +46,43 @@ pub(super) const MAX_NESTING: usize = 128;
 /// - `fastcc` internal ABI + first-class `class`/`struct` methods + transparent local `SoA` splitting
 /// - 16-byte inline-prefix SSO `%ArchxStr` (`<= 12` bytes in 2 registers, 0 heap allocs)
 /// - Escape-checked `region:` / `with region:` bump-pointer arenas with slab reuse
-pub fn lower(raw_program: &Program) -> Result<String> {
+/// Lowers a program and records `source_name` as the module's `source_filename`.
+///
+/// clang names the object's file symbol after the *input file it was handed*, which for Archx is a
+/// temporary `.ll` with a fresh PID in it. That made every link produce a different binary and embedded
+/// a sandbox path in shipped executables (AX-012). `source_filename` overrides it, so the compiled
+/// object depends only on the source text.
+pub fn lower_with_source(raw_program: &Program, source_name: Option<&str>) -> Result<String> {
+    let mut ir = lower_module(raw_program)?;
+    if let Some(name) = source_name {
+        // Inserted after the header comment so `--emit-ir` output stays readable.
+        let header_end = ir
+            .find('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let line = format!("source_filename = {}\n", quote_ir_string(name));
+        ir.insert_str(header_end, &line);
+    }
+    Ok(ir)
+}
+
+/// Escapes a Rust string for an LLVM IR string literal (`c"..."` / `source_filename = "..."`).
+fn quote_ir_string(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for byte in text.bytes() {
+        match byte {
+            b'"' => out.push_str("\\22"),
+            b'\\' => out.push_str("\\5C"),
+            0x20..=0x7E => out.push(byte as char),
+            other => out.push_str(&format!("\\{:02X}", other)),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn lower_module(raw_program: &Program) -> Result<String> {
     let enum_names: HashSet<String> = raw_program.enums.iter().map(|e| e.name.clone()).collect();
     let resolved = resolve_program_types(raw_program, &enum_names);
     // `v0.9.0`: PEP 695 monomorphization + zero-heap closure lifting run as one

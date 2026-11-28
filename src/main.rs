@@ -176,7 +176,7 @@ fn run(args: &[String]) -> Result<i32, String> {
         .map_err(|diagnostic| render_error(&source, &diagnostic))?;
     program.dialect = spec;
 
-    let ir = codegen::lower(&program)
+    let ir = codegen::lower_with_source(&program, Some(&source_name_for_debug(&input)))
         .map_err(|diagnostic| render_error(&source, &diagnostic))?;
 
     if options.emit_ir {
@@ -207,6 +207,10 @@ fn run(args: &[String]) -> Result<i32, String> {
     let mut clang_cmd = Command::new(&clang);
     clang_cmd
         .arg(&ir_path)
+        // The module carries the *source* name (`codegen::lower_with_source`), not the temp path:
+        // clang names the object's file symbol after its input, which would otherwise make every
+        // binary different (a fresh PID in the temp name) and embed a sandbox path in a shipped
+        // executable. See AX-012 and `ci/reproducibility.sh`.
         .arg(&options.opt_level)
         // One IEEE-754 operation per source operation. Recent clang makes contraction
         // (`a*b+c` -> `fma`) the default even at `-O2`, which changes the *last bits* of any
@@ -327,6 +331,15 @@ fn default_output(input: &Path) -> PathBuf {
         output.set_extension("exe");
     }
     output
+}
+
+/// The name recorded in the object as the module's file, so build output does not depend on where the
+/// intermediate `.ll` happened to live.
+fn source_name_for_debug(input: &Path) -> String {
+    input
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "archx-module".to_string())
 }
 
 fn find_clang() -> Option<PathBuf> {

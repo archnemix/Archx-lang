@@ -4,6 +4,24 @@ Archx has one performance goal: **whatever the user writes, the compiler should 
 
 That does **not** mean hand-optimizing every expression in the frontend. It means designing the language's data layouts and emitting invariants that LLVM's `-O2` pass pipeline (`IPSCCP → Inliner → SROA → InstCombine → IndVarSimplify → LoopVectorize`) can prove and vectorize directly — including structural transformations like **AoS-to-SoA planarization** and **scoped region bump allocation** that C and Rust cannot perform automatically on standard `struct[]` / `Vec<T>` code.
 
+## Reproducibility is a precondition for optimization
+
+A performance gate is only meaningful if the same source produces the same artifact: otherwise a
+"2% win" may just be a different symbol order, a different temp path, or a different hash seed. Archx
+therefore treats reproducibility as part of the optimization contract, enforced by
+`ci/reproducibility.sh` on every run:
+
+| Source of nondeterminism | Where it was | Fix |
+|---|---|---|
+| `HashMap` iteration order for monomorphized `Func`/`StructDef` and lifted closures | `src/codegen/generics.rs` (`inst_funcs`, `inst_structs`, `closures`) | `BTreeMap`, so definitions are emitted in canonical order |
+| The temporary `.ll` filename (PID + counter) leaking into the object's `.file` symbol | `src/main.rs` → clang | the IR now carries `source_filename = "<real source name>"`, so the binary no longer embeds a sandbox path |
+
+The gate compiles every benchmark and example **twice**, requires byte-identical IR *and* byte-identical
+linked binaries, checks a third run in a fresh process with a different hash seed, and requires stdout
+**and stderr** to match between the two builds. It runs on the release build in CI next to the IR
+verifier, so a change that trades determinism for speed is rejected automatically rather than argued
+about.
+
 ## The four layers
 
 | Layer | Who owns it | What it does | Examples in Archx |

@@ -305,3 +305,50 @@ the runners are at least as new. The optimization A/B in `docs/OPTIMIZATION_AB.m
 on current LLVM, and the `-O2` default is a measurement from this toolchain rather than a habit carried
 over from an older one.
 
+---
+
+## Round 15 — AX-012: reproducibility as a safety property, not a nicety
+
+I expected AX-012 to be paperwork (pin a version, hash a file). Running the check first turned up two
+real defects, and both were *silent*:
+
+1. **`HashMap` order reached the output.** `expand_generics_and_lambdas` collected monomorphized
+   functions, structs and lifted closures in `HashMap`s and appended them with `into_values()`, so the
+   order of `define` blocks in the module changed between runs. LLVM's backend assigns symbol numbering
+   and lays out code in input order, so the *binaries* differed too — not just the text. Switching the
+   three maps to `BTreeMap` fixed it in one line each; the maps are drained once, so it costs nothing.
+2. **The temp filename was in the shipped binary.** clang names the object's file symbol after the file
+   it was handed, and Archx hands it `$TMP/archx-<pid>-<n>.ll`. Every executable therefore carried a
+   different string, and a sandbox path. The fix is `source_filename` in the IR — which also means
+   `--emit-ir` now says which source it came from, so the module is self-describing.
+
+Neither bug is a security hole, but both violate the property I want to be able to state: *the artifact
+is a function of the source text*. Without that, no speed measurement is trustworthy — you cannot tell
+a 2% win from a 2% reshuffle. That is why the gate compares **binaries**, not just IR, and why it also
+runs one compilation in a separate process with a different hash seed: same-process comparisons cannot
+see a per-process seed.
+
+`MALLOC_PERTURB_` and the extra seed run are cheap, and they close the class of bug rather than the two
+instances I happened to find.
+
+## Round 16 — AX-002 truth: is `-O2` still the right default on LLVM 22?
+
+The user asked to use the latest LLVM optimisations and to check which toolchain is actually in use, so
+I re-measured rather than trusting the earlier table. Environment: **rustc 1.97.0** (the only version the
+index offers here) and **clang 22.1.8**. `docs/OPTIMIZATION_AB.md` re-run:| suite | `-O2` best | `-O3` best | delta |
+|---|---:|---:|---:|
+| composite | 27.8 ms | 28.4 ms | +2.2% (worse) |
+| nbody_float | 48.2 ms | 47.5 ms | −1.4% |
+| pipelines | 8.7 ms | 8.6 ms | −1.1% |
+
+Nothing repeatable, so `-O2` stays. I also measured `-fno-math-errno`, a flag that is *contract-safe*
+(it asserts nobody reads `errno` after a math call, which is true of every Archx program) rather than a
+relaxation like `-ffast-math`. Result: −0.2%, −2.6%, 0.0%, −0.4% across four suites — all inside the
+spread. Not adopted. The discipline I want here is that a flag earns its place with a measurement, not
+with a plausible argument; the numbers are in `docs/OPTIMIZATION_AB.md` so the next person does not
+have to re-litigate it.
+
+The genuinely useful conclusion from this round is that **the remaining performance work is not in
+compiler flags** — it is in the IR Archx emits and in the checks it can prove away. Flags moved nothing;
+removing a bounds check from a hot loop would. That is where the next optimization work should look.
+

@@ -20,7 +20,7 @@
 //! intentionally left alone: those are lowered by inlining the body straight into the
 //! generated loop/compare code (see `sort.rs`), which is strictly faster than a call.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::ast::*;
 use crate::diag::{Diagnostic, Result, Span};
@@ -49,6 +49,10 @@ pub(super) fn expand_generics_and_lambdas(program: &Program) -> Result<Program> 
     }
     let rewritten = m.rewrite_module(program)?;
 
+    // Sorted, not hash order: the emitted module must be byte-identical between two compilations
+    // (AX-012), and LLVM's output — down to symbol numbering and code layout — follows the order the
+    // definitions appear in. A `HashMap` would make every build a little different for no gain, and
+    // `BTreeMap` iteration is also cheaper here because the maps are drained once.
     let mut structs = rewritten.structs;
     structs.extend(m.inst_structs.into_values());
 
@@ -73,9 +77,12 @@ pub(super) fn expand_generics_and_lambdas(program: &Program) -> Result<Program> 
 struct Monomorphizer<'a> {
     generic_structs: HashMap<String, &'a StructDef>,
     generic_funcs: HashMap<String, &'a Func>,
-    inst_structs: HashMap<String, StructDef>,
-    inst_funcs: HashMap<String, Func>,
-    closures: HashMap<String, Func>,
+    /// Keyed by instantiation name; `BTreeMap` so emission order is canonical (AX-012).
+    inst_structs: BTreeMap<String, StructDef>,
+    /// Keyed by instantiation name; `BTreeMap` so emission order is canonical (AX-012).
+    inst_funcs: BTreeMap<String, Func>,
+    /// Keyed by lifted-closure name; `BTreeMap` for canonical emission order (AX-012).
+    closures: BTreeMap<String, Func>,
     struct_queue: Vec<(String, Vec<Type>, Span)>,
     func_queue: Vec<(String, Vec<Type>, Span)>,
     queued_structs: HashSet<String>,
@@ -126,9 +133,9 @@ impl<'a> Monomorphizer<'a> {
         Self {
             generic_structs,
             generic_funcs,
-            inst_structs: HashMap::new(),
-            inst_funcs: HashMap::new(),
-            closures: HashMap::new(),
+            inst_structs: BTreeMap::new(),
+            inst_funcs: BTreeMap::new(),
+            closures: BTreeMap::new(),
             struct_queue: Vec::new(),
             func_queue: Vec::new(),
             queued_structs: HashSet::new(),

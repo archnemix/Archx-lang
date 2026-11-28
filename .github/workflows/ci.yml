@@ -47,6 +47,10 @@ jobs:
             python3 --version || true
             echo "clang path: $(command -v clang || echo missing)"
             clang --version || true
+            # LLVM's own version, which is what decides which passes and attributes exist. Archx's
+            # optimisation story is pinned to this, so record it next to the clang that consumes the IR.
+            clang -print-prog-name=opt >/dev/null 2>&1 || true
+            echo "clang default target: $(clang -dumpmachine 2>/dev/null || echo unknown)"
           } | tee ci/logs/toolchain.log
 
       - name: Reject committed binaries (AX-005)
@@ -92,6 +96,14 @@ jobs:
         run: |
           set -o pipefail
           cargo build --release 2>&1 | tee ci/logs/build.log
+
+      - name: Verify builds are reproducible (AX-012)
+        # Two clean compilations must agree byte for byte: emitted IR, the linked binary, and the
+        # program's stdout/stderr. This is the gate that keeps hash-map iteration order, temp paths and
+        # timestamps out of the output, so an optimization change can be judged on measurements.
+        run: |
+          set -o pipefail
+          ci/reproducibility.sh ./target/release/archx 2>&1 | tee ci/logs/reproducibility.log
 
       - name: Verify every emitted IR module parses and verifies (AX-009)
         # Two v0.9.1 bugs (a `%` phi missing a predecessor and the `%ArchxAny` binop dispatch) were
