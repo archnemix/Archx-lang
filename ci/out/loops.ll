@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+source_filename = "loops.archx.lang"
 ; archx.dialect=native version=1 source=directive
 
 @.fmt.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1

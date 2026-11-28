@@ -1,0 +1,2 @@
+reproducible: 20 sources (IR + binary byte-identical across two compilations)
+checked 20 sources

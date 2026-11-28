@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+source_filename = "collections_dynamic.archx.lang"
 ; archx.dialect=native version=1 source=directive
 
 %ArchxVec = type { i64, i64, ptr }
