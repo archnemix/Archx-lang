@@ -51,6 +51,12 @@ A module **without** this line is a compile error (`E0100`) — the compiler nev
 program whose behaviour depends on a compiler default is not reproducible. A malformed or
 unsupported directive is `E0101` and names the offending field.
 
+Exactly **one** directive is allowed. A second one is `E0101` even when the two agree: the first line
+chooses the contract, and silently ignoring the second would compile the module against a contract that
+appears nowhere in the result. When a module has no directive *and* uses a construct only `native`
+provides (`struct`, `enum`, `region:`, `pub fn`), the `E0100` message suggests the exact line to insert
+— a fix-it is only offered when it is provably right, because users paste them.
+
 `--dialect compat|native` overrides a directive that is present; it cannot substitute for a missing
 one:
 

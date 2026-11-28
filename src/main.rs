@@ -350,7 +350,14 @@ fn run(args: &[String], json: bool) -> DriverResult<i32> {
     // `--dialect` can only override a directive that is present.
     let declared = match dialect::parse_directive(&source) {
         Ok(Some(spec)) => spec,
-        Ok(None) => return Err(source_failure(&source, &input, &dialect::missing_directive(), json)),
+        Ok(None) => {
+            return Err(source_failure(
+                &source,
+                &input,
+                &dialect::missing_directive_for(&source),
+                json,
+            ))
+        }
         Err(diagnostic) => return Err(source_failure(&source, &input, &diagnostic, json)),
     };
     let spec = match options.dialect {

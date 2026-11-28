@@ -78,6 +78,22 @@ fn with_native_directive(source: &str) -> String {
     }
 }
 
+/// Compiles `source_path` with extra driver flags and returns the emitted LLVM IR.
+fn emit_ir_with(source_path: &Path, extra: &[&str]) -> String {
+    let output = Command::new(archx())
+        .arg(source_path)
+        .arg("--emit-ir")
+        .args(extra)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).to_string()
+}
+
 /// Compiles `source_path` and returns the emitted LLVM IR (`--emit-ir` on stdout).
 fn emit_ir(source_path: &Path) -> String {
     let output = Command::new(archx())
@@ -2386,5 +2402,79 @@ def main():
         "-3.0744573456182584e+18\n-2.3333333333333335\n2.3333333333333335\n3.0744573456182584e+18\n\
          3.0744573456182584e+18\n",
         "true division of 64-bit ints must match Python's float result"
+    );
+}
+
+#[test]
+fn dialect_directive_is_unambiguous_and_its_suggestion_is_sound() {
+    let dir = std::env::temp_dir().join(format!("archx-ax014-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+
+    // Two directives is an error even when they agree: the second is a leftover, and honouring the
+    // first while ignoring the second compiles against a contract stated nowhere in the result.
+    for (tag, body) in [
+        (
+            "conflicting",
+            "# archx: dialect=native, version=1\n# archx: dialect=compat, version=1\nprint(1)\n",
+        ),
+        (
+            "agreeing",
+            "# archx: dialect=native, version=1\n# archx: dialect=native, version=1\nprint(1)\n",
+        ),
+    ] {
+        let src = dir.join(format!("{tag}.archx.lang"));
+        fs::write(&src, body).unwrap();
+        let out = Command::new(archx()).arg(&src).output().unwrap();
+        assert_eq!(out.status.code(), Some(1), "{tag} must be rejected");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            err.contains("E0101") && err.contains("second dialect directive"),
+            "{tag}: {err}"
+        );
+        assert!(err.contains("  --> 2:1"), "{tag} must point at line 2: {err}");
+    }
+
+    // The missing-directive fix-it is only offered when it is provably right. `struct` cannot be
+    // compiled by the compat contract, so `native` is the only possible answer there.
+    let native_only = dir.join("native_only.archx.lang");
+    fs::write(
+        &native_only,
+        "struct P:\n    x: int\n\nfunc main():\n    print(1)\n",
+    )
+    .unwrap();
+    let out = Command::new(archx()).arg(&native_only).output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("E0100"), "{err}");
+    assert!(
+        err.contains("only the `native` contract") && err.contains("dialect=native, version=1"),
+        "the fix-it should name the one valid line: {err}"
+    );
+
+    // A module with no dialect-specific construct gets the neutral message and no pasteable guess.
+    let plain = dir.join("plain.archx.lang");
+    fs::write(&plain, "print(1)\n").unwrap();
+    let out = Command::new(archx()).arg(&plain).output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("E0100"), "{err}");
+    assert!(
+        !err.contains("only the `native` contract"),
+        "a suggestion must not be invented when either dialect would do: {err}"
+    );
+
+    // `--dialect` overrides a present directive and the IR records that it came from the CLI.
+    let compat_src = dir.join("declared_native.archx.lang");
+    fs::write(
+        &compat_src,
+        "# archx: dialect=native, version=1\nprint(1 < 2)\n",
+    )
+    .unwrap();
+    let overridden = emit_ir_with(&compat_src, &["--dialect", "compat"]);
+    assert!(
+        overridden.contains(r#"!"archx.dialect", !"compat""#),
+        "{overridden}"
+    );
+    assert!(
+        overridden.contains("source=cli"),
+        "the IR must record that the CLI chose the contract: {overridden}"
     );
 }

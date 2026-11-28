@@ -178,11 +178,34 @@ pub fn parse_directive(source: &str) -> Result<Option<DialectSpec>, Diagnostic> 
         ));
     }
 
-    Ok(Some(DialectSpec {
+    let spec = DialectSpec {
         dialect,
         version,
         source: DialectSource::Directive,
-    }))
+    };
+
+    // A second directive is an error, not something to ignore. The first line selects the contract;
+    // a later one is almost always a copy-paste leftover, and honouring the first while silently
+    // dropping the second would compile a module against a contract that appears nowhere in the
+    // decided output. If the two agree it is still worth removing, so it is reported either way —
+    // `E0100` covers "no directive", `E0101` covers "the directive is not usable".
+    for (index, line) in source.lines().enumerate().skip(1) {
+        let line = line.trim_start();
+        if line.starts_with(PREFIX) && line[1..].trim_start().starts_with(SIGIL) {
+            return Err(Diagnostic::new(
+                format!(
+                    "E0101: a second dialect directive on line {} (the first line already declares \
+                     `dialect={}`, `version={}`); keep exactly one",
+                    index + 1,
+                    spec.dialect.name(),
+                    spec.version
+                ),
+                Span::new(index + 1, 1),
+            ));
+        }
+    }
+
+    Ok(Some(spec))
 }
 
 /// The error for a module that has no directive. Kept here so the wording and the code live with
@@ -191,6 +214,27 @@ pub fn missing_directive() -> Diagnostic {
     Diagnostic::new(
         "E0100: this module does not declare its dialect; add \
          `# archx: dialect=compat, version=1` or `# archx: dialect=native, version=1` as the first line",
+        Span::new(1, 1),
+    )
+}
+
+/// The same error with a suggested line, chosen from the source itself.
+///
+/// A fix-it is only worth showing when it is *right*: if the module already uses a `struct`, `region:`
+/// or `pub fn`, `native` is the only dialect that can compile it, so the suggestion is not a guess. A
+/// module with no such marker gets no suggestion — a wrong fix-it is worse than none, because users
+/// paste it.
+pub fn missing_directive_for(source: &str) -> Diagnostic {
+    let native_only = ["struct ", "region:", "with region", "pub fn ", "enum "]
+        .iter()
+        .any(|marker| source.contains(marker));
+    if !native_only {
+        return missing_directive();
+    }
+    Diagnostic::new(
+        "E0100: this module does not declare its dialect. It uses constructs that only the `native` \
+         contract provides, so insert this as the first line:\n         \
+         `# archx: dialect=native, version=1`",
         Span::new(1, 1),
     )
 }
@@ -221,6 +265,60 @@ mod tests {
     fn ordinary_comments_are_not_directives() {
         assert!(parse_directive("# just a comment\n").unwrap().is_none());
         assert!(parse_directive("def main():\n").unwrap().is_none());
+    }
+
+    #[test]
+    fn a_second_directive_is_rejected() {
+        // Conflicting: the classic copy-paste, and the case that must never be silently resolved.
+        let err = parse_directive(
+            "# archx: dialect=native, version=1\n# archx: dialect=compat, version=1\nprint(1)\n",
+        )
+        .unwrap_err();
+        assert_eq!(err.code, Some(crate::error_codes::Code::MalformedDirective));
+        assert!(err.message.contains("second dialect directive"), "{}", err.message);
+        assert_eq!((err.span.line, err.span.col), (2, 1));
+
+        // Agreeing: still an error, because the leftover line is worth deleting and because a rule
+        // that only fires on disagreement would let stale headers survive until they diverge.
+        assert!(parse_directive(
+            "# archx: dialect=native, version=1\n# archx: dialect=native, version=1\n",
+        )
+        .is_err());
+
+        // A plain comment further down is not a directive ...
+        assert!(parse_directive(
+            "# archx: dialect=native, version=1\n# just a note\nprint(1)\n",
+        )
+        .unwrap()
+        .is_some());
+        // ... but a line carrying the sigil is, even if it is prose: `# archx:` is reserved, so the
+        // only safe reading is that someone meant to write a directive and got it wrong.
+        assert!(parse_directive(
+            "# archx: dialect=native, version=1\n# archx: this is a note\nprint(1)\n",
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn the_fix_it_is_only_offered_when_it_is_provably_right() {
+        // `struct` is native-only, so there is exactly one valid directive.
+        let native = missing_directive_for("struct P:\n    x: int\n");
+        assert!(native.message.contains("dialect=native, version=1"));
+        assert!(native.message.contains("only the `native` contract"));
+
+        // `region:` and `enum` are native-only too.
+        for marker in ["region:\n", "enum E:\n", "pub fn f()", "with region r:\n"] {
+            let d = missing_directive_for(&format!("{marker}\nprint(1)\n"));
+            assert!(
+                d.message.contains("dialect=native, version=1"),
+                "{marker} should suggest native"
+            );
+        }
+
+        // Plain Python-compatible code could be either dialect, so no line is suggested.
+        let plain = missing_directive_for("print(1)\n");
+        assert!(!plain.message.contains("only the `native` contract"));
+        assert!(plain.message.contains("dialect=compat"));
     }
 
     #[test]

@@ -58,9 +58,13 @@ __pycache__/
 # Ad-hoc `archx <file>` runs write the executable next to the source, named after the stem. These are
 # the names the backend tests use while iterating; listing them keeps `git status` honest so a stray
 # binary cannot be committed by accident (AX-005 checks the tree for this too).
-/div
-/hx
-/hx[0-9]
+# Pattern rule, not a list: every ad-hoc run names its output after the source stem, and listing
+# stems by hand is how binaries reached the tree before (AX-005). These are the short stems the
+# backend tests and one-off probes use.
+/d[0-9]
+/hx*
 /ovf
 /truediv
+/wrap
+/b[0-9]*
 /wrap
