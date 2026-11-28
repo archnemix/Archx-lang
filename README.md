@@ -8,7 +8,7 @@ Archx compiles Pythonic source code directly to **LLVM IR** (`clang -O2`), using
 > - **Comprehensions, generator folds, PEP 695 generics, zero-heap `lambda` & inline sorting** (new in `v0.9.0`): **list/set/dict comprehensions & nested comprehensions** (`[x * x for x in range(n) if x % 2 == 0]`, `[[r * c for c in range(k)] for r in range(n)]`) lowered to a fused loop with **one pre-sized allocation** and `memcpy`-cheap compaction, **generator reductions with no container at all** (`sum`/`min`/`max`/`any`/`all`/`len` over `(... for ... if ...)`), **PEP 695 monomorphized generics** (`def f[T](...)`, `class Box[T]`, implicit *and* explicit instantiation — `f(3)` or `f[int](3)`), **zero-heap `lambda`** bound to a name or inlined as `key=`, **`zip(...)`** as both a fused loop header and a materialized `list[tuple[...]]`, and **inline monomorphized `sorted`/`list.sort`** (stable bottom-up merge sort, `key=` inlined with a planar Schwartzian transform, `reverse=True` still stable) — no comparator callbacks, no boxing, no closure objects.
 > - **Pythonic call & loop semantics** (new in `v0.9.1`): **default parameters** (`def greet(name: str, punct: str = "!")`), **keyword arguments on user functions** (`rect(h=3, w=4)`), **`for ... else`** (the `else` body runs only when the loop finished without `break`), **function-scoped loop variables** exactly like CPython (`for j in range(2): pass` then `print(j)` prints `1`, including nested loops and `for c in "ab"`), **`map`/`filter`** with named functions, soft builtins and inline `lambda`s (lowered to pre-sized loops, never to function values), and **keyless tuple sorting** (`sorted(pairs)` compares tuples lexicographically).
 > - **1:1 Pythonic syntax, algebraic types, pattern matching & collections**: `def`, `class` (`def __init__(self, ...):` + `self` methods), **zero-heap tuples & multiple returns** (`(a, b, c)` / `tuple[T1, T2]`, `lo, hi, total = analyze(xs)`, `a, b = b, a`, `for k, v in pairs:`), **unboxed `T | None` optionals & flow-sensitive narrowing** (`if x is not None:` / `if x is None: return` / `x + 1 if x is not None else -1`), **algebraic `enum` sum types & exhaustive Pythonic `match`/`case`** (`|`, `if` guards, tuple & variant destructuring), **Planar `<16 x i8>` SIMD `dict` & `set`**, **Pythonic slicing & negative indexing** (`xs[a:b:step]`, `s[::-1]`, `xs[-1]`), **Smart Two-Tier Adaptive Typing (`any`)**, top-level scripts & `if __name__ == "__main__":`, `float` (`f64`), `range`, `enumerate`, `f"..."`, `print(*args, sep=..., end=...)`, `input([prompt])`, `//`, `**`, `assert`, `pass`, and `with region:`.
-> - **Systems-grade performance & zero-UB safety**: **3.6×–53.9× faster than Python 3** on Suites 2–7, matching `-O2` C on Suites 3, 4, 5, 6 and 7 and `-O` Rust on 3, 4 and 5, beating both on Suite 3 (`ci/out/benchmarks.txt`; Suite 1 `primes` is Python-favourable by design and Archx is slower there) — including compiling **unchanged Python 3.10+ code (`examples/comparison/full_tour.py` == `full_tour_pythonic.archx.lang`, byte-for-byte identical!)** to run **18.8× faster than Python 3** (`13 ms` vs `245 ms`, against `clang -O2` `10 ms` and `rustc -O` `13 ms`), with `0` leaks verified across **11 targets under ASan + LSan** and **120 automated tests** (66 unit + 49 CLI + 1 conformance + 4 diagnostics) green on **Linux, macOS, and Windows**.
+> - **Systems-grade performance & zero-UB safety**: **4.8×–64.9× faster than Python 3** on Suites 2–7, matching `-O2` C on Suites 3, 4, 5, 6 and 7 and `-O` Rust on 3, 4 and 5, beating both on Suite 3 (`ci/out/benchmarks.txt`; Suite 1 `primes` is Python-favourable by design and Archx is slower there) — including compiling **unchanged Python 3.10+ code (`examples/comparison/full_tour.py` == `full_tour_pythonic.archx.lang`, byte-for-byte identical!)** to run **25.2× faster than Python 3** (`20 ms` vs `505 ms`, against `clang -O2` `16 ms` and `rustc -O` `21 ms`), with `0` leaks verified across **11 targets under ASan + LSan** and **120 automated tests** (66 unit + 49 CLI + 1 conformance + 4 diagnostics) green on **Linux, macOS, and Windows**.
 >
 > **New here?** Read [`docs/USAGE.md`](docs/USAGE.md) for the complete user guide, [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) for the measured list of what is **not** supported yet (generated from 105 conformance probes that are valid Python *and* valid Archx), [`examples/comparison/`](examples/comparison/) for the 5-way `Python 3` / `Archx Pythonic` / `Archx Speed` / `C` / `Rust` showcase, and [`docs/Roadmap.md`](docs/Roadmap.md) for the roadmap.
 
@@ -68,37 +68,37 @@ if idx is not None:                             # flow-sensitive narrowing: `idx
 
 | Suite | Implementation | Best ms (mean) | vs Python 3 | Stripped KB |
 |---|---|---:|---:|---:|
-| **1. Scalar (`primes`)** | Python 3 (`python3`) | **29 ms (29)** | 1.0× | n/a |
-|  | C (`clang -O2`) | 83 ms (83) | 0.3× | 14 KB |
-|  | Rust (`rustc -O`) | 83 ms (83) | 0.3× | 330 KB |
-|  | **Archx (`archx -O2`)** | 94 ms (94) | **0.3×** | **14 KB** |
-| **2. Arrays (`arrays`)** | Python 3 (`python3`) | 2,070 ms (2,085) | 1.0× | n/a |
-|  | C raw / checked (`clang -O2`) | 38 ms (38) | 54.5× | 14 KB |
-|  | C checked, slice struct (`clang -O2`) | 38 ms (38) | 54.5× | 14 KB |
-|  | Rust (safe `Vec` `-O`) | **37 ms (38)** | 55.9× | 331 KB |
-|  | **Archx (safe `list[T]` `-O2`)** | 55 ms (55) | **37.6×** | **14 KB** |
-| **3. Composite (`composite`)** | Python 3 (`python3`) | 528 ms (535) | 1.0× | n/a |
-|  | C (`AoS + malloc/strcmp -O2`) | **13 ms (13)** | 40.6× | 14 KB |
-|  | Rust (`Vec<Body> + String -O`) | 15 ms (15) | 35.2× | 332 KB |
-|  | **Archx (`SoA + region + SSO -O2`)** | 14 ms (14) | **37.7×** | **14 KB** |
-| **4. Pythonic Float N-Body (`nbody_float`)** | Python 3 (`python3`) | 1,994 ms (2,064) | 1.0× | n/a |
-|  | C (`AoS Body* -O2 -lm`) | 40 ms (40) | 49.9× | 14 KB |
-|  | Rust (`Vec<Body> -O`) | 40 ms (40) | 49.9× | 332 KB |
-|  | **Archx (`Pythonic class + SoA -O2`)** | **37 ms (37)** | **53.9×** | **14 KB** |
-| **5. Planar SIMD Dict (`dict_bench`)** | Python 3 (built-in C `dict`) | 152 ms (153) | 1.0× | n/a |
-|  | C (`AoS open-addressing -O2`) | 42 ms (42) | 3.6× | 14 KB |
-|  | Rust (`std::HashMap` `-O`) | **30 ms (30)** | 5.1× | 354 KB |
-|  | **Archx Static (`Planar SIMD + region`)** | 32 ms (32) | **4.8×** | **22 KB** |
-|  | **Archx Dynamic (`%ArchxAny dict[any]`)** | 49 ms (49) | **3.1×** | **22 KB** |
-| **6. 5-Way Full-Feature Tour (`full_tour`)** | Python 3 (`full_tour.py`) | 245 ms (245) | 1.0× | n/a |
-|  | **Archx Pythonic (`1:1 == full_tour.py`)** | 13 ms (13) | **18.8×** | **42 KB** |
-|  | **Archx Speed (`SoA + region + enum`)** | 12 ms (12) | **20.4×** | **38 KB** |
-|  | Clang C (`full_tour.c -O2 -lm`) | **10 ms (10)** | 24.5× | 18 KB |
-|  | Rust (`full_tour.rs` `rustc -O`) | 13 ms (13) | 18.8× | 377 KB |
-| **7. Comprehensions, Generators, `zip` & Inline Sorting (`pipelines`)** | Python 3 (`pipelines.py`) | 29 ms (29) | 1.0× | n/a |
-|  | **Archx Pythonic (`1:1 == pipelines.py`)** | **8 ms (8)** | **3.6×** | **38 KB** |
-|  | Clang C (`pipelines.c -O2`) | **8 ms (8)** | 3.6× | 18 KB |
-|  | Rust (`pipelines.rs` `rustc -O`) | **8 ms (8)** | 3.6× | 400 KB |
+| **1. Scalar (`primes`)** | Python 3 (`python3`) | **48 ms (48)** | 1.0× | n/a |
+|  | C (`clang -O2`) | 118 ms (118) | 0.4× | 14 KB |
+|  | Rust (`rustc -O`) | 119 ms (119) | 0.4× | 330 KB |
+|  | **Archx (`archx -O2`)** | 132 ms (132) | **0.4×** | **14 KB** |
+| **2. Arrays (`arrays`)** | Python 3 (`python3`) | 3,934 ms (3,953) | 1.0× | n/a |
+|  | C raw / checked (`clang -O2`) | 61 ms (62) | 64.5× | 14 KB |
+|  | C checked, slice struct (`clang -O2`) | **58 ms (62)** | 67.8× | 14 KB |
+|  | Rust (safe `Vec` `-O`) | 62 ms (64) | 63.5× | 331 KB |
+|  | **Archx (safe `list[T]` `-O2`)** | 84 ms (84) | **46.8×** | **14 KB** |
+| **3. Composite (`composite`)** | Python 3 (`python3`) | 1,214 ms (1,226) | 1.0× | n/a |
+|  | C (`AoS + malloc/strcmp -O2`) | **23 ms (23)** | 52.8× | 14 KB |
+|  | Rust (`Vec<Body> + String -O`) | 26 ms (26) | 46.7× | 332 KB |
+|  | **Archx (`SoA + region + SSO -O2`)** | 24 ms (24) | **50.6×** | **14 KB** |
+| **4. Pythonic Float N-Body (`nbody_float`)** | Python 3 (`python3`) | 4,090 ms (4,161) | 1.0× | n/a |
+|  | C (`AoS Body* -O2 -lm`) | 68 ms (68) | 60.1× | 14 KB |
+|  | Rust (`Vec<Body> -O`) | 68 ms (68) | 60.1× | 332 KB |
+|  | **Archx (`Pythonic class + SoA -O2`)** | **63 ms (63)** | **64.9×** | **14 KB** |
+| **5. Planar SIMD Dict (`dict_bench`)** | Python 3 (built-in C `dict`) | 275 ms (275) | 1.0× | n/a |
+|  | C (`AoS open-addressing -O2`) | 62 ms (63) | 4.4× | 14 KB |
+|  | Rust (`std::HashMap` `-O`) | 53 ms (53) | 5.2× | 354 KB |
+|  | **Archx Static (`Planar SIMD + region`)** | **50 ms (50)** | **5.5×** | **22 KB** |
+|  | **Archx Dynamic (`%ArchxAny dict[any]`)** | 88 ms (88) | **3.1×** | **22 KB** |
+| **6. 5-Way Full-Feature Tour (`full_tour`)** | Python 3 (`full_tour.py`) | 505 ms (505) | 1.0× | n/a |
+|  | **Archx Pythonic (`1:1 == full_tour.py`)** | 20 ms (20) | **25.2×** | **42 KB** |
+|  | **Archx Speed (`SoA + region + enum`)** | 19 ms (20) | **26.6×** | **38 KB** |
+|  | Clang C (`full_tour.c -O2 -lm`) | **16 ms (16)** | 31.6× | 18 KB |
+|  | Rust (`full_tour.rs` `rustc -O`) | 21 ms (21) | 24.0× | 377 KB |
+| **7. Comprehensions, Generators, `zip` & Inline Sorting (`pipelines`)** | Python 3 (`pipelines.py`) | 48 ms (48) | 1.0× | n/a |
+|  | **Archx Pythonic (`1:1 == pipelines.py`)** | **10 ms (10)** | **4.8×** | **38 KB** |
+|  | Clang C (`pipelines.c -O2`) | 13 ms (13) | 3.7× | 18 KB |
+|  | Rust (`pipelines.rs` `rustc -O`) | **10 ms (10)** | 4.8× | 400 KB |
 
 See [`examples/comparison/`](examples/comparison/), [`benchmarks/README.md`](benchmarks/README.md), and [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) for the side-by-side code and `-O2` LLVM IR proofs.
 
