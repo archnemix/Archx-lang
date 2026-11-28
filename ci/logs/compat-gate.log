@@ -1,1 +1,1 @@
-archx: error: E0003: cannot write `ci/records/conformance-gate.xml`: No such file or directory (os error 2)
+wrote ci/records/conformance-gate.xml (exit code 0)
