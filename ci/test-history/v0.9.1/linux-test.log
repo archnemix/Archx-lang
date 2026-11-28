@@ -1,76 +1,77 @@
 [1m[92m   Compiling[0m archx v0.9.1 (/home/runner/work/Archx-lang/Archx-lang)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 5.30s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 3.99s
 [1m[92m     Running[0m unittests src/main.rs (target/debug/build/archx/f1ddad7b08142486/out/archx-f1ddad7b08142486)
 
-running 66 tests
+running 67 tests
 test check::tests::exit_codes_distinguish_pass_fail_and_cannot_compare ... ok
-test check::tests::only_a_predicted_difference_gets_a_rule_name ... ok
 test check::tests::xml_escaping_keeps_the_document_legal ... ok
+test check::tests::only_a_predicted_difference_gets_a_rule_name ... ok
 test codegen::tests::bounds_check_emitted_for_unproven_dynamic_index ... ok
-test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
-test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
 test codegen::tests::bounds_checks_elided_for_proven_range_and_sized_arrays ... ok
+test codegen::tests::adaptive_engine_specializes_static_dict_without_any_overhead ... ok
+test codegen::tests::adaptive_engine_promotes_mixed_literals_and_rebinding_to_any ... ok
 test codegen::tests::compile_time_rejects_constant_oob_and_negative_repeat ... ok
 test codegen::tests::lowers_hello_world_to_llvm_ir ... ok
 test codegen::tests::lowers_recursion_and_arithmetic_with_fastcc ... ok
+test codegen::tests::monomorphized_definitions_have_canonical_order ... ok
 test codegen::tests::non_exhaustive_enum_match_and_oob_tuple_index_are_rejected ... ok
 test codegen::tests::pythonic_float_soa_range_methods_and_io_lower_cleanly ... ok
-test codegen::tests::monomorphized_definitions_have_canonical_order ... ok
+test codegen::tests::every_runtime_feature_lowers_to_ir ... ok
 test codegen::tests::source_filename_names_the_module_and_escapes_safely ... ok
 test codegen::tests::region_rejects_escape_to_outer_variable ... ok
+test diagnose::tests::every_rule_names_a_real_code ... ok
 test codegen::tests::sso_strings_and_soa_structs_lower_cleanly ... ok
 test codegen::tests::tuples_optionals_enums_and_match_compile_without_any_overhead ... ok
-test codegen::tests::every_runtime_feature_lowers_to_ir ... ok
-test diagnose::tests::every_rule_names_a_real_code ... ok
-test diagnose::tests::rules_are_ordered_specific_before_general ... ok
-test diagnose::tests::representative_messages_get_their_area ... ok
 test diagnose::tests::unclassified_messages_stay_unclassified ... ok
+test diagnose::tests::rules_are_ordered_specific_before_general ... ok
 test dialect::tests::a_second_directive_is_rejected ... ok
 test dialect::tests::field_order_and_spacing_do_not_matter ... ok
-test dialect::tests::the_fix_it_is_only_offered_when_it_is_provably_right ... ok
+test diagnose::tests::representative_messages_get_their_area ... ok
 test dialect::tests::malformed_directives_are_errors ... ok
 test dialect::tests::ordinary_comments_are_not_directives ... ok
 test dialect::tests::parses_both_dialects ... ok
+test dialect::tests::the_fix_it_is_only_offered_when_it_is_provably_right ... ok
 test dialect_rules::tests::every_rule_is_decided_for_both_dialects ... ok
 test dialect_rules::tests::a_row_that_claims_to_diverge_actually_does ... ok
-test dialect_rules::tests::all_lists_every_rule_exactly_once ... ok
 test dialect_rules::tests::the_matrix_is_complete_and_enforcement_flags_are_honest ... ok
-test error_codes::tests::codes_are_unique_and_well_formed ... ok
+test dialect_rules::tests::all_lists_every_rule_exactly_once ... ok
 test dialect_rules::tests::the_safety_relevant_rules_never_permit_wrapping_in_compat ... ok
+test error_codes::tests::codes_are_unique_and_well_formed ... ok
 test error_codes::tests::codes_round_trip_through_parse ... ok
-test error_codes::tests::every_code_has_an_explain_entry ... ok
-test explain_perf::tests::a_clean_program_produces_no_notes ... ok
-test error_codes::tests::explain_wraps_long_lines ... ok
 test explain_perf::tests::min_tier_filters_by_cost_and_notes_are_deterministic ... ok
+test error_codes::tests::every_code_has_an_explain_entry ... ok
+test explain_perf::tests::no_fix_ever_trades_a_safety_check_for_speed ... ok
 test lexer::tests::array_elif_and_compound_assign_tokens ... ok
 test lexer::tests::comments_and_blank_lines_are_ignored ... ok
-test explain_perf::tests::the_four_named_constructs_each_get_a_specific_actionable_note ... ok
+test error_codes::tests::explain_wraps_long_lines ... ok
 test lexer::tests::comparison_and_boolean_tokens ... ok
 test lexer::tests::equality_operators ... ok
 test lexer::tests::indents_and_dedents ... ok
-test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
-test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::loop_tokens ... ok
-test explain_perf::tests::no_fix_ever_trades_a_safety_check_for_speed ... ok
+test explain_perf::tests::a_clean_program_produces_no_notes ... ok
+test lexer::tests::pythonic_keywords_floats_underscores_and_fstrings ... ok
+test explain_perf::tests::the_four_named_constructs_each_get_a_specific_actionable_note ... ok
+test lexer::tests::rejects_bad_unindent ... ok
 test lexer::tests::strings_with_both_quote_styles ... ok
+test parser::tests::ast_nodes_carry_their_origin_tag ... ok
+test parser::tests::parses_enums_tuples_optionals_match_and_init_class ... ok
 test parser::tests::parses_arrays_indexing_and_compound_assign ... ok
 test parser::tests::parses_booleans_and_comparisons ... ok
-test parser::tests::parses_functions_with_params ... ok
 test parser::tests::parses_elif_chain ... ok
-test parser::tests::parses_if_else ... ok
-test parser::tests::parses_let_and_arithmetic ... ok
-test parser::tests::parses_enums_tuples_optionals_match_and_init_class ... ok
 test parser::tests::parses_for_and_break_continue ... ok
+test parser::tests::parses_functions_with_params ... ok
 test parser::tests::parses_main_and_print ... ok
-test parser::tests::parses_structs_regions_step_and_foreach ... ok
-test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::parses_let_and_arithmetic ... ok
+test parser::tests::parses_if_else ... ok
 test parser::tests::parses_pythonic_def_class_range_enumerate_fstring_and_script ... ok
-test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
-test tests::default_output_strips_archx_extensions ... ok
-test parser::tests::rejects_missing_colon ... ok
 test parser::tests::rejects_invalid_assignment_target ... ok
+test parser::tests::rejects_missing_colon ... ok
+test parser::tests::parses_structs_regions_step_and_foreach ... ok
+test tests::default_output_strips_archx_extensions ... ok
+test parser::tests::parses_while_and_assignment ... ok
+test parser::tests::rejects_deeply_nested_unary_without_stack_overflow ... ok
 
-test result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
 [1m[92m     Running[0m tests/cli.rs (target/debug/build/archx/bb53426b253e81db/out/cli-bb53426b253e81db)
 
@@ -78,58 +79,58 @@ running 49 tests
 test break_outside_loop_is_an_error ... ok
 test cli_enforces_double_extensions_and_prevents_source_clobber ... ok
 test arrays_run ... ok
-test del_statement_drops_and_forgets_binding ... ok
-test dialect_directive_is_required_and_checked ... ok
-test dialect_directive_is_unambiguous_and_its_suggestion_is_sound ... ok
-test dialect_matrix_is_the_table_the_compiler_obeys ... ok
 test comprehension_and_sorting_example_matches_expected_output ... ok
 test comprehensions_generators_zip_and_inline_sort_work ... ok
+test dialect_directive_is_unambiguous_and_its_suggestion_is_sound ... ok
+test dialect_matrix_is_the_table_the_compiler_obeys ... ok
+test dialect_directive_is_required_and_checked ... ok
+test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
 test emit_ir_works ... ok
 test explain_perf_names_each_costly_construct_and_offers_a_native_fix ... ok
-test adaptive_any_mixed_containers_and_dynamic_rebinding_work ... ok
+test del_statement_drops_and_forgets_binding ... ok
 test elif_and_compound_assign_run ... ok
-compiled `/tmp/archx-v07panic-2939/key_err.archx.lang` -> `/tmp/archx-v07panic-2939/key_err`
 test functions_run ... ok
+compiled `/tmp/archx-v07panic-2732/key_err.archx.lang` -> `/tmp/archx-v07panic-2732/key_err`
 test hello_world_runs ... ok
-compiled `/tmp/archx-v07panic-2939/type_err.archx.lang` -> `/tmp/archx-v07panic-2939/type_err`
+compiled `/tmp/archx-v07panic-2732/type_err.archx.lang` -> `/tmp/archx-v07panic-2732/type_err`
 test dict_key_error_and_dynamic_type_error_panic_cleanly ... ok
 test if_else_runs ... ok
 test integer_true_division_is_correct_and_never_emits_poison_negation ... ok
-test loops_run ... ok
 test inline_sort_is_ub_free_across_run_lengths_and_keeps_stability ... ok
+test loops_run ... ok
 test one_to_one_body_normalises_line_endings_and_requires_the_directive ... ok
+test leakcheck_tracker_reports_leaks ... ok
 test module_constants_and_global_rebinding_match_python ... ok
 test out_of_bounds_panics_cleanly ... ok
 test optimisation_levels_are_selectable_and_behaviour_preserving ... ok
 test pep695_generics_and_inline_lambdas_are_monomorphized ... ok
-test leakcheck_tracker_reports_leaks ... ok
-compiled `/tmp/archx-pypanic-2939/fail_assert.archx.lang` -> `/tmp/archx-pypanic-2939/fail_assert`
-compiled `/tmp/archx-pypanic-2939/zero_step.archx.lang` -> `/tmp/archx-pypanic-2939/zero_step`
+compiled `/tmp/archx-pypanic-2732/fail_assert.archx.lang` -> `/tmp/archx-pypanic-2732/fail_assert`
+compiled `/tmp/archx-pypanic-2732/zero_step.archx.lang` -> `/tmp/archx-pypanic-2732/zero_step`
 test pythonic_assert_and_zero_step_panic_cleanly ... ok
 test planar_simd_dict_set_and_slicing_work ... ok
 test pythonic_defaults_else_keywords_and_map_filter ... ok
-test pythonic_int_float_semantics_match_cpython ... ok
-test overflowing_integer_operations_trap_instead_of_wrapping ... ok
 test full_tour_pythonic_and_speed_editions_match_exactly ... ok
-test pythonic_list_mutation_join_bitwise_and_docstrings ... ok
+test overflowing_integer_operations_trap_instead_of_wrapping ... ok
+test pythonic_int_float_semantics_match_cpython ... ok
 test pythonic_formatting_and_set_algebra_match_cpython ... ok
-test regions_step_loops_foreach_and_ownership_churn_work ... ok
+test pythonic_list_mutation_join_bitwise_and_docstrings ... ok
 test pythonic_stdin_input_with_prompt_and_piped_lines ... ok
 test pythonic_syntax_loops_classes_floats_fstrings_and_methods ... ok
-test pythonic_nested_collection_sorting_matches_cpython ... ok
+test regions_step_loops_foreach_and_ownership_churn_work ... ok
 test run_flag_default_output_and_str_alias_work ... ok
+test pythonic_nested_collection_sorting_matches_cpython ... ok
 test strings_sso_heap_concat_equality_and_embedded_nul_work ... ok
 test safe_division_panics_on_zero_and_handles_int_min_neg_one ... ok
 test structs_value_semantics_aos_and_transparent_soa_work ... ok
 test the_python_gate_emits_junit_that_a_ci_system_can_read ... ok
-test the_python_gate_passes_a_matching_module_and_invents_no_directive ... ok
 test the_python_gate_fails_on_a_divergence_and_names_the_rule_that_explains_it ... ok
-test wrapping_builtins_give_modular_arithmetic_and_record_the_opt_out ... ok
+test the_python_gate_passes_a_matching_module_and_invents_no_directive ... ok
 test tuples_optionals_enums_and_pattern_matching_work ... ok
-test the_python_gate_reports_skips_and_stale_xfail_markers_instead_of_passing ... ok
+test wrapping_builtins_give_modular_arithmetic_and_record_the_opt_out ... ok
 test v1_leak_free_collections ... ok
+test the_python_gate_reports_skips_and_stale_xfail_markers_instead_of_passing ... ok
 
-test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.20s
+test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.19s
 
 [1m[92m     Running[0m tests/conformance.rs (target/debug/build/archx/110dbcd035f99ead/out/conformance-110dbcd035f99ead)
 
@@ -137,7 +138,7 @@ running 1 test
 conformance: 65 of 65 reproducible probes match CPython, 40 documented gaps
 test conformance_probes_match_cpython ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.40s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.87s
 
 [1m[92m     Running[0m tests/error_codes.rs (target/debug/build/archx/95b4fc5632b594cd/out/error_codes-95b4fc5632b594cd)
 
@@ -147,5 +148,5 @@ test driver_errors_have_codes_too ... ok
 test explain_documents_every_code_and_nothing_else ... ok
 test every_compiler_diagnostic_has_a_code ... ok
 
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 
