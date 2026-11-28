@@ -11,7 +11,7 @@
 
     fn lower_src(src: &str) -> Result<String> {
         let toks = Lexer::new(src).tokenize()?;
-        let prog = Parser::new(toks).parse_program()?;
+        let prog = Parser::new(toks, crate::dialect::Dialect::Native).parse_program()?;
         lower(&prog)
     }
 
@@ -369,7 +369,7 @@ def main():
     print(ident(1), ident(\"s\"))
 ";
     let toks = Lexer::new(src).tokenize().unwrap();
-    let prog = Parser::new(toks).parse_program().unwrap();
+    let prog = Parser::new(toks, crate::dialect::Dialect::Native).parse_program().unwrap();
     let first = lower(&prog).unwrap();
     for _ in 0..8 {
         assert_eq!(lower(&prog).unwrap(), first, "lowering is not deterministic");
@@ -386,7 +386,7 @@ def main():
 fn source_filename_names_the_module_and_escapes_safely() {
     let src = "func main():\n    print(1)\n";
     let toks = Lexer::new(src).tokenize().unwrap();
-    let prog = Parser::new(toks).parse_program().unwrap();
+    let prog = Parser::new(toks, crate::dialect::Dialect::Native).parse_program().unwrap();
     let ir = lower_with_source(&prog, Some("demo.archx.lang")).unwrap();
     assert!(
         ir.contains("source_filename = \"demo.archx.lang\""),

@@ -390,7 +390,7 @@ impl Codegen {
                 let (_, slit) = self.eval_expr(
                     &Expr {
                         kind: ExprKind::Str(s.clone()),
-                        span: *pspan,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, *pspan),
                     },
                     out,
                 )?;

@@ -1120,7 +1120,7 @@ impl Codegen {
             }
             let lit_expr = Expr {
                 kind: ExprKind::Str(lit.to_string()),
-                span,
+                origin: crate::ast::NodeOrigin::new(cg.dialect, span),
             };
             let seg = cg.eval_expr(&lit_expr, out).map(|(_, v)| v).unwrap_or_default();
             *acc = Some(match acc.take() {

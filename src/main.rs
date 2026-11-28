@@ -387,7 +387,7 @@ fn run(args: &[String], json: bool) -> DriverResult<i32> {
         .tokenize()
         .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
 
-    let mut parser = parser::Parser::new(tokens);
+    let mut parser = parser::Parser::new(tokens, spec.dialect);
     let mut program = parser
         .parse_program()
         .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
@@ -891,7 +891,7 @@ fn explain_perf_command(args: &[String], json: bool) -> Result<i32, DriverError>
     let tokens = lexer::Lexer::new(&source)
         .tokenize()
         .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
-    let mut parser = parser::Parser::new(tokens);
+    let mut parser = parser::Parser::new(tokens, spec.dialect);
     let mut program = parser
         .parse_program()
         .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;

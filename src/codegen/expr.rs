@@ -1164,7 +1164,7 @@ impl Codegen {
                 Seg::Lit(text) => {
                     let lit_expr = Expr {
                         kind: ExprKind::Str(text),
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     };
                     self.eval_expr(&lit_expr, out)?.1
                 }

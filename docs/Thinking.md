@@ -518,3 +518,35 @@ criterion the backend uses to pick `%ArchxAny`, so the report cannot disagree wi
 and the analysis runs the front end only, so `explain-perf` works on a file that does not build yet —
 which is exactly when you want to know what it is going to cost.
 
+## Round 22 — AX-013: a 400-site refactor with a 130-site diff
+
+The backlog asks for `NodeOrigin { dialect, span }` on *every* `Stmt`/`Expr`, parser-tagged. The naive
+reading is a rewrite of every node access in the compiler — about 350 `.span` reads plus ~130
+construction sites — which is exactly the kind of diff that ages a branch badly. The lever that
+collapsed it: **field access auto-derefs**. `Stmt` and `Expr` store `origin: NodeOrigin` and implement
+`Deref<Target = NodeOrigin>`, so `expr.span` keeps resolving (through the deref) with zero edits at read
+sites. Only *construction* sites had to change, and the compiler enumerates every one of them
+(`E0560`/`E0061`), so the refactor was compiler-guided end to end — there is no such thing as a missed
+site.
+
+Two subtleties the borrow checker taught:
+
+1. **`Deref` borrows the whole node.** Three parser sites read `x.span` *after* partially moving a field
+   out of `x` (e.g. `match iter_expr.kind` moves the kind, then an arm reads the span). A direct field
+   read is legal after a partial move; a deref is not. The fix is to write `iter_expr.origin.span`
+   explicitly at exactly those three places — the exception that documents the rule.
+2. **Closures capture.** A codegen closure that received `cg: &mut Self` as a parameter captured `self`
+   immutably the moment my patch referenced `self.dialect` inside it; the answer is to use the
+   parameter (`cg.dialect`), which is what the closure was for.
+
+The snapshot test earns its keep differently from most golden tests: it parses the *same* source under
+both dialects and asserts the spans are identical while every tag flips. That is the property the whole
+item exists for — the tag records how the node was *parsed*, not where it happens to sit — and it will
+become load-bearing when AX-015 starts synthesizing native wrapper bodies inside compat modules.
+
+The sandbox lost its toolchain between sessions; it was rebuilt from an unusual source worth recording:
+`static.rust-lang.org` is unreachable from here, but the **npm registry hosts real toolchain binaries**
+(`@toolchain-bin/rustc-1.99.0-x86_64-unknown-linux-gnu` and its `cargo` / `rust-std` siblings), which
+assemble into a standard prefix by copying each component's contents into one directory. clang is the
+`ziglang` PyPI wheel's `zig cc`. Everything is under `.work/`, ignored by git.
+

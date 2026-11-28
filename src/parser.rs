@@ -13,13 +13,17 @@ pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
     depth: usize,
+    /// The contract every parsed node is tagged with (AX-013). The directive is read before parsing,
+    /// so the parser never has to guess.
+    dialect: crate::dialect::Dialect,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, dialect: crate::dialect::Dialect) -> Self {
         Self {
             tokens,
             pos: 0,
+            dialect,
             depth: 0,
         }
     }
@@ -121,7 +125,7 @@ impl Parser {
                             value: c.value,
                         }
                     };
-                    top_stmts.push(Stmt { kind, span });
+                    top_stmts.push(Stmt { kind, origin: self.tag(span) });
                 }
             }
         }
@@ -784,7 +788,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after the string literal")?;
             return Ok(Stmt {
                 kind: StmtKind::Pass,
-                span: expr.span,
+                origin: self.tag(expr.span),
             });
         }
 
@@ -793,7 +797,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `pass`")?;
             return Ok(Stmt {
                 kind: StmtKind::Pass,
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -809,7 +813,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `assert`")?;
             return Ok(Stmt {
                 kind: StmtKind::Assert { cond, msg },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -823,7 +827,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `global`")?;
             return Ok(Stmt {
                 kind: StmtKind::Global { names },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -833,7 +837,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `del`")?;
             return Ok(Stmt {
                 kind: StmtKind::Del { name },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -856,7 +860,7 @@ impl Parser {
                 self.expect(TokenKind::Newline, "a newline after the statement")?;
                 return Ok(Stmt {
                     kind: StmtKind::TupleAssign { targets, value },
-                    span,
+                    origin: self.tag(span),
                 });
             }
             let name = self.expect_ident("a variable name")?;
@@ -874,7 +878,7 @@ impl Parser {
                 self.expect(TokenKind::Newline, "a newline after the statement")?;
                 return Ok(Stmt {
                     kind: StmtKind::TupleAssign { targets, value },
-                    span,
+                    origin: self.tag(span),
                 });
             }
             let ty = if self.check(&TokenKind::Colon) {
@@ -888,7 +892,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
                 kind: StmtKind::Let { name, ty, value },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -906,7 +910,7 @@ impl Parser {
                     ty: Some(ty),
                     value,
                 },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -923,7 +927,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after the statement")?;
             return Ok(Stmt {
                 kind: StmtKind::Return(value),
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -967,7 +971,7 @@ impl Parser {
             }
             return Ok(Stmt {
                 kind: StmtKind::While { cond, body },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1028,7 +1032,7 @@ impl Parser {
                                 iters: args,
                                 body,
                             },
-                            span,
+                            origin: self.tag(span),
                         });
                     }
                 }
@@ -1040,7 +1044,7 @@ impl Parser {
                             if args.is_empty() || args.len() > 2 {
                                 return Err(Diagnostic::new(
                                     "`enumerate()` expects 1 or 2 arguments (`enumerate(seq[, start])`)",
-                                    iter_expr.span,
+                                    iter_expr.origin.span,
                                 ));
                             }
                             let start = if args.len() == 2 {
@@ -1057,7 +1061,7 @@ impl Parser {
                                     start,
                                     body,
                                 },
-                                span,
+                                origin: self.tag(span),
                             })
                         }
                         ExprKind::MethodCall {
@@ -1071,7 +1075,7 @@ impl Parser {
                                 dict: *target,
                                 body,
                             },
-                            span,
+                            origin: self.tag(span),
                         }),
                         other => Ok(Stmt {
                             kind: StmtKind::ForDictItems {
@@ -1079,11 +1083,11 @@ impl Parser {
                                 val_var: elem_var,
                                 dict: Expr {
                                     kind: other,
-                                    span: iter_expr.span,
+                                    origin: self.tag(iter_expr.origin.span),
                                 },
                                 body,
                             },
-                            span,
+                            origin: self.tag(span),
                         }),
                     };
                 }
@@ -1093,7 +1097,7 @@ impl Parser {
                         iter: iter_expr,
                         body,
                     },
-                    span,
+                    origin: self.tag(span),
                 });
             }
 
@@ -1127,7 +1131,7 @@ impl Parser {
                         body,
                         else_body: None,
                     },
-                    span,
+                    origin: self.tag(span),
                 });
             }
 
@@ -1143,7 +1147,7 @@ impl Parser {
                         (
                             Expr {
                                 kind: ExprKind::Int(0),
-                                span: rspan,
+                                origin: self.tag(rspan),
                             },
                             it.next().unwrap(),
                             None,
@@ -1185,7 +1189,7 @@ impl Parser {
                         body,
                         else_body: None,
                     },
-                    span,
+                    origin: self.tag(span),
                 });
             }
 
@@ -1204,7 +1208,7 @@ impl Parser {
                     body,
                     else_body: None,
                 },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1221,7 +1225,7 @@ impl Parser {
             }
             return Ok(Stmt {
                 kind: StmtKind::Region { body },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1237,7 +1241,7 @@ impl Parser {
             }
             return Ok(Stmt {
                 kind: StmtKind::Region { body },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1246,7 +1250,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `break`")?;
             return Ok(Stmt {
                 kind: StmtKind::Break,
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1255,7 +1259,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after `continue`")?;
             return Ok(Stmt {
                 kind: StmtKind::Continue,
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1279,7 +1283,7 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after tuple assignment")?;
             return Ok(Stmt {
                 kind: StmtKind::TupleAssign { targets, value },
-                span,
+                origin: self.tag(span),
             });
         }
 
@@ -1316,7 +1320,7 @@ impl Parser {
                         self.expect(TokenKind::Newline, "a newline after tuple assignment")?;
                         return Ok(Stmt {
                             kind: StmtKind::TupleAssign { targets, value },
-                            span,
+                            origin: self.tag(span),
                         });
                     }
                 }
@@ -1340,14 +1344,14 @@ impl Parser {
             self.expect(TokenKind::Newline, "a newline after the assignment")?;
             return Ok(Stmt {
                 kind: StmtKind::Assign { target, op, value },
-                span,
+                origin: self.tag(span),
             });
         }
 
         self.expect(TokenKind::Newline, "a newline after the statement")?;
         Ok(Stmt {
             kind: StmtKind::Expr(lhs),
-            span,
+            origin: self.tag(span),
         })
     }
 
@@ -1370,7 +1374,7 @@ impl Parser {
         }
         Ok(Expr {
             kind: ExprKind::TupleLit(elems),
-            span,
+            origin: self.tag(span),
         })
     }
 
@@ -1429,7 +1433,7 @@ impl Parser {
         }
         Ok(Stmt {
             kind: StmtKind::Match { subject, cases },
-            span,
+            origin: self.tag(span),
         })
     }
 
@@ -1622,7 +1626,7 @@ impl Parser {
                 then_body,
                 else_body,
             },
-            span,
+            origin: self.tag(span),
         })
     }
 
@@ -1704,7 +1708,7 @@ impl Parser {
                     cond: Box::new(cond),
                     else_expr: Box::new(else_expr),
                 },
-                span,
+                origin: self.tag(span),
             });
         }
         Ok(then_expr)
@@ -1767,7 +1771,7 @@ impl Parser {
                 params,
                 body: Box::new(body),
             },
-            span,
+            origin: self.tag(span),
         })
     }
 
@@ -1878,7 +1882,7 @@ impl Parser {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
                     },
-                    span,
+                    origin: self.tag(span),
                 };
             } else {
                 break;
@@ -1902,7 +1906,7 @@ impl Parser {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
                     },
-                    span,
+                    origin: self.tag(span),
                 };
             } else {
                 break;
@@ -1928,7 +1932,7 @@ impl Parser {
                     op: UnOp::Not,
                     expr: Box::new(expr),
                 },
-                span,
+                origin: self.tag(span),
             };
         }
         Ok(expr)
@@ -2002,7 +2006,7 @@ impl Parser {
                     operands.push((Box::new(rhs), BinOp::Eq));
                     lhs = Expr {
                         kind: ExprKind::CompareChain(operands),
-                        span: lhs.span,
+                        origin: self.tag(lhs.origin.span),
                     };
                 }
                 ExprKind::Binary {
@@ -2016,7 +2020,7 @@ impl Parser {
                             (first_rhs, op),
                             (Box::new(rhs), BinOp::Eq),
                         ]),
-                        span: lhs.span,
+                        origin: self.tag(lhs.origin.span),
                     };
                 }
                 _ => {
@@ -2026,7 +2030,7 @@ impl Parser {
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                     first_seen = true;
                 }
@@ -2082,7 +2086,7 @@ impl Parser {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
                 },
-                span,
+                origin: self.tag(span),
             };
         }
         Ok(lhs)
@@ -2106,7 +2110,7 @@ impl Parser {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
                 },
-                span,
+                origin: self.tag(span),
             };
         }
 
@@ -2136,7 +2140,7 @@ impl Parser {
                             template: template.clone(),
                             args: Box::new(rhs),
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                     continue;
                 }
@@ -2154,7 +2158,7 @@ impl Parser {
                             value: Box::new(elem),
                             count: Box::new(rhs),
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                     continue;
                 }
@@ -2168,7 +2172,7 @@ impl Parser {
                             value: Box::new(elem),
                             count: Box::new(lhs),
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                     continue;
                 }
@@ -2180,7 +2184,7 @@ impl Parser {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
                 },
-                span,
+                origin: self.tag(span),
             };
         }
 
@@ -2210,7 +2214,7 @@ impl Parser {
                     op: UnOp::BitNot,
                     expr: Box::new(inner),
                 },
-                span,
+                origin: self.tag(span),
             });
         }
         let mut expr = self.parse_power()?;
@@ -2220,7 +2224,7 @@ impl Parser {
                     op: UnOp::Neg,
                     expr: Box::new(expr),
                 },
-                span,
+                origin: self.tag(span),
             };
         }
         Ok(expr)
@@ -2242,7 +2246,7 @@ impl Parser {
                     lhs: Box::new(base),
                     rhs: Box::new(exp),
                 },
-                span,
+                origin: self.tag(span),
             });
         }
         Ok(base)
@@ -2280,7 +2284,7 @@ impl Parser {
                             stop,
                             step,
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                 } else {
                     let first = self.parse_expr()?;
@@ -2310,7 +2314,7 @@ impl Parser {
                                 stop,
                                 step,
                             },
-                            span,
+                            origin: self.tag(span),
                         };
                     } else {
                         self.expect(TokenKind::RBracket, "`]`")?;
@@ -2319,7 +2323,7 @@ impl Parser {
                                 target: Box::new(expr),
                                 index: Box::new(first),
                             },
-                            span,
+                            origin: self.tag(span),
                         };
                     }
                 }
@@ -2363,7 +2367,7 @@ impl Parser {
                                             elt: Box::new(first_arg),
                                             clauses,
                                         },
-                                        span: arg_span,
+                                        origin: self.tag(arg_span),
                                     });
                                     break;
                                 }
@@ -2384,7 +2388,7 @@ impl Parser {
                                 method: member,
                                 args: pos_args,
                             },
-                            span,
+                            origin: self.tag(span),
                         }
                     } else {
                         Expr {
@@ -2394,7 +2398,7 @@ impl Parser {
                                 pos_args,
                                 kw_args,
                             },
-                            span,
+                            origin: self.tag(span),
                         }
                     };
                 } else {
@@ -2403,7 +2407,7 @@ impl Parser {
                             target: Box::new(expr),
                             field: member,
                         },
-                        span,
+                        origin: self.tag(span),
                     };
                 }
             } else if self.check(&TokenKind::LParen) {
@@ -2429,7 +2433,7 @@ impl Parser {
                         callee: Box::new(expr),
                         args,
                     },
-                    span,
+                    origin: self.tag(span),
                 };
             } else {
                 break;
@@ -2447,35 +2451,35 @@ impl Parser {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::Int(n),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::Float(x) => {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::Float(x),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::Bool(value) => {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::Bool(value),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::NoneLit => {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::NoneLit,
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::Str(s) => {
                 self.bump();
                 Ok(Expr {
                     kind: ExprKind::Str(s),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::FStr(raw_parts) => {
@@ -2493,7 +2497,7 @@ impl Parser {
                         let sub_tokens = crate::lexer::Lexer::new(&text).tokenize().map_err(|d| {
                             Diagnostic::new(format!("in f-string: {}", d.message), span)
                         })?;
-                        let mut sub = Parser::new(sub_tokens);
+                        let mut sub = Parser::new(sub_tokens, self.dialect);
                         sub.depth = self.depth;
                         let expr = sub.parse_expr().map_err(|d| {
                             Diagnostic::new(format!("in f-string: {}", d.message), span)
@@ -2518,7 +2522,7 @@ impl Parser {
                 }
                 Ok(Expr {
                     kind: ExprKind::FString(parts),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::Ident(name) => {
@@ -2560,7 +2564,7 @@ impl Parser {
                                             elt: Box::new(first_arg),
                                             clauses,
                                         },
-                                        span: arg_span,
+                                        origin: self.tag(arg_span),
                                     });
                                     break;
                                 }
@@ -2582,7 +2586,7 @@ impl Parser {
                                 pos_args,
                                 kw_args,
                             },
-                            span,
+                            origin: self.tag(span),
                         })
                     } else if kw_args.is_empty() {
                         Ok(Expr {
@@ -2590,7 +2594,7 @@ impl Parser {
                                 name,
                                 args: pos_args,
                             },
-                            span,
+                            origin: self.tag(span),
                         })
                     } else {
                         Ok(Expr {
@@ -2599,18 +2603,18 @@ impl Parser {
                                 pos_args,
                                 kw_args,
                             },
-                            span,
+                            origin: self.tag(span),
                         })
                     }
                 } else if name == "__name__" {
                     Ok(Expr {
                         kind: ExprKind::Str("__main__".to_string()),
-                        span,
+                        origin: self.tag(span),
                     })
                 } else {
                     Ok(Expr {
                         kind: ExprKind::Var(name),
-                        span,
+                        origin: self.tag(span),
                     })
                 }
             }
@@ -2620,7 +2624,7 @@ impl Parser {
                     self.bump();
                     return Ok(Expr {
                         kind: ExprKind::ArrayLit(Vec::new()),
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 let first = self.parse_expr()?;
@@ -2632,7 +2636,7 @@ impl Parser {
                             elt: Box::new(first),
                             clauses,
                         },
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 if self.check(&TokenKind::Semicolon) {
@@ -2644,7 +2648,7 @@ impl Parser {
                             value: Box::new(first),
                             count: Box::new(count),
                         },
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 let mut elems = vec![first];
@@ -2658,7 +2662,7 @@ impl Parser {
                 self.expect(TokenKind::RBracket, "`]`")?;
                 Ok(Expr {
                     kind: ExprKind::ArrayLit(elems),
-                    span,
+                    origin: self.tag(span),
                 })
             }
             TokenKind::LBrace => {
@@ -2667,7 +2671,7 @@ impl Parser {
                     self.bump();
                     return Ok(Expr {
                         kind: ExprKind::DictLit(Vec::new()),
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 let first = self.parse_expr()?;
@@ -2683,7 +2687,7 @@ impl Parser {
                                 val: Box::new(first_val),
                                 clauses,
                             },
-                            span,
+                            origin: self.tag(span),
                         });
                     }
                     let mut pairs = vec![(first, first_val)];
@@ -2706,7 +2710,7 @@ impl Parser {
                     self.expect(TokenKind::RBrace, "`}`")?;
                     Ok(Expr {
                         kind: ExprKind::DictLit(pairs),
-                        span,
+                        origin: self.tag(span),
                     })
                 } else {
                     if self.check(&TokenKind::For) {
@@ -2717,7 +2721,7 @@ impl Parser {
                                 elt: Box::new(first),
                                 clauses,
                             },
-                            span,
+                            origin: self.tag(span),
                         });
                     }
                     let mut elems = vec![first];
@@ -2738,7 +2742,7 @@ impl Parser {
                     self.expect(TokenKind::RBrace, "`}`")?;
                     Ok(Expr {
                         kind: ExprKind::SetLit(elems),
-                        span,
+                        origin: self.tag(span),
                     })
                 }
             }
@@ -2748,7 +2752,7 @@ impl Parser {
                     self.bump();
                     return Ok(Expr {
                         kind: ExprKind::TupleLit(Vec::new()),
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 let first = self.parse_expr()?;
@@ -2760,7 +2764,7 @@ impl Parser {
                             elt: Box::new(first),
                             clauses,
                         },
-                        span,
+                        origin: self.tag(span),
                     });
                 }
                 if self.check(&TokenKind::Comma) {
@@ -2777,7 +2781,7 @@ impl Parser {
                     self.expect(TokenKind::RParen, "`)`")?;
                     Ok(Expr {
                         kind: ExprKind::TupleLit(elems),
-                        span,
+                        origin: self.tag(span),
                     })
                 } else {
                     self.expect(TokenKind::RParen, "`)`")?;
@@ -2833,6 +2837,11 @@ impl Parser {
             self.pos += 1;
         }
         token
+    }
+
+    /// Tag a freshly parsed node with the module's contract.
+    fn tag(&self, span: Span) -> crate::ast::NodeOrigin {
+        crate::ast::NodeOrigin::new(self.dialect, span)
     }
 
     fn peek(&self) -> &Token {
@@ -3226,10 +3235,103 @@ mod tests {
 
     fn parse(src: &str) -> Program {
         let tokens = Lexer::new(src).tokenize().unwrap();
-        Parser::new(tokens).parse_program().unwrap()
+        Parser::new(tokens, crate::dialect::Dialect::Native).parse_program().unwrap()
+    }
+
+    /// AX-013 snapshot: every node carries its `NodeOrigin` — the dialect it was parsed under and
+    /// its span. The golden walk below is deliberately exact (kind, dialect, line:col per node), so
+    /// a parser change that drops or mis-tags a node fails loudly instead of drifting silently.
+    fn tagged_walk(src: &str, dialect: crate::dialect::Dialect) -> Vec<String> {
+        let tokens = Lexer::new(src).tokenize().unwrap();
+        let program = Parser::new(tokens, dialect).parse_program().unwrap();
+        fn kind_name(kind: &ExprKind) -> &'static str {
+            match kind {
+                ExprKind::Int(_) => "int",
+                ExprKind::Str(_) => "str",
+                ExprKind::Var(_) => "var",
+                ExprKind::Binary { .. } => "binary",
+                ExprKind::Call { .. } => "call",
+                _ => "other",
+            }
+        }
+        fn walk_expr(e: &Expr, out: &mut Vec<String>) {
+            out.push(format!(
+                "{} {} {}:{}",
+                kind_name(&e.kind),
+                e.origin.dialect.name(),
+                e.origin.span.line,
+                e.origin.span.col
+            ));
+            if let ExprKind::Binary { lhs, rhs, .. } = &e.kind {
+                walk_expr(lhs, out);
+                walk_expr(rhs, out);
+            }
+            if let ExprKind::Call { args, .. } = &e.kind {
+                for a in args {
+                    walk_expr(a, out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        for func in &program.funcs {
+            for stmt in &func.body {
+                let kind = match &stmt.kind {
+                    StmtKind::Let { value, .. } => {
+                        walk_expr(value, &mut out);
+                        "let"
+                    }
+                    StmtKind::Assign { value, .. } => {
+                        walk_expr(value, &mut out);
+                        "assign"
+                    }
+                    StmtKind::Return(Some(value)) => {
+                        walk_expr(value, &mut out);
+                        "return"
+                    }
+                    _ => "other",
+                };
+                out.push(format!(
+                    "{} {} {}:{}",
+                    kind,
+                    stmt.origin.dialect.name(),
+                    stmt.origin.span.line,
+                    stmt.origin.span.col
+                ));
+            }
+        }
+        out
     }
 
     #[test]
+    fn ast_nodes_carry_their_origin_tag() {
+        let src = "def main() -> int:\n    x = 1 + 2\n    return x\n";
+        assert_eq!(
+            tagged_walk(src, crate::dialect::Dialect::Native),
+            vec![
+                "binary native 2:11",
+                "int native 2:9",
+                "int native 2:13",
+                "assign native 2:5",
+                "var native 3:12",
+                "return native 3:5",
+            ]
+        );
+        // Same source under the other contract: identical spans, different tag. The tag is the only
+        // thing that may differ — a tag that silently followed the module would make this assert fail.
+        assert_eq!(
+            tagged_walk(src, crate::dialect::Dialect::Compat),
+            vec![
+                "binary compat 2:11",
+                "int compat 2:9",
+                "int compat 2:13",
+                "assign compat 2:5",
+                "var compat 3:12",
+                "return compat 3:5",
+            ]
+        );
+    }
+
+        #[test]
     fn parses_main_and_print() {
         let program = parse("func main():\n    print(\"hello\")\n");
         assert_eq!(program.funcs.len(), 1);
@@ -3342,7 +3444,7 @@ print(f\"count={len(nums)}\", end=\"\\n\")
         }
         src.push_str("1\n");
         let tokens = Lexer::new(&src).tokenize().unwrap();
-        assert!(Parser::new(tokens).parse_program().is_err());
+        assert!(Parser::new(tokens, crate::dialect::Dialect::Native).parse_program().is_err());
     }
 
     #[test]
@@ -3350,13 +3452,13 @@ print(f\"count={len(nums)}\", end=\"\\n\")
         let tokens = Lexer::new("func main():\n    1 + 2 = 3\n")
             .tokenize()
             .unwrap();
-        assert!(Parser::new(tokens).parse_program().is_err());
+        assert!(Parser::new(tokens, crate::dialect::Dialect::Native).parse_program().is_err());
     }
 
     #[test]
     fn rejects_missing_colon() {
         let tokens = Lexer::new("func main()\n    print(\"x\")\n").tokenize().unwrap();
-        assert!(Parser::new(tokens).parse_program().is_err());
+        assert!(Parser::new(tokens, crate::dialect::Dialect::Native).parse_program().is_err());
     }
 
     #[test]

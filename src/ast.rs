@@ -125,11 +125,47 @@ pub struct Param {
     pub default: Option<Expr>,
 }
 
+/// Where a node came from and which contract it is written against (AX-013).
+///
+/// Today a module is parsed under exactly one dialect, so within one tree the tag is uniform. The
+/// point of carrying it per node instead of reading `program.dialect` in codegen is the dual-ABI
+/// `pub fn` work (AX-015): a compat module will contain *synthesized* native-dialect wrapper bodies,
+/// and a pass that tags the node at creation never has to guess which contract a node is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NodeOrigin {
+    pub dialect: crate::dialect::Dialect,
+    pub span: Span,
+}
+
+impl NodeOrigin {
+    pub fn new(dialect: crate::dialect::Dialect, span: Span) -> Self {
+        Self { dialect, span }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Stmt {
     pub kind: StmtKind,
-    pub span: Span,
+    pub origin: NodeOrigin,
 }
+
+// `Deref` keeps the hundreds of existing `stmt.span` / `expr.span` reads working: field access
+// auto-derefs to `origin.span`. New code should prefer `origin` and read `origin.dialect` when the
+// contract matters.
+impl std::ops::Deref for Stmt {
+    type Target = NodeOrigin;
+    fn deref(&self) -> &NodeOrigin {
+        &self.origin
+    }
+}
+
+impl std::ops::DerefMut for Stmt {
+    fn deref_mut(&mut self) -> &mut NodeOrigin {
+        &mut self.origin
+    }
+}
+
+
 
 #[derive(Debug, Clone)]
 pub enum AssignTarget {
@@ -293,8 +329,23 @@ pub enum FStrPart {
 #[derive(Debug, Clone)]
 pub struct Expr {
     pub kind: ExprKind,
-    pub span: Span,
+    pub origin: NodeOrigin,
 }
+
+impl std::ops::Deref for Expr {
+    type Target = NodeOrigin;
+    fn deref(&self) -> &NodeOrigin {
+        &self.origin
+    }
+}
+
+impl std::ops::DerefMut for Expr {
+    fn deref_mut(&mut self) -> &mut NodeOrigin {
+        &mut self.origin
+    }
+}
+
+
 
 #[derive(Debug, Clone)]
 pub struct CompClause {

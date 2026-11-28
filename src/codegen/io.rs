@@ -858,7 +858,7 @@ impl Codegen {
                 FStrPart::Lit(lit) => {
                     let lit_expr = Expr {
                         kind: ExprKind::Str(lit.clone()),
-                        span: Span::new(1, 1),
+                        origin: crate::ast::NodeOrigin::new(self.dialect, Span::new(1, 1)),
                     };
                     self.eval_expr(&lit_expr, out)?.1
                 }

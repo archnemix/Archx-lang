@@ -99,6 +99,8 @@ struct Monomorphizer<'a> {
     /// Lambdas already lifted, keyed by source position.
     lifted_by_span: HashMap<(usize, usize), Lifted>,
     next_id: usize,
+    /// The module contract, so cloned/synthesized nodes keep a correct origin tag (AX-013).
+    dialect: crate::dialect::Dialect,
 }
 
 #[derive(Clone, Debug)]
@@ -146,6 +148,7 @@ impl<'a> Monomorphizer<'a> {
             call_shapes: HashMap::new(),
             lifted_by_span: HashMap::new(),
             next_id: 0,
+            dialect: program.dialect.dialect,
         }
     }
 
@@ -495,10 +498,10 @@ impl<'a> Monomorphizer<'a> {
                             ty: Some(Type::Bool),
                             value: Expr {
                                 kind: ExprKind::Bool(false),
-                                span,
+                                origin: crate::ast::NodeOrigin::new(self.dialect, span),
                             },
                         },
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     });
                 }
                 // Track the binding's type so a later `lambda` can capture it (module-level
@@ -526,10 +529,10 @@ impl<'a> Monomorphizer<'a> {
                                 op: None,
                                 value: Expr {
                                     kind: ExprKind::Bool(false),
-                                    span,
+                                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                                 },
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         });
                     }
                 }
@@ -741,7 +744,7 @@ impl<'a> Monomorphizer<'a> {
             StmtKind::Break => StmtKind::Break,
             StmtKind::Continue => StmtKind::Continue,
         };
-        Ok(Stmt { kind, span })
+        Ok(Stmt { kind, origin: crate::ast::NodeOrigin::new(self.dialect, span) })
     }
 
     fn rewrite_target(&mut self, target: &AssignTarget) -> Result<AssignTarget> {
@@ -876,7 +879,7 @@ impl<'a> Monomorphizer<'a> {
                 ret: Some(ret.clone()),
                 body: vec![Stmt {
                     kind: StmtKind::Return(Some(new_body)),
-                    span: expr.span,
+                    origin: crate::ast::NodeOrigin::new(self.dialect, expr.span),
                 }],
                 globals: Vec::new(),
                 span: expr.span,
@@ -932,13 +935,13 @@ impl<'a> Monomorphizer<'a> {
             .iter()
             .map(|c| Expr {
                 kind: ExprKind::Var(c.clone()),
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             })
             .collect();
         if shape.dummy_env {
             all.push(Expr {
                 kind: ExprKind::Bool(false),
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             });
         }
         all.extend(args);
@@ -1105,7 +1108,7 @@ impl<'a> Monomorphizer<'a> {
                             name: name.clone(),
                             args: vec![args[0].clone(), iter],
                         },
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     });
                 }
                 let args: Vec<Expr> = args
@@ -1121,7 +1124,7 @@ impl<'a> Monomorphizer<'a> {
                             name: lift.func,
                             args: all,
                         },
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     });
                 }
                 // Implicit PEP 695 instantiation: an unannotated `add(3, 4)` call resolves the
@@ -1135,7 +1138,7 @@ impl<'a> Monomorphizer<'a> {
                                 name: mangled,
                                 args,
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         });
                     }
                 }
@@ -1208,7 +1211,7 @@ impl<'a> Monomorphizer<'a> {
                             name: lifted.func,
                             args: all,
                         },
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     });
                 }
                 if let ExprKind::Var(n) = &callee.kind {
@@ -1223,7 +1226,7 @@ impl<'a> Monomorphizer<'a> {
                                 name: lift.func,
                                 args: all,
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         });
                     }
                 }
@@ -1254,7 +1257,7 @@ impl<'a> Monomorphizer<'a> {
                 expr: Box::new(self.rewrite_expr(inner)?),
             },
         };
-        Ok(Expr { kind, span })
+        Ok(Expr { kind, origin: crate::ast::NodeOrigin::new(self.dialect, span) })
     }
 
     fn rewrite_clauses(&mut self, clauses: &[CompClause]) -> Result<Vec<CompClause>> {

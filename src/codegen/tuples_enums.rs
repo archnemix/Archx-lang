@@ -232,7 +232,7 @@ fn resolve_stmt(stmt: &Stmt, enum_names: &HashSet<String>) -> Stmt {
     };
     Stmt {
         kind,
-        span: stmt.span,
+        origin: stmt.origin,
     }
 }
 

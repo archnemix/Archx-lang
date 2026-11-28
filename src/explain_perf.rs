@@ -679,7 +679,7 @@ mod tests {
 
     fn analyze_source(source: &str) -> Report {
         let tokens = crate::lexer::Lexer::new(source).tokenize().expect("lexes");
-        let mut program = crate::parser::Parser::new(tokens)
+        let mut program = crate::parser::Parser::new(tokens, crate::dialect::Dialect::Native)
             .parse_program()
             .expect("parses");
         program.dialect = crate::dialect::DialectSpec {

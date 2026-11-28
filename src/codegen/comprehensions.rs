@@ -364,14 +364,14 @@ impl Codegen {
                     args: vec![
                         Expr {
                             kind: ExprKind::Var(hidden.clone()),
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                         elt.clone(),
                     ],
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }),
-            span,
+            origin: crate::ast::NodeOrigin::new(self.dialect, span),
         }];
         let nest = self.build_comp_nest(clauses, 0, append, span);
         self.gen_stmt(&nest, &[], out)?;
@@ -425,14 +425,14 @@ impl Codegen {
                 kind: ExprKind::MethodCall {
                     target: Box::new(Expr {
                         kind: ExprKind::Var(hidden.clone()),
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     }),
                     method: "add".to_string(),
                     args: vec![elt.clone()],
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }),
-            span,
+            origin: crate::ast::NodeOrigin::new(self.dialect, span),
         }];
         let nest = self.build_comp_nest(clauses, 0, body, span);
         self.gen_stmt(&nest, &[], out)?;
@@ -509,14 +509,14 @@ impl Codegen {
                 target: AssignTarget::Index {
                     target: Box::new(Expr {
                         kind: ExprKind::Var(hidden.clone()),
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     }),
                     index: Box::new(key.clone()),
                 },
                 op: None,
                 value: val.clone(),
             },
-            span,
+            origin: crate::ast::NodeOrigin::new(self.dialect, span),
         }];
         let nest = self.build_comp_nest(clauses, 0, body, span);
         self.gen_stmt(&nest, &[], out)?;
@@ -609,7 +609,7 @@ impl Codegen {
         // element, one variable per component.
         let (elem_var, vars): (Expr, Vec<String>) = if tuple_vars.is_empty() {
             let v = "__map_elem".to_string();
-            (Expr { kind: ExprKind::Var(v.clone()), span }, vec![v])
+            (Expr { kind: ExprKind::Var(v.clone()), origin: crate::ast::NodeOrigin::new(self.dialect, span) }, vec![v])
         } else {
             (
                 Expr {
@@ -618,11 +618,11 @@ impl Codegen {
                             .iter()
                             .map(|v| Expr {
                                 kind: ExprKind::Var(v.clone()),
-                                span,
+                                origin: crate::ast::NodeOrigin::new(self.dialect, span),
                             })
                             .collect(),
                     ),
-                    span,
+                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                 },
                 tuple_vars.clone(),
             )
@@ -660,7 +660,7 @@ impl Codegen {
                         name: f.clone(),
                         args: vec![elem_var.clone()],
                     },
-                    span: args[0].span,
+                    origin: crate::ast::NodeOrigin::new(self.dialect, args[0].span),
                 }
             }
             ExprKind::Lambda { params, body } => {
@@ -719,7 +719,7 @@ impl Codegen {
                     then_body: inner,
                     else_body: None,
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }];
         }
         if i + 1 < clauses.len() {
@@ -737,7 +737,7 @@ impl Codegen {
                 } else {
                     Expr {
                         kind: ExprKind::Int(0),
-                        span: iter.span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, iter.span),
                     }
                 };
                 let end = if args.len() >= 2 {
@@ -759,7 +759,7 @@ impl Codegen {
                         step,
                         body: inner,
                     },
-                    span,
+                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                 };
             }
         }
@@ -771,7 +771,7 @@ impl Codegen {
                     iter,
                     body: inner,
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }
         } else {
             Stmt {
@@ -780,7 +780,7 @@ impl Codegen {
                     iter,
                     body: inner,
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }
         }
     }
@@ -1168,14 +1168,14 @@ impl Codegen {
 
         let acc_var = Expr {
             kind: ExprKind::Var(acc_name.clone()),
-            span,
+            origin: crate::ast::NodeOrigin::new(self.dialect, span),
         };
         let body: Vec<Stmt> = match kind {
             FoldKind::Sum | FoldKind::Count => {
                 let term = if matches!(kind, FoldKind::Count) {
                     Expr {
                         kind: ExprKind::Int(1),
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     }
                 } else {
                     elt.clone()
@@ -1190,10 +1190,10 @@ impl Codegen {
                                 lhs: Box::new(acc_var),
                                 rhs: Box::new(term),
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                     },
-                    span,
+                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                 }]
             }
             FoldKind::Any => vec![Stmt {
@@ -1206,19 +1206,19 @@ impl Codegen {
                                 op: None,
                                 value: Expr {
                                     kind: ExprKind::Bool(true),
-                                    span,
+                                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                                 },
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                         Stmt {
                             kind: StmtKind::Break,
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                     ],
                     else_body: None,
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }],
             FoldKind::All => vec![Stmt {
                 kind: StmtKind::If {
@@ -1227,7 +1227,7 @@ impl Codegen {
                             op: UnOp::Not,
                             expr: Box::new(elt.clone()),
                         },
-                        span,
+                        origin: crate::ast::NodeOrigin::new(self.dialect, span),
                     },
                     then_body: vec![
                         Stmt {
@@ -1236,19 +1236,19 @@ impl Codegen {
                                 op: None,
                                 value: Expr {
                                     kind: ExprKind::Bool(false),
-                                    span,
+                                    origin: crate::ast::NodeOrigin::new(self.dialect, span),
                                 },
                             },
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                         Stmt {
                             kind: StmtKind::Break,
-                            span,
+                            origin: crate::ast::NodeOrigin::new(self.dialect, span),
                         },
                     ],
                     else_body: None,
                 },
-                span,
+                origin: crate::ast::NodeOrigin::new(self.dialect, span),
             }],
         };
         let nest = self.build_comp_nest(clauses, 0, body, span);
