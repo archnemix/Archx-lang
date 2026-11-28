@@ -1,0 +1,27 @@
+{
+  "_comment": "Completion state for the v1.0 work orders, consumed by tools/gen_tracker.py. States: done | partial | todo | blocked. Record 'done' only with evidence checked into this repo.",
+  "AX-001": {
+    "state": "done",
+    "note": "All three leak sites closed (c840f9a). The audit's attribution to `archx_fn___archx_user_main` was wrong; the real defect was in the collection pipeline: (1) comprehension growth (cap==len so the last push reallocated), (2) the min/max generator temp claimed without being freed, (3) the for-each loop variable re-cloned over the previous binding. ASan now 11/11 CLEAN; ci/leakcheck.c is an independent gate that provably fails on a leak."
+  },
+  "AX-002": {
+    "state": "partial",
+    "note": "Trapping `i64` via llvm.s*.with.overflow + checked_* const folding (e55ea1d): MAX+1, MAX*2, 2**63 all trap with exit 101, and a literal can no longer bypass the check by folding. REMAINING: explicit `wrapping_*` intrinsics for the native dialect, and `add nsw` only with a proof (the immediate check costs ~12% on composite; batching was rejected because it exposes the wrapped value before the panic)."
+  },
+  "AX-003": {
+    "state": "partial",
+    "note": "The CLI already reads CARGO_PKG_VERSION, so the binary's version is single-sourced. REMAINING: regenerate the README/docs numbers from ci/out/benchmarks.txt, fix the test count, drop \"(Current)\" from the v0.8.0 changelog, and add the CI drift script."
+  },
+  "AX-005": {
+    "state": "partial",
+    "note": "LICENSE (MIT) added, matching what Cargo.toml already declared. REMAINING: delete the tracked `bw` and `call_and_loop_semantics` ELF files, extend .gitignore, add the CI check that rejects binaries in the tree."
+  },
+  "AX-006": {
+    "state": "blocked",
+    "note": "Needs a decision I cannot make alone: merging arena/888b3ea8-archx-lang into `main` and changing the default branch is a repo-level action affecting what `git clone` gives everyone. Depends on AX-003 and AX-005 landing first."
+  },
+  "AX-013": {
+    "state": "partial",
+    "note": "Directive layer landed (b152f3b): src/dialect.rs, E0100/E0101, DialectSpec on Program, DialectRules, --dialect override. ACCEPTANCE NOT MET: --emit-ir does not yet carry a `!archx.dialect` module flag, and NodeOrigin { dialect, span } is not on Stmt/Expr."
+  }
+}
