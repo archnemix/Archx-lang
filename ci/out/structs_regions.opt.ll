@@ -665,7 +665,8 @@ attributes #11 = { nocallback nofree nosync nounwind speculatable willreturn mem
 attributes #12 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 attributes #13 = { nocallback nofree nounwind willreturn memory(argmem: write) }
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}

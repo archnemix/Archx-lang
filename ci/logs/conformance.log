@@ -2,8 +2,8 @@
 [1m[92m     Running[0m tests/conformance.rs (target/debug/build/archx/110dbcd035f99ead/out/conformance-110dbcd035f99ead)
 
 running 1 test
-conformance: 64 of 64 reproducible probes match CPython, 40 documented gaps
+conformance: 65 of 65 reproducible probes match CPython, 40 documented gaps
 test conformance_probes_match_cpython ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.62s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.20s
 

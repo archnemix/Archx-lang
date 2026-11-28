@@ -25,7 +25,8 @@ declare noundef i32 @printf(ptr noundef readonly captures(none), ...) local_unna
 
 attributes #0 = { nofree nounwind }
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}

@@ -325,7 +325,8 @@ attributes #5 = { mustprogress nounwind willreturn allockind("free") memory(argm
 attributes #6 = { mustprogress nocallback nofree nounwind willreturn memory(argmem: write) }
 attributes #7 = { mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none) }
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}

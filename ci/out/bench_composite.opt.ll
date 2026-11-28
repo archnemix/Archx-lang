@@ -76,7 +76,7 @@ vector.body:                                      ; preds = %calloc.ok.6.i, %vec
   store <2 x i64> splat (i64 1), ptr %13, align 16
   %index.next.4 = add nuw nsw i64 %index, 20
   %14 = icmp eq i64 %index.next.4, 100000
-  br i1 %14, label %fill.end.12.i, label %vector.body, !llvm.loop !2
+  br i1 %14, label %fill.end.12.i, label %vector.body, !llvm.loop !3
 
 alloc.oom.9.i:                                    ; preds = %calloc.ok.6.i
   tail call fastcc void @archx_oom_fail()
@@ -115,7 +115,7 @@ vector.body47:                                    ; preds = %fill.end.12.i, %vec
   store <2 x i64> splat (i64 2), ptr %28, align 16
   %index.next49.4 = add nuw nsw i64 %index48, 20
   %29 = icmp eq i64 %index.next49.4, 100000
-  br i1 %29, label %fill.end.17.i, label %vector.body47, !llvm.loop !5
+  br i1 %29, label %fill.end.17.i, label %vector.body47, !llvm.loop !6
 
 alloc.oom.14.i:                                   ; preds = %fill.end.12.i
   tail call fastcc void @archx_oom_fail()
@@ -154,7 +154,7 @@ vector.body54:                                    ; preds = %fill.end.17.i, %vec
   store <2 x i64> splat (i64 3), ptr %43, align 16
   %index.next56.4 = add nuw nsw i64 %index55, 20
   %44 = icmp eq i64 %index.next56.4, 100000
-  br i1 %44, label %overflow.ok.28.i, label %vector.body54, !llvm.loop !6
+  br i1 %44, label %overflow.ok.28.i, label %vector.body54, !llvm.loop !7
 
 alloc.oom.19.i:                                   ; preds = %fill.end.17.i
   tail call fastcc void @archx_oom_fail()
@@ -413,7 +413,7 @@ overflow.ok.19.i.epil:                            ; preds = %for.end.15.i.unr-lc
   %t50.i4.epil = add nuw nsw i64 %for.k.34.0141.i.epil, 4
   %epil.iter.next = add i64 %epil.iter, 1
   %epil.iter.cmp.not = icmp eq i64 %epil.iter.next, %xtraiter
-  br i1 %epil.iter.cmp.not, label %for.end.15.i, label %overflow.ok.19.i.epil, !llvm.loop !7
+  br i1 %epil.iter.cmp.not, label %for.end.15.i, label %overflow.ok.19.i.epil, !llvm.loop !8
 
 for.end.15.i:                                     ; preds = %overflow.ok.19.i.epil, %for.end.15.i.unr-lcssa
   %t52.i = mul nuw nsw i64 %for.r.1.0142.i, 7
@@ -819,14 +819,15 @@ attributes #11 = { nocallback nofree nosync nounwind speculatable willreturn mem
 attributes #12 = { nocallback nofree nounwind willreturn memory(argmem: read) }
 attributes #13 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
-!2 = distinct !{!2, !3, !4}
-!3 = !{!"llvm.loop.isvectorized", i32 1}
-!4 = !{!"llvm.loop.unroll.runtime.disable"}
-!5 = distinct !{!5, !3, !4}
-!6 = distinct !{!6, !3, !4}
-!7 = distinct !{!7, !8}
-!8 = !{!"llvm.loop.unroll.disable"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}
+!3 = distinct !{!3, !4, !5}
+!4 = !{!"llvm.loop.isvectorized", i32 1}
+!5 = !{!"llvm.loop.unroll.runtime.disable"}
+!6 = distinct !{!6, !4, !5}
+!7 = distinct !{!7, !4, !5}
+!8 = distinct !{!8, !9}
+!9 = !{!"llvm.loop.unroll.disable"}

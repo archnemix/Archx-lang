@@ -868,6 +868,7 @@ declare void @exit(i32) cold noreturn nounwind
 @.fmt.colon = private unnamed_addr constant [3 x i8] c": \00", align 1
 @.fmt.nl = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}

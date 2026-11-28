@@ -848,6 +848,7 @@ declare ptr @memchr(ptr nocapture, i32, i64) nounwind readonly
 declare i32 @putchar(i32)
 declare void @exit(i32) cold noreturn nounwind
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = !{i32 1, !"archx.wrapping", !"false"}

@@ -604,7 +604,7 @@ l_tail_body.i.i.i.i.prol:                         ; preds = %l_tail_body.i.i.i.i
   %ti_next.i.i.i.i.prol = add nuw nsw i64 %ti.i.i.i572.i.prol, 1
   %prol.iter.next = add i64 %prol.iter, 1
   %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter331
-  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.i.prol, !llvm.loop !2
+  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.i.prol, !llvm.loop !3
 
 l_tail_body.i.i.i.i.prol.loopexit:                ; preds = %l_tail_body.i.i.i.i.prol, %l_tail_body.i.i.i.i.preheader
   %tacc.i.i.i573.i.unr = phi i64 [ %acc_next.i.i.i.i.lcssa, %l_tail_body.i.i.i.i.preheader ], [ %tacc_next.i.i.i.i.prol, %l_tail_body.i.i.i.i.prol ]
@@ -986,7 +986,7 @@ l_tail_body.i.i.i169.i.prol:                      ; preds = %l_tail_body.i.i.i16
   %ti_next.i.i.i175.i.prol = add nuw nsw i64 %ti.i.i.i62580.i.prol, 1
   %prol.iter341.next = add i64 %prol.iter341, 1
   %prol.iter341.cmp.not = icmp eq i64 %prol.iter341.next, %xtraiter339
-  br i1 %prol.iter341.cmp.not, label %l_tail_body.i.i.i169.i.prol.loopexit, label %l_tail_body.i.i.i169.i.prol, !llvm.loop !4
+  br i1 %prol.iter341.cmp.not, label %l_tail_body.i.i.i169.i.prol.loopexit, label %l_tail_body.i.i.i169.i.prol, !llvm.loop !5
 
 l_tail_body.i.i.i169.i.prol.loopexit:             ; preds = %l_tail_body.i.i.i169.i.prol, %l_tail_body.i.i.i169.i.preheader
   %tacc.i.i.i63581.i.unr = phi i64 [ %acc_next.i.i.i189.i.lcssa, %l_tail_body.i.i.i169.i.preheader ], [ %tacc_next.i.i.i174.i.prol, %l_tail_body.i.i.i169.i.prol ]
@@ -2190,7 +2190,7 @@ l_tail_body.i.prol:                               ; preds = %l_tail_body.i.prehe
   %ti_next.i.prol = add nuw nsw i64 %ti.i8.prol, 1
   %prol.iter.next = add i64 %prol.iter, 1
   %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter14
-  br i1 %prol.iter.cmp.not, label %l_tail_body.i.prol.loopexit, label %l_tail_body.i.prol, !llvm.loop !5
+  br i1 %prol.iter.cmp.not, label %l_tail_body.i.prol.loopexit, label %l_tail_body.i.prol, !llvm.loop !6
 
 l_tail_body.i.prol.loopexit:                      ; preds = %l_tail_body.i.prol, %l_tail_body.i.preheader
   %tacc.i9.unr = phi i64 [ %acc_next.i.lcssa, %l_tail_body.i.preheader ], [ %tacc_next.i.prol, %l_tail_body.i.prol ]
@@ -2864,7 +2864,7 @@ l_tail_body.i.prol:                               ; preds = %l_tail_body.i.prehe
   %ti_next.i.prol = add nuw nsw i64 %ti.i18.prol, 1
   %prol.iter.next = add i64 %prol.iter, 1
   %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter11
-  br i1 %prol.iter.cmp.not, label %l_tail_body.i.prol.loopexit, label %l_tail_body.i.prol, !llvm.loop !6
+  br i1 %prol.iter.cmp.not, label %l_tail_body.i.prol.loopexit, label %l_tail_body.i.prol, !llvm.loop !7
 
 l_tail_body.i.prol.loopexit:                      ; preds = %l_tail_body.i.prol, %l_tail_body.i.preheader
   %tacc.i19.unr = phi i64 [ %acc_next.i.lcssa, %l_tail_body.i.preheader ], [ %tacc_next.i.prol, %l_tail_body.i.prol ]
@@ -3264,12 +3264,13 @@ attributes #13 = { nocallback nofree nosync nounwind speculatable willreturn mem
 attributes #14 = { nocallback nofree nounwind willreturn memory(argmem: read) }
 attributes #15 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 
-!llvm.module.flags = !{!0, !1}
+!llvm.module.flags = !{!0, !1, !2}
 
 !0 = !{i32 1, !"archx.dialect", !"native"}
 !1 = !{i32 1, !"archx.directive_version", !"1"}
-!2 = distinct !{!2, !3}
-!3 = !{!"llvm.loop.unroll.disable"}
-!4 = distinct !{!4, !3}
-!5 = distinct !{!5, !3}
-!6 = distinct !{!6, !3}
+!2 = !{i32 1, !"archx.wrapping", !"false"}
+!3 = distinct !{!3, !4}
+!4 = !{!"llvm.loop.unroll.disable"}
+!5 = distinct !{!5, !4}
+!6 = distinct !{!6, !4}
+!7 = distinct !{!7, !4}
