@@ -215,3 +215,16 @@ two claim sentences, `tools/check_test_count.py` owns the count, and CI runs bot
 Both gates were watched failing (an injected `999 ms` row, and a mismatched count) before being
 trusted. A prose number is only as good as the check that recomputes it.
 
+**AX-009 — "it compiles" was never the same claim as "it verifies".** The two v0.9.1 bugs (a `%` helper
+whose `phi` lacked a predecessor, the `%ArchxAny` binop dispatch) were ill-formed IR that `clang`
+reported only when a program walked into that helper. `ci/verify_ir.sh` now feeds every example, every
+benchmark and a targeted corpus of nine programs to clang's IR parser/verifier and names the file that
+emitted a bad module. Two constraints shaped it: `llvm-as`/`opt` are not on either image, and `-x ir`
+is not a language clang accepts, so the gate relies on the `.ll` extension and `clang -c`.
+
+The corpus has exactly one copy — `src/codegen/tests.rs::RUNTIME_CORPUS` — which the unit test lowers
+(so a feature that cannot even produce IR fails the Rust suite) and writes to `ci/out/runtime-corpus/`
+for the shell gate to verify (so a feature that produces *wrong* IR fails here). A duplicate list in
+the shell script would have been two definitions of "every runtime feature" that could drift apart.
+The gate was watched failing on a planted `%nonexistent_label` phi before being wired into CI.
+

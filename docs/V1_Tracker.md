@@ -9,9 +9,9 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 
 ## Progress
 
-**5 / 128** complete · 2 in progress · 1 blocked · 120 not started
+**6 / 128** complete · 2 in progress · 1 blocked · 119 not started
 
-## P0 — Trust the current build (5/12)
+## P0 — Trust the current build (6/12)
 
 | # | Work order | Phase | Area | Priority | Depends | Effort | Risk | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -23,7 +23,7 @@ All 128 work orders in the document's own words. Ordering is mandatory: **P0 →
 | AX-006 | Merge the 99-commit branch into `main` and tag | P0 | Repo | P0 | — | S | low | `[!]` | Needs a decision I cannot make alone: merging arena/888b3ea8-archx-lang into `main` and changing the default branch is a repo-level action affecting what `git clone` gives everyone. Depends on AX-003 and AX-005 landing first. |
 | AX-007 | Add a differential conformance harness | P0 | Tests | P0 | — | M | med | `[ ]` |  |
 | AX-008 | Publish the actual known-limitations list | P0 | Docs | P0 | — | S | low | `[ ]` |  |
-| AX-009 | Fix the `%ArchxAny` and sort IR verifier gate | P0 | Codegen | P0 | — | S | low | `[ ]` |  |
+| AX-009 | Fix the `%ArchxAny` and sort IR verifier gate | P0 | Codegen | P0 | — | S | low | `[x]` | ci/verify_ir.sh lowers every example, every benchmark and a targeted runtime corpus and passes each module to clang -c (a real LLVM parse + verify); it is wired into CI and currently verifies 29 modules with 0 failures. The corpus that reaches every runtime subsystem (ints/floats, %ArchxAny incl. the binop helper that was broken, dict/set, regions, SoA structs, tuples/enums/match, comprehensions/sort/zip/generics, input/assert) lives once in src/codegen/tests.rs::RUNTIME_CORPUS, is lowered by the unit test every_runtime_feature_lowers_to_ir, and is written to ci/out/runtime-corpus/ for the shell gate. The gate was proven to fail on a planted bad phi predecessor (the exact v0.9.1 bug shape) before being trusted. NOTE: `llvm-as`/`opt` are not installed in the development sandbox or on the CI images' default PATH, so the frontend is clang's IR parser/verifier, not llvm-as. |
 | AX-010 | Fix stale `ForElse` AST variant and unused helpers | P0 | Frontend | P1 | — | M | med | `[x]` | `StmtKind::ForElse` deleted from src/ast.rs: `For`, `ForEach`, `ForEnumerate`, `ForDictItems`, `ForZip`, `ForTupleUnpack` already each carry `else_body: Option<Vec<Stmt>>` and every one of them is constructed by the parser, so the variant was a second, unreachable representation. Its arms were removed from codegen/analysis.rs, codegen/mod.rs, codegen/generics.rs, codegen/stmt.rs and parser.rs. Acceptance met: one representation, loop tests unchanged and green (41 unit + 38 CLI). |
 | AX-011 | Full diagnostic codes and machine-readable output | P0 | Diagnostics | P1 | — | M | low | `[ ]` |  |
 | AX-012 | Reproducible builds and byte-identity gate | P0 | Build | P1 | — | M | low | `[ ]` |  |

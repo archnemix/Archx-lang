@@ -164,6 +164,69 @@ print(f\"{line}:{val}\", end=\"\\n\")
         assert!(ir.contains("@archx_input"));
     }
 
+/// One program per runtime subsystem (AX-009).
+///
+/// The v0.9.1 `%` bug and the `%ArchxAny` binop bug were both *shape* bugs: the emitted text was
+/// plausible but ill-formed, and nothing fed it to an IR verifier until a program happened to
+/// exercise that path. This corpus is lowered by the unit test below; the emitted modules are written
+/// to `ci/out/runtime-corpus/` so `ci/verify_ir.sh` can verify the same sources with a real frontend.
+const RUNTIME_CORPUS: [(&str, &str); 9] = [
+    (
+        "ints_and_floats",
+        "func main():\n    let a = 6\n    let b = 4\n    print(a % b, a / b, 2 ** 10, 1.5 % 1.0)\n",
+    ),
+    (
+        "lists_and_strings",
+        "func main():\n    let xs = [3, 1, 2]\n    push(xs, 9)\n    print(xs, len(xs), \"ab\" + \"cd\", \"ab\" == \"cd\")\n",
+    ),
+    (
+        "dict_and_set",
+        "def main():\n    counts = {}\n    counts[\"a\"] = 1\n    counts[\"b\"] = 2\n    seen = {1, 2}\n    seen.add(3)\n    print(counts[\"a\"], len(seen), 1 in seen)\n",
+    ),
+    (
+        "any_engine",
+        "def inspect_val(x):\n    if isinstance(x, int):\n        return x + 1\n    return x\n\ndef main():\n    hello = {\"data\": [\"Archx\", 18], \"age\": 18}\n    name = \"Abdullah\"\n    name = 18\n    print(hello[\"age\"], name, type(name), inspect_val(name))\n",
+    ),
+    (
+        "regions",
+        "func main():\n    with region:\n        let xs = [1, 2, 3]\n        print(len(xs))\n",
+    ),
+    (
+        "structs_and_soa",
+        "struct Body:\n    x: float\n    y: float\n\nfunc main():\n    let bodies = [Body(1.0, 2.0); 4]\n    let total = 0.0\n    for i in 0..len(bodies):\n        total += bodies[i].x + bodies[i].y\n    print(total)\n",
+    ),
+    (
+        "tuples_optionals_enums_match",
+        "enum Shape:\n    Circle(float)\n    Rect(float, float)\n\ndef area(s: Shape) -> float:\n    match s:\n        case Shape.Circle(r):\n            return 3.0 * r * r\n        case Shape.Rect(w, h):\n            return w * h\n        case _:\n            return 0.0\n\nfunc main():\n    print(area(Shape.Circle(2.0)), area(Shape.Rect(2.0, 3.0)))\n",
+    ),
+    (
+        "comprehensions_sort_zip_generics",
+        "def ident[T](x: T) -> T:\n    return x\n\nfunc main():\n    let squares = [x * x for x in range(6) if x % 2 == 0]\n    let total = sum(x * 2 for x in range(4))\n    let pairs = zip([1, 2], [3, 4])\n    print(squares, total, len(pairs), ident(7))\n",
+    ),
+    (
+        "input_and_errors",
+        "func main():\n    let line = input(\"prompt: \")\n    assert len(line) >= 0\n    print(line)\n",
+    ),
+];
+
+    #[test]
+    fn every_runtime_feature_lowers_to_ir() {
+        let dir = std::path::Path::new("ci/out/runtime-corpus");
+        std::fs::create_dir_all(dir).expect("create the runtime corpus directory");
+        for (name, src) in RUNTIME_CORPUS {
+            let ir = lower_src(src).unwrap_or_else(|e| panic!("`{name}` must lower to IR: {e}"));
+            assert!(
+                ir.contains("define i32 @main()"),
+                "`{name}` must produce a main entry point:\n{ir}"
+            );
+            assert!(
+                ir.contains("; archx.dialect=native"),
+                "`{name}` must carry the dialect flag:\n{ir}"
+            );
+            std::fs::write(dir.join(format!("{name}.ll")), ir).expect("write the corpus module");
+        }
+    }
+
     #[test]
     fn adaptive_engine_specializes_static_dict_without_any_overhead() {
         let src = "\

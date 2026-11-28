@@ -82,6 +82,14 @@ jobs:
           set -o pipefail
           cargo build --release 2>&1 | tee ci/logs/build.log
 
+      - name: Verify every emitted IR module parses and verifies (AX-009)
+        # Two v0.9.1 bugs (a `%` phi missing a predecessor and the `%ArchxAny` binop dispatch) were
+        # ill-formed IR that `clang` only reported when a program exercised that path. This gate feeds
+        # every example and benchmark to a real LLVM frontend, so the emitting file is named instead.
+        run: |
+          set -o pipefail
+          bash ci/verify_ir.sh ./target/release/archx 2>&1 | tee ci/logs/verify_ir.log
+
       - name: Run examples & emit optimized IR
         run: |
           mkdir -p ci/out ci/logs
@@ -275,9 +283,13 @@ jobs:
           # Retain at most the latest 3 version directories (previous 2 + current):
           ls -1dt ci/test-history/v* 2>/dev/null | tail -n +4 | xargs -r rm -rf
 
+          # The README table is generated from the report this job is about to commit, so regenerate it
+          # here: otherwise each benchmark run would leave the README stale for the next run's check.
+          python3 tools/sync_readme_benchmarks.py || true
+
           git config user.name "archx-ci"
           git config user.email "ci@archx.local"
-          git add ci/logs ci/out ci/test-history
+          git add ci/logs ci/out ci/test-history README.md
           if git diff --cached --quiet; then
             echo "No new CI output to commit."
           else
