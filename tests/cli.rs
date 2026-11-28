@@ -2659,3 +2659,58 @@ fn the_python_gate_emits_junit_that_a_ci_system_can_read() {
     // The document must be well-formed: equal opening and closing tags for the suite.
     assert!(xml.trim_end().ends_with("</testsuite>"), "{xml}");
 }
+
+#[test]
+fn explain_perf_names_each_costly_construct_and_offers_a_native_fix() {
+    // No clang needed: the annotator is a front-end tool, on purpose, so it can run as a save hook.
+    let source = "# archx: dialect=native, version=1\n\n\n\
+                  def show(i: int) -> int:\n\
+                  \x20   xs = [1, 'a']\n\
+                  \x20   if xs:\n\
+                  \x20       print(xs)\n\
+                  \x20   ys = list(range(3))\n\
+                  \x20   print(ys)\n\
+                  \x20   print(2 ** 100)\n\
+                  \x20   return 0\n";
+    let dir = temp_src("perf", "costs.archx.lang", source);
+    let out = Command::new(archx())
+        .arg("explain-perf")
+        .arg(dir.join("costs.archx.lang"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    for expected in [
+        "note[perf-any]",
+        "note[perf-heap]",
+        "mixed element types",
+        "`if xs:`",
+        "`list(range(n))`",
+        "the result cannot fit in `i64`",
+        "= fix:",
+    ] {
+        assert!(stdout.contains(expected), "missing `{expected}`:\n{stdout}");
+    }
+
+    // `--min-tier=heap` hides the `any` note but keeps the heap ones.
+    let out = Command::new(archx())
+        .arg("explain-perf")
+        .arg("--min-tier=heap")
+        .arg(dir.join("costs.archx.lang"))
+        .output()
+        .unwrap();
+    let filtered = String::from_utf8_lossy(&out.stdout);
+    assert!(filtered.contains("note[perf-heap]"), "{filtered}");
+    assert!(!filtered.contains("note[perf-any]"), "{filtered}");
+
+    // And the JSON form is one object per note, like a diagnostic.
+    let out = Command::new(archx())
+        .arg("explain-perf")
+        .arg("--message-format=json")
+        .arg(dir.join("costs.archx.lang"))
+        .output()
+        .unwrap();
+    let json = String::from_utf8_lossy(&out.stdout);
+    let first = json.lines().next().unwrap_or("");
+    assert!(first.starts_with('{') && first.contains("\"tier\":"), "{json}");
+}

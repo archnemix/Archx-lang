@@ -158,6 +158,39 @@ turns that report into one object per line, which is what editors and build syst
 the message says so. The full registry — one entry per code, each with an explanation — is
 [`docs/ERROR_CODES.md`](ERROR_CODES.md), generated from the compiler itself.
 
+### Finding what costs time (`archx explain-perf`)
+
+Archx keeps values unboxed whenever it can prove one type per binding. When it cannot, the value becomes
+`%ArchxAny` and every read pays a tag check. `archx explain-perf` shows where that happens, before you
+run anything:
+
+```console
+$ archx explain-perf demo.archx.lang
+note[perf-any]: `xs = [1, 'a']` — mixed element types int + str
+  --> 5:10
+   = why: a list literal with two element types cannot be `[int]` or `[str]`; it becomes `[any]`, so
+     every read is a tag check and every element is boxed
+   = fix: keep one element type per list (`xs: [str]` with `['a', 'b']`), or hold the two shapes in a
+     tuple (`(1, 'a')`) if the position — not the type — is what distinguishes them
+```
+
+Tiers, from cheapest to most expensive: `static` (unboxed, vectorizable), `iterator` (closed-form
+`range`, zero per-iteration work), `any` (boxed, tag dispatch), `heap` (allocated per value), `unwind`
+(crosses a `region:` boundary and must be promoted). `--min-tier=heap` shows only the last two.
+
+Points worth knowing:
+
+* **A note always carries a rewrite.** If there is no better way to write the construct, the tool is
+  silent — it never just says "slow".
+* **No fix-it removes a check.** Bounds checks, overflow checks, and ownership rules stay; the notes
+  change representation, never checking.
+* **It is front-end only** — no clang, no linking — so it is fast enough for a save hook and works on a
+  file that does not compile yet.
+* `--message-format=json` emits one object per note with `tier`, `message`, `why`, and `fix`, the same
+  shape as a diagnostic, so an editor can render cost notes like errors.
+* The tier counts end each run (`351 expression(s) classified: 335 static, 12 iterator, 4 any`), so a
+  refactor's effect on the whole module is visible in one number.
+
 ### Checking a module against CPython (`archx check --against-python`)
 
 Because an Archx module is also a Python file — line 1 is the dialect directive, which Python reads as

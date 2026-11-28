@@ -112,6 +112,36 @@ Across **Suites 3, 4, and 5**, **Archx beats Python 3 by `6.0×`–`69.8×` AND 
 8. **16-byte German/Umbra prefix-SSO `str` (`+`, `==`, `!=`, `len`, embedded-NUL safe)** — done.
 9. **Recursive deterministic RAII ownership across nested `[T]`, `struct`, and `str` (verified by ASan + LSan in CI)** — done.
 
+## Pricing an expression: `archx explain-perf` (AX-018)
+
+Which representation an expression lands in decides its speed more than any backend pass, so the
+compiler can say it before you run anything. `archx explain-perf file.archx.lang` classifies
+expressions into five tiers and prints one note per costly construct — the construct, the tier, why it
+costs what it costs, and the native rewrite:
+
+| Tier | Representation | Cost per operation |
+|---|---|---|
+| `static` | unboxed `i64` / `f64` / `bool` / fixed `[T]` | one instruction, vectorizable |
+| `iterator` | closed-form `range` or induction variable | nothing per iteration |
+| `any` | boxed `%ArchxAny` (tag + payload) | tag dispatch on every read |
+| `heap` | allocated per value (allocator or region bump) | allocator / bump call |
+| `unwind` | crosses a `region:` boundary | promotion copy on exit |
+
+```console
+$ archx explain-perf costs.archx.lang
+note[perf-any]: `xs = [1, 'a']` — mixed element types int + str
+  --> 5:10
+   = why: a list literal with two element types cannot be `[int]` or `[str]`; it becomes `[any]`, so every read is a tag check and every element is boxed
+   = fix: keep one element type per list (`xs: [str]` with `['a', 'b']`), ...
+```
+
+Every detector produces a rewrite or stays silent, and **no fix-it ever removes a check**: the notes
+change *representation*, which is free in this language, never *checking*, which is not negotiable. The
+`dynamic`/`collection` sets are computed from the same syntactic criterion the backend's
+`AdaptiveHints` uses to choose `%ArchxAny`, so a note and the generated code cannot disagree about
+which variables are boxed. The analysis runs the front end only — no clang, no linking — so it is fast
+enough for a save hook, and `--min-tier=any` filters to the tiers that cost something.
+
 ## What we can optimize next
 
 1. **Whole-program / cross-function SoA parameter passing** — extend transparent SoA planarization across `internal` helper functions that accept `[Struct]` parameters without escaping them.

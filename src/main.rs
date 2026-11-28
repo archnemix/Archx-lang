@@ -8,6 +8,7 @@ mod diagnose;
 mod dialect;
 mod check;
 mod dialect_rules;
+mod explain_perf;
 mod error_codes;
 mod lexer;
 mod parser;
@@ -242,6 +243,9 @@ fn run(args: &[String], json: bool) -> DriverResult<i32> {
             "-V" | "--version" => {
                 println!("archx {VERSION}");
                 return Ok(0);
+            }
+            "explain-perf" => {
+                return explain_perf_command(&args[i + 1..], json);
             }
             "check" => {
                 return check_command(&args[i + 1..]);
@@ -691,6 +695,8 @@ fn print_help() {
     println!("    --message-format=json  emit diagnostics as one JSON object per line on stderr");
     println!("    --explain [CODE]      explain an error code, or list them all");
     println!("    --dialect-matrix      print every compat/native divergence the compiler decides");
+    println!("    explain-perf [--min-tier=static|iterator|any|heap|unwind] <file>");
+    println!("                          show what each expression costs and how to make it cheaper");
     println!("    check --against-python [--format=junit] [--output=FILE] <path>...");
     println!("                          run CPython on the same file and compare stdout (see docs/USAGE.md)");
     println!("    --emit-ir             print the generated LLVM IR and exit");
@@ -805,6 +811,112 @@ fn check_command(args: &[String]) -> Result<i32, DriverError> {
         None => print!("{text}"),
     }
     Ok(exit)
+}
+
+/// `archx explain-perf <file>`: tier annotation with a concrete fix per note (AX-018).
+///
+/// Runs the front end only — no clang, no linking — so it is fast enough to use as a save hook, and it
+/// works on a module that does not build yet (the point is to show what *would* be slow).
+fn explain_perf_command(args: &[String], json: bool) -> Result<i32, DriverError> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut min_tier: Option<explain_perf::Tier> = None;
+    for arg in args {
+        if let Some(name) = arg.strip_prefix("--min-tier=") {
+            min_tier = Some(explain_perf::Tier::parse(name).ok_or_else(|| {
+                DriverError::new(
+                    error_codes::Code::UnknownOption,
+                    format!(
+                        "unknown tier `{name}` (expected `static`, `iterator`, `any`, `heap`, or `unwind`)"
+                    ),
+                )
+            })?);
+        } else if arg == "--min-tier" {
+            return Err(DriverError::new(
+                error_codes::Code::MissingOptionValue,
+                "`--min-tier` needs a value, for example `--min-tier=any`",
+            ));
+        } else if arg.starts_with('-') {
+            return Err(DriverError::new(
+                error_codes::Code::UnknownOption,
+                format!("unknown option `{arg}` for `explain-perf`"),
+            ));
+        } else {
+            files.push(PathBuf::from(arg));
+        }
+    }
+    let input = match files.as_slice() {
+        [one] => one.clone(),
+        [] => {
+            return Err(DriverError::new(
+                error_codes::Code::UnreadableInput,
+                "`explain-perf` needs a source file",
+            ))
+        }
+        _ => {
+            return Err(DriverError::new(
+                error_codes::Code::MultipleInputs,
+                "`explain-perf` takes one source file at a time",
+            ))
+        }
+    };
+    if !has_valid_archx_extension(&input) {
+        return Err(DriverError::new(
+            error_codes::Code::UnreadableInput,
+            format!(
+                "invalid source file extension for `{}` (expected `.archx.lang`, `.archx.lg`, `.ax.lang`, or `.ax.lg`)",
+                input.display()
+            ),
+        ));
+    }
+
+    let source = std::fs::read_to_string(&input).map_err(|error| {
+        DriverError::new(
+            error_codes::Code::UnreadableInput,
+            format!("cannot read `{}`: {error}", input.display()),
+        )
+    })?;
+
+    // A module without a directive would be rejected by the compiler; for a cost report we only need the
+    // syntax, so the dialect is taken from the directive when present and assumed `native` otherwise.
+    // `native` is the right assumption: the command exists to suggest native fixes.
+    let spec = match dialect::parse_directive(&source) {
+        Ok(Some(spec)) => spec,
+        _ => dialect::DialectSpec {
+            dialect: dialect::Dialect::Native,
+            version: 1,
+            source: dialect::DialectSource::Cli,
+        },
+    };
+
+    let tokens = lexer::Lexer::new(&source)
+        .tokenize()
+        .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
+    let mut parser = parser::Parser::new(tokens);
+    let mut program = parser
+        .parse_program()
+        .map_err(|diagnostic| source_failure(&source, &input, &diagnostic, json))?;
+    program.dialect = spec;
+
+    let report = explain_perf::analyze(&program, &source);
+    if json {
+        // One object per note, the same shape as `--message-format=json`, so an editor treats a cost note
+        // exactly like a diagnostic.
+        for note in report.filtered(min_tier) {
+            println!(
+                "{{\"severity\":\"note\",\"tier\":\"{}\",\"file\":\"{}\",\"line\":{},\"column\":{},\"message\":\"{}\",\"why\":\"{}\",\"fix\":\"{}\"}}",
+                note.tier.label(),
+                input.display(),
+                note.line,
+                note.col,
+                json_escape(&note.construct),
+                json_escape(&note.why),
+                json_escape(&note.fix)
+            );
+        }
+    } else {
+        print!("{}", explain_perf::render(&report, min_tier));
+    }
+    Ok(0)
 }
 
 #[cfg(test)]

@@ -486,3 +486,35 @@ Finally the numbers: the gate over `tests/conformance` reports *exactly* what th
 65 matched, 40 xfail, 0 diverged, 0 failed to compile. Two independent implementations of the same
 question agreeing is the point; if they ever disagree, one of them is broken and now we hear about it.
 
+## Round 21 — AX-018: a cost note without a rewrite is noise
+
+The work order asks for tier annotation with fix-its, and names four constructs that must produce a
+*specific, actionable* warning. "Actionable" is where this kind of tool normally dies: the temptation is
+to emit `warning: this expression is slow` for everything dynamic, at which point nobody reads the
+output. So each detector here is one concrete shape with one concrete rewrite, and if there is no
+rewrite there is no note.
+
+That rule produced the interesting decisions:
+
+* **`if xs:` is not "slow because collections are slow"** — it is a *length load per evaluation*. The
+  fix is `if len(xs) != 0:`, and the better fix is to hoist `len` out of the loop. Naming the actual
+  operation is what makes the note teach something.
+* **`[1, 'a']` is not a type error** — both contracts accept it. It costs a tag check on every read
+  because it cannot be `[int]`. The honest fix is "one type per list", and the note has to say *why* a
+  tuple is the alternative (position, not type, distinguishes the elements).
+* **`2 ** 100` is a `static`-tier note, not a `heap` one.** This surprised me: the expensive thing is not
+  allocation, it is that the result is provably out of `i64`, so the emitted chain either traps or (with
+  a float seed) becomes an unfolded `llvm.pow`. Same tier as a plain `+`, entirely different problem.
+  The tier is about representation; the note is about the specific trap.
+
+I also wrote a test that no fix-it may contain "unchecked", "unsafe", "disable", or "skip the check".
+The user's standing rule is that optimisation never trades a safety guarantee, and a *documented*
+suggestion to do so is worse than a silent one — so the rule is enforced mechanically rather than by my
+memory. Every fix here changes representation, which costs nothing in this language, instead of
+changing checking, which costs everything.
+
+Two smaller things worth keeping: the `dynamic` and `collection` sets come from the same syntactic
+criterion the backend uses to pick `%ArchxAny`, so the report cannot disagree with what codegen does;
+and the analysis runs the front end only, so `explain-perf` works on a file that does not build yet —
+which is exactly when you want to know what it is going to cost.
+
