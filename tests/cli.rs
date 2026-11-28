@@ -2649,10 +2649,13 @@ fn the_python_gate_emits_junit_that_a_ci_system_can_read() {
         .output()
         .unwrap();
     assert!(out.status.success(), "{:?}", out.status);
+    // The report names the file as the platform spells it, so compare on a normalized copy: a test
+    // that only passes when the separator is `/` is a test that only runs on Linux.
     let xml = fs::read_to_string(&report).unwrap();
+    let normalized = xml.replace('\\', "/");
     assert!(xml.starts_with("<?xml version=\"1.0\""), "{xml}");
     assert!(xml.contains("<testsuite name=\"archx.conformance\""), "{xml}");
-    assert!(xml.contains("suite/a.py"), "{xml}");
+    assert!(normalized.contains("suite/a.py"), "{xml}");
     // The document must be well-formed: equal opening and closing tags for the suite.
     assert!(xml.trim_end().ends_with("</testsuite>"), "{xml}");
 }

@@ -108,6 +108,7 @@ jobs:
         # be compared) fails too, so a runner without python3 cannot turn this into a green no-op.
         run: |
           set -o pipefail
+          mkdir -p ci/records
           ./target/release/archx check --against-python \
               examples/comparison/full_tour.py \
               examples/comparison/full_tour_pythonic.archx.lang \
