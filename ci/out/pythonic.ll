@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+; archx.dialect=native version=1 source=directive
 
 %ArchxVec = type { i64, i64, ptr }
 %ArchxStr = type { i64, i64 }
@@ -1261,3 +1262,7 @@ done:
 
 declare i32 @sprintf(ptr nocapture writeonly, ptr nocapture readonly, ...) nounwind
 declare double @strtod(ptr nocapture readonly, ptr nocapture writeonly) nounwind
+
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}

@@ -4344,3 +4344,8 @@ attributes #7 = { mustprogress nocallback nofree nounwind willreturn }
 attributes #8 = { nocallback nofree nosync nounwind willreturn memory(inaccessiblemem: write) }
 attributes #9 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 attributes #10 = { nocallback nofree nounwind willreturn memory(argmem: write) }
+
+!llvm.module.flags = !{!0, !1}
+
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}

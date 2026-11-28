@@ -155,7 +155,7 @@ vector.body:                                      ; preds = %calloc.ok.8.i, %vec
   %index.next = add nuw i64 %index, 2
   %vec.ind.next = add <2 x i64> %vec.ind, splat (i64 2)
   %11 = icmp eq i64 %index.next, 40000
-  br i1 %11, label %vector.ph2024, label %vector.body, !llvm.loop !0
+  br i1 %11, label %vector.ph2024, label %vector.body, !llvm.loop !2
 
 calloc.oom.11.i:                                  ; preds = %calloc.ok.8.i
   tail call fastcc void @archx_oom_fail()
@@ -195,7 +195,7 @@ vector.body2025:                                  ; preds = %vector.body2025, %v
   store <2 x double> %29, ptr %13, align 16
   %index.next2030 = add nuw i64 %index2026, 2
   %30 = icmp eq i64 %index.next2030, 40000
-  br i1 %30, label %for.step.20.i, label %vector.body2025, !llvm.loop !3
+  br i1 %30, label %for.step.20.i, label %vector.body2025, !llvm.loop !5
 
 for.step.20.i:                                    ; preds = %vector.body2025
   %t97.i = add nuw nsw i64 %for._s.48.019.i, 1
@@ -831,7 +831,7 @@ vector.body2037:                                  ; preds = %vector.body2037, %v
   store <16 x i8> %42, ptr %44, align 1
   %index.next2041 = add nuw i64 %index2038, 32
   %45 = icmp eq i64 %index.next2041, %n.vec
-  br i1 %45, label %middle.block2042, label %vector.body2037, !llvm.loop !4
+  br i1 %45, label %middle.block2042, label %vector.body2037, !llvm.loop !6
 
 middle.block2042:                                 ; preds = %vector.body2037
   %cmp.n = icmp eq i64 %len.i607.i, %n.vec
@@ -859,7 +859,7 @@ vec.epilog.vector.body:                           ; preds = %vec.epilog.vector.b
   store <8 x i8> %50, ptr %51, align 1
   %index.next2047 = add nuw i64 %index2045, 8
   %52 = icmp eq i64 %index.next2047, %n.vec2044
-  br i1 %52, label %vec.epilog.middle.block, label %vec.epilog.vector.body, !llvm.loop !5
+  br i1 %52, label %vec.epilog.middle.block, label %vec.epilog.vector.body, !llvm.loop !7
 
 vec.epilog.middle.block:                          ; preds = %vec.epilog.vector.body
   %cmp.n2048 = icmp eq i64 %len.i607.i, %n.vec2044
@@ -881,7 +881,7 @@ loop.i.i:                                         ; preds = %loop.i.i.preheader,
   store i8 %c2.i.i, ptr %dp.i.i, align 1
   %inext.i.i = add nuw nsw i64 %i.i.i, 1
   %exitcond.not.i611.i = icmp eq i64 %inext.i.i, %len.i607.i
-  br i1 %exitcond.not.i611.i, label %chk_big.i.i612.i, label %loop.i.i, !llvm.loop !6
+  br i1 %exitcond.not.i611.i, label %chk_big.i.i612.i, label %loop.i.i, !llvm.loop !8
 
 chk_big.i.i612.i:                                 ; preds = %loop.i.i, %vec.epilog.middle.block, %middle.block2042
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i603.i)
@@ -1227,7 +1227,7 @@ l_tail_body.i.i.prol:                             ; preds = %l_tail_body.i.i.pre
   %ti_next.i.i.prol = add nuw nsw i64 %ti.i18.i.prol, 1
   %prol.iter.next = add i64 %prol.iter, 1
   %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter2114
-  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.prol.loopexit, label %l_tail_body.i.i.prol, !llvm.loop !7
+  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.prol.loopexit, label %l_tail_body.i.i.prol, !llvm.loop !9
 
 l_tail_body.i.i.prol.loopexit:                    ; preds = %l_tail_body.i.i.prol, %l_tail_body.i.i.preheader
   %tacc.i19.i.unr = phi i64 [ %acc_next.i.i.lcssa, %l_tail_body.i.i.preheader ], [ %tacc_next.i.i.prol, %l_tail_body.i.i.prol ]
@@ -1727,7 +1727,7 @@ l_tail_body.i.i.i.i.prol:                         ; preds = %l_tail_body.i.i.i.i
   %ti_next.i.i.i.i.prol = add nuw nsw i64 %ti.i.i.i875.i.prol, 1
   %prol.iter2124.next = add i64 %prol.iter2124, 1
   %prol.iter2124.cmp.not = icmp eq i64 %prol.iter2124.next, %xtraiter2122
-  br i1 %prol.iter2124.cmp.not, label %l_tail_body.i.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.i.prol, !llvm.loop !9
+  br i1 %prol.iter2124.cmp.not, label %l_tail_body.i.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.i.prol, !llvm.loop !11
 
 l_tail_body.i.i.i.i.prol.loopexit:                ; preds = %l_tail_body.i.i.i.i.prol, %l_tail_body.i.i.i.i.preheader
   %tacc.i.i.i876.i.unr = phi i64 [ %acc_next.i.i.i.i.lcssa, %l_tail_body.i.i.i.i.preheader ], [ %tacc_next.i.i.i.i.prol, %l_tail_body.i.i.i.i.prol ]
@@ -2309,7 +2309,7 @@ l_tail_body.i.i.i354.i.prol:                      ; preds = %l_tail_body.i.i.i35
   %ti_next.i.i.i360.i.prol = add nuw nsw i64 %ti.i.i.i247883.i.prol, 1
   %prol.iter2133.next = add i64 %prol.iter2133, 1
   %prol.iter2133.cmp.not = icmp eq i64 %prol.iter2133.next, %xtraiter2131
-  br i1 %prol.iter2133.cmp.not, label %l_tail_body.i.i.i354.i.prol.loopexit, label %l_tail_body.i.i.i354.i.prol, !llvm.loop !10
+  br i1 %prol.iter2133.cmp.not, label %l_tail_body.i.i.i354.i.prol.loopexit, label %l_tail_body.i.i.i354.i.prol, !llvm.loop !12
 
 l_tail_body.i.i.i354.i.prol.loopexit:             ; preds = %l_tail_body.i.i.i354.i.prol, %l_tail_body.i.i.i354.i.preheader
   %tacc.i.i.i248884.i.unr = phi i64 [ %acc_next.i.i.i374.i.lcssa, %l_tail_body.i.i.i354.i.preheader ], [ %tacc_next.i.i.i359.i.prol, %l_tail_body.i.i.i354.i.prol ]
@@ -2828,7 +2828,7 @@ vector.body2052:                                  ; preds = %archx_fn_dict_and_s
   %index.next2055 = add nuw i64 %index2053, 4
   %vec.ind.next2056 = add <2 x i16> %vec.ind2054, splat (i16 4)
   %114 = icmp eq i64 %index.next2055, 64
-  br i1 %114, label %for.end.5, label %vector.body2052, !llvm.loop !11
+  br i1 %114, label %for.end.5, label %vector.body2052, !llvm.loop !13
 
 calloc.oom.1:                                     ; preds = %archx_fn_dict_and_slicing_tour.exit
   call fastcc void @archx_oom_fail()
@@ -3512,7 +3512,7 @@ push.store.43.i:                                  ; preds = %push.grow.from_heap
   store i64 %t105.i, ptr %t145.i1237, align 8
   %t149.i = add nuw nsw i64 %for.x.100.0121.i, 1
   %exitcond201.not.i = icmp eq i64 %t149.i, 2000
-  br i1 %exitcond201.not.i, label %vector.ph2060, label %for.body.37.i, !llvm.loop !12
+  br i1 %exitcond201.not.i, label %vector.ph2060, label %for.body.37.i, !llvm.loop !14
 
 vector.ph2060:                                    ; preds = %push.store.43.i
   %t155.i1238 = load i64, ptr %comp.out.81.sroa.16.1.i, align 8
@@ -3533,7 +3533,7 @@ vector.body2061:                                  ; preds = %vector.body2061, %v
   %124 = call <2 x i64> @llvm.smax.v2i64(<2 x i64> %wide.load2065, <2 x i64> %vec.phi2063)
   %index.next2066 = add nuw i64 %index2062, 4
   %125 = icmp eq i64 %index.next2066, 1996
-  br i1 %125, label %mm.body.61.i, label %vector.body2061, !llvm.loop !14
+  br i1 %125, label %mm.body.61.i, label %vector.body2061, !llvm.loop !16
 
 mm.body.61.i:                                     ; preds = %vector.body2061
   %rdx.minmax = call <2 x i64> @llvm.smax.v2i64(<2 x i64> %123, <2 x i64> %124)
@@ -3636,7 +3636,7 @@ push.store.80.i:                                  ; preds = %push.grow.from_heap
   store i64 %t201.i, ptr %t241.i, align 8
   %t245.i1243 = add nuw nsw i64 %for.x.193.0128.i, 1
   %exitcond204.not.i = icmp eq i64 %t245.i1243, 2000
-  br i1 %exitcond204.not.i, label %vector.ph2070, label %overflow.ok.76.i, !llvm.loop !15
+  br i1 %exitcond204.not.i, label %vector.ph2070, label %overflow.ok.76.i, !llvm.loop !17
 
 vector.ph2070:                                    ; preds = %push.store.80.i
   %t251.i = load i64, ptr %comp.out.174.sroa.16.1.i, align 8
@@ -3657,7 +3657,7 @@ vector.body2073:                                  ; preds = %vector.body2073, %v
   %133 = call <2 x i64> @llvm.smin.v2i64(<2 x i64> %wide.load2079, <2 x i64> %vec.phi2076)
   %index.next2080 = add nuw i64 %index2074, 4
   %134 = icmp eq i64 %index.next2080, 1996
-  br i1 %134, label %mm.body.98.i, label %vector.body2073, !llvm.loop !16
+  br i1 %134, label %mm.body.98.i, label %vector.body2073, !llvm.loop !18
 
 mm.body.98.i:                                     ; preds = %vector.body2073
   %rdx.minmax2082 = call <2 x i64> @llvm.smin.v2i64(<2 x i64> %132, <2 x i64> %133)
@@ -3741,7 +3741,7 @@ vector.body2087:                                  ; preds = %repeat.ok.132.i, %v
   %index.next2091.1 = add nuw nsw i64 %index2088, 8
   %vec.ind.next2092.1 = add <2 x i64> %vec.ind2089, splat (i64 8)
   %148 = icmp eq i64 %index.next2091.1, 2000
-  br i1 %148, label %zip.cond.142.preheader.i, label %vector.body2087, !llvm.loop !17
+  br i1 %148, label %zip.cond.142.preheader.i, label %vector.body2087, !llvm.loop !19
 
 calloc.oom.135.i:                                 ; preds = %repeat.ok.132.i
   call fastcc void @archx_oom_fail()
@@ -7623,7 +7623,7 @@ l_tail_body.i.i.i.prol:                           ; preds = %l_tail_body.i.i.i.p
   %ti_next.i.i.i.prol = add nuw nsw i64 %ti.i13.i.i.prol, 1
   %prol.iter91.next = add i64 %prol.iter91, 1
   %prol.iter91.cmp.not = icmp eq i64 %prol.iter91.next, %xtraiter89
-  br i1 %prol.iter91.cmp.not, label %l_tail_body.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.prol, !llvm.loop !18
+  br i1 %prol.iter91.cmp.not, label %l_tail_body.i.i.i.prol.loopexit, label %l_tail_body.i.i.i.prol, !llvm.loop !20
 
 l_tail_body.i.i.i.prol.loopexit:                  ; preds = %l_tail_body.i.i.i.prol, %l_tail_body.i.i.i.preheader
   %tacc.i14.i.i.unr = phi i64 [ %acc_next.i.i.i.lcssa, %l_tail_body.i.i.i.preheader ], [ %tacc_next.i.i.i.prol, %l_tail_body.i.i.i.prol ]
@@ -7832,7 +7832,7 @@ l_tail_body.i.i.prol:                             ; preds = %l_tail_body.i.i.pre
   %ti_next.i.i.prol = add nuw nsw i64 %ti.i22.i.prol, 1
   %prol.iter.next = add i64 %prol.iter, 1
   %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter81
-  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.prol.loopexit, label %l_tail_body.i.i.prol, !llvm.loop !19
+  br i1 %prol.iter.cmp.not, label %l_tail_body.i.i.prol.loopexit, label %l_tail_body.i.i.prol, !llvm.loop !21
 
 l_tail_body.i.i.prol.loopexit:                    ; preds = %l_tail_body.i.i.prol, %l_tail_body.i.i.preheader
   %tacc.i23.i.unr = phi i64 [ %acc_next.i.i.lcssa, %l_tail_body.i.i.preheader ], [ %tacc_next.i.i.prol, %l_tail_body.i.i.prol ]
@@ -8048,23 +8048,27 @@ attributes #13 = { nocallback nofree nosync nounwind speculatable willreturn mem
 attributes #14 = { nocallback nofree nounwind willreturn memory(argmem: read) }
 attributes #15 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 
-!0 = distinct !{!0, !1, !2}
-!1 = !{!"llvm.loop.isvectorized", i32 1}
-!2 = !{!"llvm.loop.unroll.runtime.disable"}
-!3 = distinct !{!3, !1, !2}
-!4 = distinct !{!4, !1, !2}
-!5 = distinct !{!5, !1, !2}
-!6 = distinct !{!6, !2, !1}
-!7 = distinct !{!7, !8}
-!8 = !{!"llvm.loop.unroll.disable"}
-!9 = distinct !{!9, !8}
-!10 = distinct !{!10, !8}
-!11 = distinct !{!11, !1, !2}
-!12 = distinct !{!12, !13}
-!13 = !{!"llvm.loop.peeled.count", i32 1}
-!14 = distinct !{!14, !1, !2}
-!15 = distinct !{!15, !13}
-!16 = distinct !{!16, !1, !2}
-!17 = distinct !{!17, !1, !2}
-!18 = distinct !{!18, !8}
-!19 = distinct !{!19, !8}
+!llvm.module.flags = !{!0, !1}
+
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = distinct !{!2, !3, !4}
+!3 = !{!"llvm.loop.isvectorized", i32 1}
+!4 = !{!"llvm.loop.unroll.runtime.disable"}
+!5 = distinct !{!5, !3, !4}
+!6 = distinct !{!6, !3, !4}
+!7 = distinct !{!7, !3, !4}
+!8 = distinct !{!8, !4, !3}
+!9 = distinct !{!9, !10}
+!10 = !{!"llvm.loop.unroll.disable"}
+!11 = distinct !{!11, !10}
+!12 = distinct !{!12, !10}
+!13 = distinct !{!13, !3, !4}
+!14 = distinct !{!14, !15}
+!15 = !{!"llvm.loop.peeled.count", i32 1}
+!16 = distinct !{!16, !3, !4}
+!17 = distinct !{!17, !15}
+!18 = distinct !{!18, !3, !4}
+!19 = distinct !{!19, !3, !4}
+!20 = distinct !{!20, !10}
+!21 = distinct !{!21, !10}

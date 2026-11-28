@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+; archx.dialect=native version=1 source=directive
 
 @.fmt.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
@@ -16,3 +17,7 @@ entry:
 }
 
 declare i32 @printf(ptr nocapture readonly, ...)
+
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}

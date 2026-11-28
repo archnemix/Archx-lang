@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+; archx.dialect=native version=1 source=directive
 
 %ArchxVec = type { i64, i64, ptr }
 %ArchxStr = type { i64, i64 }
@@ -4492,3 +4493,7 @@ bad_op:
   unreachable
 }
 declare i32 @llvm.cttz.i32(i32, i1 immarg) nounwind readnone speculatable
+
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}

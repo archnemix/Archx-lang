@@ -1,4 +1,5 @@
 ; Archx LLVM IR module
+; archx.dialect=native version=1 source=directive
 
 @.fmt.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.fmt.int = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
@@ -39,3 +40,7 @@ declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64) nounwind readnone spe
 declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64) nounwind readnone speculatable
 declare void @exit(i32) cold noreturn nounwind
+
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}

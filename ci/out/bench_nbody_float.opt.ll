@@ -94,7 +94,7 @@ vector.body:                                      ; preds = %calloc.ok.12.i, %ve
   %index.next = add nuw i64 %index, 2
   %vec.ind.next = add <2 x i64> %vec.ind, splat (i64 2)
   %14 = icmp eq i64 %index.next, 100000
-  br i1 %14, label %vector.ph82, label %vector.body, !llvm.loop !0
+  br i1 %14, label %vector.ph82, label %vector.body, !llvm.loop !2
 
 calloc.oom.15.i:                                  ; preds = %calloc.ok.12.i
   tail call fastcc void @archx_oom_fail()
@@ -146,7 +146,7 @@ vector.body83:                                    ; preds = %vector.body83, %vec
   store <2 x double> %40, ptr %17, align 16
   %index.next90 = add nuw i64 %index84, 2
   %41 = icmp eq i64 %index.next90, 100000
-  br i1 %41, label %for.step.24.i, label %vector.body83, !llvm.loop !3
+  br i1 %41, label %for.step.24.i, label %vector.body83, !llvm.loop !5
 
 for.step.24.i:                                    ; preds = %vector.body83
   %t127.i = add nuw nsw i64 %for._s.60.025.i, 1
@@ -283,7 +283,7 @@ vector.body95:                                    ; preds = %calloc.ok.12.i18, %
   %index.next98 = add nuw i64 %index96, 2
   %vec.ind.next99 = add <2 x i64> %vec.ind97, splat (i64 2)
   %53 = icmp eq i64 %index.next98, 64
-  br i1 %53, label %for.cond.26.preheader.i32, label %vector.body95, !llvm.loop !4
+  br i1 %53, label %for.cond.26.preheader.i32, label %vector.body95, !llvm.loop !6
 
 calloc.oom.15.i74:                                ; preds = %calloc.ok.12.i18
   tail call fastcc void @archx_oom_fail()
@@ -386,7 +386,7 @@ vector.body104:                                   ; preds = %for.end.33.i, %vect
   store <2 x double> %80, ptr %77, align 16
   %index.next112 = add nuw i64 %index105, 2
   %81 = icmp eq i64 %index.next112, 64
-  br i1 %81, label %for.step.24.i66, label %vector.body104, !llvm.loop !5
+  br i1 %81, label %for.step.24.i66, label %vector.body104, !llvm.loop !7
 
 for.step.24.i66:                                  ; preds = %vector.body104
   %t168.i = add nuw nsw i64 %for._s.60.034.i, 1
@@ -487,9 +487,13 @@ attributes #4 = { mustprogress nounwind willreturn allockind("free") memory(argm
 attributes #5 = { mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none) }
 attributes #6 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
 
-!0 = distinct !{!0, !1, !2}
-!1 = !{!"llvm.loop.isvectorized", i32 1}
-!2 = !{!"llvm.loop.unroll.runtime.disable"}
-!3 = distinct !{!3, !1, !2}
-!4 = distinct !{!4, !1, !2}
-!5 = distinct !{!5, !1, !2}
+!llvm.module.flags = !{!0, !1}
+
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = distinct !{!2, !3, !4}
+!3 = !{!"llvm.loop.isvectorized", i32 1}
+!4 = !{!"llvm.loop.unroll.runtime.disable"}
+!5 = distinct !{!5, !3, !4}
+!6 = distinct !{!6, !3, !4}
+!7 = distinct !{!7, !3, !4}

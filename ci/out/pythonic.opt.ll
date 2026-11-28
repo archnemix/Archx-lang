@@ -158,7 +158,7 @@ push.store.5:                                     ; preds = %push.grow.from_heap
   %t53 = add nuw nsw i64 %var.samples.7.sroa.0.01197, 1
   %t56 = add nuw nsw i64 %for.i.8.01196, 1
   %exitcond.not = icmp eq i64 %t53, 5
-  br i1 %exitcond.not, label %enum.cond.20.preheader, label %for.body.1, !llvm.loop !0
+  br i1 %exitcond.not, label %enum.cond.20.preheader, label %for.body.1, !llvm.loop !2
 
 oom.i1002:                                        ; preds = %build_long.i988
   tail call fastcc void @archx_oom_fail()
@@ -838,7 +838,7 @@ vector.body:                                      ; preds = %vector.body, %vecto
   store <16 x i8> %11, ptr %13, align 1
   %index.next = add nuw i64 %index, 32
   %14 = icmp eq i64 %index.next, %n.vec
-  br i1 %14, label %middle.block, label %vector.body, !llvm.loop !2
+  br i1 %14, label %middle.block, label %vector.body, !llvm.loop !4
 
 middle.block:                                     ; preds = %vector.body
   %cmp.n = icmp eq i64 %len.i732, %n.vec
@@ -866,7 +866,7 @@ vec.epilog.vector.body:                           ; preds = %vec.epilog.vector.b
   store <8 x i8> %19, ptr %20, align 1
   %index.next1308 = add nuw i64 %index1306, 8
   %21 = icmp eq i64 %index.next1308, %n.vec1305
-  br i1 %21, label %vec.epilog.middle.block, label %vec.epilog.vector.body, !llvm.loop !5
+  br i1 %21, label %vec.epilog.middle.block, label %vec.epilog.vector.body, !llvm.loop !7
 
 vec.epilog.middle.block:                          ; preds = %vec.epilog.vector.body
   %cmp.n1309 = icmp eq i64 %len.i732, %n.vec1305
@@ -888,7 +888,7 @@ loop.i:                                           ; preds = %loop.i.preheader, %
   store i8 %c1.i, ptr %dp.i, align 1
   %inext.i = add nuw nsw i64 %i.i, 1
   %exitcond.not.i738 = icmp eq i64 %inext.i, %len.i732
-  br i1 %exitcond.not.i738, label %chk_big.i.i739, label %loop.i, !llvm.loop !6
+  br i1 %exitcond.not.i738, label %chk_big.i.i739, label %loop.i, !llvm.loop !8
 
 chk_big.i.i739:                                   ; preds = %loop.i, %vec.epilog.middle.block, %middle.block
   call void @llvm.lifetime.start.p0(i64 16, ptr nonnull %sso.i.i728)
@@ -2430,10 +2430,14 @@ attributes #11 = { mustprogress nocallback nofree nounwind willreturn }
 attributes #12 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
 attributes #13 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 
-!0 = distinct !{!0, !1}
-!1 = !{!"llvm.loop.peeled.count", i32 1}
-!2 = distinct !{!2, !3, !4}
-!3 = !{!"llvm.loop.isvectorized", i32 1}
-!4 = !{!"llvm.loop.unroll.runtime.disable"}
-!5 = distinct !{!5, !3, !4}
-!6 = distinct !{!6, !4, !3}
+!llvm.module.flags = !{!0, !1}
+
+!0 = !{i32 1, !"archx.dialect", !"native"}
+!1 = !{i32 1, !"archx.directive_version", !"1"}
+!2 = distinct !{!2, !3}
+!3 = !{!"llvm.loop.peeled.count", i32 1}
+!4 = distinct !{!4, !5, !6}
+!5 = !{!"llvm.loop.isvectorized", i32 1}
+!6 = !{!"llvm.loop.unroll.runtime.disable"}
+!7 = distinct !{!7, !5, !6}
+!8 = distinct !{!8, !6, !5}
